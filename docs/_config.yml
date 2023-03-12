@@ -8,8 +8,9 @@ compass:
   # logo: "/images/compass.png"
   # author will appear under the avatar (optional)
   author: "spice2x"
+  title: "spice2x"
   # tagline will appear under the title (optional)
-  tagline: "now 2x spicy"
+  tagline: "a SpiceTools fork"
   # if include_content is true, the contents of the content.html include will be
   # added right above the generated item list, if present
   include_content: true
