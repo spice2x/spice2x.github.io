@@ -74,6 +74,20 @@ pre {
 	font-size: 0.9em;
 }
 
+ul.downloads li a {
+	font-weight: lighter;
+	color: #cfa6a5;
+}
+
+ul.downloads li:first-child a {
+	font-weight: bold;
+	color: #CE534D;
+}
+
+ul.downloads li:first-child a::after {
+	content: " (latest)";
+}
+  
 /*** author ***/
 .author-container h1 {
 	font-size: 2.4em;
