@@ -136,6 +136,10 @@ footer {
 		width: 480px;
 		margin: 4% auto 0 auto;
 	}
+
+	main {
+		margin-bottom: 80px;
+	}
 }
 
 /* All other devices (768px and up) */
@@ -163,6 +167,7 @@ footer {
 	main {
 		width: 70%;
 		margin-left: 30%;
+		margin-bottom: 100px;
 		padding: 0;
 	}
 }

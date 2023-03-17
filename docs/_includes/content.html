@@ -1,8 +1,17 @@
 <h2>about spice2x</h2>
 <p>spice2x (spicetools2x) is a fork of SpiceTools, focused on addressing bugs, usability, and quality-of-life improvements</p>
 
+<p>spice2x binaries are meant to be drop-in replacements for existing installs (spice.exe, spice64.exe, spicecfg.exe)</p>
+
+<p>Efforts will be made to keep up to date with upstream changes.</p>
+
 <h2>downloads</h2>
 <ul class="downloads">
+  <li>
+    <a href="https://github.com/spice2x/spice2x.github.io/releases/download/23-03-17-0731/spice2x-23-03-17-0731.zip">
+      spice2x-23-03-17-0731
+    </a>
+  </li>
   <li>
     <a href="https://github.com/spice2x/spice2x.github.io/releases/download/23-03-15-0353/spice2x-23-03-15-0353.zip">
       spice2x-23-03-15-0353
@@ -25,17 +34,20 @@
   </li>
 </ul>
 
-<h2>notes</h2>
+<h2>usage notes</h2>
 
-<p>Some anti-virus software may (incorrectly) flag the binaries as malware. If you have concerns, you are free to inspect the included source files and compile on your own.</p>
-
-<p>Efforts will be made to keep up to date with upstream changes.</p>
-
-<p>spice2x binaries are meant to be drop-in replacements for existing installs (spice.exe, spice64.exe, spicecfg.exe)</p>
+<p>Some anti-virus software may (incorrectly) flag the binaries as malware. If you have concerns, you are free to inspect the included source files and compile on your own. As of 23-03-17-0731 build, <strong>UPX compression has been disabled</strong>. This results in a larger file size on disk, but hopefully gets detected as malware less often. This is an unfortunate situation created by the fact that actual malware often use UPX for obfuscation, which feeds into various anti-virus software algorithms, which then causes other UPX-compressed software to be falsely flagged</p>
 
 <h2>recent updates</h2>
 
 <pre>
+03/17/2023
+  Disable UPX (file sizes will be larger)
+  Fix regression from 2022 that prevented early patches
+  from being loaded properly (such as audio hex edits)
+  New option: HID lighting brightness
+  New option: display auto-rotate direction
+  New option: custom sleep duration
 03/15/2023
   Improve IIDX TT+/- handling (allow alternate key bind)
   Fix SpiceCompanion touch targets for TDJ FHD
@@ -54,6 +66,10 @@
   Fix TDJ subscreen overlay in FHD mode
   Gracefully deal with bad ea3-config.xml
 </pre>
+
+<h2>issues, questions, bugs, feature requests</h2>
+
+Please use the github repo below.
 
 <hr />
 
