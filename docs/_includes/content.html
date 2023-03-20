@@ -8,43 +8,89 @@
 <h2>downloads</h2>
 <ul class="downloads">
   <li>
+    <a href="https://github.com/spice2x/spice2x.github.io/releases/download/23-03-20/spice2x-23-03-20.zip">
+      spice2x-23-03-20
+    </a>
+    <ul>
+      <li>
+        SDVX "Valkyrie Model" mode is now fully playable, with touchscreen overlay and mouse input fixes.
+      </li>
+      <li>
+        Experimental native ASIO support has been added as well, although it's unclear what hardware is compatible,
+        other than Asus XONAR AE.
+      </li>
+    </ul>
+  </li>
+  <li>
     <a href="https://github.com/spice2x/spice2x.github.io/releases/download/23-03-17-0731/spice2x-23-03-17-0731.zip">
       spice2x-23-03-17-0731
     </a>
+    <ul>
+      <li>
+        Disable UPX, results in larger binary size, but hopefully incorrectly flagged as malware less often.
+      </li>
+      <li>
+        Add a bunch of options for uncommon scenarios.
+      </li>
+    </ul>
   </li>
   <li>
     <a href="https://github.com/spice2x/spice2x.github.io/releases/download/23-03-15-0353/spice2x-23-03-15-0353.zip">
       spice2x-23-03-15-0353
     </a>
+    <ul>
+      <li>
+        Add "alternate" keybind for IIDX TT+/-, aimed at improving play experience on a keyboard, where high level
+        players bind two buttons to the turntable. Having two separate key binds (as opposed to binding two keys to
+        the same key bind) allows better rising-edge detection.
+      </li>
+    </ul>
   </li>
   <li>
     <a href="https://github.com/spice2x/spice2x.github.io/releases/download/23-03-13-0746/spice2x-23-03-13-0746.zip">
       spice2x-23-03-13-0746
     </a>
-  </li>
-  <li>
-    <a href="https://github.com/spice2x/spice2x.github.io/releases/download/23-03-13-0242/spice2x-23-03-13-0242.zip">
-      spice2x-23-03-13-0242
-    </a>
+    <ul>
+      <li>
+        Add options for knob / TT sensitivity when using keyboard / digital input.
+      </li>
+    </ul>
   </li>
   <li>
     <a href="https://github.com/spice2x/spice2x.github.io/releases/download/23-03-12-0726/spice2x-23-03-12-0726.zip">
       spice2x-23-03-12-0726
     </a>
+    <ul>
+      <li>
+        Fix TDJ sub screen overlay when game launches in 1080p.
+      </li>
+      <li>
+        Inject Hook in UI now allows for multiple DLLs.
+      </li>
+    </ul>
   </li>
 </ul>
 
-<h2>known issues</h2>
+<h2>known issues in latest release</h2>
 
-<p>For EG Valk mode, I/O emulation is incomplete. Please enable "Valkyrie Mode BIO2 (KFC) IO" or "Force BIO2 (KFC) IO in Valkyrie mode" patch.</p>
+<p>
+  Some anti-virus software may (incorrectly) flag the binaries as malware. If you have concerns, you are free to
+  inspect the included source files and compile on your own.
+</p>
 
-<p>When using the option(s) to automatically rotate display on launch, the game may start with the wrong refresh rate, or just end up with a white window. As a workaround, use the -graphics-force-refresh option to explicitly set the desired refresh rate, or rotate the display from Windows desktop before launching the game.</p>
+<p>
+  Using a touch screen for the game after interacting with Spice overlay make cause touches to be less responsive.
+  As a workaround, use -overlaydisable option to turn off Spice overlay in game.
+</p>
 
-<p>Some anti-virus software may (incorrectly) flag the binaries as malware. If you have concerns, you are free to inspect the included source files and compile on your own. As of 23-03-17-0731 build, <strong>UPX compression has been disabled</strong>. This results in a larger file size on disk, but hopefully gets incorrectly detected as malware less often. This is an unfortunate situation created by the fact that actual malware often use UPX for obfuscation, which feeds into various anti-virus software algorithms, which then causes other UPX-compressed software to be falsely flagged.</p>
-
-<h2>recent updates</h2>
+<h2>full changelog</h2>
 
 <pre>
+03/20/2023
+  ASIO device override for SDVX (experimental)
+  Fix subscreen overlay for SDVX in Valkyrie mode using BI2X I/O
+  Update text for touch and audio config options
+  UI tweaks and minor bug fixes
 03/17/2023
   Disable UPX (file sizes will be larger)
   Fix regression from 2022 that prevented early patches
