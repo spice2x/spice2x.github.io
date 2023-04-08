@@ -74,30 +74,41 @@ pre {
 	font-size: 0.75em;
 }
 
-ul.downloads {
+ul.downloads, ul.downloads-beta {
 	list-style-type: none;
 	padding-left: 0;
 }
 
-ul.downloads li {
+ul.downloads li, ul.downloads-beta li {
 	font-size: 0.96em;
 }
 
-ul.downloads li a {
+ul.downloads li a, ul.downloads-beta li a {
 	font-size: 1.2em;
 	font-weight: lighter;
+}
+
+ul.downloads li a {
 	color: #cfa6a5;
 }
 
-ul.downloads li:first-child a {
+ul.downloads-beta li a {
+	color: #d37876;
+}
+
+ul.downloads.highlight-latest li:first-child a {
 	font-weight: bold;
 	color: #CE534D;
 }
 
-ul.downloads li:first-child a::after {
-	content: " (latest)";
+ul.highlight-latest li:first-child a::after {
+	content: " (latest beta)";
 }
-  
+
+ul.downloads-beta.highlight-latest li:first-child a {
+	font-weight: bold;
+}
+
 /*** author ***/
 .author-container h1 {
 	font-size: 2.4em;
