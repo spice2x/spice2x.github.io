@@ -79,38 +79,43 @@ ul.downloads, ul.downloads-beta {
 	padding-left: 0;
 }
 
+ul.downloads li img, ul.downloads-beta li img {
+	width: 94%;
+}
+
 ul.downloads li, ul.downloads-beta li {
 	font-size: 0.96em;
 }
 
-ul.downloads li a, ul.downloads-beta li a {
+ul.downloads li a.download-link, ul.downloads-beta li a.download-link {
 	font-size: 1.2em;
 	font-weight: lighter;
 }
 
-ul.downloads li a {
+ul.downloads li a.download-link {
 	color: #cfa6a5;
 }
 
-ul.downloads-beta li a {
+ul.downloads-beta li a.download-link {
 	color: #d37876;
 }
 
-ul.downloads.highlight-latest li:first-child a {
+ul.downloads.highlight-latest li:first-child a.download-link {
 	font-weight: bold;
 	color: #CE534D;
 }
 
-ul.downloads.highlight-latest li:first-child a::after {
-	content: " (latest)";
+ul.downloads.highlight-latest li:first-child a.download-link::after {
+	content: " (latest stable)";
 }
 
-ul.downloads-beta.highlight-latest li:first-child a::after {
-	content: " (latest beta)";
-}
-
-ul.downloads-beta.highlight-latest li:first-child a {
+ul.downloads-beta.highlight-latest li:first-child a.download-link {
 	font-weight: bold;
+	color: #CE534D;
+}
+
+ul.downloads-beta.highlight-latest li:first-child a.download-link::after {
+	content: " (latest beta)";
 }
 
 /*** author ***/
