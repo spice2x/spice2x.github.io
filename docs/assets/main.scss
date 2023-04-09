@@ -101,7 +101,11 @@ ul.downloads.highlight-latest li:first-child a {
 	color: #CE534D;
 }
 
-ul.highlight-latest li:first-child a::after {
+ul.downloads.highlight-latest li:first-child a::after {
+	content: " (latest)";
+}
+
+ul.downloads-beta.highlight-latest li:first-child a::after {
 	content: " (latest beta)";
 }
 
