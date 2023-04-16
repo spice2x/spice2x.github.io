@@ -27,6 +27,17 @@
 
 <ul class="downloads-beta highlight-latest">
   <li>
+    <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases/download/23-04-16/spice2x-23-04-16.zip">
+      spice2x-23-04-16
+    </a>
+    <ul>
+      <li>New feature: window options. Change size / position, make borderless, and so on. Use options
+        in SpiceCfg or use F11 option. Also see known issues section.</li>
+      <li>Screen Resize feature is now saved per-game. By nature, this makes the screen resize
+        settings not backwards compatible with older versions of SpiceTools.</li>
+    </ul>
+  </li>
+  <li>
     <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases/download/23-04-09/spice2x-23-04-09.zip">
       spice2x-23-04-09
     </a>
@@ -141,7 +152,7 @@
   </li>
 </ul>
 
-<h2>known issues in latest release</h2>
+<h2>known issues</h2>
 
 <p>
   Some anti-virus software may (incorrectly) flag the binaries as malware. If you have concerns, you are free to
@@ -153,8 +164,17 @@
 </p>
 
 <p>
-  Hopefully fixed in the latest beta: using a touch screen for the game after interacting with Spice overlay may cause touches to be less responsive.
-  As a workaround, use -overlaydisable option to turn off Spice overlay in game.
+  When in windowed mode, resizing the window also resizes the overlay, which may cause it to be difficult to use.
+  Additionally, there is also no linear filtering that can be enabled in windowed mode.
+  It's unlikely that these issues will be solved in the future.
+</p>
+
+<p>
+  Multi-monitor games (TDJ, VM, etc) don't play nice with -monitor option. As a workaround, change the primary monitor before launching.
+</p>
+
+<p>
+  For more, please see the <a href="https://github.com/spice2x/spice2x.github.io/issues">issue tracker</a>.
 </p>
 
 <h2>applying patches (hex edits)</h2>
