@@ -11,6 +11,7 @@ compass:
   title: "spice2x"
   # tagline will appear under the title (optional)
   tagline: "a SpiceTools fork"
+  description: "spice2x is an updated version of SpiceTools with many new features and quality of life improvements."
   # if include_content is true, the contents of the content.html include will be
   # added right above the generated item list, if present
   include_content: true

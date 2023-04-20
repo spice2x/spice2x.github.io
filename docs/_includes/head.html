@@ -18,14 +18,15 @@
   <meta http-equiv='pragma' content='no-cache'>
 
   <meta name="author" content="{{ site.compass.author }}">
-  <meta name="description" content="{{ site.compass.tagline }}"/>
+  <meta name="description" content="{{ site.compass.description }}"/>
+  <meta http-equiv='content-language' content='en-us'>
 
   <!-- Open Graph tags -->
   <meta property="og:type" content="website"/>
   <meta property="og:title" content="{{ site.compass.title }}"/>
   <meta property="og:url" content="{{ site.url }}{{ site.baseurl }}{{ page.url }}"/>
   <meta property="og:image" content="{{ site.url }}{{ site.baseurl }}{{ site.compass.logo }}"/>
-  <meta property="og:description" content="{{ site.compass.tagline }}"/>
+  <meta property="og:description" content="{{ site.compass.description }}"/>
   <meta property="og:site_name" content="{{ site.compass.title }}">
 
   <!-- Twitter Card tags -->
@@ -38,7 +39,7 @@
   <meta name="twitter:creator" content="{{ site.twitter.creator }}">
   {% endif %}
   <meta name="twitter:url" content="{{ site.url }}{{ site.baseurl }}{{ page.url }}">
-  <meta name="twitter:description" content="{{ site.compass.tagline }}">
+  <meta name="twitter:description" content="{{ site.compass.description }}">
   <meta name="twitter:image:src" content="{{ site.url }}{{ site.baseurl }}{{ site.compass.logo }}">
 
   {% if site.compass.include_analytics %}
