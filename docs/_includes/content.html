@@ -186,6 +186,12 @@
 </p>
 
 <p>
+  The #1 of source of crash when enabling IIDX TDJ (-iidxtdj) is forgetting to change the audio mode (-iidxsounddevice) to wasapi.
+  This is one of the main differences vs. btools; btools always defaults to wasapi unless configured to use ASIO, but spice will
+  use the arcade default (wasapi for LDJ, ASIO for TDJ). This might change in the future, but it will be a breaking change.
+</p>
+
+<p>
   EG may launch at wrong refresh rate when using the auto-rotate option. Please enable -9on12 and -graphics-force-refresh to work around this.
 </p>
 
