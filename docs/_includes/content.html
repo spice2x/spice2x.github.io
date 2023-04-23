@@ -40,6 +40,11 @@
         (or "auto"), then Spice will try to pick the correct option between wasapi and asio.
       </li>
       <li>
+        If you are seeing audio issues or crashes with IIDX after updating to this version, please double
+        check your audio options; in particular, -iidxsounddevice and -iidxasio. Also check log.txt for
+        any messages regarding audio.
+      </li>
+      <li>
         In the past, LDJ used WASAPI, and TDJ used ASIO as the default (as in, we left the game decide on launch).
         This was a source of a lot of confusion & crashes, especially since btools uses WASAPI as the default.
         Starting with this version, Spice will always default to WASAPI, unless -iidxasio is also set, or if
