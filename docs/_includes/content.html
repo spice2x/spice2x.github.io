@@ -25,11 +25,34 @@
   stable once they have been thoroughly tested.
 </p> -->
 
-<h2>download</h2>
+<h2>latest download</h2>
 
-<p>Last updated on: April 21st, 2023.</p>
+<p>Last updated on: April 23rd, 2023.</p>
 
 <ul class="downloads highlight-latest">
+  <li>
+    <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases/download/23-04-23/spice2x-23-04-23.zip">
+      spice2x-23-04-23
+    </a>
+    <ul>
+      <li>
+        -iidxsounddevice setting will now be automatically configured. Leave things to default settings
+        (or "auto"), then Spice will try to pick the correct option between wasapi and asio.
+      </li>
+      <li>
+        In the past, LDJ used WASAPI, and TDJ used ASIO as the default (as in, we left the game decide on launch).
+        This was a source of a lot of confusion & crashes, especially since btools uses WASAPI as the default.
+        Starting with this version, Spice will always default to WASAPI, unless -iidxasio is also set, or if
+        you actually have an Asus Xonar AE card (detection via the registry), then ASIO will be used. You can still
+        override the option to "wasapi" or "asio" if needed, but it should not be necessary.
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h2>past versions</h2>
+
+<ul class="downloads">
   <li>
     <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases/download/23-04-21/spice2x-23-04-21.zip">
       spice2x-23-04-21
@@ -43,12 +66,7 @@
         just use the -iidxtdj option.
       </li>
     </ul>
-  </li>  
-</ul>
-
-<h2>past versions</h2>
-
-<ul class="downloads">
+  </li>
   <li>
     <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases/download/23-04-20/spice2x-23-04-20.zip">
       spice2x-23-04-20
