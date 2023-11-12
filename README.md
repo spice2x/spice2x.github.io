@@ -4,7 +4,7 @@ Please visit the homepage: **[https://spice2x.github.io/](https://spice2x.github
 
 Also check out the wiki (not open to edits by the public): **https://github.com/spice2x/spice2x.github.io/wiki**
 
-We do not use GitHub for source control, but we do use the issue tracker.
+We do not use GitHub for source control, but we do use the issue tracker and the wiki.
 
 Before you file a new issue in the issue tracker:
 
