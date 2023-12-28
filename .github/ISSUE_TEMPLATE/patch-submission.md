@@ -8,7 +8,16 @@ assignees: ''
 ---
 
 > [!NOTE]
-> Note before submitting code changes (feel free to erase all of this after reading)
+> Note before submitting code changes (feel free to erase all of this section after reading)
 > * Please do note that this is a GPL v3.0 open source project.
 > * Maintainers reserve the right to reject or modify your submission without reason.
 > * If accepted, your github user name will be credited on the main web page.
+
+## Description of change
+<what does this code do?>
+
+## Testing
+<how was the code tested?>
+
+## Patch file
+<what patch format are you using? Unix Patch format? Git Patch?>
