@@ -1,6 +1,6 @@
 ---
 name: Patch submission
-about: Describe this issue template's purpose here.
+about: Submit code changes for review.
 title: ''
 labels: patch
 assignees: ''
