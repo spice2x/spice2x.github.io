@@ -1,6 +1,6 @@
 ---
 name: Patch submission
-about: Submit code changes for review.
+about: Submit code changes for review
 title: ''
 labels: patch
 assignees: ''
