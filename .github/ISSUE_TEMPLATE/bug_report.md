@@ -13,6 +13,9 @@ assignees: ''
 ## Version of spice2x
 <version of spice, this can be seen in the About tab, and in log.txt>
 
+## Laptop
+<Are you running this on a laptop? Does it have a hybrid iGPU+ dGPU configuration?>
+
 ## Attached log.txt file, if available
 > [!WARNING]
 > Please make sure you remove any personally identifiable information from the log file.
