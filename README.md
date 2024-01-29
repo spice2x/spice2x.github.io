@@ -18,6 +18,7 @@ Before you file a new issue in the issue tracker:
 Baseline rules for adding support for games:
 
 * No BomberGirl, as long as the Free To Play service is still alive.
+* No support for eaCloud ("Konasute") games.
 * For a new game that was never supported (not a new version of a game, but rather a new franchise): please wait 1 year after official AC release in Japan.
 
 New GitHub accounts are prevented from creating new issues to prevent spam.
