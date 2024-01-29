@@ -24,6 +24,7 @@ Maintainers of this project reserve the right to close or delete any low effort 
 Baseline rules for adding support for games:
 
 * No BomberGirl, as long as the Free To Play service is still alive.
+* No support for that one touch screen game that dispenses plushes of mouse character (`O26`).
 * No support for eaCloud ("Konasute") games.
 * For a new game that was never supported (not a new version of a game, but rather a new series): please wait 1 year after official AC release in Japan.
 * For new version of an already supported game: proceed with caution and use generally-accepted community guidelines.
