@@ -19,7 +19,7 @@ New GitHub accounts are prevented from creating new issues to prevent spam.
 Maintainers of this project reserve the right to close or delete any low effort issues.
 
 ## Contributing
-**We encourage the community to submit patches via the issue tracker for any bug fixes or feature enhancements.** If you want to resolve any reported (or not reported) bugs, implement features, add support for new games, or fix a known issue - feel free to reach out via the Issue tracker.
+**We encourage the community to submit patches via the issue tracker for any bug fixes or feature enhancements.** If you want to resolve any reported (or not reported) bugs, implement features, add support for new games, or fix a [known issue](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) - feel free to reach out via the Issue tracker.
 
 Baseline rules for adding support for games:
 
