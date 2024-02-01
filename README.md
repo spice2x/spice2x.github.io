@@ -4,6 +4,12 @@ Please visit the homepage: **[https://spice2x.github.io/](https://spice2x.github
 
 We do not use GitHub for source control, but we do use the [issue tracker](https://github.com/spice2x/spice2x.github.io/issues) and [the wiki](https://github.com/spice2x/spice2x.github.io/wiki). Source is distributed in the release package.
 
+## Overview
+
+[Features](https://github.com/spice2x/spice2x.github.io/wiki/spice2x-features)
+
+[List of supported games](https://github.com/spice2x/spice2x.github.io/wiki/List-of-supported-games)
+
 ## Submitting to the Issue Tracker
 Before you file a new issue in the issue tracker:
 
