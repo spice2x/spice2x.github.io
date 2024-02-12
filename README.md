@@ -11,15 +11,12 @@ We do not use GitHub for source control, but we do use the [issue tracker](https
 [List of supported games](https://github.com/spice2x/spice2x.github.io/wiki/List-of-supported-games)
 
 ## Submitting to the Issue Tracker
-Before you file a new issue in the issue tracker:
+Rules for filing a new issue or adding comments to existing issues in the tracker:
 
-* Check the [known issues](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) page first.
-* Make sure you are on the latest version.
-* In SpiceCfg, if you hover over (?) icon next to each option, a helpful mouseover text will appear that will most likely answer your questions.
+* Check the [known issues](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) page first before reporting a new issue.
 * Use the search function and see if there is an existing issue. 
-* Make sure to post the log file (log.txt) as an attachment, and remove any personally identifiable information.
 * This is not the place to ask about other projects, especially EA servers. Bad servers can (and will) crash your game.
-* **Do not link to external websites that distribute game data.**
+* **Do not link to external websites that distribute game data!**
 
 New GitHub accounts are prevented from creating new issues to prevent spam.
 
