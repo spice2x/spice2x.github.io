@@ -19,7 +19,7 @@ Before you file a new issue in the issue tracker:
 * Use the search function and see if there is an existing issue. 
 * Make sure to post the log file (log.txt) as an attachment, and remove any personally identifiable information.
 * This is not the place to ask about other projects, especially EA servers. Bad servers can (and will) crash your game.
-* Do not link to external websites that distribute game data.
+* **Do not link to external websites that distribute game data.**
 
 New GitHub accounts are prevented from creating new issues to prevent spam.
 
