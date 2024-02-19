@@ -1,10 +1,10 @@
-<br/><br/><br/><br/>
+<br/><br/><br/><br/><br/><br/><br/><br/>
 
 # This is the github page for development. If you just want to download the latest spice2x EXE, visit the homepage instead:
 
 # 🌶️🌶️ [https://spice2x.github.io/](https://spice2x.github.io/) 🌶️🌶️
 
-<br/><br/><br/><br/>
+<br/><br/><br/><br/><br/><br/><br/><br/>
 
 # spice2x
 
