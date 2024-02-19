@@ -1,10 +1,12 @@
 spice2x is a fork of SpiceTools, focused on addressing bugs, usability, and quality-of-life improvements.
 
-Please visit the homepage: **[https://spice2x.github.io/](https://spice2x.github.io/)**
+# >>> This is the github page for development. If you just want to download the latest EXE, visit the homepage instead: **[https://spice2x.github.io/](https://spice2x.github.io/)** <<<
 
-We do not use GitHub for source control, but we do use the [issue tracker](https://github.com/spice2x/spice2x.github.io/issues) and [the wiki](https://github.com/spice2x/spice2x.github.io/wiki). Source is distributed in the release package.
+# spice2x
 
 ## Overview
+
+We do not use GitHub for source control, but we do use the [issue tracker](https://github.com/spice2x/spice2x.github.io/issues) and [the wiki](https://github.com/spice2x/spice2x.github.io/wiki). Source is distributed in the release package.
 
 [Features](https://github.com/spice2x/spice2x.github.io/wiki/spice2x-features)
 
