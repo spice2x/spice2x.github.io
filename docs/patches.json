@@ -1,0 +1,34 @@
+[
+  {
+    "gameCode": "M32",
+    "dateCode": 2022102400,
+    "name": "Skip Tutorial",
+    "description": "",
+    "type": "memory",
+    "preset": true,
+    "patches": [
+      {
+        "dllName": "game.dll",
+        "dataDisabled": "0F87",
+        "dataEnabled": "90E9",
+        "dataOffset": 946042
+      }
+    ]
+  },
+  {
+    "gameCode": "M32",
+    "dateCode": 2022102400,
+    "name": "Infinite Stage",
+    "description": "Score may not save",
+    "type": "memory",
+    "preset": true,
+    "patches": [
+      {
+        "dllName": "game.dll",
+        "dataDisabled": "0F85",
+        "dataEnabled": "90E9",
+        "dataOffset": 1143921
+      }
+    ]
+  }
+]
