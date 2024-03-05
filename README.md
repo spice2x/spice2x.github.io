@@ -14,6 +14,8 @@ spice2x is a fork of SpiceTools, focused on addressing bugs, usability, and qual
 
 We do not use GitHub for source control, but we do use the [issue tracker](https://github.com/spice2x/spice2x.github.io/issues) and [the wiki](https://github.com/spice2x/spice2x.github.io/wiki). Source is distributed in the release package.
 
+spice2x team does not provide any tools to circumvent software copy protection, nor distribute any copyright-protected game data.
+
 [Features](https://github.com/spice2x/spice2x.github.io/wiki/spice2x-features)
 
 [List of supported games](https://github.com/spice2x/spice2x.github.io/wiki/List-of-supported-games)
