@@ -42,4 +42,4 @@ Baseline rules for adding support for games:
 * No support for eaCloud ("Konasute") games.
 * For a new game that was never supported (not a new version of a game, but rather a new series): please wait 1 year after official AC release in Japan.
 * For new version of an already supported game: proceed with caution and use generally-accepted community guidelines.
-* Make sure you compile with the included Docker script and ensure you do not introduce any new compiler warnings or build breaks; otherwise, your patch will not be accepted.
+* Make sure you compile with the included Docker script and ensure you do not introduce any new compiler warnings or build breaks; otherwise, your patch will not be accepted. The Docker script is the standard build environment, your custom Linux build environment or MSVC do not count.
