@@ -18,6 +18,9 @@ assignees: ''
 ## Description of change
 <what does this code do?>
 
+## Compiling
+<you must be able to compile with the included Docker script with zero compiler warnings>
+
 ## Testing
 <how was the code tested?>
 
