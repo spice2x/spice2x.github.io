@@ -16,13 +16,13 @@ assignees: ''
 > Feel free to remove this section after you have read it.
 
 ## Description of change
-<what does this code do?>
+*what does this code do?*
 
 ## Compiling
-<you must be able to compile with the included Docker script with zero compiler warnings>
+*you must be able to compile with the included Docker script with zero compiler warnings*
 
 ## Testing
-<how was the code tested?>
+*how was the code tested?*
 
 ## Patch file
-<what patch format are you using? Unix Patch format? Git Patch?>
+*what patch format are you using? Unix Patch format? Git Patch?*
