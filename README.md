@@ -37,11 +37,16 @@ Maintainers of this project reserve the right to close or delete any low effort 
 
 Baseline rules for patch submissions are as follows. Any patches violating the rules below will not be accepted.
 
+### Adding support for games
+
 * No BomberGirl, as long as the Free To Play service is still alive.
 * No support for that one touch screen game that dispenses plushies of mouse character (`O26`).
 * No support for eaCloud ("Konasute") games.
 * For a new game that was never supported (not a new version of a game, but rather a new series): please wait 1 year after official AC release in Japan.
 * For new version of an already supported game: proceed with caution and use generally-accepted community guidelines.
+
+### Code quality requirements
+
 * Test for regressions, at least in and around the component you are modifying:
   * All currently supported games / versions must continue to work.
   * Backwards compatibility must be preserved, unless there is a really good reason to break it. This includes (but not limited to): global/local config files, command line parameters, gmae patches, device interop (e.g., card readers), and SpiceAPI / Companion interop.
