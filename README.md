@@ -49,7 +49,7 @@ Baseline rules for patch submissions are as follows. Any patches violating the r
 
 * Test for regressions, at least in and around the component you are modifying:
   * All currently supported games / versions must continue to work.
-  * Backwards compatibility must be preserved, unless there is a really good reason to break it. This includes (but not limited to): global/local config files, command line parameters, gmae patches, device interop (e.g., card readers), and SpiceAPI / Companion interop.
+  * Backwards compatibility must be preserved, unless there is a really good reason to break it. This includes (but not limited to): global/local config files, command line parameters, game patches, device interop (e.g., card readers), and SpiceAPI / Companion interop.
   * Simply put, if someone has an existing install of spice2x, copying over new version of spice2x should not result in different behavior or loss of functionality.
 * Make sure you compile with the included Docker script and ensure you do not introduce any new compiler warnings or build breaks; otherwise, your patch will not be accepted. The Docker script is the standard build environment, your custom Linux build environment or MSVC can be used for development but you must validate the final build using Docker.
 * Do not submit snippets of code as a "patch". Exceptions can be made for trivial changes (correct a typo, fix a single line of code...), but otherwise, a successfully compiled & fully tested patch file is required when submitting for review.
