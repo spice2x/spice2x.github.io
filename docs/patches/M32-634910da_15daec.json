@@ -30,5 +30,40 @@
         "dataOffset": 1143921
       }
     ]
+  },
+  {
+    "name": "Change PLEASE WAIT A MOMENT message",
+    "description": "Just a dumb example",
+    "gameCode": "M32",
+    "type": "union",
+    "patches": [
+        {
+            "name": "MOMENT (Default)",
+            "type": "union",
+            "patch": {
+                "dllName": "game.dll",
+                "data": "4D4F4D454E54",
+                "offset": 1609086
+            }
+        },
+        {
+            "name": "MOMENTO",
+            "type": "union",
+            "patch": {
+                "dllName": "game.dll",
+                "data": "4D4F4D454E4F",
+                "offset": 1609086
+            }
+        },
+        {
+            "name": "SECOND",
+            "type": "union",
+            "patch": {
+                "dllName": "game.dll",
+                "data": "5345434F4E44",
+                "offset": 1609086
+            }
+        }
+    ]
   }
 ]
