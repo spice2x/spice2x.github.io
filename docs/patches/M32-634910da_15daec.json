@@ -40,7 +40,6 @@
     "patches": [
         {
             "name": "MOMENT (Default)",
-            "type": "union",
             "patch": {
                 "dllName": "game.dll",
                 "data": "4D4F4D454E54",
@@ -48,8 +47,7 @@
             }
         },
         {
-            "name": "MOMENTO",
-            "type": "union",
+            "name": "MOMENO",
             "patch": {
                 "dllName": "game.dll",
                 "data": "4D4F4D454E4F",
@@ -58,7 +56,6 @@
         },
         {
             "name": "SECOND",
-            "type": "union",
             "patch": {
                 "dllName": "game.dll",
                 "data": "5345434F4E44",
