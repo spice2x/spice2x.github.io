@@ -17,22 +17,26 @@
         "name" : "Monitor Adjust Offset",
         "description": "Changes base timing offset value. va=0x181274D38",
         "gameCode": "LDJ",
-        "dllName": "bm2dx.dll",
-        "offset" : 19347768,
         "type" : "number",
-        "size": 4,
-        "numberMin" : -1000,
-        "numberMax" : 1000
+        "patch": {
+            "dllName": "bm2dx.dll",
+            "offset" : 19347768,
+            "size": 4,
+            "min" : -1000,
+            "max" : 1000
+        }
     },
     {
-        "name" : "Full Screeen Monitor Check FPS Target",
+        "name" : "Full Screen Monitor Check FPS Target",
         "description": "Changes full screen refresh rate. va=180AC9445",
         "gameCode": "LDJ",
-        "dllName": "bm2dx.dll",
-        "offset" : 11307084,
         "type" : "number",
-        "size": 2,
-        "numberMin" : 60,
-        "numberMax" : 1200
+        "patch": {
+            "dllName": "bm2dx.dll",
+            "offset" : 11307084,
+            "size": 2,
+            "min" : 60,
+            "max" : 1200
+        }
     }
 ]
