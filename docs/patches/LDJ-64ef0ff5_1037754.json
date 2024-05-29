@@ -1,0 +1,38 @@
+[
+    {
+        "name": "Standard/Menu Timer Freeze",
+        "description": "Freezes menu timer. va=180B28FA5",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "patches": [
+            {
+                "offset": 11699109,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "0F84",
+                "dataEnabled": "90E9"
+            }
+        ]
+    },
+    {
+        "name" : "Monitor Adjust Offset",
+        "description": "Changes base timing offset value. va=0x181274D38",
+        "gameCode": "LDJ",
+        "dllName": "bm2dx.dll",
+        "offset" : 19347768,
+        "type" : "number",
+        "size": 4,
+        "numberMin" : -1000,
+        "numberMax" : 1000
+    },
+    {
+        "name" : "Full Screeen Monitor Check FPS Target",
+        "description": "Changes full screen refresh rate. va=180AC9445",
+        "gameCode": "LDJ",
+        "dllName": "bm2dx.dll",
+        "offset" : 11307084,
+        "type" : "number",
+        "size": 2,
+        "numberMin" : 60,
+        "numberMax" : 1200
+    }
+]
