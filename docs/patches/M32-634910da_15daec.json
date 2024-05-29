@@ -1,7 +1,6 @@
 [
   {
     "gameCode": "M32",
-    "dateCode": 2022102400,
     "name": "Skip Tutorial",
     "description": "",
     "type": "memory",
@@ -17,8 +16,7 @@
   },
   {
     "gameCode": "M32",
-    "dateCode": 2022102400,
-    "name": "Infinite Stage 2022102400",
+    "name": "Infinite Stage",
     "description": "Play forever",
     "caution": "Scores will not save",
     "type": "memory",
