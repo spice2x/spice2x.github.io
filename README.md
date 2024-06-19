@@ -20,6 +20,15 @@ spice2x team does not provide any tools to circumvent software copy protection, 
 
 [List of supported games](https://github.com/spice2x/spice2x.github.io/wiki/List-of-supported-games)
 
+## How do I set up game data & start playing?
+
+By policy,
+
+* we do **NOT** provide links on where to acquire game data
+* we do **NOT** provide guides on setting up & basic troubleshooting
+
+please do not ask for these, as it will never happen here.
+
 ## Submitting to the Issue Tracker
 Rules for filing a new issue or adding comments to existing issues in the tracker:
 
