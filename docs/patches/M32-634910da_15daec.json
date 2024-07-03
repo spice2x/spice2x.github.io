@@ -1,10 +1,10 @@
 [
   {
-        "info": "example patch for spice2x documentation",
-        "extraInfo": "this object is completely optional and you can put whatever you want in it, it will be printed in the logs, but it will not be parsed in the code",
-        "downloadedFrom": "https://spice2x.github.io/patches/",
-        "lastUpdated": "2024-07-03T08:52:37.645Z",
-        "dateCode": "2022102400"
+    "info": "example patch for spice2x documentation",
+    "extraInfo": "this object is completely optional and you can put whatever you want in it, it will be printed in the logs, but it will not be parsed in the code",
+    "downloadedFrom": "https://spice2x.github.io/patches/",
+    "lastUpdated": "2024-07-03T08:52:37.645Z",
+    "dateCode": "2022102400"
   },
   {
     "gameCode": "M32",
