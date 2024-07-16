@@ -13,7 +13,7 @@ Baseline rules for patch submissions are as follows. Any patches violating the r
 
 The biggest risk in making code changes to spice is the risk of regressions. There is a **lot** of shared code used by many different games, reaching back game versions that are more than a decade old. It is practically impossible to test all supported games and versions.
 
-Additionally, there's a lot of code that get exercised on specific hardware - including hardware that you probably don't have access to (e.g., ICCA reader, real cabinet I/O, specific brand of touch screens...)
+Additionally, there's a lot of code that get exercised on specific hardware - including hardware that you probably don't have access to (e.g., ICCA reader, real cabinet I/O, specific game controllers, particular brand of touch screens...)
 
 Therefore, when making code changes, please by extremely careful about containing / scoping your changes. Make targeted bug fixes scoped to handful of game versions and hardware configuration. When adding new features, make it off by default, unless there is a really good reason to make it the default. If you make a new default, add an option that disables it so that users can opt out as needed.
 
