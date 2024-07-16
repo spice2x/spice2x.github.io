@@ -10,6 +10,7 @@ assignees: ''
 > [!NOTE]
 > Before submitting code changes... 
 > * Please do note that this is a GPL v3.0 open source project.
+> * Please read the [CONTRIBUTING](https://github.com/spice2x/spice2x.github.io/blob/main/CONTRIBUTING.md) guide.
 > * Maintainers reserve the right to reject or modify your submission without reason.
 > * If accepted, your github user name will be credited on the main web page, and then archived in the [past versions wiki page](https://github.com/spice2x/spice2x.github.io/wiki/Past-versions-and-change-log)
 > 
