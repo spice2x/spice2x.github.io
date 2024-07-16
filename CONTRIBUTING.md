@@ -15,7 +15,7 @@ The biggest risk in making code changes to spice is the risk of regressions. The
 
 Additionally, there's a lot of code that get exercised on specific hardware - including hardware that you probably don't have access to (e.g., ICCA reader, real cabinet I/O, specific model of a IIDX controller, particular brand of touch screens...)
 
-Therefore, when making code changes, please by extremely careful about containing / scoping your changes. Make targeted bug fixes scoped to handful of game versions and hardware configuration. When adding new features, make it off by default, unless there is a really good reason to make it the default. If you make a new default, add an option that disables it so that users can opt out as needed.
+Therefore, when making code changes, please be extremely careful about containing / scoping your changes. Make targeted bug fixes scoped to handful of game versions and hardware configuration. When adding new features, make it off by default, unless there is a really good reason to make it the default. If you make a new default, add an option that disables it so that users can opt out as needed.
 
 ### Code quality requirements
 
