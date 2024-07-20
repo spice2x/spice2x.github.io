@@ -35,6 +35,7 @@ Rules for filing a new issue or adding comments to existing issues in the tracke
 * Check the [known issues](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) page first before reporting a new issue.
 * Use the search function and see if there is an existing issue. 
 * This is not the place to obtain a guide or receive basic troubleshooting.
+* Don't file a bug demanding game XYZ to be supported; issue be locked or deleted.
 * **Do not link to external websites that distribute game data!**
 * **Do not link to external websites that provide guides on how to run games!**
 
