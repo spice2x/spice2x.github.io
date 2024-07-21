@@ -36,7 +36,7 @@ Rules for filing a new issue or adding comments to existing issues in the tracke
 * Use the search function and see if there is an existing issue. 
 * This is not the place to obtain a guide or receive basic troubleshooting.
 * Don't file a bug demanding game XYZ to be supported.
-* **Do not link to external websites that distribute game data!**
+* **Do not mention or link to external websites that distribute game data!**
 * **Do not link to external websites that provide guides on how to run games!**
 
 New GitHub accounts are prevented from creating new issues to prevent spam. Maintainers of this project reserve the right to close or delete any issues that violate the rules above, or low effort issues.
