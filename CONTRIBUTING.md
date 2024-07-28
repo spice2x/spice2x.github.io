@@ -17,6 +17,8 @@ Additionally, there's a lot of code that get exercised on specific hardware - in
 
 Therefore, when making code changes, please be extremely careful about containing / scoping your changes. Make targeted bug fixes scoped to handful of game versions and hardware configuration. When adding new features, make it off by default, unless there is a really good reason to make it the default. If you make a new default, add an option that disables it so that users can opt out as needed.
 
+Lastly, watch out for legacy OS compatibility. Currently, the minimum support floor is Windows 7. If you use any Windows API, make sure it's supported in Windows 7. If you need to use API that is not present in Windows 7, you must not directly link against it, otherwise spice will fail to launch on older OSes. Take a look at Windows 8 touch code (win8.cpp) for examples on how to discover OS APIs via pointers.
+
 ### Code quality requirements
 
 * Test for regressions, at least in and around the component you are modifying:
