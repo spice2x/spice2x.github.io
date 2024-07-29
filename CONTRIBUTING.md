@@ -31,3 +31,4 @@ Lastly, watch out for legacy OS compatibility. Currently, the minimum support fl
 * Do not make code changes in unrelated areas; i.e., do not run code linters and auto-formatters for parts of the code that you didn't modify.
   * Note: there are no strict rules for code formatting, but please attempt to emulate the style around the code you are modifying.
 * Try to submit smaller chunks of code, instead one gigantic patch. For example, don't submit a patch for "Improve feature XYZ"; instead, submit "Change how A works to prepare for feature XYZ" "Refactor B for feature XYZ" "Add feature B to enable feature XYZ".
+* Write to the log for anything useful - it helps immensely with debugging post-mortem. At the same time though, avoid spamming the log for something trivial.
