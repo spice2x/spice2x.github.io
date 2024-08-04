@@ -16,9 +16,10 @@ assignees: ''
 ## Laptop
 *Are you running this on a laptop? Does it have a hybrid iGPU+ dGPU configuration?*
 
+## Describe the issue
+*what's the issue?*
+
 ## Attached log.txt file, if available
 > [!WARNING]
 > Please make sure you remove any personally identifiable information from the log file.
-
-## Describe the issue
-*what's the issue?*
+> Please set `-loglevel` to `all` before launching the game for more verbose logs.
