@@ -35,7 +35,7 @@ Lastly, watch out for legacy OS compatibility. Currently, the minimum support fl
 ### UI text
 spice2x has a global audience; majority of the user base do not speak English as their first language.
 
-Use simple English, avoid colloquialism, and use precise language, even if it's slightly technical.
+Use simple English, avoid colloquialism, and use concise language, even if it's slightly technical.
 
 
 ### Code style requirements
