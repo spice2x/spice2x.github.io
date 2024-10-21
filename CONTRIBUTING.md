@@ -29,9 +29,14 @@ Lastly, watch out for legacy OS compatibility. Currently, the minimum support fl
 * Make sure you compile with the included Docker script and ensure you do not introduce **any** new compiler warnings or build breaks. The Docker script is the standard build environment, your custom Linux build environment or MSVC can be used during development, but you must validate the final build using Docker.
 * Do not submit snippets of code as a "patch". Exceptions can be made for trivial changes (correct a typo, fix a single line of code...), but otherwise, a successfully compiled & fully tested patch file is required when submitting for review.
 * Do not make code changes in unrelated areas; i.e., do not run code linters and auto-formatters for parts of the code that you didn't modify.
-  
 * Try to submit smaller chunks of code, instead one gigantic patch. For example, don't submit a patch for "Improve feature XYZ"; instead, submit "Change how A works to prepare for feature XYZ" "Refactor B for feature XYZ" "Add feature B to enable feature XYZ".
 * Write to the log for anything useful - it helps immensely with debugging post-mortem. At the same time though, avoid spamming the log for something trivial.
+
+### UI text
+spice2x has a global audience; majority of the user base do not speak English as their first language.
+
+Use simple English, avoid colloquialism, and use precise language, even if it's slightly technical.
+
 
 ### Code style requirements
 * Indents are four spaces.
