@@ -17,6 +17,10 @@ Additionally, there's a lot of code that get exercised on specific hardware - in
 
 Therefore, when making code changes, please be extremely careful about containing / scoping your changes. Make targeted bug fixes scoped to handful of game versions and hardware configuration. When adding new features, make it off by default, unless there is a really good reason to make it the default. If you make a new default, add an option that disables it so that users can opt out as needed.
 
+#### Config file compatibility
+
+Do not change the option names used to identify them in config files, otherwise you will introduce an incompatibility with previous versions. Once the `name` is set it should never be changed. Aliases can still be added.
+
 ### Code quality requirements
 
 * Test for regressions, at least in and around the component you are modifying:
