@@ -25,6 +25,7 @@ spice2x team does not provide any tools to circumvent software copy protection, 
 By policy,
 
 * we do **NOT** provide links on where to acquire game data
+* we do **NOT** provide tools or instructions on decrypting data
 * we do **NOT** provide guides on setting up & basic troubleshooting
 
 please do not ask for these, as it will never happen here.
