@@ -13,8 +13,7 @@ assignees: ''
 ## Version of spice2x
 *version of spice, this can be seen in the About tab, and in log.txt*
 
-## Laptop
-*Are you running this on a laptop? Does it have a hybrid iGPU+ dGPU configuration?*
+*please remember to test the LATEST beta version before posting a bug about it**
 
 ## Describe the issue
 *what's the issue?*
