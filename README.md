@@ -44,7 +44,7 @@ Rules for filing a new issue or adding comments to existing issues in the tracke
 * **Do not mention or link to external websites that distribute game data!**
 * **Do not link to external websites that provide guides on how to run games!**
 
-New GitHub accounts are prevented from creating new issues to prevent spam. Maintainers of this project reserve the right to close or delete any issues that violate the rules above, or low effort issues.
+New GitHub accounts are prevented from creating new issues to prevent spam. Maintainers of this project reserve the right to close or delete any issues that violate the rules above, or any low effort issues. If you ask for very basic troubleshooting help with setting up a game, we'll just delete them without warning.
 
 ## Contributing
 **We encourage the community to submit patches via the issue tracker for any bug fixes or feature enhancements.** If you want to resolve any reported (or not reported) bugs, implement features, add support for new games, or fix a [known issue](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) - feel free to reach out via the Issue tracker. All submitted code patches are assumed to be GPLv3 compliant.
