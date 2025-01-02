@@ -31,6 +31,9 @@ By policy,
 please do not ask for these, as it will never happen here.
 
 ## Submitting to the Issue Tracker
+
+**Please file bugs if you find them!** If you just complain about something in Discord servers, we can't see them, so they'll never be fixed.
+
 Rules for filing a new issue or adding comments to existing issues in the tracker:
 
 * Check the [known issues](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) page first before reporting a new issue.
