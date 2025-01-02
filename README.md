@@ -36,7 +36,7 @@ please do not ask for these, as it will never happen here.
 
 Rules for filing a new issue or adding comments to existing issues in the tracker:
 
-* Check the [known issues](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) page first before reporting a new issue.
+* Check the [known issues](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) page first before reporting a new issue. If you have some new information or workarounds for a known issue, you can file a documentation bug as well.
 * Use the search function and see if there is an existing issue. 
 * This is not the place to obtain a guide or receive basic troubleshooting.
 * Don't file a bug demanding game XYZ to be supported.
