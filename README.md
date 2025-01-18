@@ -10,7 +10,7 @@
 
 ## Overview
 
-spice2x is a continuation of SpiceTools project, focused on addressing bugs, usability, and quality-of-life improvements. Original development of [SpiceTools](https://github.com/spicetools/spicetools) has stalled in 2022; spice2x is led by a new group of developers.
+spice2x is a continuation of SpiceTools project. Original development of [SpiceTools](https://github.com/spicetools/spicetools) has stalled in 2022; spice2x is led by a new group of developers.
 
 We do not use GitHub for source control, but we do use the [issue tracker](https://github.com/spice2x/spice2x.github.io/issues) and [the wiki](https://github.com/spice2x/spice2x.github.io/wiki). Source is distributed in the release package.
 
