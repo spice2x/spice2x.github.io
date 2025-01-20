@@ -4,6 +4,8 @@
 
 # 🌶️🌶️ [https://spice2x.github.io/](https://spice2x.github.io/) 🌶️🌶️
 
+# 🌶️🌶️ If you have problems, read [Known Issues](https://github.com/spice2x/spice2x.github.io/wiki/Known-issues) wiki page first, most of your questions are already answered. 🌶️🌶️
+
 <br/><br/><br/><br/><br/><br/><br/><br/>
 
 # spice2x
