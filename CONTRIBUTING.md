@@ -19,7 +19,7 @@ Therefore, when making code changes, please be extremely careful about containin
 
 #### Config file compatibility
 
-Do not change the option names used to identify them in config files, otherwise you will introduce an incompatibility with previous versions. Once the `name` is set it should never be changed. Aliases can still be added.
+Do not change the names of options, buttons binds, analogs, etc - since they are used as unique identifiers in config files. If they are changed, you will introduce an incompatibility with previous versions of config file.
 
 ### Code quality requirements
 
