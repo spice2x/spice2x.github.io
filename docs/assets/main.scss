@@ -110,7 +110,7 @@ ul.downloads.highlight-latest li:first-child a.download-link {
 }
 
 ul.downloads.highlight-latest li:first-child a.download-link::after {
-    content: " (latest)";
+    content: " (click here to download latest version)";
 }
 
 ul.downloads-beta.highlight-latest li:first-child a.download-link {
@@ -119,7 +119,7 @@ ul.downloads-beta.highlight-latest li:first-child a.download-link {
 }
 
 ul.downloads-beta.highlight-latest li:first-child a.download-link::after {
-    content: " (latest beta)";
+    content: " (click here to download latest beta version)";
 }
 
 /*** author ***/
