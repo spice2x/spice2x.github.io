@@ -1,0 +1,3 @@
+#include "icon.h"
+
+MAINICON ICON "icon.ico"

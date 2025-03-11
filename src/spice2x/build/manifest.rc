@@ -1,0 +1,30 @@
+#include "manifest.h"
+#include "winuser.h"
+
+#ifdef __GNUC__
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "manifest.manifest"
+#endif
+
+1 VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080904E4"
+        BEGIN
+            VALUE "CompanyName", ""
+            VALUE "FileDescription", "SpiceTools"
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "InternalName", "spice32"
+            VALUE "LegalCopyright", ""
+            VALUE "OriginalFilename", "spice32.exe"
+            VALUE "ProductName", "SpiceTools"
+            VALUE "ProductVersion", "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x809, 1252
+    END
+END

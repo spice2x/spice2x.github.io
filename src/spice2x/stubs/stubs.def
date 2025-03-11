@@ -1,0 +1,9 @@
+LIBRARY "stub.dll" BASE=0x10000000
+
+EXPORTS
+bt_fcheck_finish        @1
+bt_fcheck_init          @2
+bt_fcheck_main          @3
+bt_get_ikey_status      @4
+k_bt0001                @5
+k_bt0002                @6

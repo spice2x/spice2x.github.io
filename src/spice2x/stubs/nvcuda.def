@@ -1,0 +1,22 @@
+EXPORTS
+    cuCtxPushCurrent_v2
+    cuDeviceGet
+    cuInit
+    cuGraphicsMapResources
+    cuMemAlloc_v2
+    cuCtxPopCurrent_v2
+    cuGetErrorName
+    cuCtxCreate_v2
+    cuCtxDestroy_v2
+    cuGraphicsResourceSetMapFlags_v2
+    cuGraphicsUnregisterResource
+    cuMemAllocPitch_v2
+    cuGraphicsUnmapResources
+    cuStreamSynchronize
+    cuMemcpy2DAsync_v2
+    cuGraphicsSubResourceGetMappedArray
+    cuMemFree_v2
+    cuMemcpy2D_v2
+    cuGraphicsD3D9RegisterResource
+    cuStreamCreate
+    cuStreamDestroy_v2

@@ -1,0 +1,14 @@
+EXPORTS
+    cuvidCreateDecoder
+    cuvidCreateVideoParser
+    cuvidCtxLockCreate
+    cuvidCtxLockDestroy
+    cuvidDecodePicture
+    cuvidDestroyDecoder
+    cuvidDestroyVideoParser
+    cuvidGetDecodeStatus
+    cuvidGetDecoderCaps
+    cuvidMapVideoFrame64
+    cuvidParseVideoData
+    cuvidReconfigureDecoder
+    cuvidUnmapVideoFrame64

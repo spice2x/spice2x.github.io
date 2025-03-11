@@ -1,0 +1,18 @@
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include "windows.h"
+#undef APSTUDIO_HIDDEN_SYMBOLS
+#undef APSTUDIO_READONLY_SYMBOLS
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+IDR_CHANGELOG RCDATA "../changelog.txt"
+IDR_LICENSES RCDATA "../licenses.txt"
+IDR_PATCHES RCDATA "../build/patches.json"
+IDR_README RCDATA "../readme.txt"
+IDR_DSEGFONT RCDATA "../external/dseg/DSEG14Classic-Italic.ttf"
+
+#endif

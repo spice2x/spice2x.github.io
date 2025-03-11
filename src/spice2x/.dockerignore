@@ -1,0 +1,4 @@
+bin/**
+dist/**
+docker/**
+cmake-build*
