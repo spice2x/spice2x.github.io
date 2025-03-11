@@ -1,6 +1,9 @@
 ## Contributing
 Baseline rules for patch submissions are as follows. Any patches violating the rules below will not be accepted.
 
+### New as of March 2025
+Pull requests in GitHub are open. You don't need to bother with patch file submissions anymore. To contribute, fork the repo (just the main branch), make changes in your fork, and contribute to upstream by opening a pull request to the main repo.
+
 ### Adding support for games
 
 * No BomberGirl, as long as the Free To Play service is still alive.
