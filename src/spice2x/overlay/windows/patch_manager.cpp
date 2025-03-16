@@ -295,7 +295,7 @@ namespace overlay::windows {
         ImGui::Text("%s", avs::game::get_identifier().c_str());
         ImGui::SameLine();
         if (ImGui::Button("Copy")) {
-            clipboard::copy_text(identifiers.c_str());
+            clipboard::copy_text(identifiers);
         }
 
         ImGui::AlignTextToFramePadding();

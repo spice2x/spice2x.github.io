@@ -142,14 +142,14 @@ namespace clipboard {
         handle.detach();
     }
 
-    void copy_text(const std::string str) {
+    void copy_text(const std::string& str) {
         if (!OpenClipboard(nullptr)) {
             log_warning("clipboard", "Failed to open clipboard");
             return;
         }
 
-        HGLOBAL mem = GlobalAlloc(GMEM_MOVEABLE, str.length());
-        memcpy(GlobalLock(mem), str.c_str(), str.length());
+        HGLOBAL mem = GlobalAlloc(GMEM_MOVEABLE, str.length() + 1);
+        memcpy(GlobalLock(mem), str.c_str(), str.length() + 1);
         GlobalUnlock(mem);
 
         EmptyClipboard();
