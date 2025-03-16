@@ -74,7 +74,7 @@ namespace overlay::windows {
         ImGui::SameLine();
         if (ImGui::Button("Copy")) {
             const auto s = selectedCamera->GetFriendlyName() + "\n" + selectedCamera->GetSymLink();
-            clipboard::copy_text(s.c_str());
+            clipboard::copy_text(s);
         }
 
         // Render parameters

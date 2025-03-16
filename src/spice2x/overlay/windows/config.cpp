@@ -2524,7 +2524,7 @@ namespace overlay::windows {
                         );
                     ImGui::SameLine();
                     if (ImGui::Button("Copy")) {
-                        clipboard::copy_text(card_str.c_str());
+                        clipboard::copy_text(card_str);
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Clear")) {
