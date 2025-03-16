@@ -1,3 +1,6 @@
+03/16/2025 [spice2x]
+    Fix clipboard copy function truncating last character of string
+
 03/03/2025 [spice2x]
     IIDX: add workaround for REVERB EX filter missing in Windows 11 update
 
