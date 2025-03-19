@@ -143,6 +143,8 @@ static bool check_dll(const std::string &model) {
     }
 }
 
+void update_msvcrt_args(int argc, char *argv[]);
+
 int main_implementation(int argc, char *argv[]) {
 
     // remember argv, argv
@@ -1923,6 +1925,8 @@ int main_implementation(int argc, char *argv[]) {
         log_warning("launcher", "https://github.com/mon/ifs_layeredfs");
     }
 
+    update_msvcrt_args(argc, argv);
+
     // load hooks
     for (auto &hook : game_hooks) {
         log_info("launcher", "loading hook DLL {}", hook);
@@ -2099,6 +2103,54 @@ int main_implementation(int argc, char *argv[]) {
     launcher::stop_subsystems();
 
     return 0;
+}
+
+// https://github.com/spice2x/spice2x.github.io/issues/264
+// huge ugly hack to work around things that broke when MinGW switched from msvcrt to ucrt
+// this is done to ensure that any DLL hooks that rely on msvcrt continue to work
+void update_msvcrt_args(int argc, char *argv[]) {
+#if defined(_UCRT)
+    auto msvc = LoadLibraryA("msvcrt.dll");
+    if (!msvc) {
+        log_warning("launcher", "failed to load msvcrt.dll");
+        return;
+    }
+
+    // get __argc
+    PINT32 argc_addr = (PINT32)GetProcAddress(msvc, "__argc");
+    if (!argc_addr) {
+        log_warning("launcher", "failed to find msvcrt!__argc");
+        return;
+    }
+    try {
+        if (*argc_addr == argc) {
+            log_warning("launcher", "msvcrt!__argc is already set");
+            return;
+        }
+    } catch (const std::exception &e) {
+        log_warning("launcher", "exception while reading msvcrt!_argc: {}", e.what());
+    }
+
+    // get __argv
+    PCHAR **argv_addr = (PCHAR **)GetProcAddress(msvc, "__argv");
+    if (!argv_addr) {
+        log_warning("launcher", "failed to find msvcrt!__argv");
+        return;
+    }
+
+    // update them
+    try {
+        log_info("launcher", "msvcrt!__argc value before: {}", *argc_addr);
+        *argc_addr = argc;
+        log_info("launcher", "msvcrt!__argc value after: {}", *argc_addr);
+        *argv_addr = argv;
+    } catch (const std::exception &e) {
+        log_warning("launcher", "exception while messing with msvcrt!_argc and _argv: {}", e.what());
+    }
+
+#else
+    log_misc("launcher", "not UCRT, skipping msvcrt!_argc / _argv hacks");
+#endif
 }
 
 #ifndef SPICETOOLS_SPICECFG_STANDALONE
