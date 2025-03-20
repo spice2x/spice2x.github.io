@@ -139,8 +139,16 @@ namespace overlay::windows {
         if (ImGui::Checkbox("Always on Top", &cfg::SCREENRESIZE->window_always_on_top) ) {
             graphics_update_z_order(window);
         }
+        ImGui::BeginDisabled();
+        ImGui::Checkbox("Forced Render Scaling", &GRAPHICS_WINDOW_BACKBUFFER_SCALE);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::HelpMarker(
+            "For windowed mode: forcibly set DX9 back buffer dimensions to match window size. "
+            "Reduces pixelated scaling artifacts. Works great on some games, but completely broken on others.\n\n"
+            "This can't be changed in-game; instead, set -windowscale option in spicecfg and restart.");
+
         ImGui::Checkbox("Keep Aspect Ratio", &cfg::SCREENRESIZE->client_keep_aspect_ratio);
-        ImGui::TextWrapped("Hint: if game is blurry after resizing, try -windowscale option in spicecfg.");
         ImGui::Checkbox("Manual window move/resize", &cfg::SCREENRESIZE->enable_window_resize);
         ImGui::BeginDisabled(!cfg::SCREENRESIZE->enable_window_resize);
 
