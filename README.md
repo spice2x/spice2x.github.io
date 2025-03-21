@@ -55,3 +55,6 @@ We explicitly do **NOT** have a Discord server for dicussions - we try to do eve
 
 Please see [CONTRIBUTING page](https://github.com/spice2x/spice2x.github.io/blob/main/CONTRIBUTING.md) for a full list of guidelines when submitting code.
 
+## Additional information
+
+Please read [README.md](https://github.com/spice2x/spice2x.github.io/blob/main/src/spice2x/README.md) inside `src/spice2x`.
