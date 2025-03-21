@@ -246,6 +246,12 @@ which also means that your hex edits are applicable directly.
 - info()
   - returns information about the serial LCD controller some games use
 
+#### Resize
+- image_resize_enable(enable: bool)
+  - enables or disables image resize state
+- image_resize_set_scene(scene: int)
+  - sets the active scene for image resize state; set to 0 to disable resize
+
 ## License
 Unless otherwise noted, all files are licensed under the GPLv3.
 See the LICENSE file for the full license text.

@@ -17,6 +17,10 @@ namespace overlay::windows {
         this->init_pos = ImVec2(10, 10);
         this->toggle_button = games::OverlayButtons::ToggleScreenResize;
         this->toggle_screen_resize = games::OverlayButtons::ScreenResize;
+        this->toggle_scene[0] = games::OverlayButtons::ScreenResizeScene1;
+        this->toggle_scene[1] = games::OverlayButtons::ScreenResizeScene2;
+        this->toggle_scene[2] = games::OverlayButtons::ScreenResizeScene3;
+        this->toggle_scene[3] = games::OverlayButtons::ScreenResizeScene4;
     }
 
     ScreenResize::~ScreenResize() {
@@ -42,13 +46,17 @@ namespace overlay::windows {
 
     void ScreenResize::reset_vars_to_default() {
         cfg::SCREENRESIZE->enable_screen_resize = false;
+        cfg::SCREENRESIZE->screen_resize_current_scene = 0;
         cfg::SCREENRESIZE->enable_linear_filter = true;
-        cfg::SCREENRESIZE->keep_aspect_ratio = true;
-        cfg::SCREENRESIZE->centered = true;
-        cfg::SCREENRESIZE->offset_x = 0;
-        cfg::SCREENRESIZE->offset_y = 0;
-        cfg::SCREENRESIZE->scale_x = 1.f;
-        cfg::SCREENRESIZE->scale_y = 1.f;
+        for (size_t i = 0; i < std::size(cfg::SCREENRESIZE->scene_settings); i++) {
+            auto& fs = cfg::SCREENRESIZE->scene_settings[i];
+            fs.keep_aspect_ratio = true;
+            fs.centered = true;
+            fs.offset_x = 0;
+            fs.offset_y = 0;
+            fs.scale_x = 1.f;
+            fs.scale_y = 1.f;
+        }
 
         cfg::SCREENRESIZE->enable_window_resize = false;
         cfg::SCREENRESIZE->window_always_on_top = false;
@@ -88,28 +96,51 @@ namespace overlay::windows {
 
     void ScreenResize::build_fullscreen_config() {
         // enable checkbox
-        ImGui::TextWrapped("Hint: bind a key to Screen Resize for quickly toggling this on/off.");
         ImGui::Checkbox("Enable", &cfg::SCREENRESIZE->enable_screen_resize);
+        ImGui::SameLine();
+        ImGui::HelpMarker("Hint: bind a key to Screen Resize for a quick toggle.");
 
         ImGui::BeginDisabled(!cfg::SCREENRESIZE->enable_screen_resize);
+        ImGui::Checkbox("Linear Filter", &cfg::SCREENRESIZE->enable_linear_filter);
+
+        if (ImGui::RadioButton("Scene 1", cfg::SCREENRESIZE->screen_resize_current_scene == 0)) {
+            cfg::SCREENRESIZE->screen_resize_current_scene = 0;
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Scene 2", cfg::SCREENRESIZE->screen_resize_current_scene == 1)) {
+            cfg::SCREENRESIZE->screen_resize_current_scene = 1;
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Scene 3", cfg::SCREENRESIZE->screen_resize_current_scene == 2)) {
+            cfg::SCREENRESIZE->screen_resize_current_scene = 2;
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Scene 4", cfg::SCREENRESIZE->screen_resize_current_scene == 3)) {
+            cfg::SCREENRESIZE->screen_resize_current_scene = 3;
+        }
+        ImGui::SameLine();
+        ImGui::HelpMarker(
+            "Hint: bind a key to Screen Resize 1/2/3/4 for quick scene switching. "
+            "Scene 1 is the default scene activated when starting the game.");
+
+        auto& fs = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
 
         // general settings
-        ImGui::Checkbox("Linear Filter", &cfg::SCREENRESIZE->enable_linear_filter);
-        ImGui::Checkbox("Centered", &cfg::SCREENRESIZE->centered);
-        if (!cfg::SCREENRESIZE->centered) {
-            ImGui::InputInt("X Offset", &cfg::SCREENRESIZE->offset_x);
-            ImGui::InputInt("Y Offset", &cfg::SCREENRESIZE->offset_y);
+        ImGui::Checkbox("Centered", &fs.centered);
+        if (!fs.centered) {
+            ImGui::InputInt("X Offset", &fs.offset_x);
+            ImGui::InputInt("Y Offset", &fs.offset_y);
         }
 
         // aspect ratio
-        ImGui::Checkbox("Keep Aspect Ratio", &cfg::SCREENRESIZE->keep_aspect_ratio);
-        if (cfg::SCREENRESIZE->keep_aspect_ratio) {
-            if (ImGui::SliderFloat("Scale", &cfg::SCREENRESIZE->scale_x, 0.65f, 2.0f)) {
-                cfg::SCREENRESIZE->scale_y = cfg::SCREENRESIZE->scale_x;
+        ImGui::Checkbox("Keep Aspect Ratio", &fs.keep_aspect_ratio);
+        if (fs.keep_aspect_ratio) {
+            if (ImGui::SliderFloat("Scale", &fs.scale_x, 0.65f, 2.0f)) {
+                fs.scale_y = fs.scale_x;
             }
         } else {
-            ImGui::SliderFloat("Width Scale", &cfg::SCREENRESIZE->scale_x, 0.65f, 2.0f);
-            ImGui::SliderFloat("Height Scale", &cfg::SCREENRESIZE->scale_y, 0.65f, 2.0f);
+            ImGui::SliderFloat("Width Scale", &fs.scale_x, 0.65f, 2.0f);
+            ImGui::SliderFloat("Height Scale", &fs.scale_y, 0.65f, 2.0f);
         }
 
         ImGui::EndDisabled();
@@ -217,8 +248,10 @@ namespace overlay::windows {
 
     void ScreenResize::update() {
         Window::update();
+        auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
+
+        // toggle
         if (this->toggle_screen_resize != ~0u) {
-            auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
             bool toggle_screen_resize_new = overlay_buttons
                 && this->overlay->hotkeys_triggered()
                 && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(this->toggle_screen_resize));
@@ -228,5 +261,36 @@ namespace overlay::windows {
             }
             this->toggle_screen_resize_state = toggle_screen_resize_new;
         }
+
+        // scene switch
+        auto toggle_scene_state_new = ~0u;
+        for (size_t i = 0; i < std::size(this->toggle_scene); i++) {
+            if (this->toggle_scene[i] == ~0u) {
+                continue;
+            }
+            bool scene_switched = overlay_buttons
+                && this->overlay->hotkeys_triggered()
+                && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(this->toggle_scene[i]));
+
+            if (scene_switched) {
+                toggle_scene_state_new = (uint32_t)i;
+            }
+
+            // only detect rising edges of key presses
+            if (scene_switched && (this->toggle_scene_state != i)) {
+                if (cfg::SCREENRESIZE->screen_resize_current_scene == (int8_t)i &&
+                    cfg::SCREENRESIZE->enable_screen_resize) {
+                    // this scene is already active, turn scaling off
+                    cfg::SCREENRESIZE->enable_screen_resize = false;
+                } else {
+                    // switch to scene
+                    cfg::SCREENRESIZE->enable_screen_resize = true;
+                    cfg::SCREENRESIZE->screen_resize_current_scene = i;
+                }
+                break;
+            }
+        }
+        // remember if a key was pressed (or nothing pressed) this frame
+        this->toggle_scene_state = toggle_scene_state_new;
     }
 }

@@ -302,6 +302,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         api/modules/drs.cpp
         api/modules/lcd.cpp
         api/modules/ddr.cpp
+        api/modules/resize.cpp
 
         # avs
         avs/core.cpp

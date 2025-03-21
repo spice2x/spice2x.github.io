@@ -397,6 +397,65 @@ class LightsTab(ttk.Frame):
         # set text
         self.txt_lights.set_text(txt)
 
+class ResizeTab(ttk.Frame):
+    """Resize tab."""
+
+    def __init__(self, app, parent, **kwargs):
+
+        # init frame
+        ttk.Frame.__init__(self, parent, **kwargs)
+        self.app = app
+        self.parent = parent
+
+        # scale grid
+        self.columnconfigure(0, weight=1)
+
+        # image resize
+        self.resize = ttk.Frame(self, padding=(8, 8, 8, 8))
+        self.resize.grid(row=0, column=0, sticky=tk.E+tk.W)
+        self.resize.columnconfigure(0, weight=1)
+        self.resize.columnconfigure(1, weight=1)
+        self.resize_lbl = ttk.Label(self.resize, text="Image Resize")
+        self.resize_lbl.grid(row=0, columnspan=2)
+
+        self.resize_off = ttk.Button(self.resize, text="Disable", command=self.action_resize_false)
+        self.resize_off.grid(row=2, column=0, sticky=NSEW, padx=2, pady=2)
+
+        self.resize_on = ttk.Button(self.resize, text="Enable", command=self.action_resize_on)
+        self.resize_on.grid(row=2, column=1, sticky=NSEW, padx=2, pady=2)
+
+        self.resize_scene_1 = ttk.Button(self.resize, text="Scene 1", command=self.action_resize_scene_1)
+        self.resize_scene_1.grid(row=3, column=0, sticky=NSEW, padx=2, pady=2)
+        self.resize_scene_2 = ttk.Button(self.resize, text="Scene 2", command=self.action_resize_scene_2)
+        self.resize_scene_2.grid(row=3, column=1, sticky=NSEW, padx=2, pady=2)
+        self.resize_scene_3 = ttk.Button(self.resize, text="Scene 3", command=self.action_resize_scene_3)
+        self.resize_scene_3.grid(row=4, column=0, sticky=NSEW, padx=2, pady=2)
+        self.resize_scene_4 = ttk.Button(self.resize, text="Scene 4", command=self.action_resize_scene_4)
+        self.resize_scene_4.grid(row=4, column=1, sticky=NSEW, padx=2, pady=2)
+
+    @api_action
+    def action_resize_on(self):
+        spiceapi.image_resize_enable(self.app.connection, True)
+
+    @api_action
+    def action_resize_false(self):
+        spiceapi.image_resize_enable(self.app.connection, False)
+
+    @api_action
+    def action_resize_scene_1(self):
+        spiceapi.image_resize_set_scene(self.app.connection, 1)
+    
+    @api_action
+    def action_resize_scene_2(self):
+        spiceapi.image_resize_set_scene(self.app.connection, 2)
+    
+    @api_action
+    def action_resize_scene_3(self):
+        spiceapi.image_resize_set_scene(self.app.connection, 3)
+    
+    @api_action
+    def action_resize_scene_4(self):
+        spiceapi.image_resize_set_scene(self.app.connection, 4)
 
 class MainApp(ttk.Frame):
     """The main application frame."""
@@ -419,6 +478,8 @@ class MainApp(ttk.Frame):
         self.tabs.add(self.tab_analogs, text="Analogs")
         self.tab_lights = LightsTab(self, self.tabs)
         self.tabs.add(self.tab_lights, text="Lights")
+        self.tab_resize = ResizeTab(self, self.tabs)
+        self.tabs.add(self.tab_resize, text="Resize")
         self.tab_manual = ManualTab(self, self.tabs)
         self.tabs.add(self.tab_manual, text="Manual")
         self.tabs.pack(expand=True, fill=tk.BOTH)

@@ -439,6 +439,14 @@ namespace games {
         vkey_defaults.push_back(0xFF);
         names.emplace_back("Screen Resize");
         vkey_defaults.push_back(0xFF);
+        names.emplace_back("Screen Resize Scene 1");
+        vkey_defaults.push_back(0xFF);
+        names.emplace_back("Screen Resize Scene 2");
+        vkey_defaults.push_back(0xFF);
+        names.emplace_back("Screen Resize Scene 3");
+        vkey_defaults.push_back(0xFF);
+        names.emplace_back("Screen Resize Scene 4");
+        vkey_defaults.push_back(0xFF);
         names.emplace_back("Force Exit Game");
         vkey_defaults.push_back(0xFF);
         names.emplace_back("Navigator Activate");

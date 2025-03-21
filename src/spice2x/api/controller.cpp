@@ -27,6 +27,7 @@
 #include "modules/lights.h"
 #include "modules/memory.h"
 #include "modules/touch.h"
+#include "modules/resize.h"
 #include "request.h"
 #include "response.h"
 
@@ -403,6 +404,7 @@ void Controller::init_state(api::ClientState *state) {
     state->modules.push_back(new modules::Lights());
     state->modules.push_back(new modules::Memory());
     state->modules.push_back(new modules::Touch());
+    state->modules.push_back(new modules::Resize());
 }
 
 void Controller::free_state(api::ClientState *state) {
