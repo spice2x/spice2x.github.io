@@ -27,7 +27,8 @@ namespace api::modules {
     }
 
     /**
-     * read([name: str])
+     * read()
+     * read([name: str], ...)
      */
     void Lights::read(api::Request &req, Response &res) {
 
@@ -46,13 +47,25 @@ namespace api::modules {
             return;
         }
 
-        // one light
-        if (!req.params[0].IsString()) {
-            return error_type(res, "name", "str");
-        }
-        const auto name = req.params[0].GetString();
-        if (this->lights_by_names.contains(name)) {
-            get_light(this->lights_by_names.at(name).get(), res);
+        // specified light names
+        for (Value &param : req.params.GetArray()) {
+            // check params
+            if (!param.IsArray()) {
+                error(res, "parameters must be arrays");
+                return;
+            }
+            if (param.Size() == 0) {
+                error_params_insufficient(res);
+                continue;
+            }
+            if (!param[0].IsString()) {
+                error_type(res, "name", "string");
+                continue;
+            }
+            const auto name = param[0].GetString();
+            if (this->lights_by_names.contains(name)) {
+                get_light(this->lights_by_names.at(name).get(), res);
+            }
         }
     }
 
