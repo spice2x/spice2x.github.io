@@ -171,12 +171,14 @@ the single digit numbers, "A" for the double zero and "D" for the decimal key.
 #### Analogs/Buttons/Lights
 All of those three modules have equally named methods for you to call.
 - read()
+- read(name: string, ...)
   - returns an array of state objects containing name, state and a bool
   - the bool indicates if the object is active (e.g. the button was overridden)
 - write([name: str, state: float], ...)
   - applies the states as an override value
   - the device binding via the config will be ignored while an override is set
   - if an override value is set, the object will be marked as active
+- write_reset(name: str, ...)
 - write_reset([name: str], ...)
   - removes the override value from the objects specified by name
   - if no names were passed, all overrides will be removed

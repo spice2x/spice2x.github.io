@@ -28,7 +28,7 @@ namespace api::modules {
 
     /**
      * read()
-     * read([name: str], ...)
+     * read(name: str, ...)
      */
     void Lights::read(api::Request &req, Response &res) {
 
@@ -50,19 +50,11 @@ namespace api::modules {
         // specified light names
         for (Value &param : req.params.GetArray()) {
             // check params
-            if (!param.IsArray()) {
-                error(res, "parameters must be arrays");
+            if (!param.IsString()) {
+                error_type(res, "name", "string");
                 return;
             }
-            if (param.Size() == 0) {
-                error_params_insufficient(res);
-                continue;
-            }
-            if (!param[0].IsString()) {
-                error_type(res, "name", "string");
-                continue;
-            }
-            const auto name = param[0].GetString();
+            const auto name = param.GetString();
             if (this->lights_by_names.contains(name)) {
                 get_light(this->lights_by_names.at(name).get(), res);
             }
@@ -125,6 +117,7 @@ namespace api::modules {
 
     /**
      * write_reset()
+     * write_reset(name: str, ...)
      * write_reset([name: str], ...)
      */
     void Lights::write_reset(Request &req, Response &res) {
@@ -154,26 +147,28 @@ namespace api::modules {
 
         // loop parameters
         for (Value &param : req.params.GetArray()) {
+            const char* light_name = nullptr;
 
             // check params
-            if (!param.IsArray()) {
-                error(res, "parameters must be arrays");
-                return;
+            if (param.IsArray()) {
+                if (param.Size() < 1) {
+                    error_params_insufficient(res);
+                    continue;
+                }
+                if (!param[0].IsString()) {
+                    error_type(res, "name", "string");
+                    continue;
+                }
+                // get params
+                light_name = param[0].GetString();
+            } else if (param.IsString()) {
+                light_name = param.GetString();
+            } else {
+                error(res, "parameters must be arrays or strings");
             }
-            if (param.Size() < 1) {
-                error_params_insufficient(res);
-                continue;
-            }
-            if (!param[0].IsString()) {
-                error_type(res, "name", "string");
-                continue;
-            }
-
-            // get params
-            auto light_name = param[0].GetString();
 
             // write analog state
-            if (!this->write_light_reset(light_name)) {
+            if (light_name && !this->write_light_reset(light_name)) {
                 error_unknown(res, "analog", light_name);
                 continue;
             }
