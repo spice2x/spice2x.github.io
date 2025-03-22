@@ -80,17 +80,17 @@ namespace cfg {
         load_bool_value(doc, root + "enable_screen_resize", this->enable_screen_resize);
         load_bool_value(doc, root + "enable_linear_filter", this->enable_linear_filter);
         for (size_t i = 0; i < std::size(this->scene_settings); i++) {
-            auto& fs = this->scene_settings[i];
+            auto& scene = this->scene_settings[i];
             std::string prefix = "";
             if (0 < i) {
                 prefix += fmt::format("scenes/{}/", i-1);
             }
-            load_int_value(doc, root + prefix + "offset_x", fs.offset_x);
-            load_int_value(doc, root + prefix + "offset_y", fs.offset_y);
-            load_float_value(doc, root + prefix + "scale_x", fs.scale_x);
-            load_float_value(doc, root + prefix + "scale_y", fs.scale_y);
-            load_bool_value(doc, root + prefix + "keep_aspect_ratio", fs.keep_aspect_ratio);
-            load_bool_value(doc, root + prefix + "centered", fs.centered);
+            load_int_value(doc, root + prefix + "offset_x", scene.offset_x);
+            load_int_value(doc, root + prefix + "offset_y", scene.offset_y);
+            load_float_value(doc, root + prefix + "scale_x", scene.scale_x);
+            load_float_value(doc, root + prefix + "scale_y", scene.scale_y);
+            load_bool_value(doc, root + prefix + "keep_aspect_ratio", scene.keep_aspect_ratio);
+            load_bool_value(doc, root + prefix + "centered", scene.centered);
         }
 
         // windowed settings are always under game settings
@@ -200,17 +200,17 @@ namespace cfg {
         rapidjson::Pointer(root + "enable_screen_resize").Set(doc, this->enable_screen_resize);
         rapidjson::Pointer(root + "enable_linear_filter").Set(doc, this->enable_linear_filter);
         for (size_t i = 0; i < std::size(this->scene_settings); i++) {
-            auto& fs = this->scene_settings[i];
+            auto& scene = this->scene_settings[i];
             std::string prefix = "";
             if (0 < i) {
                 prefix += fmt::format("scenes/{}/", i-1);
             }
-            rapidjson::Pointer(root + prefix + "offset_x").Set(doc, fs.offset_x);
-            rapidjson::Pointer(root + prefix + "offset_y").Set(doc, fs.offset_y);
-            rapidjson::Pointer(root + prefix + "scale_x").Set(doc, fs.scale_x);
-            rapidjson::Pointer(root + prefix + "scale_y").Set(doc, fs.scale_y);
-            rapidjson::Pointer(root + prefix + "keep_aspect_ratio").Set(doc, fs.keep_aspect_ratio);
-            rapidjson::Pointer(root + prefix + "centered").Set(doc, fs.centered);
+            rapidjson::Pointer(root + prefix + "offset_x").Set(doc, scene.offset_x);
+            rapidjson::Pointer(root + prefix + "offset_y").Set(doc, scene.offset_y);
+            rapidjson::Pointer(root + prefix + "scale_x").Set(doc, scene.scale_x);
+            rapidjson::Pointer(root + prefix + "scale_y").Set(doc, scene.scale_y);
+            rapidjson::Pointer(root + prefix + "keep_aspect_ratio").Set(doc, scene.keep_aspect_ratio);
+            rapidjson::Pointer(root + prefix + "centered").Set(doc, scene.centered);
         }
 
         // windowed mode settings

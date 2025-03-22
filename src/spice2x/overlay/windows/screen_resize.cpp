@@ -49,13 +49,13 @@ namespace overlay::windows {
         cfg::SCREENRESIZE->screen_resize_current_scene = 0;
         cfg::SCREENRESIZE->enable_linear_filter = true;
         for (size_t i = 0; i < std::size(cfg::SCREENRESIZE->scene_settings); i++) {
-            auto& fs = cfg::SCREENRESIZE->scene_settings[i];
-            fs.keep_aspect_ratio = true;
-            fs.centered = true;
-            fs.offset_x = 0;
-            fs.offset_y = 0;
-            fs.scale_x = 1.f;
-            fs.scale_y = 1.f;
+            auto& scene = cfg::SCREENRESIZE->scene_settings[i];
+            scene.keep_aspect_ratio = true;
+            scene.centered = true;
+            scene.offset_x = 0;
+            scene.offset_y = 0;
+            scene.scale_x = 1.f;
+            scene.scale_y = 1.f;
         }
 
         cfg::SCREENRESIZE->enable_window_resize = false;
@@ -123,24 +123,24 @@ namespace overlay::windows {
             "Hint: bind a key to Screen Resize 1/2/3/4 for quick scene switching. "
             "Scene 1 is the default scene activated when starting the game.");
 
-        auto& fs = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
+        auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
 
         // general settings
-        ImGui::Checkbox("Centered", &fs.centered);
-        if (!fs.centered) {
-            ImGui::InputInt("X Offset", &fs.offset_x);
-            ImGui::InputInt("Y Offset", &fs.offset_y);
+        ImGui::Checkbox("Centered", &scene.centered);
+        if (!scene.centered) {
+            ImGui::InputInt("X Offset", &scene.offset_x);
+            ImGui::InputInt("Y Offset", &scene.offset_y);
         }
 
         // aspect ratio
-        ImGui::Checkbox("Keep Aspect Ratio", &fs.keep_aspect_ratio);
-        if (fs.keep_aspect_ratio) {
-            if (ImGui::SliderFloat("Scale", &fs.scale_x, 0.65f, 2.0f)) {
-                fs.scale_y = fs.scale_x;
+        ImGui::Checkbox("Keep Aspect Ratio", &scene.keep_aspect_ratio);
+        if (scene.keep_aspect_ratio) {
+            if (ImGui::SliderFloat("Scale", &scene.scale_x, 0.65f, 2.0f)) {
+                scene.scale_y = scene.scale_x;
             }
         } else {
-            ImGui::SliderFloat("Width Scale", &fs.scale_x, 0.65f, 2.0f);
-            ImGui::SliderFloat("Height Scale", &fs.scale_y, 0.65f, 2.0f);
+            ImGui::SliderFloat("Width Scale", &scene.scale_x, 0.65f, 2.0f);
+            ImGui::SliderFloat("Height Scale", &scene.scale_y, 0.65f, 2.0f);
         }
 
         ImGui::EndDisabled();
