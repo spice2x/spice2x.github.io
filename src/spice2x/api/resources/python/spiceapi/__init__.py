@@ -12,3 +12,4 @@ from .keypads import *
 from .lights import *
 from .memory import *
 from .touch import *
+from .resize import *

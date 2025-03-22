@@ -14,6 +14,15 @@ namespace cfg {
         ResizableFrame = 2
     };
 
+    struct fullscreen_setting {
+        int offset_x = 0;
+        int offset_y = 0;
+        float scale_x = 1.0;
+        float scale_y = 1.0;
+        bool keep_aspect_ratio = true;
+        bool centered = true;
+    };
+
     extern std::optional<std::string> SCREEN_RESIZE_CFG_PATH_OVERRIDE;
 
     class ScreenResize {
@@ -31,14 +40,10 @@ namespace cfg {
         ~ScreenResize();
         
         // full screen (directx) image settings
-        int offset_x = 0;
-        int offset_y = 0;
-        float scale_x = 1.0;
-        float scale_y = 1.0;
         bool enable_screen_resize = false;
+        int8_t screen_resize_current_scene = 0;
         bool enable_linear_filter = true;
-        bool keep_aspect_ratio = true;
-        bool centered = true;
+        fullscreen_setting scene_settings[4];
 
         // windowed mode sizing
         // Windows terminology:

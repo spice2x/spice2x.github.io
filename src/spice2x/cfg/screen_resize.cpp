@@ -76,14 +76,22 @@ namespace cfg {
             eamuse_get_game(),
             use_game_setting,
             root);
-        load_int_value(doc, root + "offset_x", this->offset_x);
-        load_int_value(doc, root + "offset_y", this->offset_y);
-        load_float_value(doc, root + "scale_x", this->scale_x);
-        load_float_value(doc, root + "scale_y", this->scale_y);
+        
         load_bool_value(doc, root + "enable_screen_resize", this->enable_screen_resize);
         load_bool_value(doc, root + "enable_linear_filter", this->enable_linear_filter);
-        load_bool_value(doc, root + "keep_aspect_ratio", this->keep_aspect_ratio);
-        load_bool_value(doc, root + "centered", this->centered);
+        for (size_t i = 0; i < std::size(this->scene_settings); i++) {
+            auto& scene = this->scene_settings[i];
+            std::string prefix = "";
+            if (0 < i) {
+                prefix += fmt::format("scenes/{}/", i-1);
+            }
+            load_int_value(doc, root + prefix + "offset_x", scene.offset_x);
+            load_int_value(doc, root + prefix + "offset_y", scene.offset_y);
+            load_float_value(doc, root + prefix + "scale_x", scene.scale_x);
+            load_float_value(doc, root + prefix + "scale_y", scene.scale_y);
+            load_bool_value(doc, root + prefix + "keep_aspect_ratio", scene.keep_aspect_ratio);
+            load_bool_value(doc, root + prefix + "centered", scene.centered);
+        }
 
         // windowed settings are always under game settings
         root = "/sp2x_games/" + eamuse_get_game() + "/";
@@ -189,14 +197,21 @@ namespace cfg {
             root);
 
         // full screen image settings
-        rapidjson::Pointer(root + "offset_x").Set(doc, this->offset_x);
-        rapidjson::Pointer(root + "offset_y").Set(doc, this->offset_y);
-        rapidjson::Pointer(root + "scale_x").Set(doc, this->scale_x);
-        rapidjson::Pointer(root + "scale_y").Set(doc, this->scale_y);
         rapidjson::Pointer(root + "enable_screen_resize").Set(doc, this->enable_screen_resize);
         rapidjson::Pointer(root + "enable_linear_filter").Set(doc, this->enable_linear_filter);
-        rapidjson::Pointer(root + "keep_aspect_ratio").Set(doc, this->keep_aspect_ratio);
-        rapidjson::Pointer(root + "centered").Set(doc, this->centered);
+        for (size_t i = 0; i < std::size(this->scene_settings); i++) {
+            auto& scene = this->scene_settings[i];
+            std::string prefix = "";
+            if (0 < i) {
+                prefix += fmt::format("scenes/{}/", i-1);
+            }
+            rapidjson::Pointer(root + prefix + "offset_x").Set(doc, scene.offset_x);
+            rapidjson::Pointer(root + prefix + "offset_y").Set(doc, scene.offset_y);
+            rapidjson::Pointer(root + prefix + "scale_x").Set(doc, scene.scale_x);
+            rapidjson::Pointer(root + prefix + "scale_y").Set(doc, scene.scale_y);
+            rapidjson::Pointer(root + prefix + "keep_aspect_ratio").Set(doc, scene.keep_aspect_ratio);
+            rapidjson::Pointer(root + prefix + "centered").Set(doc, scene.centered);
+        }
 
         // windowed mode settings
         rapidjson::Pointer(root + "w_always_on_top").Set(doc, this->window_always_on_top);

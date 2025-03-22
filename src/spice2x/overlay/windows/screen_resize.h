@@ -16,6 +16,9 @@ namespace overlay::windows {
         size_t toggle_screen_resize = ~0u;
         bool toggle_screen_resize_state = false;
 
+        size_t toggle_scene[4] = { ~0u, ~0u, ~0u, ~0u };
+        uint32_t toggle_scene_state = ~0u;
+
         void build_fullscreen_config();
         void build_windowed_config();
         void build_footer();

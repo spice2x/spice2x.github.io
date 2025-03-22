@@ -740,9 +740,10 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     topSurface->UnlockRect();
 
     // do the actual zoom / offset math
-    if (cfg::SCREENRESIZE->centered) {
-        targetRect.right = (w + rectLeft) / cfg::SCREENRESIZE->scale_x;
-        targetRect.bottom = (h + rectTop) / cfg::SCREENRESIZE->scale_y;
+    auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
+    if (scene.centered) {
+        targetRect.right = (w + rectLeft) / scene.scale_x;
+        targetRect.bottom = (h + rectTop) / scene.scale_y;
         const LONG deltaH = ((targetRect.bottom - targetRect.top) - h) / 2;
         const LONG deltaW = ((targetRect.right - targetRect.left) - w) / 2;
         targetRect.top -= deltaH;
@@ -750,12 +751,12 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
         targetRect.left -= deltaW;
         targetRect.right -= deltaW;
     } else {
-        targetRect.left -= cfg::SCREENRESIZE->offset_x;
-        targetRect.top += cfg::SCREENRESIZE->offset_y;
-        targetRect.right = -cfg::SCREENRESIZE->offset_x;
-        targetRect.right += (w + rectLeft) / cfg::SCREENRESIZE->scale_x;
-        targetRect.bottom = cfg::SCREENRESIZE->offset_y;
-        targetRect.bottom += (h + rectTop) / cfg::SCREENRESIZE->scale_y;
+        targetRect.left -= scene.offset_x;
+        targetRect.top += scene.offset_y;
+        targetRect.right = -scene.offset_x;
+        targetRect.right += (w + rectLeft) / scene.scale_x;
+        targetRect.bottom = scene.offset_y;
+        targetRect.bottom += (h + rectTop) / scene.scale_y;
     }
 
     // draw to back buffer
