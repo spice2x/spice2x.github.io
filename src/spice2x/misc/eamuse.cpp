@@ -364,11 +364,11 @@ void eamuse_pin_macro_start_thread() {
                     eamuse_set_keypad_overrides(unit, keypad_overrides[char_index]);
                 }
                 pin_index[unit]++;
-                Sleep(120);
+                Sleep(100);
 
                 // clear
                 eamuse_set_keypad_overrides(unit, 0);
-                Sleep(120);
+                Sleep(50);
 
                 // end of PIN
                 if (pin_index[unit] == PIN_MACRO_VALUES[unit].length()) {
