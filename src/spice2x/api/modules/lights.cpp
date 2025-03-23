@@ -19,11 +19,16 @@ namespace api::modules {
         functions["read"] = std::bind(&Lights::read, this, _1, _2);
         functions["write"] = std::bind(&Lights::write, this, _1, _2);
         functions["write_reset"] = std::bind(&Lights::write_reset, this, _1, _2);
-        lights = games::get_lights(eamuse_get_game());
+
+        this->lights = games::get_lights(eamuse_get_game());
+        for (auto &light : *this->lights) {
+            this->lights_by_names.emplace(light.getName(), light);
+        }
     }
 
     /**
      * read()
+     * read(name: str, ...)
      */
     void Lights::read(api::Request &req, Response &res) {
 
@@ -32,17 +37,39 @@ namespace api::modules {
             return;
         }
 
-        // add state for each light
-        for (auto &light : *this->lights) {
-            Value state(kArrayType);
-            Value light_name(light.getName().c_str(), res.doc()->GetAllocator());
-            Value light_state(GameAPI::Lights::readLight(RI_MGR, light));
-            Value light_enabled(light.override_enabled);
-            state.PushBack(light_name, res.doc()->GetAllocator());
-            state.PushBack(light_state, res.doc()->GetAllocator());
-            state.PushBack(light_enabled, res.doc()->GetAllocator());
-            res.add_data(state);
+        // all lights for this game
+        if (req.params.Size() == 0) {
+            // add state for each light
+            for (auto &light : *this->lights) {
+                get_light(light, res);
+            }
+
+            return;
         }
+
+        // specified light names
+        for (Value &param : req.params.GetArray()) {
+            // check params
+            if (!param.IsString()) {
+                error_type(res, "name", "string");
+                return;
+            }
+            const auto name = param.GetString();
+            if (this->lights_by_names.contains(name)) {
+                get_light(this->lights_by_names.at(name).get(), res);
+            }
+        }
+    }
+
+    void Lights::get_light(Light &light, Response &res) {
+        Value state(kArrayType);
+        Value light_name(light.getName().c_str(), res.doc()->GetAllocator());
+        Value light_state(GameAPI::Lights::readLight(RI_MGR, light));
+        Value light_enabled(light.override_enabled);
+        state.PushBack(light_name, res.doc()->GetAllocator());
+        state.PushBack(light_state, res.doc()->GetAllocator());
+        state.PushBack(light_enabled, res.doc()->GetAllocator());
+        res.add_data(state);
     }
 
     /**
@@ -90,6 +117,7 @@ namespace api::modules {
 
     /**
      * write_reset()
+     * write_reset(name: str, ...)
      * write_reset([name: str], ...)
      */
     void Lights::write_reset(Request &req, Response &res) {
@@ -119,26 +147,28 @@ namespace api::modules {
 
         // loop parameters
         for (Value &param : req.params.GetArray()) {
+            const char* light_name = nullptr;
 
             // check params
-            if (!param.IsArray()) {
-                error(res, "parameters must be arrays");
-                return;
+            if (param.IsArray()) {
+                if (param.Size() < 1) {
+                    error_params_insufficient(res);
+                    continue;
+                }
+                if (!param[0].IsString()) {
+                    error_type(res, "name", "string");
+                    continue;
+                }
+                // get params
+                light_name = param[0].GetString();
+            } else if (param.IsString()) {
+                light_name = param.GetString();
+            } else {
+                error(res, "parameters must be arrays or strings");
             }
-            if (param.Size() < 1) {
-                error_params_insufficient(res);
-                continue;
-            }
-            if (!param[0].IsString()) {
-                error_type(res, "name", "string");
-                continue;
-            }
-
-            // get params
-            auto light_name = param[0].GetString();
 
             // write analog state
-            if (!this->write_light_reset(light_name)) {
+            if (light_name && !this->write_light_reset(light_name)) {
                 error_unknown(res, "analog", light_name);
                 continue;
             }
@@ -153,21 +183,20 @@ namespace api::modules {
         }
 
         // find light
-        for (auto &light : *this->lights) {
-            if (light.getName() == name) {
-                light.override_state = CLAMP(state, 0.f, 1.f);
-                light.override_enabled = true;
+        if (this->lights_by_names.contains(name)) {
+            auto &light = this->lights_by_names.at(name).get();
+            light.override_state = CLAMP(state, 0.f, 1.f);
+            light.override_enabled = true;
 
-                if (cfg::CONFIGURATOR_STANDALONE) {
-                    GameAPI::Lights::writeLight(RI_MGR, light, state);
-                }
-
-                return true;
+            if (cfg::CONFIGURATOR_STANDALONE) {
+                GameAPI::Lights::writeLight(RI_MGR, light, state);
             }
-        }
 
-        // unknown light
-        return false;
+            return true;
+        } else {
+            // unknown light
+            return false;
+        }
     }
 
     bool Lights::write_light_reset(std::string name) {
@@ -178,14 +207,13 @@ namespace api::modules {
         }
 
         // find light
-        for (auto &light : *this->lights) {
-            if (light.getName() == name) {
-                light.override_enabled = false;
-                return true;
-            }
+        if (this->lights_by_names.contains(name)) {
+            auto &light = this->lights_by_names.at(name).get();
+            light.override_enabled = false;
+            return true;
+        } else {
+            // unknown light
+            return false;
         }
-
-        // unknown light
-        return false;
     }
 }

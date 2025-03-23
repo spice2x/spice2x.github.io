@@ -181,6 +181,12 @@ All of those three modules have equally named methods for you to call.
   - removes the override value from the objects specified by name
   - if no names were passed, all overrides will be removed
 
+##### Additional API for lights
+- read(name: string, ...)
+  - same as read(), but you can specify light names
+- write_reset(name: str, ...)
+  - same as write_reset(), but it accepts a flat list of strings
+
 #### Touch
 - read()
   - returns an array of state objects containing id, x and y
@@ -251,6 +257,12 @@ which also means that your hex edits are applicable directly.
   - enables or disables image resize state
 - image_resize_set_scene(scene: int)
   - sets the active scene for image resize state; set to 0 to disable resize
+
+## Native wrapper libraries
+Spicetools provides wrapper libraries in: Arduino, C++, Dart, and Python.
+Python is the only one that is fully spec compliant.
+Other libraries may be missing features and contain bugs; please feel free to
+contribute code to fill the gaps if you work on a project using these libraries.
 
 ## License
 Unless otherwise noted, all files are licensed under the GPLv3.

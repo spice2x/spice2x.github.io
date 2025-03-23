@@ -2,8 +2,14 @@ from .connection import Connection
 from .request import Request
 
 
-def lights_read(con: Connection):
-    res = con.request(Request("lights", "read"))
+def lights_read(con: Connection, light_names=None):
+    req = Request("lights", "read")
+
+    if light_names:
+        for light_name in light_names:
+            req.add_param(light_name)
+
+    res = con.request(req)
     return res.get_data()
 
 
