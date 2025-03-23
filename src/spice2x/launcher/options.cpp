@@ -114,6 +114,34 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .sensitive = true,
     },
     {
+        // QuickPin
+        .title = "Enable Quick PIN",
+        .name = "quickpin",
+        .desc = "Allow inputting PIN with a single button",
+        .type = OptionType::Bool,
+        .category = "Network",
+    },
+    {
+        // Player1QuickPin
+        .title = "Player 1 PIN",
+        .name = "pin0",
+        .desc = "Set a PIN for Card 1 to use with the Quick PIN feature",
+        .type = OptionType::Text,
+        .setting_name = "1234",
+        .category = "Network",
+        .sensitive = true,
+    },
+    {
+        // Player2QuickPin
+        .title = "Player 2 PIN",
+        .name = "pin1",
+        .desc = "Set a PIN for Card 2 to use with the Quick PIN feature",
+        .type = OptionType::Text,
+        .setting_name = "5678",
+        .category = "Network",
+        .sensitive = true,
+    },
+    {
         .title = "Windowed Mode",
         .name = "w",
         .desc = "Enables windowed mode",
@@ -1008,6 +1036,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to the screenshots folder",
         .type = OptionType::Text,
         .category = "Paths",
+        .sensitive = true,
     },
     {
         .title = "Configuration Path",

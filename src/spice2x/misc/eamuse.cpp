@@ -39,6 +39,16 @@ static std::optional<double> AUTO_INSERT_CARD_FIRST_CONSUME_TIME;
 static bool AUTO_INSERT_CARD_CACHED[2];
 static uint8_t AUTO_INSERT_CARD_CACHED_DATA[2][8];
 
+// quick pin
+bool QUICK_PIN_ENABLED = false;
+std::string QUICK_PIN_VALUES[2] = {"", ""};
+static std::thread *QUICK_PIN_THREAD = nullptr;
+static bool QUICK_PIN_THREAD_ACTIVE = false;
+static uint16_t QUICK_PIN_TRIGGER_KEYS[2] = {
+    games::OverlayButtons::TriggerQuickPinP1,
+    games::OverlayButtons::TriggerQuickPinP2
+};
+
 bool eamuse_get_card(int active_count, int unit_id, uint8_t *card) {
 
     // get unit index
@@ -293,6 +303,63 @@ void eamuse_coin_stop_thread() {
     COIN_INPUT_THREAD->join();
     delete COIN_INPUT_THREAD;
     COIN_INPUT_THREAD = nullptr;
+}
+
+void eamuse_quick_pin_start_thread() {
+
+    // set active
+    QUICK_PIN_THREAD_ACTIVE = true;
+
+    // create thread
+    QUICK_PIN_THREAD = new std::thread([]() {
+        uint16_t keypad_overrides[] = {
+            1 << EAM_IO_KEYPAD_0,
+            1 << EAM_IO_KEYPAD_1,
+            1 << EAM_IO_KEYPAD_2,
+            1 << EAM_IO_KEYPAD_3,
+            1 << EAM_IO_KEYPAD_4,
+            1 << EAM_IO_KEYPAD_5,
+            1 << EAM_IO_KEYPAD_6,
+            1 << EAM_IO_KEYPAD_7,
+            1 << EAM_IO_KEYPAD_8,
+            1 << EAM_IO_KEYPAD_9,
+        };
+        auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
+        size_t pin_index[2] = {QUICK_PIN_VALUES[0].length(), QUICK_PIN_VALUES[1].length()};
+
+        while (QUICK_PIN_THREAD_ACTIVE) {
+            for (int unit = 0; unit < 2; unit++) {
+                // check input key
+                if (overlay_buttons && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(
+                        QUICK_PIN_TRIGGER_KEYS[unit]))) {
+                    log_info("eamuse", "Quick PIN: P{}", unit + 1);
+                    // Reset key index
+                    pin_index[unit] = 0;
+                }
+
+                // Get character from config
+                if (pin_index[unit] < QUICK_PIN_VALUES[unit].length()) {
+                    char pin_char = QUICK_PIN_VALUES[unit].at(pin_index[unit]);
+                    if (pin_char >= '0' && pin_char <= '9') {
+                        int char_index = pin_char - '0';
+                        eamuse_set_keypad_overrides(unit, keypad_overrides[char_index]);
+                    }
+                    pin_index[unit]++;
+                }
+            }
+
+            Sleep(150);
+        }
+    });
+}
+
+void eamuse_quick_pin_stop_thread() {
+    QUICK_PIN_THREAD_ACTIVE = false;
+    if (QUICK_PIN_THREAD != nullptr) {
+        QUICK_PIN_THREAD->join();
+        delete QUICK_PIN_THREAD;
+        QUICK_PIN_THREAD = nullptr;
+    }
 }
 
 void eamuse_set_keypad_overrides(size_t unit, uint16_t keypad_state) {
