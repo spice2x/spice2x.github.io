@@ -79,9 +79,25 @@ namespace games::sdvx {
                 *phkResult = DEVICE_ASIO_REG_HANDLE;
 
                 log_info("sdvx::asio", "replacing '{}' with '{}'", lpSubKey, ASIO_DRIVER.value());
-
-                return RegOpenKeyExA_orig(real_asio_reg_handle, ASIO_DRIVER.value().c_str(), ulOptions, samDesired,
+                const auto result = RegOpenKeyExA_orig(
+                        real_asio_reg_handle,
+                        ASIO_DRIVER.value().c_str(),
+                        ulOptions,
+                        samDesired,
                         &real_asio_device_reg_handle);
+
+                if (result != ERROR_SUCCESS) {
+                    log_warning(
+                        "sdvx::asio",
+                        "failed to open registry subkey '{}', error=0x{:x}",
+                        ASIO_DRIVER.value().c_str(), result);
+                    log_warning(
+                        "sdvx::asio",
+                        "due to improper ASIO setting, game will likely fall back to WASAPI; double check -sdvxasio and the registry",
+                        ASIO_DRIVER.value().c_str(), result);
+                }
+
+                return result;
             }
         }
 
