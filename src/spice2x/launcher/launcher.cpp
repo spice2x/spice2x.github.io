@@ -737,6 +737,15 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::Player2Card].is_active()) {
         CARD_OVERRIDES[1] = options[launcher::Options::Player2Card].value_text();
     }
+    if (options[launcher::Options::Player1PinMacro].is_active()) {
+        PIN_MACRO_ENABLED = true;
+        PIN_MACRO_VALUES[0] = options[launcher::Options::Player1PinMacro].value_text();
+    }
+    if (options[launcher::Options::Player2PinMacro].is_active()) {
+        PIN_MACRO_ENABLED = true;
+        PIN_MACRO_VALUES[1] = options[launcher::Options::Player2PinMacro].value_text();
+    }
+
     for (auto &reader : options[launcher::Options::ICCAReaderPort].values_text()) {
         static int reader_id = 0;
         if (reader_id < 2) {
@@ -1968,6 +1977,11 @@ int main_implementation(int argc, char *argv[]) {
     // start coin input thread
     eamuse_coin_start_thread();
 
+    // pin macro
+    if (!cfg::CONFIGURATOR_STANDALONE && PIN_MACRO_ENABLED) {
+        eamuse_pin_macro_start_thread();
+    }
+
     // print PEB
     if (peb_print) {
         peb::peb_print();
@@ -2051,6 +2065,8 @@ int main_implementation(int argc, char *argv[]) {
 
     // stop coin input thread
     eamuse_coin_stop_thread();
+
+    eamuse_pin_macro_stop_thread();
 
     // BT5API
     if (BT5API_ENABLED) {

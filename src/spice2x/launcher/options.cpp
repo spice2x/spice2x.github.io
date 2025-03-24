@@ -114,6 +114,26 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .sensitive = true,
     },
     {
+        // Player1PinMacro
+        .title = "Player 1 PIN Macro",
+        .name = "pinmacro0",
+        .desc = "Set a PIN for Player 1 that will cause the PIN to be automatically typed when Player 1 PIN Macro overlay key is pressed",
+        .type = OptionType::Text,
+        .setting_name = "1234",
+        .category = "Network (Advanced)",
+        .sensitive = true,
+    },
+    {
+        // Player2PinMacro
+        .title = "Player 2 PIN Macro",
+        .name = "pinmacro1",
+        .desc = "Set a PIN for Player 2 that will cause the PIN to be automatically typed when Player 2 PIN Macro overlay key is pressed",
+        .type = OptionType::Text,
+        .setting_name = "5678",
+        .category = "Network (Advanced)",
+        .sensitive = true,
+    },
+    {
         .title = "Windowed Mode",
         .name = "w",
         .desc = "Enables windowed mode",

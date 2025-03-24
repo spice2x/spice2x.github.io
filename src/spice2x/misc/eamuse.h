@@ -34,6 +34,9 @@ extern std::string CARD_OVERRIDES[2];
 extern bool AUTO_INSERT_CARD[2];
 extern float AUTO_INSERT_CARD_COOLDOWN;
 
+extern bool PIN_MACRO_ENABLED;
+extern std::string PIN_MACRO_VALUES[2];
+
 bool eamuse_get_card(int active_count, int unit_id, uint8_t *card);
 bool eamuse_get_card(const std::filesystem::path &path, uint8_t *card, int unit_id);
 bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card, int index);
@@ -55,6 +58,9 @@ int eamuse_coin_add();
 
 void eamuse_coin_start_thread();
 void eamuse_coin_stop_thread();
+
+void eamuse_pin_macro_start_thread();
+void eamuse_pin_macro_stop_thread();
 
 void eamuse_set_keypad_overrides(size_t unit, uint16_t keypad_state);
 void eamuse_set_keypad_overrides_bt5(size_t unit, uint16_t keypad_state);

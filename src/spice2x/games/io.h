@@ -22,6 +22,8 @@ namespace games {
             ToggleScreenResize,
             ToggleOverlay,
             ToggleCameraControl,
+            TriggerPinMacroP1,
+            TriggerPinMacroP2,
             ScreenResize,
             ScreenResizeScene1,
             ScreenResizeScene2,

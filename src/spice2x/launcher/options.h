@@ -18,6 +18,8 @@ namespace launcher {
             PCBID,
             Player1Card,
             Player2Card,
+            Player1PinMacro,
+            Player2PinMacro,
             WindowedMode,
             InjectHook,
             EarlyInjectHook,

@@ -11,6 +11,7 @@
 #include "util/logging.h"
 #include "util/time.h"
 #include "util/utils.h"
+#include "overlay/overlay.h"
 
 #include "bt5api.h"
 
@@ -38,6 +39,16 @@ float AUTO_INSERT_CARD_COOLDOWN = 8.f; // seconds
 static std::optional<double> AUTO_INSERT_CARD_FIRST_CONSUME_TIME;
 static bool AUTO_INSERT_CARD_CACHED[2];
 static uint8_t AUTO_INSERT_CARD_CACHED_DATA[2][8];
+
+// pin macro
+bool PIN_MACRO_ENABLED = false;
+std::string PIN_MACRO_VALUES[2] = {"", ""};
+static std::thread *PIN_MACRO_THREAD = nullptr;
+static bool PIN_MACRO_THREAD_ACTIVE = false;
+static uint16_t PIN_MACRO_TRIGGER_KEYS[2] = {
+    games::OverlayButtons::TriggerPinMacroP1,
+    games::OverlayButtons::TriggerPinMacroP2
+};
 
 bool eamuse_get_card(int active_count, int unit_id, uint8_t *card) {
 
@@ -293,6 +304,93 @@ void eamuse_coin_stop_thread() {
     COIN_INPUT_THREAD->join();
     delete COIN_INPUT_THREAD;
     COIN_INPUT_THREAD = nullptr;
+}
+
+void eamuse_pin_macro_start_thread() {
+
+    // set active
+    PIN_MACRO_THREAD_ACTIVE = true;
+
+    // create thread
+    PIN_MACRO_THREAD = new std::thread([]() {
+        uint16_t keypad_overrides[] = {
+            1 << EAM_IO_KEYPAD_0,
+            1 << EAM_IO_KEYPAD_1,
+            1 << EAM_IO_KEYPAD_2,
+            1 << EAM_IO_KEYPAD_3,
+            1 << EAM_IO_KEYPAD_4,
+            1 << EAM_IO_KEYPAD_5,
+            1 << EAM_IO_KEYPAD_6,
+            1 << EAM_IO_KEYPAD_7,
+            1 << EAM_IO_KEYPAD_8,
+            1 << EAM_IO_KEYPAD_9,
+        };
+        auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
+        size_t pin_index[2] = {PIN_MACRO_VALUES[0].length(), PIN_MACRO_VALUES[1].length()};
+
+        std::optional<uint8_t> active_unit = std::nullopt;
+
+        while (PIN_MACRO_THREAD_ACTIVE) {
+            // wait for key press
+            if (!active_unit.has_value()) {
+                for (int unit = 0; unit < 2; unit++) {
+                    if (PIN_MACRO_VALUES[unit].empty()) {
+                        continue;
+                    }
+                    if (overlay_buttons &&
+                        (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered()) &&
+                        GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(PIN_MACRO_TRIGGER_KEYS[unit]))) {
+                        active_unit = unit;
+                        // Reset key index
+                        pin_index[unit] = 0;
+                        break;
+                    }
+                }
+
+                if (!active_unit.has_value()) {
+                    Sleep(20);
+                    continue;
+                }
+            }
+
+            const auto unit = active_unit.value();
+            // get character from config
+            if (pin_index[unit] < PIN_MACRO_VALUES[unit].length()) {
+
+                // insert character
+                char pin_char = PIN_MACRO_VALUES[unit].at(pin_index[unit]);
+                if (pin_char >= '0' && pin_char <= '9') {
+                    int char_index = pin_char - '0';
+                    eamuse_set_keypad_overrides(unit, keypad_overrides[char_index]);
+                }
+                pin_index[unit]++;
+                Sleep(100);
+
+                // clear
+                eamuse_set_keypad_overrides(unit, 0);
+                Sleep(50);
+
+                // end of PIN
+                if (pin_index[unit] == PIN_MACRO_VALUES[unit].length()) {
+                    active_unit = std::nullopt;
+                    Sleep(120);
+                }
+
+                continue;
+            }
+
+            Sleep(200);
+        }
+    });
+}
+
+void eamuse_pin_macro_stop_thread() {
+    PIN_MACRO_THREAD_ACTIVE = false;
+    if (PIN_MACRO_THREAD != nullptr) {
+        PIN_MACRO_THREAD->join();
+        delete PIN_MACRO_THREAD;
+        PIN_MACRO_THREAD = nullptr;
+    }
 }
 
 void eamuse_set_keypad_overrides(size_t unit, uint16_t keypad_state) {
