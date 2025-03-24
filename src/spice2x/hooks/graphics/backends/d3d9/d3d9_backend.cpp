@@ -680,7 +680,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
 
     // dump presentation parameters
     for (size_t i = 0; i < num_adapters; i++) {
-        const auto *params = &pPresentationParameters[i];
+        auto *params = &pPresentationParameters[i];
+
+        if (!GRAPHICS_WINDOWED && i == 0 && GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+            params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+            params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+        }
 
         log_info("graphics::d3d9",
                 "D3D9 presentation parameters for adapter {}: BackBufferWidth: {}, BackBufferHeight: {}, "
@@ -846,7 +851,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     }
 
     for (size_t i = 0; i < num_adapters; i++) {
-        const auto *params = &pPresentationParameters[i];
+        auto *params = &pPresentationParameters[i];
+
+        if (!GRAPHICS_WINDOWED && i == 0 && GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+            params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+            params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+        }
 
         log_info("graphics::d3d9",
                 "D3D9Ex presentation parameters for adapter {}: BackBufferWidth: {}, BackBufferHeight: {}, "
@@ -870,7 +880,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     }
     if (pFullscreenDisplayMode) {
         for (size_t i = 0; i < num_adapters; i++) {
-            const auto *fullscreen_display_mode = &pFullscreenDisplayMode[i];
+            auto *fullscreen_display_mode = &pFullscreenDisplayMode[i];
+
+            if (!GRAPHICS_WINDOWED && i == 0 && GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+                fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+                fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+            }
 
             log_info("graphics::d3d9",
                     "D3D9Ex fullscreen display mode for adapter {}: Width: {}, Height: {}, RefreshRate: {}, "

@@ -190,6 +190,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Common)",
     },
     {
+        .title = "Only Use One Monitor",
+        .name = "graphics-force-single-adapter",
+        .desc = "Force the graphics device to be opened utilizing only one adapter in multi-monitor systems.\n\n"
+            "May cause unstable framerate and desyncs, especially if monitors have different refresh rates!",
+        .type = OptionType::Bool,
+        .category = "Graphics (Common)",
+    },
+    {
         .title = "Force Refresh Rate",
         .name = "graphics-force-refresh",
         .desc = "Force the refresh rate for the primary display adapter; works in both full screen and windowed modes",
@@ -197,12 +205,16 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Common)",
     },
     {
-        .title = "Only Use One Monitor",
-        .name = "graphics-force-single-adapter",
-        .desc = "Force the graphics device to be opened utilizing only one adapter in multi-monitor systems.\n\n"
-            "May cause unstable framerate and desyncs, especially if monitors have different refresh rates!",
-        .type = OptionType::Bool,
-        .category = "Graphics (Common)",
+        // FullscreenResolution
+        .title = "Force Full Screen Resolution",
+        .name = "forceres",
+        .desc =
+            "For full screen mode, forcibly set a custom resolution.\n\n"
+            "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
+            "This should only be used as last resort if your GPU/monitor can't display the resolution required by the game",
+        .type = OptionType::Text,
+        .setting_name = "1280,720",
+        .category = "Graphics (Common)"
     },
     {
         // Graphics9On12
@@ -1783,7 +1795,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Window Forced Render Scaling",
         .name = "windowscale",
         .desc = "For windowed mode: forcibly set DX9 back buffer dimensions to match window size. "
-            "Reduces pixelated scaling artifacts. Works great on some games, but completely broken on others",
+            "Reduces pixelated scaling artifacts. Works great for some games, but can COMPLETELY BREAK other games - YMMV!",
         .type = OptionType::Bool,
         .category = "Graphics (Windowed)",
     },

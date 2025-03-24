@@ -298,3 +298,16 @@ static inline int get_async_secondary_mouse() {
     int vk = GetSystemMetrics(SM_SWAPBUTTON) ? VK_LBUTTON : VK_RBUTTON;
     return GetAsyncKeyState(vk);
 }
+
+static inline bool parse_width_height(const std::string wh, std::pair<uint32_t, uint32_t> &result) {
+    std::string s = wh;
+    uint32_t w, h;
+    const auto remove_spaces = [](const char& c) { return c == ' '; };
+    s.erase(std::remove_if(s.begin(), s.end(), remove_spaces), s.end());
+    if (sscanf(s.c_str(), "%u,%u", &w, &h) == 2) {
+        result = std::pair(w, h);
+        return true;
+    } else {
+        return false;
+    }
+}

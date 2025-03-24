@@ -102,6 +102,7 @@
 #include "util/sysutils.h"
 #include "util/tapeled.h"
 #include "util/time.h"
+#include "util/utils.h"
 #include "avs/ssl.h"
 #include "nvapi/nvapi.h"
 #include "hooks/graphics/nvapi_hook.h"
@@ -364,6 +365,15 @@ int main_implementation(int argc, char *argv[]) {
         overlay::ENABLED = false;
         // leaving these on without dx9hooks result in torn state and therefore failure to draw
         GRAPHICS_FORCE_SINGLE_ADAPTER = false;
+    }
+
+    if (options[launcher::Options::FullscreenResolution].is_active()) {
+        std::pair<uint32_t, uint32_t> result;
+        if (parse_width_height(options[launcher::Options::FullscreenResolution].value_text(), result)) {
+            GRAPHICS_FS_CUSTOM_RESOLUTION = result;
+        } else {
+            log_warning("launcher", "failed to parse -forceres");
+        }
     }
 
     if (options[launcher::Options::spice2x_NvapiProfile].value_bool() && !cfg::CONFIGURATOR_STANDALONE) {
@@ -952,12 +962,9 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_WINDOW_STYLE = options[launcher::Options::spice2x_WindowBorder].value_uint32();
     }
     if (options[launcher::Options::spice2x_WindowSize].is_active()) {
-        auto s = options[launcher::Options::spice2x_WindowSize].value_text();
-        uint32_t w, h;
-        const auto remove_spaces = [](const char& c) { return c == ' '; };
-        s.erase(std::remove_if(s.begin(), s.end(), remove_spaces), s.end());
-        if (sscanf(s.c_str(), "%u,%u", &w, &h) == 2) {
-            GRAPHICS_WINDOW_SIZE = std::pair(w, h);
+        std::pair<uint32_t, uint32_t> result;
+        if (parse_width_height(options[launcher::Options::spice2x_WindowSize].value_text(), result)) {
+            GRAPHICS_WINDOW_SIZE = result;
         } else {
             log_warning("launcher", "failed to parse -windowsize");
         }
