@@ -1,3 +1,9 @@
+03/24/2025 [spice2x]
+    Auto PIN entry
+    Multiple scenes for image resize
+    API: add resize function, lights.read can now filter lights by name
+    Fix DLL hooks not receiving command-line arguments
+
 03/16/2025 [spice2x]
     Fix clipboard copy function truncating last character of string
 
