@@ -67,6 +67,7 @@ graphics_dx9on12_state GRAPHICS_9_ON_12_STATE = DX9ON12_AUTO;
 bool GRAPHICS_9_ON_12_REQUESTED_BY_GAME = false;
 bool SUBSCREEN_FORCE_REDRAW = false;
 bool D3D9_DEVICE_HOOK_DISABLE = false;
+std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_FS_CUSTOM_RESOLUTION;
 
 // settings
 std::string GRAPHICS_DEVICEID = "PCI\\VEN_1002&DEV_7146";

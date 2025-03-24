@@ -1741,7 +1741,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Window Forced Render Scaling",
         .name = "windowscale",
         .desc = "For windowed mode: forcibly set DX9 back buffer dimensions to match window size. "
-            "Reduces pixelated scaling artifacts. Works great on some games, but completely broken on others",
+            "Reduces pixelated scaling artifacts. Works great for some games, but can COMPLETELY BREAK other games - YMMV!",
         .type = OptionType::Bool,
         .category = "Graphics (Windowed)",
     },
@@ -2062,6 +2062,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"2", "double buffer"},
             {"3", "triple buffer"},
         },
+    },
+    {
+        // FullscreenResolution
+        .title = "Forced Full Screen Resolution",
+        .name = "forceres",
+        .desc =
+            "For full screen mode, forcibly set a custom resolution.\n\n"
+            "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
+            "This should only be used as last resort if your GPU/monitor can't display the resolution required by the game",
+        .type = OptionType::Text,
+        .setting_name = "1280,720",
+        .category = "Graphics (Common)"
     }
 };
 

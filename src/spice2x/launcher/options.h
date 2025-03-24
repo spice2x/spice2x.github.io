@@ -224,6 +224,7 @@ namespace launcher {
             MidiNoteSustain,
             NostalgiaPoke,
             ForceBackBufferCount,
+            FullscreenResolution,
         };
 
         enum class OptionsCategory {

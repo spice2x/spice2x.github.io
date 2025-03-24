@@ -123,10 +123,6 @@ void graphics_load_windowed_parameters() {
     }
 
     log_debug("graphics-windowed", "graphics_load_windowed_parameters called");
-    const auto remove_spaces = [](const char& c) {
-        return c == ' ';
-    };
-
     if (GRAPHICS_WINDOW_STYLE.has_value()) {
         log_debug(
             "graphics-windowed",
@@ -148,13 +144,11 @@ void graphics_load_windowed_parameters() {
         log_debug(
             "graphics-windowed",
             "graphics_load_windowed_parameters - load GRAPHICS_WINDOW_POS");
-        int32_t x, y;
-        auto s = GRAPHICS_WINDOW_POS.value();
-        s.erase(std::remove_if(s.begin(), s.end(), remove_spaces), s.end());
-        if (sscanf(s.c_str(), "%d,%d", &x, &y) == 2) {
+        std::pair<uint32_t, uint32_t> result;
+        if (parse_width_height(GRAPHICS_WINDOW_POS.value(), result)) {
             cfg::SCREENRESIZE->enable_window_resize = true;
-            cfg::SCREENRESIZE->window_offset_x = x;
-            cfg::SCREENRESIZE->window_offset_y = y;
+            cfg::SCREENRESIZE->window_offset_x = result.first;
+            cfg::SCREENRESIZE->window_offset_y = result.second;
         } else {
             log_warning("graphics-windowed", "failed to parse -windowpos");
         }
@@ -174,20 +168,16 @@ void graphics_load_windowed_subscreen_parameters() {
     }
 
     log_debug("graphics-windowed", "graphics_load_windowed_subscreen_parameters called");
-    const auto remove_spaces = [](const char& c) {
-        return c == ' ';
-    };
-    
+   
     if (GRAPHICS_IIDX_WSUB_SIZE.has_value()) {
         log_debug(
             "graphics-windowed",
             "graphics_load_windowed_parameters - load GRAPHICS_IIDX_WSUB_SIZE");
-        uint32_t w, h;
-        auto s = GRAPHICS_IIDX_WSUB_SIZE.value();
-        s.erase(std::remove_if(s.begin(), s.end(), remove_spaces), s.end());
-        if (sscanf(s.c_str(), "%u,%u", &w, &h) == 2) {
-            GRAPHICS_IIDX_WSUB_WIDTH = w;
-            GRAPHICS_IIDX_WSUB_HEIGHT = h;
+
+        std::pair<uint32_t, uint32_t> result;
+        if (parse_width_height(GRAPHICS_IIDX_WSUB_SIZE.value(), result)) {
+            GRAPHICS_IIDX_WSUB_WIDTH = result.first;
+            GRAPHICS_IIDX_WSUB_HEIGHT = result.second;
         } else {
             log_warning("graphics-windowed", "failed to parse -wsubsize");
         }
@@ -197,12 +187,11 @@ void graphics_load_windowed_subscreen_parameters() {
         log_debug(
             "graphics-windowed",
             "graphics_load_windowed_parameters - load GRAPHICS_IIDX_WSUB_POS");
-        int32_t x, y;
-        auto s = GRAPHICS_IIDX_WSUB_POS.value();
-        s.erase(std::remove_if(s.begin(), s.end(), remove_spaces), s.end());
-        if (sscanf(s.c_str(), "%d,%d", &x, &y) == 2) {
-            GRAPHICS_IIDX_WSUB_X = x;
-            GRAPHICS_IIDX_WSUB_Y = y;
+
+        std::pair<uint32_t, uint32_t> result;
+        if (parse_width_height(GRAPHICS_IIDX_WSUB_POS.value(), result)) {
+            GRAPHICS_IIDX_WSUB_X = result.first;
+            GRAPHICS_IIDX_WSUB_Y = result.second;
         } else {
             log_warning("graphics-windowed", "failed to parse -wsubpos");
         }

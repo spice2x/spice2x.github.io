@@ -35,6 +35,7 @@ extern UINT GRAPHICS_FORCE_REFRESH;
 extern std::optional<int> GRAPHICS_FORCE_VSYNC_BUFFER;
 extern bool GRAPHICS_FORCE_SINGLE_ADAPTER;
 extern bool GRAPHICS_PREVENT_SECONDARY_WINDOW;
+extern std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_FS_CUSTOM_RESOLUTION;
 
 extern graphics_dx9on12_state GRAPHICS_9_ON_12_STATE;
 extern bool GRAPHICS_9_ON_12_REQUESTED_BY_GAME;
