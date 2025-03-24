@@ -442,6 +442,9 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/qks/qks.cpp
         games/qks/io.cpp
         games/qks/bi2x_hook.cpp
+        games/mfg/mfg.cpp
+        games/mfg/io.cpp
+        games/mfg/bi2a_hook.cpp
 
         # hooks
         hooks/audio/audio.cpp
@@ -587,6 +590,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         util/sysutils.cpp
         util/lz77.cpp
         util/tapeled.cpp
+        util/execexe.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${SOURCE_FILES})

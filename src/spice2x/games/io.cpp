@@ -35,6 +35,7 @@
 #include "bc/io.h"
 #include "ccj/io.h"
 #include "qks/io.h"
+#include "mfg/io.h"
 
 namespace games {
 
@@ -305,6 +306,13 @@ namespace games {
         buttons.insert({ qks, qks::get_buttons() });
         buttons_help.insert({ qks, qks::get_buttons_help() });
         file_hints[qks].emplace_back("game/uks.exe");
+
+        // Mahjong Fight Girl
+        const std::string mfg("Mahjong Fight Girl");
+        games.push_back(mfg);
+        buttons.insert({ mfg, mfg::get_buttons() });
+        buttons_help.insert({ mfg, mfg::get_buttons_help() });
+        file_hints[mfg].emplace_back("game/MFGClient_Data");
     }
 
     const std::vector<std::string> &get_games() {

@@ -4,8 +4,9 @@
 #include "rawinput/rawinput.h"
 #include "util/utils.h"
 
-acioemu::ACIOHandle::ACIOHandle(LPCWSTR lpCOMPort) {
+acioemu::ACIOHandle::ACIOHandle(LPCWSTR lpCOMPort, uint8_t iccaNodeCount) {
     this->com_port = lpCOMPort;
+    this->icca_node_count = iccaNodeCount;
 }
 
 bool acioemu::ACIOHandle::open(LPCWSTR lpFileName) {
@@ -16,7 +17,7 @@ bool acioemu::ACIOHandle::open(LPCWSTR lpFileName) {
     log_info("acioemu", "Opened {} (ACIO)", ws2s(com_port));
 
     // ACIO device
-    acio_emu.add_device(new acioemu::ICCADevice(false, true, 2));
+    acio_emu.add_device(new acioemu::ICCADevice(false, true, icca_node_count));
 
     return true;
 }
