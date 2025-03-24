@@ -59,7 +59,7 @@ namespace games::mfg {
         if (!MFG_NO_IO) {
             // insert BI2* hooks
             if (MFG_CABINET_TYPE == "UKS") {
-                log_warning("mfg", "UKS io is not supported");
+                log_fatal("mfg", "UKS io is not supported");
             } else {
                 bi2a_hook_init();
             }
