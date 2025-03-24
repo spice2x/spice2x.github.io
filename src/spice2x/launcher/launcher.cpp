@@ -59,6 +59,7 @@
 #include "games/ccj/ccj.h"
 #include "games/ccj/trackball.h"
 #include "games/qks/qks.h"
+#include "games/mfg/mfg.h"
 #include "games/museca/museca.h"
 #include "hooks/avshook.h"
 #include "hooks/audio/audio.h"
@@ -213,6 +214,7 @@ int main_implementation(int argc, char *argv[]) {
     bool attach_bc = false;
     bool attach_ccj = false;
     bool attach_qks = false;
+    bool attach_mfg = false;
     bool attach_museca = false;
 
     // misc settings
@@ -601,6 +603,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::LoadQKSModule].value_bool()) {
         attach_qks = true;
+    }
+    if (options[launcher::Options::LoadMFGModule].value_bool()) {
+        attach_mfg = true;
     }
     if (options[launcher::Options::LoadMusecaModule].value_bool()) {
         attach_museca = true;
@@ -1027,6 +1032,15 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::QKSArgs].is_active()) {
         games::qks::QKS_INJECT_ARGS = options[launcher::Options::QKSArgs].value_text();
+    }
+    if (options[launcher::Options::MFGArgs].is_active()) {
+        games::mfg::MFG_INJECT_ARGS = options[launcher::Options::MFGArgs].value_text();
+    }
+    if (options[launcher::Options::MFGCabType].is_active()) {
+        games::mfg::MFG_CABINET_TYPE = options[launcher::Options::MFGCabType].value_text();
+    }
+    if (options[launcher::Options::MFGNoIO].is_active()) {
+        games::mfg::MFG_NO_IO = options[launcher::Options::MFGNoIO].value_bool();
     }
     if (options[launcher::Options::spice2x_EnableSMXStage].value_bool()) {
         rawinput::ENABLE_SMX_STAGE = true;
@@ -1589,6 +1603,19 @@ int main_implementation(int argc, char *argv[]) {
                 break;
             }
 
+            // Mahjong Fight Girl
+            if (check_dll("kamunity.dll") && fileutils::dir_exists("game/MFGClient_Data")) {
+                avs::game::DLL_NAME = "kamunity.dll";
+                attach_io = true;
+                attach_mfg = true;
+                launcher::signal::USE_VEH_WORKAROUND = true;
+                // automatically show cursor when no touchscreen is available
+                if (!is_touch_available()) {
+                    GRAPHICS_SHOW_CURSOR = true;
+                }
+                break;
+            }
+
             // Busou Shinki: Armored Princess Battle Conductor
             if (check_dll("kamunity.dll") && fileutils::file_exists("game/bsac_app.exe")) {
                 avs::game::DLL_NAME = "kamunity.dll";
@@ -1739,6 +1766,10 @@ int main_implementation(int argc, char *argv[]) {
     if (attach_qks) {
         avs::core::set_default_heap_size("kamunity.dll");
         games.push_back(new games::qks::QKSGame());
+    }
+    if (attach_mfg) {
+        avs::core::set_default_heap_size("kamunity.dll");
+        games.push_back(new games::mfg::MFGGame());
     }
 
     // apply user heap size, if defined

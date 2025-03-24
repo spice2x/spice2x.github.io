@@ -653,6 +653,8 @@ void eamuse_autodetect_game() {
         eamuse_set_game("Chase Chase Jokers");
     else if (avs::game::is_model("UKS"))
         eamuse_set_game("QuizKnock STADIUM");
+    else if (avs::game::is_model("VFG"))
+        eamuse_set_game("Mahjong Fight Girl");
     else {
         log_warning("eamuse", "unknown game model: {}", avs::game::MODEL);
         eamuse_set_game("unknown");

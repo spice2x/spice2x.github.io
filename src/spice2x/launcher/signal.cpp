@@ -27,6 +27,7 @@ namespace launcher::signal {
 
     // settings
     bool DISABLE = false;
+    bool USE_VEH_WORKAROUND = false;
 }
 
 #define V(variant) case variant: return #variant
@@ -167,7 +168,7 @@ static LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter_hook(
 static PVOID WINAPI AddVectoredExceptionHandler_hook(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
     log_info("signal", "AddVectoredExceptionHandler hook hit");
 
-    return nullptr;
+    return launcher::signal::USE_VEH_WORKAROUND ? INVALID_HANDLE_VALUE : nullptr;
 }
 
 void launcher::signal::attach() {

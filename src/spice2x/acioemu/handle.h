@@ -9,10 +9,12 @@ namespace acioemu {
     private:
         LPCWSTR com_port;
 
+        uint8_t icca_node_count;
+
         acioemu::ACIOEmu acio_emu;
 
     public:
-        ACIOHandle(LPCWSTR lpCOMPort);
+        ACIOHandle(LPCWSTR lpCOMPort, uint8_t iccaNodeCount = 2);
 
         bool open(LPCWSTR lpFileName) override;
 

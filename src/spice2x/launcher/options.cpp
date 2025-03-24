@@ -1007,6 +1007,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // LoadMFGModule
+        .title = "Force Load Mahjong Fight Girl",
+        .name = "mfg",
+        .desc = "manually enable Mahjong Fight Girl module",
+        .type = OptionType::Bool,
+        .game_name = "Mahjong Fight Girl",
+        .category = "Game Options (Advanced)",
+    },
+    {
         // LoadMusecaModule
         .title = "Force Load Museca",
         .name = "museca",
@@ -1670,6 +1679,39 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "(0-255)",
         .game_name = "Chase Chase Jokers",
         .category = "Game Options",
+    },
+    {
+        .title = "MFG Arguments Override",
+        .name = "mfgargs",
+        .desc = "Command line arguments passed to the game.",
+        .type = OptionType::Text,
+        .setting_name = "",
+        .game_name = "Mahjong Fight Girl",
+        .category = "Game Options (Advanced)",
+    },
+    {
+        .title = "MFG Cabinet Type",
+        .name = "mfgcabtype",
+        .desc = "MFG Cabinet Type. Default is HG.",
+        .type = OptionType::Enum,
+        .setting_name = "",
+        .game_name = "Mahjong Fight Girl",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"HG", "HG"},
+            {"B", "B"},
+            {"C", "C"},
+            {"UKS", "UKS"},
+        },
+    },
+    {
+        .title = "MFG Disable IO Emulation",
+        .name = "mfgnoio",
+        .desc = "Disables BI2X hooks for MFG",
+        .type = OptionType::Bool,
+        .setting_name = "",
+        .game_name = "Mahjong Fight Girl",
+        .category = "Game Options (Advanced)"
     },
     {
         // spice2x_LightsOverallBrightness

@@ -107,6 +107,8 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
                 (avs::game::is_model("KFC") && (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H'))
             ) {
                 this->set_version(msg, 0x3, 0, 1, 7, 0, "ICCA");
+            } else if (avs::game::is_model({"VFG"})) {
+                this->set_version(msg, 0x3, 0, 1, 7, 0, "ICCB");
             } else {
                 this->set_version(msg, 0x3, 0, 1, 6, 0, "ICCA");
             }
@@ -333,6 +335,7 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
         case ACIO_CMD_CLEAR:
         case 0x30: // GetBoardProductNumber
         case 0x31: // GetMicomInfo
+        case 0x3A: // ???
         case 0x0116: // ???
         case 0x0120: // ???
         case 0xFF: // BROADCAST
