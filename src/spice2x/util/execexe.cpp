@@ -99,15 +99,18 @@ namespace execexe {
         std::wstring module_name_w = s2ws(module_name);
         std::wstring plugin_path = plugins_dir + module_name_w;
         HMODULE module = execexe_LoadLibraryW(plugin_path.c_str());
-        if (module != nullptr)
+        if (module != nullptr) {
             return module;
+        }
 
         module = execexe_LoadLibraryW(module_name_w.c_str());
-        if (module != nullptr)
+        if (module != nullptr) {
             return module;
+        }
 
-        if (fatal)
+        if (fatal) {
             log_fatal("execexe", "failed to load library {}", module_name);
+        }
 
         return nullptr;
     }
@@ -117,26 +120,31 @@ namespace execexe {
         std::wstring plugin_path = plugins_dir + module_name_w;
 
         HMODULE module = execexe_GetModuleHandleW(plugin_path.c_str());
-        if (module != nullptr)
+        if (module != nullptr) {
             return module;
+        }
 
         module = execexe_GetModuleHandleW(module_name_w.c_str());
-        if (module != nullptr)
+        if (module != nullptr) {
             return module;
+        }
 
-        if (fatal)
+        if (fatal) {
             log_fatal("execexe", "failed to get module {}", module_name);
+        }
 
         return nullptr;
     }
 
     FARPROC get_proc(HMODULE module, const char *proc_name, bool fatal) {
         FARPROC proc = execexe_GetProcAddress(module, proc_name);
-        if (proc != nullptr)
+        if (proc != nullptr) {
             return proc;
+        }
 
-        if (fatal)
+        if (fatal) {
             log_fatal("execexe", "proc {} not found", proc_name);
+        }
 
         return nullptr;
     }
@@ -154,12 +162,14 @@ namespace execexe {
 
     bool trampoline_try(const char *dll, const char *func, void *hook, void **orig) {
         HMODULE module = get_module(dll, false);
-        if (module == nullptr)
+        if (module == nullptr) {
             return false;
+        }
 
         FARPROC proc = get_proc(module, func, false);
-        if (proc == nullptr)
+        if (proc == nullptr) {
             return false;
+        }
 
         return detour::trampoline(
                 reinterpret_cast<void *>(proc),
