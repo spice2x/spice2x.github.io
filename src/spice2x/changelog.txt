@@ -1,3 +1,7 @@
+03/25/2025 [spice2x]
+    Add Mahjong Fight Girl support
+    Add option for custom full screen resolution (-forceres)
+
 03/24/2025 [spice2x]
     Auto PIN entry
     Multiple scenes for image resize
