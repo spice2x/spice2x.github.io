@@ -27,8 +27,9 @@ namespace launcher {
             CaptureCursor,
             ShowCursor,
             DisplayAdapter,
-            GraphicsForceRefresh,
             GraphicsForceSingleAdapter,
+            GraphicsForceRefresh,
+            FullscreenResolution,
             Graphics9On12,
             spice2x_Dx9On12,
             NoLegacy,
@@ -224,7 +225,6 @@ namespace launcher {
             MidiNoteSustain,
             NostalgiaPoke,
             ForceBackBufferCount,
-            FullscreenResolution,
         };
 
         enum class OptionsCategory {
