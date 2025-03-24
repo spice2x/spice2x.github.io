@@ -1708,7 +1708,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Enum,
         .setting_name = "",
         .game_name = "Mahjong Fight Girl",
-        .category = "Game Options (Advanced)",
+        .category = "Game Options",
         .elements = {
             {"HG", "HG"},
             {"B", "B"},

@@ -11,7 +11,6 @@ std::vector<Button> &games::mfg::get_buttons() {
                 "Service",
                 "Test",
                 "Coin Mech"
-                //"Action Button"
         );
     }
 

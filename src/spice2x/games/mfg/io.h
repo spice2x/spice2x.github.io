@@ -8,8 +8,7 @@ namespace games::mfg {
         enum {
             Service,
             Test,
-            CoinMech,
-            ActionButton
+            CoinMech
         };
     }
 
