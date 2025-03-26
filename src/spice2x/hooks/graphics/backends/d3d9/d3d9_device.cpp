@@ -718,7 +718,37 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     const int rectTop = 576;
     const int w = param.BackBufferWidth;
     const int h = param.BackBufferHeight;
+    
     D3DLOCKED_RECT rect;
+    HRESULT hr;
+    topSurface->LockRect(&rect, NULL, D3DLOCK_DONOTWAIT);
+    if (GRAPHICS_FS_FORCE_LANDSCAPE) {
+        const int w_new = h * 9 / 16;
+        const int x_new = rectLeft + ((w - w_new) / 2);
+        RECT originRect {
+            x_new,
+            rectTop,
+            (LONG)(x_new + w_new),
+            (LONG)(rectTop + h),
+        };
+        hr = pReal->StretchRect(
+            backbuffer, nullptr,
+            topSurface, &originRect,
+            D3DTEXF_LINEAR);
+        if (hr != D3D_OK) {
+            log_misc("graphics::d3d9", "StretchRect backbuffer failed (forced landscape)");
+        }
+    } else {
+        // stretch to add top/left offset to avoid going negative
+        hr = pReal->StretchRect(
+            backbuffer, nullptr,
+            topSurface, nullptr,
+            D3DTEXF_LINEAR);
+        if (hr != D3D_OK) {
+            log_misc("graphics::d3d9", "StretchRect backbuffer failed");
+        }
+    }
+    topSurface->UnlockRect();
 
     RECT targetRect {
         rectLeft,
@@ -727,44 +757,38 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
         (LONG)(rectTop + h),
     };
 
-    // stretch to add top/left offset to avoid going negative
-    topSurface->LockRect(&rect, NULL, D3DLOCK_DONOTWAIT);
-    auto hr = pReal->StretchRect(
-        backbuffer, nullptr,
-        topSurface, &targetRect,
-        D3DTEXF_LINEAR);
-
-    if (hr != D3D_OK) {
-        log_misc("graphics::d3d9", "StretchRect backbuffer failed");
-    }
-    topSurface->UnlockRect();
-
     // do the actual zoom / offset math
-    auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
-    if (scene.centered) {
-        targetRect.right = (w + rectLeft) / scene.scale_x;
-        targetRect.bottom = (h + rectTop) / scene.scale_y;
-        const LONG deltaH = ((targetRect.bottom - targetRect.top) - h) / 2;
-        const LONG deltaW = ((targetRect.right - targetRect.left) - w) / 2;
-        targetRect.top -= deltaH;
-        targetRect.bottom -= deltaH;
-        targetRect.left -= deltaW;
-        targetRect.right -= deltaW;
-    } else {
-        targetRect.left -= scene.offset_x;
-        targetRect.top += scene.offset_y;
-        targetRect.right = -scene.offset_x;
-        targetRect.right += (w + rectLeft) / scene.scale_x;
-        targetRect.bottom = scene.offset_y;
-        targetRect.bottom += (h + rectTop) / scene.scale_y;
+    if (cfg::SCREENRESIZE->enable_screen_resize) {
+        auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
+        if (scene.centered) {
+            targetRect.right = (w + rectLeft) / scene.scale_x;
+            targetRect.bottom = (h + rectTop) / scene.scale_y;
+            const LONG deltaH = ((targetRect.bottom - targetRect.top) - h) / 2;
+            const LONG deltaW = ((targetRect.right - targetRect.left) - w) / 2;
+            targetRect.top -= deltaH;
+            targetRect.bottom -= deltaH;
+            targetRect.left -= deltaW;
+            targetRect.right -= deltaW;
+        } else {
+            targetRect.left -= scene.offset_x;
+            targetRect.top += scene.offset_y;
+            targetRect.right = -scene.offset_x;
+            targetRect.right += (w + rectLeft) / scene.scale_x;
+            targetRect.bottom = scene.offset_y;
+            targetRect.bottom += (h + rectTop) / scene.scale_y;
+        }
     }
 
     // draw to back buffer
     backbuffer->LockRect(&rect, NULL, D3DLOCK_DONOTWAIT);
+    bool use_linear_filter = true;
+    if (cfg::SCREENRESIZE->enable_screen_resize) {
+        use_linear_filter = cfg::SCREENRESIZE->enable_linear_filter;
+    }
     hr = pReal->StretchRect(
         topSurface, &targetRect,
         backbuffer, nullptr,
-        cfg::SCREENRESIZE->enable_linear_filter ? D3DTEXF_LINEAR : D3DTEXF_NONE);
+        use_linear_filter ? D3DTEXF_LINEAR : D3DTEXF_NONE);
     backbuffer->UnlockRect();
     if (hr != D3D_OK) {
         log_misc("graphics::d3d9", "StretchRect targetRect failed");
@@ -774,7 +798,7 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EndScene() {
     WRAP_DEBUG;
 
-    if (cfg::SCREENRESIZE->enable_screen_resize) {
+    if (cfg::SCREENRESIZE->enable_screen_resize || GRAPHICS_FS_FORCE_LANDSCAPE) {
         SurfaceHook(pReal);
     }
 

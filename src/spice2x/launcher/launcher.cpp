@@ -367,15 +367,6 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = false;
     }
 
-    if (options[launcher::Options::FullscreenResolution].is_active()) {
-        std::pair<uint32_t, uint32_t> result;
-        if (parse_width_height(options[launcher::Options::FullscreenResolution].value_text(), result)) {
-            GRAPHICS_FS_CUSTOM_RESOLUTION = result;
-        } else {
-            log_warning("launcher", "failed to parse -forceres");
-        }
-    }
-
     if (options[launcher::Options::spice2x_NvapiProfile].value_bool() && !cfg::CONFIGURATOR_STANDALONE) {
         nvapi::ADD_PROFILE = true;
     }
@@ -448,7 +439,12 @@ int main_implementation(int argc, char *argv[]) {
             games::sdvx::OVERLAY_POS = games::sdvx::SDVX_OVERLAY_TOP;
         } else if (txt == "center") {
             games::sdvx::OVERLAY_POS = games::sdvx::SDVX_OVERLAY_MIDDLE;
+        } else if (txt == "bottomleft") {
+            games::sdvx::OVERLAY_POS = games::sdvx::SDVX_OVERLAY_BOTTOM_LEFT;
+        } else if (txt == "bottomright") {
+            games::sdvx::OVERLAY_POS = games::sdvx::SDVX_OVERLAY_BOTTOM_RIGHT;
         }
+        // else - bottom
     }
     if (options[launcher::Options::spice2x_SDVXSubRedraw].value_bool()) {
         SUBSCREEN_FORCE_REDRAW = true;
@@ -1159,6 +1155,23 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
     log_info("launcher", "arguments:\n{}", arguments.str());
+
+    if (options[launcher::Options::FullscreenResolution].is_active()) {
+        std::pair<uint32_t, uint32_t> result;
+        if (parse_width_height(options[launcher::Options::FullscreenResolution].value_text(), result)) {
+            GRAPHICS_FS_CUSTOM_RESOLUTION = result;
+        } else {
+            log_warning("launcher", "failed to parse -forceres");
+        }
+    }
+
+    if (options[launcher::Options::SDVXFullscreenLandscape].value_bool() && !GRAPHICS_WINDOWED) {
+#if SPICE64
+        GRAPHICS_FS_FORCE_LANDSCAPE = true;
+#else
+        log_warning("launcher", "-sdvxlandscape is not supported in 32-bit SDVX, ignoring...");
+#endif
+    }
 
     // deleted options
     if (options[launcher::Options::OpenKFControl].value_bool()) {

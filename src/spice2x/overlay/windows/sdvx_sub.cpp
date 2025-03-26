@@ -23,11 +23,35 @@ namespace overlay::windows {
 
         const auto padding = ImGui::GetFrameHeight() / 2;
 
-        this->init_size = ImVec2(ImGui::GetIO().DisplaySize.x - (padding * 2), 0.f);
-        this->init_size.y = (this->init_size.x * 9 / 16) + ImGui::GetFrameHeight();
+        switch (games::sdvx::OVERLAY_POS) {
+            case games::sdvx::SDVX_OVERLAY_BOTTOM_LEFT:
+            case games::sdvx::SDVX_OVERLAY_BOTTOM_RIGHT:
+                this->init_size.x = (ImGui::GetIO().DisplaySize.x - (ImGui::GetIO().DisplaySize.y * 9 / 16)) / 2 - padding;
+                this->init_size.y = (this->init_size.x * 9 / 16) + ImGui::GetFrameHeight();
+                break;
+            case games::sdvx::SDVX_OVERLAY_TOP:
+            case games::sdvx::SDVX_OVERLAY_BOTTOM:
+            case games::sdvx::SDVX_OVERLAY_MIDDLE:
+            default:
+                this->init_size = ImVec2(ImGui::GetIO().DisplaySize.x - (padding * 2), 0.f);
+                this->init_size.y = (this->init_size.x * 9 / 16) + ImGui::GetFrameHeight();
+                if (GRAPHICS_FS_FORCE_LANDSCAPE) {
+                    this->init_size.x /= 2;
+                    this->init_size.y /= 2;
+                }
+                break;
+        }
 
         this->init_pos = ImVec2(ImGui::GetIO().DisplaySize.x / 2 - this->init_size.x / 2, 0);
         switch (games::sdvx::OVERLAY_POS) {
+            case games::sdvx::SDVX_OVERLAY_BOTTOM_LEFT:
+                this->init_pos.x = 0;
+                this->init_pos.y = ImGui::GetIO().DisplaySize.y - this->init_size.y;
+                break;
+            case games::sdvx::SDVX_OVERLAY_BOTTOM_RIGHT:
+                this->init_pos.x = ImGui::GetIO().DisplaySize.x - this->init_size.x;
+                this->init_pos.y = ImGui::GetIO().DisplaySize.y - this->init_size.y;
+                break;
             case games::sdvx::SDVX_OVERLAY_TOP:
                 this->init_pos.y = padding;
                 break;

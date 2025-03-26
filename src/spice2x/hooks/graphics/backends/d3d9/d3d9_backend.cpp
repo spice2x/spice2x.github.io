@@ -853,9 +853,13 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     for (size_t i = 0; i < num_adapters; i++) {
         auto *params = &pPresentationParameters[i];
 
-        if (!GRAPHICS_WINDOWED && i == 0 && GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
-            params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
-            params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+        if (!GRAPHICS_WINDOWED && i == 0) {
+            if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+                params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+                params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+            } else if (GRAPHICS_FS_FORCE_LANDSCAPE) {
+                std::swap(params->BackBufferWidth, params->BackBufferHeight);
+            }
         }
 
         log_info("graphics::d3d9",
@@ -882,10 +886,15 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         for (size_t i = 0; i < num_adapters; i++) {
             auto *fullscreen_display_mode = &pFullscreenDisplayMode[i];
 
-            if (!GRAPHICS_WINDOWED && i == 0 && GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
-                fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
-                fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+            if (!GRAPHICS_WINDOWED && i == 0) {
+                if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+                    fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+                    fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+                } else if (GRAPHICS_FS_FORCE_LANDSCAPE) {
+                    std::swap(fullscreen_display_mode->Width, fullscreen_display_mode->Height);
+                }
             }
+            
 
             log_info("graphics::d3d9",
                     "D3D9Ex fullscreen display mode for adapter {}: Width: {}, Height: {}, RefreshRate: {}, "

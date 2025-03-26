@@ -19,6 +19,7 @@ static const std::vector<std::string> CATEGORY_ORDER_BASIC = {
     "Network",
     "Overlay",
     "Graphics (Common)",
+    "Graphics (Full Screen)",
     "Graphics (Windowed)",
     "Audio",
 };
@@ -195,7 +196,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Force the graphics device to be opened utilizing only one adapter in multi-monitor systems.\n\n"
             "May cause unstable framerate and desyncs, especially if monitors have different refresh rates!",
         .type = OptionType::Bool,
-        .category = "Graphics (Common)",
+        .category = "Graphics (Full Screen)",
     },
     {
         .title = "Force Refresh Rate",
@@ -211,10 +212,11 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc =
             "For full screen mode, forcibly set a custom resolution.\n\n"
             "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
+            "If you are using -landscape, put the TARGET monitor resolution in this field.\n\n"
             "This should only be used as last resort if your GPU/monitor can't display the resolution required by the game",
         .type = OptionType::Text,
         .setting_name = "1280,720",
-        .category = "Graphics (Common)"
+        .category = "Graphics (Full Screen)"
     },
     {
         // Graphics9On12
@@ -745,7 +747,13 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Enum,
         .game_name = "Sound Voltex",
         .category = "Overlay",
-        .elements = {{"top", ""}, {"center", ""}, {"bottom", ""}},
+        .elements = {
+            {"top", ""},
+            {"center", ""},
+            {"bottom", ""},
+            {"bottomleft", "for landscape"},
+            {"bottomright", "for landscape"},
+        },
     },
     {
         // spice2x_SDVXSubRedraw
@@ -2024,6 +2032,19 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Game Options",
+    },
+    {
+        // SDVXFullscreenLandscape
+        .title = "SDVX Landscape Mode (SDVX5+)",
+        .name = "sdvxlandscape",
+        .desc =
+            "Allows you to play in landscape by transposing resolution and applying image scaling.\n\n"
+            "Only for SDVX5 and above!\n\n"
+            "Can also be combined with -forceres option to render at larger or smaller resolution, "
+            "and with image resize option to zoom into certain areas of the screen",
+        .type = OptionType::Bool,
+        .game_name = "Sound Voltex",
+        .category = "Game Options"
     },
     {
         // spice2x_EnableSMXStage
