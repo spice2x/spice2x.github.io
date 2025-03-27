@@ -222,6 +222,7 @@ namespace launcher {
             spice2x_NoNVAPI,
             spice2x_NoD3D9DeviceHook,
             spice2x_SDVXNoSub,
+            SDVXFullscreenLandscape,
             spice2x_EnableSMXStage,
             spice2x_EnableSMXDedicab,
             IIDXRecQuality,
