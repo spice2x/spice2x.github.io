@@ -51,7 +51,6 @@ namespace overlay::windows {
         for (size_t i = 0; i < std::size(cfg::SCREENRESIZE->scene_settings); i++) {
             auto& scene = cfg::SCREENRESIZE->scene_settings[i];
             scene.keep_aspect_ratio = true;
-            scene.centered = true;
             scene.offset_x = 0;
             scene.offset_y = 0;
             scene.scale_x = 1.f;
@@ -126,21 +125,18 @@ namespace overlay::windows {
         auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
 
         // general settings
-        ImGui::Checkbox("Centered", &scene.centered);
-        if (!scene.centered) {
-            ImGui::InputInt("X Offset", &scene.offset_x);
-            ImGui::InputInt("Y Offset", &scene.offset_y);
-        }
+        ImGui::InputInt("X Offset", &scene.offset_x);
+        ImGui::InputInt("Y Offset", &scene.offset_y);
 
         // aspect ratio
         ImGui::Checkbox("Keep Aspect Ratio", &scene.keep_aspect_ratio);
         if (scene.keep_aspect_ratio) {
-            if (ImGui::SliderFloat("Scale", &scene.scale_x, 0.65f, 2.0f)) {
+            if (ImGui::SliderFloat("Scale", &scene.scale_x, 0.65f, 3.0f)) {
                 scene.scale_y = scene.scale_x;
             }
         } else {
-            ImGui::SliderFloat("Width Scale", &scene.scale_x, 0.65f, 2.0f);
-            ImGui::SliderFloat("Height Scale", &scene.scale_y, 0.65f, 2.0f);
+            ImGui::SliderFloat("Width Scale", &scene.scale_x, 0.65f, 3.0f);
+            ImGui::SliderFloat("Height Scale", &scene.scale_y, 0.65f, 3.0f);
         }
 
         ImGui::EndDisabled();

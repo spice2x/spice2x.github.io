@@ -20,7 +20,6 @@ namespace cfg {
         float scale_x = 1.0;
         float scale_y = 1.0;
         bool keep_aspect_ratio = true;
-        bool centered = true;
     };
 
     extern std::optional<std::string> SCREEN_RESIZE_CFG_PATH_OVERRIDE;

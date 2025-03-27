@@ -2040,8 +2040,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc =
             "Allows you to play in landscape by transposing resolution and applying image scaling.\n\n"
             "Only for SDVX5 and above!\n\n"
-            "Can also be combined with -forceres option to render at larger or smaller resolution, "
-            "and with image resize option to zoom into certain areas of the screen",
+            "Will launch at 1080p by default; strongly consider combining this with -forceres option to render at monitor native resolution"
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Game Options"
