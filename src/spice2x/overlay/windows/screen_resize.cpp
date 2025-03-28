@@ -126,17 +126,27 @@ namespace overlay::windows {
 
         // general settings
         ImGui::InputInt("X Offset", &scene.offset_x);
+        ImGui::SameLine();
+        ImGui::HelpMarker("Hint: ctrl + click on +/- buttons to move quickly.");
         ImGui::InputInt("Y Offset", &scene.offset_y);
+        ImGui::SameLine();
+        ImGui::HelpMarker("Hint: ctrl + click on +/- buttons to move quickly.");
 
         // aspect ratio
         ImGui::Checkbox("Keep Aspect Ratio", &scene.keep_aspect_ratio);
         if (scene.keep_aspect_ratio) {
-            if (ImGui::SliderFloat("Scale", &scene.scale_x, 0.65f, 3.0f)) {
+            if (ImGui::SliderFloat("Scale", &scene.scale_x, 0.5f, 2.5f)) {
                 scene.scale_y = scene.scale_x;
             }
+            ImGui::SameLine();
+            ImGui::HelpMarker("Hint: ctrl + click on the slider to type in a numeric value.");
         } else {
-            ImGui::SliderFloat("Width Scale", &scene.scale_x, 0.65f, 3.0f);
-            ImGui::SliderFloat("Height Scale", &scene.scale_y, 0.65f, 3.0f);
+            ImGui::SliderFloat("Width Scale", &scene.scale_x, 0.5f, 2.5f);
+            ImGui::SameLine();
+            ImGui::HelpMarker("Hint: ctrl + click on the slider to type in a numeric value.");
+            ImGui::SliderFloat("Height Scale", &scene.scale_y, 0.5f, 2.5f);
+            ImGui::SameLine();
+            ImGui::HelpMarker("Hint: ctrl + click on the slider to type in a numeric value.");
         }
 
         ImGui::EndDisabled();

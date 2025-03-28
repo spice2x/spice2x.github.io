@@ -681,10 +681,27 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
     // dump presentation parameters
     for (size_t i = 0; i < num_adapters; i++) {
         auto *params = &pPresentationParameters[i];
-
-        if (!GRAPHICS_WINDOWED && i == 0 && GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
-            params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
-            params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+        if (!GRAPHICS_WINDOWED && i == 0) {
+            GRAPHICS_FS_ORIGINAL_WIDTH = params->BackBufferWidth;
+            GRAPHICS_FS_ORIGINAL_HEIGHT = params->BackBufferHeight;
+            log_misc("graphics::d3d9", "original resolution: {}x{}", GRAPHICS_FS_ORIGINAL_WIDTH, GRAPHICS_FS_ORIGINAL_HEIGHT);
+            if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+                log_misc(
+                    "graphics::d3d9",
+                    "use custom resolution {}x{} => {}x{}",
+                    params->BackBufferWidth, params->BackBufferHeight,
+                    GRAPHICS_FS_CUSTOM_RESOLUTION.value().first,
+                    GRAPHICS_FS_CUSTOM_RESOLUTION.value().second);
+                params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+                params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+            } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
+                log_misc(
+                    "graphics::d3d9",
+                    "swap full orientation {}x{} => {}x{}",
+                    params->BackBufferWidth, params->BackBufferHeight,
+                    params->BackBufferHeight, params->BackBufferWidth);
+                std::swap(params->BackBufferWidth, params->BackBufferHeight);
+            }
         }
 
         log_info("graphics::d3d9",
@@ -852,12 +869,25 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
     for (size_t i = 0; i < num_adapters; i++) {
         auto *params = &pPresentationParameters[i];
-
         if (!GRAPHICS_WINDOWED && i == 0) {
+            GRAPHICS_FS_ORIGINAL_WIDTH = params->BackBufferWidth;
+            GRAPHICS_FS_ORIGINAL_HEIGHT = params->BackBufferHeight;
+            log_misc("graphics::d3d9", "original resolution: {}x{}", GRAPHICS_FS_ORIGINAL_WIDTH, GRAPHICS_FS_ORIGINAL_HEIGHT);
             if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+                log_misc(
+                    "graphics::d3d9",
+                    "use custom resolution {}x{} => {}x{}",
+                    params->BackBufferWidth, params->BackBufferHeight,
+                    GRAPHICS_FS_CUSTOM_RESOLUTION.value().first,
+                    GRAPHICS_FS_CUSTOM_RESOLUTION.value().second);
                 params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
                 params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
-            } else if (GRAPHICS_FS_FORCE_LANDSCAPE) {
+            } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
+                log_misc(
+                    "graphics::d3d9",
+                    "swap full orientation {}x{} => {}x{}",
+                    params->BackBufferWidth, params->BackBufferHeight,
+                    params->BackBufferHeight, params->BackBufferWidth);
                 std::swap(params->BackBufferWidth, params->BackBufferHeight);
             }
         }
@@ -890,11 +920,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
                 if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
                     fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
                     fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
-                } else if (GRAPHICS_FS_FORCE_LANDSCAPE) {
+                } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
                     std::swap(fullscreen_display_mode->Width, fullscreen_display_mode->Height);
                 }
             }
-            
 
             log_info("graphics::d3d9",
                     "D3D9Ex fullscreen display mode for adapter {}: Width: {}, Height: {}, RefreshRate: {}, "

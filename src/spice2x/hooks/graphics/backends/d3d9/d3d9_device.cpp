@@ -695,6 +695,7 @@ static IDirect3DTexture9* tex;
 
 static UINT topSurface_width = 0;
 static UINT topSurface_height = 0;
+static float topSurface_aspect_ratio = 1.f;
 
 void SurfaceHook(IDirect3DDevice9 *pReal) {
     D3DPRESENT_PARAMETERS param {};
@@ -708,25 +709,28 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     //
     //           (only done once)
     if (!topSurface) {
-        topSurface_width = param.BackBufferWidth * 2;
-        topSurface_height = param.BackBufferHeight * 2;
+        topSurface_width = param.BackBufferWidth * 3;
+        topSurface_height = param.BackBufferHeight * 3;
+        topSurface_aspect_ratio = (float)topSurface_width / (float)topSurface_height;
         if (pReal->CreateTexture(topSurface_width, topSurface_height, 1,
             D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8,
             D3DPOOL_DEFAULT, &tex, NULL) != D3D_OK) {
             log_warning("graphics::d3d9", "SurfaceHook - create texture failed");
         }
-        log_misc("graphics::d3d9", "SurfaceHook - Backbuffer: {} {} {}",
-                 param.BackBufferWidth, param.BackBufferHeight, param.BackBufferCount);
-        tex->GetSurfaceLevel(0, &topSurface);
 
+        log_misc(
+            "graphics::d3d9", "SurfaceHook - Backbuffer: {} {} {}",
+            param.BackBufferWidth, param.BackBufferHeight, param.BackBufferCount);
+
+        tex->GetSurfaceLevel(0, &topSurface);
         if (mSwapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backbuffer) != D3D_OK) {
             log_warning("graphics::d3d9", "SurfaceHook - GetBackBuffer failed");
         }
     }
 
     // pre-calculate dimensions used for phase 1
-    const int rectLeft = (topSurface_width / 2) - (param.BackBufferWidth / 2);
-    const int rectTop = (topSurface_height / 2) - (param.BackBufferHeight / 2);
+    const int rectLeft = param.BackBufferWidth;
+    const int rectTop = param.BackBufferHeight;
     const int w = param.BackBufferWidth;
     const int h = param.BackBufferHeight;
     
@@ -735,9 +739,8 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     topSurface->LockRect(&rect, NULL, D3DLOCK_DONOTWAIT);
 
     // phase 1 - copy the original back buffer onto the new surface.
-    //           normally, we draw it 1:1 in the center of the surface.
-    //           if force-portrait-to-landscape mode is on, then squish the image and then draw in
-    //           center.
+    //           we draw it 1:1 in the center of the surface.
+    //           if orientation is swapped, fix up the rect and draw it in the center.
     //
     //           for this phase we always render with the same rect so that it's always overwritten
     //           by a new frame on the same spot.
@@ -747,32 +750,30 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
         (LONG)(rectLeft + w),
         (LONG)(rectTop + h),
     };
-    D3DTEXTUREFILTERTYPE originFilter = D3DTEXF_NONE;
-    if (GRAPHICS_FS_FORCE_LANDSCAPE) {
-        const int w_new = h * 9 / 16;
-        const int x_new = rectLeft + ((w - w_new) / 2);
-        originRect = {
-            x_new,
-            rectTop,
-            (LONG)(x_new + w_new),
-            (LONG)(rectTop + h),
-        };
-        originFilter = D3DTEXF_LINEAR;
+    if (GRAPHICS_FS_ORIENTATION_SWAP) {
+        originRect.left = (topSurface_width / 2) - (GRAPHICS_FS_ORIGINAL_WIDTH / 2);
+        originRect.top = (topSurface_height / 2) - (GRAPHICS_FS_ORIGINAL_HEIGHT / 2);
+        originRect.right = originRect.left + GRAPHICS_FS_ORIGINAL_WIDTH;
+        originRect.bottom = originRect.top + GRAPHICS_FS_ORIGINAL_HEIGHT;
     }
 
-    // log_misc("graphics::d3d9", "originRect: {} {} {} {}",
+    // log_misc(
+    //     "graphics::d3d9", "originRect: {} {} {} {}",
     //     originRect.left, originRect.top, originRect.right, originRect.bottom);
 
     hr = pReal->StretchRect(
             backbuffer, nullptr,
             topSurface, &originRect,
-            originFilter);
+            D3DTEXF_LINEAR);
     if (hr != D3D_OK) {
-        log_warning("graphics::d3d9", "SurfaceHook - StretchRect backbuffer failed");
+        log_warning(
+            "graphics::d3d9",
+            "SurfaceHook - StretchRect backbuffer failed, rect: {} {} {} {}",
+            originRect.left, originRect.top, originRect.right, originRect.bottom);
     }
     topSurface->UnlockRect();
 
-    // phase 2 - do the actual zoom / offset math
+    // phase 2 - viewport calculation - do the actual zoom / offset math
     //           figure out what region of the surface to copy back to the back buffer.
     RECT targetRect {
         rectLeft,
@@ -782,8 +783,20 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     };
     if (cfg::SCREENRESIZE->enable_screen_resize) {
         auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
-        const auto w_new = w / scene.scale_x;
-        const auto h_new = h / scene.scale_y;
+        auto w_new = w / scene.scale_x;
+        auto h_new = h / scene.scale_y;
+
+        // make sure the scaling is within bounds
+        if (cfg::SCREENRESIZE->client_keep_aspect_ratio) {
+            if (w_new > topSurface_width || h_new > topSurface_height) {
+                w_new = topSurface_width;
+                h_new = topSurface_height;
+            }
+        } else {
+            w_new = MIN(w_new, topSurface_width);
+            h_new = MIN(h_new, topSurface_height);
+        }
+
         targetRect.left = (topSurface_width / 2) - (w_new / 2) - scene.offset_x;
         targetRect.top = (topSurface_height / 2) - (h_new / 2) - scene.offset_y;
         targetRect.right = targetRect.left + w_new;
@@ -801,13 +814,36 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
             targetRect.top = 0;
             targetRect.bottom = h_new;
         } else if (targetRect.bottom > (LONG)topSurface_height) {
-            targetRect.top = topSurface_height - w_new;
+            targetRect.top = topSurface_height - h_new;
             targetRect.bottom = topSurface_height;
         }
 
-        // log_misc("graphics::d3d9", "targetRect: {} {} {} {}",
-        //     targetRect.left, targetRect.top, targetRect.right, targetRect.bottom);
+    } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
+        // increase the viewport to fit the image on screen (effectively, zoom out a little)
+        if (GRAPHICS_FS_ORIGINAL_WIDTH < GRAPHICS_FS_ORIGINAL_HEIGHT) {
+            // portrait game on landscape display
+            // height should match the original image
+            targetRect.top = originRect.top;
+            targetRect.bottom = originRect.bottom;
+
+            // width of viewport should be wider, effectively shrinking the image on x-axis when rendered
+            const auto w_new = GRAPHICS_FS_ORIGINAL_HEIGHT * topSurface_aspect_ratio;
+            targetRect.left = (topSurface_width / 2) - (w_new / 2);
+            targetRect.right = targetRect.left + w_new;
+        } else {
+            // landscape game on portrait display
+            targetRect.left = originRect.left;
+            targetRect.right = originRect.right;
+
+            // height of viewport should be taller, effectively shrinking the image on y-axis when rendered
+            const auto h_new = GRAPHICS_FS_ORIGINAL_WIDTH / topSurface_aspect_ratio;
+            targetRect.top = (topSurface_height / 2) - (h_new / 2);
+            targetRect.bottom = targetRect.top + h_new;
+        }
     }
+
+    // log_misc("graphics::d3d9", "targetRect: {} {} {} {}",
+    //     targetRect.left, targetRect.top, targetRect.right, targetRect.bottom);
 
     // phase 3 - draw the surface to back buffer
     backbuffer->LockRect(&rect, NULL, D3DLOCK_DONOTWAIT);
@@ -823,14 +859,15 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     if (hr != D3D_OK) {
         log_warning(
             "graphics::d3d9",
-            "SurfaceHook - StretchRect targetRect failed, you must reset image scaling to default values!");
+            "SurfaceHook - StretchRect targetRect failed, you must reset image scaling to default values! rect: {} {} {} {}",
+            targetRect.left, targetRect.top, targetRect.right, targetRect.bottom);
     }
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EndScene() {
     WRAP_DEBUG;
 
-    if (cfg::SCREENRESIZE->enable_screen_resize || GRAPHICS_FS_FORCE_LANDSCAPE) {
+    if (cfg::SCREENRESIZE->enable_screen_resize || GRAPHICS_FS_ORIENTATION_SWAP) {
         SurfaceHook(pReal);
     }
 
