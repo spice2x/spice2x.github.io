@@ -2634,7 +2634,7 @@ namespace overlay::windows {
                 if (option.disabled || definition.disabled) {
                     ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
                 } else {
-                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "%s", definition.title.c_str());
+                    ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", definition.title.c_str());
                 }
             } else if (definition.hidden
             || (!definition.game_name.empty() && definition.game_name != this->games_selected_name)) {
