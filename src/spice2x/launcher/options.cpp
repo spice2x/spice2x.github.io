@@ -220,7 +220,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // FullscreenOrientationFlip
-        .title = "Force Full Screen Orientation Swap",
+        .title = "Full Screen Orientation Swap",
         .name = "forceresswap",
         .desc =
             "Allows you to play portrait games in in landscape (and vice versa) by transposing resolution and applying image scaling.\n\n"
