@@ -651,7 +651,7 @@ namespace overlay::windows {
                     ImGui::TableNextColumn();
                     if (!patch.caution.empty()) {
                         ImGui::AlignTextToFramePadding();
-                        ImGui::WarnMarker(nullptr, patch.caution.c_str());
+                        ImGui::WarnMarker(patch.description.c_str(), patch.caution.c_str());
                     } else {
                         ImGui::DummyMarker();
                     }
