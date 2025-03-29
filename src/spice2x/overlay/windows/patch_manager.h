@@ -142,6 +142,7 @@ namespace overlay::windows {
             std::function<bool(const PatchData&)> filter = std::function<bool(const PatchData&)>(),
             std::string pe_identifier_for_patch = "");
 
+        void show_patch_tooltip(const PatchData& patch);
     };
 
     PatchStatus is_patch_active(PatchData &patch);
