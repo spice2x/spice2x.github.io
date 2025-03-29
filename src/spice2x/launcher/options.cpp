@@ -219,6 +219,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Full Screen)"
     },
     {
+        // FullscreenOrientationFlip
+        .title = "Full Screen Orientation Swap",
+        .name = "forceresswap",
+        .desc =
+            "Allows you to play portrait games in in landscape (and vice versa) by transposing resolution and applying image scaling.\n\n"
+            "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
+            "Strongly consider combining this with -forceres option to render at monitor native resolution",
+        .type = OptionType::Bool,
+        .category = "Graphics (Full Screen)"
+    },
+    {
         // Graphics9On12
         .title = "DirectX 9 on 12 (DEPRECATED - use -dx9on12 instead)",
         .name = "9on12",
@@ -2039,9 +2050,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sdvxlandscape",
         .desc =
             "Allows you to play in landscape by transposing resolution and applying image scaling.\n\n"
-            "Only for SDVX5 and above!\n\n"
-            "Can also be combined with -forceres option to render at larger or smaller resolution, "
-            "and with image resize option to zoom into certain areas of the screen",
+            "Works only for SDVX5 and above! This is identical to -forceorientation.\n\n"
+            "Will launch at 1080p by default; strongly consider combining this with -forceres option to render at monitor native resolution",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Game Options"

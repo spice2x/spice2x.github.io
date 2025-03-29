@@ -30,6 +30,7 @@ namespace launcher {
             GraphicsForceSingleAdapter,
             GraphicsForceRefresh,
             FullscreenResolution,
+            FullscreenOrientationFlip,
             Graphics9On12,
             spice2x_Dx9On12,
             NoLegacy,

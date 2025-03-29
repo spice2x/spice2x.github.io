@@ -35,7 +35,7 @@ namespace overlay::windows {
             default:
                 this->init_size = ImVec2(ImGui::GetIO().DisplaySize.x - (padding * 2), 0.f);
                 this->init_size.y = (this->init_size.x * 9 / 16) + ImGui::GetFrameHeight();
-                if (GRAPHICS_FS_FORCE_LANDSCAPE) {
+                if (GRAPHICS_FS_ORIENTATION_SWAP) {
                     this->init_size.x /= 2;
                     this->init_size.y /= 2;
                 }
