@@ -1,3 +1,8 @@
+03/29/2025 [spice2x]
+    Add SDVX landscape mode, -forceresswap option
+    Fix bugs in image scaler
+    Configurator UI tweaks
+
 03/25/2025 [spice2x]
     Add Mahjong Fight Girl support
     Add option for custom full screen resolution (-forceres)
