@@ -2630,6 +2630,7 @@ namespace overlay::windows {
             ImGui::PushID(&option);
             ImGui::AlignTextToFramePadding();
             if (option.is_active()) {
+                // active option
                 if (option.disabled || definition.disabled) {
                     ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
                 } else {
@@ -2637,10 +2638,10 @@ namespace overlay::windows {
                 }
             } else if (definition.hidden
             || (!definition.game_name.empty() && definition.game_name != this->games_selected_name)) {
+                // wrong game - grayed out
                 ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", definition.title.c_str());
-            } else if (definition.game_name == this->games_selected_name) {
-                ImGui::TextColored(ImVec4(0.8f, 0, 0.8f, 1.f), "%s", definition.title.c_str());
             } else {
+                // normal text
                 ImGui::Text("%s", definition.title.c_str());
             }
             if (ImGui::IsItemHovered()) {
