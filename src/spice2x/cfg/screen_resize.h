@@ -43,7 +43,6 @@ namespace cfg {
         int8_t screen_resize_current_scene = 0;
         bool enable_linear_filter = true;
         fullscreen_setting scene_settings[4];
-        bool out_of_bounds = false;
 
         // windowed mode sizing
         // Windows terminology:
