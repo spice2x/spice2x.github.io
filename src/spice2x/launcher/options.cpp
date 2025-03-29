@@ -212,7 +212,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc =
             "For full screen mode, forcibly set a custom resolution.\n\n"
             "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
-            "If you are using -sdvxlandscape, put the TARGET monitor resolution in this field.\n\n"
+            "If you are using -forceresswap/-sdvxlandscape, put the TARGET monitor resolution in this field.\n\n"
             "This should only be used as last resort if your GPU/monitor can't display the resolution required by the game",
         .type = OptionType::Text,
         .setting_name = "1280,720",
@@ -2050,7 +2050,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sdvxlandscape",
         .desc =
             "Allows you to play in landscape by transposing resolution and applying image scaling.\n\n"
-            "Works only for SDVX5 and above! This is identical to -forceorientation.\n\n"
+            "Works only for SDVX5 and above! This is identical to -forceresswap.\n\n"
             "Will launch at 1080p by default; strongly consider combining this with -forceres option to render at monitor native resolution",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
