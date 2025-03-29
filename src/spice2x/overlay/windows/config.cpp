@@ -2629,8 +2629,6 @@ namespace overlay::windows {
             // list entry
             ImGui::PushID(&option);
             ImGui::AlignTextToFramePadding();
-            ImGui::HelpMarker(definition.desc.c_str());
-            ImGui::SameLine();
             if (option.is_active()) {
                 if (option.disabled || definition.disabled) {
                     ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
@@ -2645,12 +2643,15 @@ namespace overlay::windows {
             } else {
                 ImGui::Text("%s", definition.title.c_str());
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::HelpTooltip(definition.desc.c_str());
+            }
             ImGui::NextColumn();
             ImGui::AlignTextToFramePadding();
             if (definition.display_name.empty()) {
-                ImGui::Text("-%s", definition.name.c_str());
+                ImGui::TextDisabled("-%s", definition.name.c_str());
             } else {
-                ImGui::Text("-%s", definition.display_name.c_str());
+                ImGui::TextDisabled("-%s", definition.display_name.c_str());
             }
             ImGui::NextColumn();
             if (option.disabled || definition.disabled) {
@@ -2664,6 +2665,9 @@ namespace overlay::windows {
                         this->options_dirty = true;
                         option.value = state ? "/ENABLED" : "";
                         ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::HelpTooltip(definition.desc.c_str());
                     }
                     break;
                 }
@@ -2690,6 +2694,9 @@ namespace overlay::windows {
                         this->options_dirty = true;
                         option.value = buffer;
                         ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::HelpTooltip(definition.desc.c_str());
                     }
                     break;
                 }
@@ -2724,6 +2731,9 @@ namespace overlay::windows {
                         option.value = buffer;
                         ::Config::getInstance().updateBinding(games_list[games_selected], option);
                     }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::HelpTooltip(definition.desc.c_str());
+                    }
                     break;
                 }
                 case OptionType::Text: {
@@ -2740,6 +2750,9 @@ namespace overlay::windows {
                         this->options_dirty = true;
                         option.value = buffer;
                         ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::HelpTooltip(definition.desc.c_str());
                     }
                     break;
                 }
@@ -2770,6 +2783,9 @@ namespace overlay::windows {
                             }
                         }
                         ImGui::EndCombo();
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::HelpTooltip(definition.desc.c_str());
                     }
                     break;
                 }

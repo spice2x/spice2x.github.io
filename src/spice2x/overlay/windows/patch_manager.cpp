@@ -649,17 +649,9 @@ namespace overlay::windows {
 
                     // first column, part 1: help / caution marker
                     ImGui::TableNextColumn();
-                    const std::string description = patch.description;
-                    const std::string caution = patch.caution;
-                    if (!description.empty() && !caution.empty()) {
+                    if (!patch.caution.empty()) {
                         ImGui::AlignTextToFramePadding();
-                        ImGui::WarnMarker(description.c_str(), caution.c_str());
-                    } else if (!description.empty()) {
-                        ImGui::AlignTextToFramePadding();
-                        ImGui::HelpMarker(description.c_str());
-                    } else if (!caution.empty()) {
-                        ImGui::AlignTextToFramePadding();
-                        ImGui::WarnMarker(nullptr, caution.c_str());
+                        ImGui::WarnMarker(nullptr, patch.caution.c_str());
                     } else {
                         ImGui::DummyMarker();
                     }
@@ -705,6 +697,11 @@ namespace overlay::windows {
                     if (style_color_pushed) {
                         ImGui::PopStyleColor(style_color_pushed);
                     }
+                    if (ImGui::IsItemHovered()) {
+                        show_patch_tooltip(patch);
+                    }
+
+                    // show range after label for integer patches
                     if (patch.type == PatchType::Integer) {
                         ImGui::SameLine();
                         auto& numpatch = patch.patch_number;
@@ -741,6 +738,9 @@ namespace overlay::windows {
                         patch.last_status = is_patch_active(patch);
                     }
                     ImGui::EndDisabled();
+                    if (ImGui::IsItemHovered()) {
+                        show_patch_tooltip(patch);
+                    }
 
                     // second column, part 2: additional options UI (dropdown, text input)
                     ImGui::SameLine();
@@ -767,6 +767,9 @@ namespace overlay::windows {
                                     }
                                     ImGui::EndCombo();
                                 }
+                                if (ImGui::IsItemHovered()) {
+                                    show_patch_tooltip(patch);
+                                }
                             } else if (patch.type == PatchType::Integer) {
                                 ImGui::SetNextItemWidth(200.0f);
                                 auto& numpatch = patch.patch_number;
@@ -779,6 +782,9 @@ namespace overlay::windows {
 
                                     apply_patch(patch, true);
                                     config_dirty = true;
+                                }
+                                if (ImGui::IsItemHovered()) {
+                                    show_patch_tooltip(patch);
                                 }
                             }
                         } else if (patch_status == PatchStatus::Disabled) {
@@ -794,6 +800,9 @@ namespace overlay::windows {
                                 ImGui::InputInt("##dummy_int_input", &patch.patch_number.value);
                             }
                             ImGui::EndDisabled();
+                            if (ImGui::IsItemHovered()) {
+                                show_patch_tooltip(patch);
+                            }
                         }
                     } else {
                         ImGui::AlignTextToFramePadding();
@@ -819,6 +828,14 @@ namespace overlay::windows {
 
                 ImGui::EndTable();
             }
+        }
+    }
+
+    void PatchManager::show_patch_tooltip(const PatchData& patch) {
+        if (!patch.caution.empty()) {
+            ImGui::WarnTooltip(patch.description.c_str(), patch.caution.c_str());
+        } else if (!patch.description.empty()) {
+            ImGui::HelpTooltip(patch.description.c_str());
         }
     }
 
