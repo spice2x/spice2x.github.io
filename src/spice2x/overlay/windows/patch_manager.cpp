@@ -151,7 +151,7 @@ namespace overlay::windows {
             url_fetch_errors += fmt::format("WinHttpSendRequest failed: {}\n", gle);
             if (gle == 12175) {
                 url_fetch_errors += "\nThis is ERROR_WINHTTP_SECURE_FAILURE - most likely TLS 1.1 / TLS 1.2 error on old OS versions.\n\n";
-                url_fetch_errors += "Look up MSDN article on 'Update to enable TLS 1.1 and TLS 1.2 as default secure protocols in WinHTTP in Windows' for a fix.";
+                url_fetch_errors += "Look up MSDN article on 'Update to enable TLS 1.1 and TLS 1.2 as default secure protocols in WinHTTP in Windows' for a fix.\n";
             }
             return result;
         }
@@ -183,7 +183,7 @@ namespace overlay::windows {
                     statusCode,
                     netutils::http_status_reason_phrase(statusCode));
             if (statusCode == 404) {
-                url_fetch_errors += "(Patch server did not find any patches for this game version)";
+                url_fetch_errors += "(Patch server did not find any patches for this game version)\n";
             }
             return result;
         }
@@ -550,13 +550,19 @@ namespace overlay::windows {
             ImGui::Text("Failed to import patches from URL.");
             if (!url_fetch_errors.empty()) {
                 ImGui::TextUnformatted("");
-                ImGui::PushTextWrapPos(ImGui::GetIO().DisplaySize.x * 0.5);
+                ImGui::PushTextWrapPos(ImGui::GetIO().DisplaySize.x * 0.7);
                 ImGui::TextUnformatted(url_fetch_errors.c_str());
                 ImGui::PopTextWrapPos();
             }
             ImGui::Separator();
             if (ImGui::Button("OK")) {
                 ImGui::CloseCurrentPopup();
+            }
+            if (!url_fetch_errors.empty()) {
+                ImGui::SameLine();
+                if (ImGui::Button("Copy Error")) {
+                    clipboard::copy_text(url_fetch_errors);
+                }
             }
             ImGui::EndPopup();
         }
@@ -1517,16 +1523,44 @@ namespace overlay::windows {
         try {
             auto patches_json = getFromUrl(dll_name, json_path);
             if (!patches_json.empty()) {
-                if (!fileutils::dir_exists(LOCAL_PATCHES_PATH))
+
+                // see if this is valid JSON
+                Document doc_temp;
+                doc_temp.Parse(patches_json.c_str());
+                const auto error = doc_temp.GetParseError();
+                if (error) {
+                    log_warning(
+                        "patchmanager",
+                        "remotely fetched JSON file parse error: {}",
+                        rapidjson::GetParseError_En(error));
+                    url_fetch_errors += fmt::format(
+                            "Invalid JSON received from remote URL.\n"
+                            "Your DLL version might not be supported.\n"
+                            "URL: {}\n"
+                            "JSON Parse Error: {}\n",
+                            json_path,
+                            rapidjson::GetParseError_En(error));
+                    return false;
+                } else {
+                    log_info("patchmanager", "remotely fetched JSON was successfully parsed");
+                }
+
+                // create patches dir
+                if (!fileutils::dir_exists(LOCAL_PATCHES_PATH)) {
                     fileutils::dir_create(LOCAL_PATCHES_PATH);
+                }
+                // save to file
                 std::filesystem::path save_path = LOCAL_PATCHES_PATH / (identifier + ".json");
                 fileutils::text_write(save_path, patches_json);
+                log_info("patchmanager", "remotely fetched JSON saved to: {}", save_path.string());
                 return true;
             } else {
                 log_warning("patchmanager", "failed to fetch patches JSON for {}", dll_name);
             }
         } catch (const std::exception& e) {
             log_warning("patchmanager", "exception occurred while loading remote patches JSON for {}: {}", dll_name, e.what());
+            url_fetch_errors += fmt::format(
+                "Exception while loading remote patches for {}: {}\n", dll_name, e.what());
         }
         return false;
     }
