@@ -2563,279 +2563,308 @@ namespace overlay::windows {
         std::vector<Option> *options, const std::string &category, const std::string *filter) {
         int options_count;  
 
-        ImGui::Columns(3, "OptionsColumns", true);
-        if (!category.empty() ) {
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), category.c_str());
+        // category name
+        std::string cat = "Options";
+        if (!category.empty()) {
+            cat = category;
         } else if (filter != nullptr) {
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Search results");
-        } else {
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Options");
+            cat = "Search results";
         }
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Parameter");
-        ImGui::SameLine();
-        ImGui::HelpMarker(
-            "These are the command-line parameters you can use in your .bat file to set the options.\n"
-            "Example: spice.exe -w -ea\n"
-            "         spice64.exe -api 1337 -apipass changeme");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Setting");
-        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), cat.c_str());
         ImGui::Separator();
 
-        // iterate options
-        options_count = 0;
-        for (auto &option : *options) {
-            // get option definition
-            auto &definition = option.get_definition();
+        // same width as dummy marker
+        const float INDENT = 22.f;
+        
+        // render table
+        // tables must share the same ID to have synced column settings
+        if (ImGui::BeginTable("OptionsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("CMD Line Parameter", ImGuiTableColumnFlags_WidthFixed, 216);
+            ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoSort, 240);
 
-            // check category
-            if (!category.empty() && definition.category != category) {
-                continue;
-            }
-
-            // check hidden option
-            if (!this->options_show_hidden && option.value.empty()) {
-
-                // skip hidden entries
-                if (definition.hidden) {
+            // iterate options
+            options_count = 0;
+            for (auto &option : *options) {
+                
+                // get option definition
+                auto &definition = option.get_definition();
+                
+                // check category
+                if (!category.empty() && definition.category != category) {
                     continue;
                 }
-
-                // check for game exclusivity
-                if (!definition.game_name.empty()) {
-                    if (definition.game_name != this->games_selected_name) {
+                
+                // check hidden option
+                if (!this->options_show_hidden && option.value.empty()) {
+                    
+                    // skip hidden entries
+                    if (definition.hidden) {
+                        continue;
+                    }
+                    
+                    // check for game exclusivity
+                    if (!definition.game_name.empty()) {
+                        if (definition.game_name != this->games_selected_name) {
+                            continue;
+                        }
+                    }
+                }
+                
+                // filter
+                if (filter != nullptr) {
+                    if (filter->empty()) {
+                        continue;
+                    }
+                    if (!option.search_match(*filter)) {
+                        continue;
+                    }
+                    // limit to 30 results
+                    if (30 < options_count) {
                         continue;
                     }
                 }
-            }
 
-            // filter
-            if (filter != nullptr) {
-                if (filter->empty()) {
-                    continue;
-                }
-                if (!option.search_match(*filter)) {
-                    continue;
-                }
-                // limit to 30 results
-                if (30 < options_count) {
-                    continue;
-                }
-            }
+                options_count += 1;
+                
+                // list entry
+                ImGui::PushID(&option);
+                ImGui::Indent(INDENT);
+                ImGui::TableNextRow();
 
-            options_count += 1;
-
-            // list entry
-            ImGui::PushID(&option);
-            ImGui::AlignTextToFramePadding();
-            if (option.is_active()) {
-                // active option
-                if (option.disabled || definition.disabled) {
-                    ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
+                // option name
+                ImGui::TableNextColumn();
+                ImGui::AlignTextToFramePadding();
+                if (option.is_active()) {
+                    // active option
+                    if (option.disabled || definition.disabled) {
+                        ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
+                    } else {
+                        ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", definition.title.c_str());
+                    }
+                } else if (definition.hidden
+                || (!definition.game_name.empty() && definition.game_name != this->games_selected_name)) {
+                    // wrong game - grayed out
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", definition.title.c_str());
                 } else {
-                    ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", definition.title.c_str());
+                    // normal text
+                    ImGui::Text("%s", definition.title.c_str());
                 }
-            } else if (definition.hidden
-            || (!definition.game_name.empty() && definition.game_name != this->games_selected_name)) {
-                // wrong game - grayed out
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", definition.title.c_str());
-            } else {
-                // normal text
-                ImGui::Text("%s", definition.title.c_str());
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::HelpTooltip(definition.desc.c_str());
-            }
-            ImGui::NextColumn();
-            ImGui::AlignTextToFramePadding();
-            if (definition.display_name.empty()) {
-                ImGui::TextDisabled("-%s", definition.name.c_str());
-            } else {
-                ImGui::TextDisabled("-%s", definition.display_name.c_str());
-            }
-            ImGui::NextColumn();
-            if (option.disabled || definition.disabled) {
-                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-            }
-            switch (definition.type) {
-                case OptionType::Bool: {
-                    bool state = !option.value.empty();
-                    if (ImGui::Checkbox(state ? "ON" : "off", &state)) {
-                        this->options_dirty = true;
-                        option.value = state ? "/ENABLED" : "";
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
-                    }
-                    break;
+                if (ImGui::IsItemHovered()) {
+                    ImGui::HelpTooltip(definition.desc.c_str());
                 }
-                case OptionType::Integer: {
-                    char buffer[512];
-                    strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
-                    buffer[sizeof(buffer) - 1] = '\0';
-                    auto digits_filter = [](ImGuiInputTextCallbackData* data) {
-                        if ('0' <= data->EventChar && data->EventChar <= '9') {
-                            return 0;
-                        }
-                        return 1; // discard
-                    };
 
-                    const char *hint = definition.setting_name.empty() ? "Enter number..."
-                            : definition.setting_name.c_str();
-
-                    ImGui::InputTextWithHint(
-                        "", hint,
-                        buffer, sizeof(buffer) - 1,
-                        ImGuiInputTextFlags_CallbackCharFilter, digits_filter);
-                    // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
-                    if (ImGui::IsItemEdited()) {
-                        this->options_dirty = true;
-                        option.value = buffer;
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
-                    }
-                    break;
+                // command line parameter
+                ImGui::TableNextColumn();
+                ImGui::AlignTextToFramePadding();
+                std::string param = "-";
+                if (definition.display_name.empty()) {
+                    param += definition.name;
+                } else {
+                    param += definition.display_name;
                 }
-                case OptionType::Hex: {
-                    char buffer[512];
-                    strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
-                    buffer[sizeof(buffer) - 1] = '\0';
-                    auto digits_filter = [](ImGuiInputTextCallbackData* data) {
-                        if ('0' <= data->EventChar && data->EventChar <= '9') {
-                            return 0;
-                        }
-                        if ('a' <= data->EventChar && data->EventChar <= 'f') {
-                            return 0;
-                        }
-                        if ('A' <= data->EventChar && data->EventChar <= 'F') {
-                            return 0;
-                        }
-                        if (data->EventChar == 'x' || data->EventChar == 'X') {
-                            return 0;
-                        }
-                        return 1; // discard
-                    };
-                    const char *hint = definition.setting_name.empty() ? "Enter hex..."
-                            : definition.setting_name.c_str();
-
-                    ImGui::InputTextWithHint("", hint,
-                        buffer, sizeof(buffer) - 1,
-                        ImGuiInputTextFlags_CallbackCharFilter, digits_filter);
-                    // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
-                    if (ImGui::IsItemEdited()) {
-                        this->options_dirty = true;
-                        option.value = buffer;
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
-                    }
-                    break;
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", param.c_str());
+                if (ImGui::IsItemHovered()) {
+                    const auto help =
+                        param +
+                        "\n\nClick to copy the parameter to the clipboard.\n\n"
+                        "These are the command-line parameters you can use in your .bat file to set the options.\n"
+                        "Example: spice.exe -w -ea\n"
+                        "         spice64.exe -api 1337 -apipass changeme";
+                    ImGui::HelpTooltip(help.c_str());
+                        
                 }
-                case OptionType::Text: {
-                    char buffer[512];
-                    strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
-                    buffer[sizeof(buffer) - 1] = '\0';
-
-                    const char *hint = definition.setting_name.empty() ? "Enter value..."
-                            : definition.setting_name.c_str();
-
-                    ImGui::InputTextWithHint("", hint, buffer, sizeof(buffer) - 1);
-                    // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
-                    if (ImGui::IsItemEdited()) {
-                        this->options_dirty = true;
-                        option.value = buffer;
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
-                    }
-                    break;
+                if (ImGui::IsItemClicked()) {
+                    clipboard::copy_text(param.c_str());
                 }
-                case OptionType::Enum: {
-                    std::string current_item = option.value_text();
-                    for (auto &element : definition.elements) {
-                        if (element.first == current_item) {
-                            current_item += fmt::format(" ({})", element.second);
+
+                // option widgets
+                ImGui::TableNextColumn();
+                if (option.disabled || definition.disabled) {
+                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                }
+                switch (definition.type) {
+                    case OptionType::Bool: {
+                        bool state = !option.value.empty();
+                        if (ImGui::Checkbox(state ? "ON" : "off", &state)) {
+                            this->options_dirty = true;
+                            option.value = state ? "/ENABLED" : "";
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
                     }
-                    if (current_item.empty()) {
-                        current_item = "Default";
+                    case OptionType::Integer: {
+                        char buffer[512];
+                        strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
+                        buffer[sizeof(buffer) - 1] = '\0';
+                        auto digits_filter = [](ImGuiInputTextCallbackData* data) {
+                            if ('0' <= data->EventChar && data->EventChar <= '9') {
+                                return 0;
+                            }
+                            return 1; // discard
+                        };
+
+                        const char *hint = definition.setting_name.empty() ? "Enter number..."
+                                : definition.setting_name.c_str();
+
+                        ImGui::InputTextWithHint(
+                            "", hint,
+                            buffer, sizeof(buffer) - 1,
+                            ImGuiInputTextFlags_CallbackCharFilter, digits_filter);
+                        // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
+                        if (ImGui::IsItemEdited()) {
+                            this->options_dirty = true;
+                            option.value = buffer;
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
                     }
-                    if (ImGui::BeginCombo("##combo", current_item.c_str(), 0)) {
+                    case OptionType::Hex: {
+                        char buffer[512];
+                        strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
+                        buffer[sizeof(buffer) - 1] = '\0';
+                        auto digits_filter = [](ImGuiInputTextCallbackData* data) {
+                            if ('0' <= data->EventChar && data->EventChar <= '9') {
+                                return 0;
+                            }
+                            if ('a' <= data->EventChar && data->EventChar <= 'f') {
+                                return 0;
+                            }
+                            if ('A' <= data->EventChar && data->EventChar <= 'F') {
+                                return 0;
+                            }
+                            if (data->EventChar == 'x' || data->EventChar == 'X') {
+                                return 0;
+                            }
+                            return 1; // discard
+                        };
+                        const char *hint = definition.setting_name.empty() ? "Enter hex..."
+                                : definition.setting_name.c_str();
+
+                        ImGui::InputTextWithHint("", hint,
+                            buffer, sizeof(buffer) - 1,
+                            ImGuiInputTextFlags_CallbackCharFilter, digits_filter);
+                        // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
+                        if (ImGui::IsItemEdited()) {
+                            this->options_dirty = true;
+                            option.value = buffer;
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
+                    }
+                    case OptionType::Text: {
+                        char buffer[512];
+                        strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
+                        buffer[sizeof(buffer) - 1] = '\0';
+
+                        const char *hint = definition.setting_name.empty() ? "Enter value..."
+                                : definition.setting_name.c_str();
+
+                        ImGui::InputTextWithHint("", hint, buffer, sizeof(buffer) - 1);
+                        // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
+                        if (ImGui::IsItemEdited()) {
+                            this->options_dirty = true;
+                            option.value = buffer;
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
+                    }
+                    case OptionType::Enum: {
+                        std::string current_item = option.value_text();
                         for (auto &element : definition.elements) {
-                            bool selected = current_item == element.first;
-                            std::string label = element.first;
-                            if (!element.second.empty()) {
-                                label += fmt::format(" ({})", element.second);
-                            }
-                            if (ImGui::Selectable(label.c_str(), selected)) {
-                                this->options_dirty = true;
-                                option.value = element.first;
-                                ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                            }
-                            if (selected) {
-                                ImGui::SetItemDefaultFocus();
+                            if (element.first == current_item) {
+                                current_item += fmt::format(" ({})", element.second);
                             }
                         }
-                        ImGui::EndCombo();
+                        if (current_item.empty()) {
+                            current_item = "Default";
+                        }
+                        if (ImGui::BeginCombo("##combo", current_item.c_str(), 0)) {
+                            for (auto &element : definition.elements) {
+                                bool selected = current_item == element.first;
+                                std::string label = element.first;
+                                if (!element.second.empty()) {
+                                    label += fmt::format(" ({})", element.second);
+                                }
+                                if (ImGui::Selectable(label.c_str(), selected)) {
+                                    this->options_dirty = true;
+                                    option.value = element.first;
+                                    ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                                }
+                                if (selected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
+                    default: {
+                        ImGui::Text("Unknown option type");
+                        break;
                     }
-                    break;
                 }
-                default: {
-                    ImGui::Text("Unknown option type");
-                    break;
+
+                // clear button
+                if (!option.disabled && !definition.disabled && option.is_active() && option.get_definition().type != OptionType::Bool) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Clear")) {
+                        this->options_dirty = true;
+                        option.value = "";
+                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                    }
                 }
-            }
 
-            // clear button
-            if (!option.disabled && !definition.disabled && option.is_active() && option.get_definition().type != OptionType::Bool) {
-                ImGui::SameLine();
-                if (ImGui::Button("Clear")) {
-                    this->options_dirty = true;
-                    option.value = "";
-                    ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                // clean up disabled item flags
+                if (option.disabled || definition.disabled) {
+                    ImGui::PopItemFlag();
+                    ImGui::PopStyleVar();
                 }
+
+                // disabled help
+                if (option.disabled && !definition.disabled) {
+                    ImGui::SameLine();
+                    ImGui::HelpMarker(
+                        "This option can not be edited because it was overriden by command-line options.\n"
+                        "Run spicecfg.exe to configure the options and then run spice(64).exe directly.");
+                }
+
+                // next item
+                ImGui::PopID();
+                ImGui::Unindent(INDENT);
             }
 
-            // clean up disabled item flags
-            if (option.disabled || definition.disabled) {
-                ImGui::PopItemFlag();
-                ImGui::PopStyleVar();
+            // check if empty
+            if (options_count == 0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Indent(INDENT);
+                ImGui::TextDisabled("-");
+                ImGui::Unindent(INDENT);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
             }
-
-            // disabled help
-            if (option.disabled && !definition.disabled) {
-                ImGui::SameLine();
-                ImGui::HelpMarker(
-                    "This option can not be edited because it was overriden by command-line options.\n"
-                    "Run spicecfg.exe to configure the options and then run spice(64).exe directly.");
-            }
-
-            // next item
-            ImGui::PopID();
-            ImGui::NextColumn();
+            ImGui::EndTable();
         }
-            
-        // check if empty
-        if (options_count == 0) {
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-        }
 
-        ImGui::Columns(1);
         ImGui::TextUnformatted("");
     }
 
