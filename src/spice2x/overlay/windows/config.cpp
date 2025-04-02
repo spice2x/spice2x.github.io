@@ -36,6 +36,8 @@
 
 namespace overlay::windows {
 
+    // same width as dummy marker
+    const float INDENT = 22.f;
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
@@ -2026,281 +2028,292 @@ namespace overlay::windows {
     }
 
     void Config::build_lights(const std::string &name, std::vector<Light> *lights) {
-        ImGui::Columns(3, "LightsColumns", true);
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Name"); ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Binding"); ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Actions"); ImGui::SameLine();
-        ImGui::HelpMarker("Use 'Bind' to redirect cabinet light outputs to HID-compatible value output devices.");
-        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Lights");
         ImGui::Separator();
+        if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 240);
 
-        // check if empty
-        if (!lights || lights->empty()) {
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-        }
+            // check if empty
+            if (!lights || lights->empty()) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Indent(INDENT);
+                ImGui::TextDisabled("-");
+                ImGui::Unindent(INDENT);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+            }
 
-        // check lights
-        if (lights) {
-            for (auto &light_in : *lights) {
+            // check lights
+            if (lights) {
+                for (auto &light_in : *lights) {
 
-                // get light based on page
-                auto light = &light_in;
-                auto &light_alternatives = light->getAlternatives();
-                if (this->lights_page > 0) {
-                    while ((int) light_alternatives.size() < this->lights_page) {
-                        light_alternatives.emplace_back(light->getName());
+                    // get light based on page
+                    auto light = &light_in;
+                    auto &light_alternatives = light->getAlternatives();
+                    if (this->lights_page > 0) {
+                        while ((int) light_alternatives.size() < this->lights_page) {
+                            light_alternatives.emplace_back(light->getName());
+                        }
+                        light = &light_alternatives.at(this->lights_page - 1);
                     }
-                    light = &light_alternatives.at(this->lights_page - 1);
-                }
 
-                // get light info
-                auto light_name = light->getName();
-                auto light_display = light->getDisplayString(RI_MGR.get());
-                auto light_state = GameAPI::Lights::readLight(RI_MGR, *light);
+                    // get light info
+                    auto light_name = light->getName();
+                    auto light_display = light->getDisplayString(RI_MGR.get());
+                    auto light_state = GameAPI::Lights::readLight(RI_MGR, *light);
 
-                // list entry
-                if (light_display.empty()) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
-                }
-                ImGui::PushID(light);
-                ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
-                ImGui::SameLine();
-                ImGui::Text("%s", light_name.c_str());
-                ImGui::NextColumn();
-                ImGui::AlignTextToFramePadding();
-                ImGui::Text("%s", light_display.empty() ? "None" : light_display.c_str());
-                ImGui::NextColumn();
-                if (light_display.empty()) {
-                    ImGui::PopStyleColor();
-                }
+                    // list entry
+                    if (light_display.empty()) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
+                    }
+                    ImGui::PushID(light);
+                    ImGui::TableNextRow();
 
-                // light binding
-                if (ImGui::Button("Bind")) {
-                    ImGui::OpenPopup("Light Binding");
-                    light->override_enabled = true;
+                    // progress bar & light name
+                    ImGui::TableNextColumn();
+                    ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
+                    ImGui::SameLine();
+                    ImGui::Text("%s", light_name.c_str());
 
-                    // get devices
-                    this->lights_devices.clear();
-                    for (auto &device : RI_MGR->devices_get()) {
-                        switch (device.type) {
-                            case rawinput::HID:
-                                if (!device.hidInfo->button_output_caps_list.empty()
-                                    || !device.hidInfo->value_output_caps_list.empty())
+                    // binding name
+                    ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Text("%s", light_display.empty() ? "-" : light_display.c_str());
+
+                    // bind / clear buttons
+                    ImGui::TableNextColumn();
+                    if (light_display.empty()) {
+                        ImGui::PopStyleColor();
+                    }
+
+                    // light binding
+                    if (ImGui::Button("Bind")) {
+                        ImGui::OpenPopup("Light Binding");
+                        light->override_enabled = true;
+
+                        // get devices
+                        this->lights_devices.clear();
+                        for (auto &device : RI_MGR->devices_get()) {
+                            switch (device.type) {
+                                case rawinput::HID:
+                                    if (!device.hidInfo->button_output_caps_list.empty()
+                                        || !device.hidInfo->value_output_caps_list.empty())
+                                        this->lights_devices.emplace_back(&device);
+                                    break;
+                                case rawinput::SEXTET_OUTPUT:
+                                case rawinput::PIUIO_DEVICE:
+                                case rawinput::SMX_STAGE:
+                                case rawinput::SMX_DEDICAB:
                                     this->lights_devices.emplace_back(&device);
-                                break;
-                            case rawinput::SEXTET_OUTPUT:
-                            case rawinput::PIUIO_DEVICE:
-                            case rawinput::SMX_STAGE:
-                            case rawinput::SMX_DEDICAB:
-                                this->lights_devices.emplace_back(&device);
-                                break;
-                            default:
-                                continue;
-                        }
+                                    break;
+                                default:
+                                    continue;
+                            }
 
-                        // check if this is the current device
-                        if (device.name == light->getDeviceIdentifier()) {
-                            this->lights_devices_selected = (int) this->lights_devices.size() - 1;
-                            this->lights_devices_control_selected = light->getIndex();
+                            // check if this is the current device
+                            if (device.name == light->getDeviceIdentifier()) {
+                                this->lights_devices_selected = (int) this->lights_devices.size() - 1;
+                                this->lights_devices_control_selected = light->getIndex();
+                            }
                         }
                     }
-                }
-                if (ImGui::BeginPopupModal("Light Binding", NULL,
-                        ImGuiWindowFlags_AlwaysAutoResize)) {
+                    if (ImGui::BeginPopupModal("Light Binding", NULL,
+                            ImGuiWindowFlags_AlwaysAutoResize)) {
 
-                    // device selector
-                    bool control_changed = false;
-                    if (ImGui::Combo("Device",
-                                     &this->lights_devices_selected,
-                                     [] (void* data, int i, const char **item) {
-                                         *item = ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
-                                         return true;
-                                     },
-                                     &this->lights_devices, (int) this->lights_devices.size())) {
-                        this->lights_devices_control_selected = 0;
-                        control_changed = true;
-                    }
-
-                    // obtain controls
-                    std::vector<std::string> control_names;
-                    if (lights_devices_selected >= 0 && lights_devices_selected < (int) lights_devices.size()) {
-                        auto device = lights_devices[lights_devices_selected];
-                        switch (device->type) {
-                            case rawinput::HID: {
-                                size_t index = 0;
-
-                                // add button names
-                                for (auto &button_name : device->hidInfo->button_output_caps_names) {
-
-                                    // build name
-                                    std::string name = button_name;
-                                    if (index > 0xFF)
-                                        name += " (0x" + bin2hex(&((char*) &index)[1], 1) + bin2hex(&((char*) &index)[0], 1) + ")";
-                                    else
-                                        name += " (0x" + bin2hex(&((char*) &index)[0], 1) + ")";
-
-                                    // add name
-                                    control_names.push_back(name);
-                                    index++;
-                                }
-
-                                // add value names
-                                for (auto &value_name : device->hidInfo->value_output_caps_names) {
-
-                                    // build name
-                                    std::string name = value_name;
-                                    if (index > 0xFF)
-                                        name += " (0x" + bin2hex(&((char*) &index)[1], 1)
-                                                + bin2hex(&((char*) &index)[0], 1)
-                                                + ", value cap)";
-                                    else
-                                        name += " (0x" + bin2hex(&((char*) &index)[0], 1) + ", value cap)";
-
-                                    // add name
-                                    control_names.push_back(name);
-                                    index++;
-                                }
-
-                                break;
-                            }
-                            case rawinput::SEXTET_OUTPUT: {
-
-                                // add all names of sextet device
-                                for (int i = 0; i < rawinput::SextetDevice::LIGHT_COUNT; i++) {
-                                    std::string name(rawinput::SextetDevice::LIGHT_NAMES[i]);
-
-                                    // add name
-                                    control_names.push_back(name);
-                                }
-                                break;
-                            }
-                            case rawinput::PIUIO_DEVICE: {
-
-                                // add all names of PIUIO device
-                                for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_LIGHTS; i++) {
-                                    std::string name(rawinput::PIUIO::LIGHT_NAMES[i]);
-
-                                    // add name
-                                    control_names.push_back(name);
-                                }
-                                break;
-                            }
-                            case rawinput::SMX_STAGE: {
-
-                                // add all names of SMX device
-                                for (int i = 0; i < rawinput::SmxStageDevice::TOTAL_LIGHT_COUNT; i++) {
-                                    control_names.push_back(rawinput::SmxStageDevice::GetLightNameByIndex(i));
-                                }
-                                break;
-                            }
-                            case rawinput::SMX_DEDICAB: {
-
-                                // add all names of SMX dedicab device
-                                for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
-                                    control_names.push_back(rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
-                                }
-                                break;
-                            }
-                            default:
-                                break;
+                        // device selector
+                        bool control_changed = false;
+                        if (ImGui::Combo("Device",
+                                        &this->lights_devices_selected,
+                                        [] (void* data, int i, const char **item) {
+                                            *item = ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
+                                            return true;
+                                        },
+                                        &this->lights_devices, (int) this->lights_devices.size())) {
+                            this->lights_devices_control_selected = 0;
+                            control_changed = true;
                         }
-                    }
 
-                    // controls
-                    if (ImGui::Combo("Light Control",
-                                 &this->lights_devices_control_selected,
-                                 [] (void* data, int i, const char **item) {
-                                     *item = ((std::vector<std::string> *) data)->at(i).c_str();
-                                     return true;
-                                 },
-                                 &control_names, control_names.size())) {
-                        control_changed = true;
-                    }
+                        // obtain controls
+                        std::vector<std::string> control_names;
+                        if (lights_devices_selected >= 0 && lights_devices_selected < (int) lights_devices.size()) {
+                            auto device = lights_devices[lights_devices_selected];
+                            switch (device->type) {
+                                case rawinput::HID: {
+                                    size_t index = 0;
 
-                    // update light
-                    if (lights_devices_selected >= 0 && lights_devices_selected < (int) lights_devices.size()) {
-                        auto identifier = this->lights_devices[lights_devices_selected]->name;
-                        if (identifier != light->getDeviceIdentifier()) {
-                            light->setDeviceIdentifier(identifier);
-                            ::Config::getInstance().updateBinding(
-                                    games_list[games_selected], *light,
-                                    lights_page - 1);
+                                    // add button names
+                                    for (auto &button_name : device->hidInfo->button_output_caps_names) {
+
+                                        // build name
+                                        std::string name = button_name;
+                                        if (index > 0xFF)
+                                            name += " (0x" + bin2hex(&((char*) &index)[1], 1) + bin2hex(&((char*) &index)[0], 1) + ")";
+                                        else
+                                            name += " (0x" + bin2hex(&((char*) &index)[0], 1) + ")";
+
+                                        // add name
+                                        control_names.push_back(name);
+                                        index++;
+                                    }
+
+                                    // add value names
+                                    for (auto &value_name : device->hidInfo->value_output_caps_names) {
+
+                                        // build name
+                                        std::string name = value_name;
+                                        if (index > 0xFF)
+                                            name += " (0x" + bin2hex(&((char*) &index)[1], 1)
+                                                    + bin2hex(&((char*) &index)[0], 1)
+                                                    + ", value cap)";
+                                        else
+                                            name += " (0x" + bin2hex(&((char*) &index)[0], 1) + ", value cap)";
+
+                                        // add name
+                                        control_names.push_back(name);
+                                        index++;
+                                    }
+
+                                    break;
+                                }
+                                case rawinput::SEXTET_OUTPUT: {
+
+                                    // add all names of sextet device
+                                    for (int i = 0; i < rawinput::SextetDevice::LIGHT_COUNT; i++) {
+                                        std::string name(rawinput::SextetDevice::LIGHT_NAMES[i]);
+
+                                        // add name
+                                        control_names.push_back(name);
+                                    }
+                                    break;
+                                }
+                                case rawinput::PIUIO_DEVICE: {
+
+                                    // add all names of PIUIO device
+                                    for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_LIGHTS; i++) {
+                                        std::string name(rawinput::PIUIO::LIGHT_NAMES[i]);
+
+                                        // add name
+                                        control_names.push_back(name);
+                                    }
+                                    break;
+                                }
+                                case rawinput::SMX_STAGE: {
+
+                                    // add all names of SMX device
+                                    for (int i = 0; i < rawinput::SmxStageDevice::TOTAL_LIGHT_COUNT; i++) {
+                                        control_names.push_back(rawinput::SmxStageDevice::GetLightNameByIndex(i));
+                                    }
+                                    break;
+                                }
+                                case rawinput::SMX_DEDICAB: {
+
+                                    // add all names of SMX dedicab device
+                                    for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
+                                        control_names.push_back(rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
+                                    }
+                                    break;
+                                }
+                                default:
+                                    break;
+                            }
                         }
-                        if (this->lights_devices_control_selected >= 0) {
-                            if ((int) light->getIndex() != this->lights_devices_control_selected) {
-                                light->setIndex(this->lights_devices_control_selected);
+
+                        // controls
+                        if (ImGui::Combo("Light Control",
+                                    &this->lights_devices_control_selected,
+                                    [] (void* data, int i, const char **item) {
+                                        *item = ((std::vector<std::string> *) data)->at(i).c_str();
+                                        return true;
+                                    },
+                                    &control_names, control_names.size())) {
+                            control_changed = true;
+                        }
+
+                        // update light
+                        if (lights_devices_selected >= 0 && lights_devices_selected < (int) lights_devices.size()) {
+                            auto identifier = this->lights_devices[lights_devices_selected]->name;
+                            if (identifier != light->getDeviceIdentifier()) {
+                                light->setDeviceIdentifier(identifier);
                                 ::Config::getInstance().updateBinding(
                                         games_list[games_selected], *light,
                                         lights_page - 1);
                             }
+                            if (this->lights_devices_control_selected >= 0) {
+                                if ((int) light->getIndex() != this->lights_devices_control_selected) {
+                                    light->setIndex(this->lights_devices_control_selected);
+                                    ::Config::getInstance().updateBinding(
+                                            games_list[games_selected], *light,
+                                            lights_page - 1);
+                                }
+                            }
                         }
-                    }
 
-                    // value preview
-                    ImGui::Separator();
-                    float value_orig = GameAPI::Lights::readLight(RI_MGR, *light);
-                    float value = value_orig;
-                    ImGui::SliderFloat("Preview", &value, 0.f, 1.f);
+                        // value preview
+                        ImGui::Separator();
+                        float value_orig = GameAPI::Lights::readLight(RI_MGR, *light);
+                        float value = value_orig;
+                        ImGui::SliderFloat("Preview", &value, 0.f, 1.f);
 
-                    // manual button controls
-                    if (ImGui::Button("Turn On")) {
-                        value = 1.f;
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Turn Off")) {
-                        value = 0.f;
-                    }
-
-                    // manual lock
-                    if (!cfg::CONFIGURATOR_STANDALONE) {
+                        // manual button controls
+                        if (ImGui::Button("Turn On")) {
+                            value = 1.f;
+                        }
                         ImGui::SameLine();
-                        ImGui::Checkbox("Lock", &light->override_enabled);
-                    }
-
-                    // apply new value
-                    if (value != value_orig || control_changed) {
-                        if (light->override_enabled) {
-                            light->override_state = value;
+                        if (ImGui::Button("Turn Off")) {
+                            value = 0.f;
                         }
-                        auto ident = light->getDeviceIdentifier();
-                        GameAPI::Lights::writeLight(RI_MGR->devices_get(ident), light->getIndex(), value);
-                        RI_MGR->devices_flush_output();
+
+                        // manual lock
+                        if (!cfg::CONFIGURATOR_STANDALONE) {
+                            ImGui::SameLine();
+                            ImGui::Checkbox("Lock", &light->override_enabled);
+                        }
+
+                        // apply new value
+                        if (value != value_orig || control_changed) {
+                            if (light->override_enabled) {
+                                light->override_state = value;
+                            }
+                            auto ident = light->getDeviceIdentifier();
+                            GameAPI::Lights::writeLight(RI_MGR->devices_get(ident), light->getIndex(), value);
+                            RI_MGR->devices_flush_output();
+                        }
+
+                        // close button
+                        ImGui::Separator();
+                        if (ImGui::Button("Close")) {
+                            ImGui::CloseCurrentPopup();
+                            light->override_enabled = false;
+                        }
+
+                        // clean up
+                        ImGui::EndPopup();
                     }
 
-                    // close button
-                    ImGui::Separator();
-                    if (ImGui::Button("Close")) {
-                        ImGui::CloseCurrentPopup();
-                        light->override_enabled = false;
+                    // clear light
+                    if (light_display.size() > 0) {
+                        ImGui::SameLine();
+                        if (ImGui::Button("Clear")) {
+                            light->setDeviceIdentifier("");
+                            light->setIndex(0xFF);
+                            ::Config::getInstance().updateBinding(
+                                    games_list[games_selected], *light,
+                                    lights_page - 1);
+                        }
                     }
 
                     // clean up
-                    ImGui::EndPopup();
+                    ImGui::PopID();
                 }
-
-                // clear light
-                if (light_display.size() > 0) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Clear")) {
-                        light->setDeviceIdentifier("");
-                        light->setIndex(0xFF);
-                        ::Config::getInstance().updateBinding(
-                                games_list[games_selected], *light,
-                                lights_page - 1);
-                    }
-                }
-
-                // clean up
-                ImGui::NextColumn();
-                ImGui::PopID();
             }
+
+            ImGui::EndTable();
         }
-        ImGui::Columns();
     }
 
     void Config::build_cards() {
@@ -2573,15 +2586,12 @@ namespace overlay::windows {
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), cat.c_str());
         ImGui::Separator();
 
-        // same width as dummy marker
-        const float INDENT = 22.f;
-        
         // render table
         // tables must share the same ID to have synced column settings
         if (ImGui::BeginTable("OptionsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("CMD Line Parameter", ImGuiTableColumnFlags_WidthFixed, 216);
-            ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoSort, 240);
+            ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, 240);
 
             // iterate options
             options_count = 0;
