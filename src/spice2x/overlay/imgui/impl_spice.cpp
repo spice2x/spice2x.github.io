@@ -2,6 +2,7 @@
 
 #include <windows.h>
 
+#include "cfg/configurator.h"
 #include "games/io.h"
 #include "launcher/launcher.h"
 #include "launcher/superexit.h"
@@ -378,10 +379,27 @@ void ImGui_ImplSpice_NewFrame() {
     // update OS mouse position
     ImGui_ImplSpice_UpdateMousePos();
 
-    // update OS mouse cursor with the cursor requested by imgui
-    ImGuiMouseCursor mouse_cursor = io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor();
-    if (g_LastMouseCursor != mouse_cursor) {
-        g_LastMouseCursor = mouse_cursor;
-        ImGui_ImplSpice_UpdateMouseCursor();
+    if (cfg::CONFIGURATOR_STANDALONE) {
+        // if cursor is inside the client area, always set the OS cursor to what ImGui wants
+        // this is to deal with cases where mouse cursor changes outside the client rect and comes
+        // back into the window
+        // i'm sure there might be better ways to deal with this but this works so whatever, right?
+        RECT client_rect;
+        if (GetClientRect(g_hWnd, &client_rect)) {
+            POINT cursor;
+            if (GetCursorPos(&cursor) && ScreenToClient(g_hWnd, &cursor)) {
+                if (client_rect.left < cursor.x && cursor.x < client_rect.right &&
+                    client_rect.top < cursor.y && cursor.y < client_rect.bottom) {
+                    ImGui_ImplSpice_UpdateMouseCursor();
+                }
+            }
+        }
+    } else {
+        // update OS mouse cursor with the cursor requested by imgui
+        ImGuiMouseCursor mouse_cursor = io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor();
+        if (g_LastMouseCursor != mouse_cursor) {
+            g_LastMouseCursor = mouse_cursor;
+            ImGui_ImplSpice_UpdateMouseCursor();
+        }
     }
 }
