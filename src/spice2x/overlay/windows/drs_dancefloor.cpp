@@ -21,7 +21,6 @@ namespace overlay::windows {
         this->flags = ImGuiWindowFlags_NoScrollbar
                       | ImGuiWindowFlags_NoNavFocus
                       | ImGuiWindowFlags_NoNavInputs
-                      | ImGuiWindowFlags_NoDocking
                       | ImGuiWindowFlags_NoBackground;
     }
 

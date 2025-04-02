@@ -11,10 +11,9 @@
 #include "util/resutils.h"
 #include "build/resource.h"
 
-#include "imgui/impl_dx9.h"
+#include "external/imgui/backends/imgui_impl_dx9.h"
 #include "imgui/impl_spice.h"
 #include "imgui/impl_sw.h"
-#include "overlay/imgui/impl_dx9.h"
 #include "overlay/imgui/impl_spice.h"
 #include "overlay/imgui/impl_sw.h"
 
@@ -219,8 +218,8 @@ void overlay::SpiceOverlay::init() {
     colors[ImGuiCol_TabUnfocused]           = colors[ImGuiCol_Tab] * ImVec4(1.0f, 1.0f, 1.0f, 0.6f);
     colors[ImGuiCol_TabUnfocusedActive]     = colors[ImGuiCol_TabActive] * ImVec4(1.0f, 1.0f, 1.0f, 0.6f);
 
-    colors[ImGuiCol_DockingPreview]         = ImVec4(0.47f, 0.47f, 0.47f, 0.47f);
-    colors[ImGuiCol_DockingEmptyBg]         = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+    // colors[ImGuiCol_DockingPreview]         = ImVec4(0.47f, 0.47f, 0.47f, 0.47f);
+    // colors[ImGuiCol_DockingEmptyBg]         = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
     colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
     colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
     colors[ImGuiCol_PlotHistogram]          = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
@@ -242,9 +241,7 @@ void overlay::SpiceOverlay::init() {
     io.UserData = this;
     io.ConfigFlags = ImGuiConfigFlags_NavEnableKeyboard
                      | ImGuiConfigFlags_NavEnableGamepad
-                     | ImGuiConfigFlags_NavEnableSetMousePos
-                     | ImGuiConfigFlags_DockingEnable
-                     | ImGuiConfigFlags_ViewportsEnable;
+                     | ImGuiConfigFlags_NavEnableSetMousePos;
     if (is_touch_available()) {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
     }

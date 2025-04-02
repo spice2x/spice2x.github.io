@@ -12,6 +12,13 @@
 #include "util/logging.h"
 #include "util/utils.h"
 
+#if !defined(IMGUI_ENABLE_WIN32_DEFAULT_IME_FUNCTIONS) || \
+    !defined(IMGUI_DISABLE_DEFAULT_ALLOCATORS) || \
+    !defined(IMGUI_USE_BGRA_PACKED_COLOR) || \
+    !defined(IMGUI_OVERRIDE_DRAWVERT_STRUCT_LAYOUT)
+#error "fix imconfig.h after updating imgui version"
+#endif
+
 // state
 static HWND g_hWnd = nullptr;
 static INT64 g_Time = 0;

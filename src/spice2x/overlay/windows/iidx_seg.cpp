@@ -39,8 +39,7 @@ namespace overlay::windows {
                       | ImGuiWindowFlags_NoScrollbar
                       | ImGuiWindowFlags_NoResize
                       | ImGuiWindowFlags_NoNavFocus
-                      | ImGuiWindowFlags_NoNavInputs
-                      | ImGuiWindowFlags_NoDocking;
+                      | ImGuiWindowFlags_NoNavInputs;
 
         if (IIDX_SEGMENT_FONT_COLOR.has_value()) {
             const auto rgb = IIDX_SEGMENT_FONT_COLOR.value();
