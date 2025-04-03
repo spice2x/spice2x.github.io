@@ -55,30 +55,6 @@ bool ImGui_ImplSpice_Init(HWND hWnd) {
     io.BackendPlatformName = "imgui_impl_spice";
     io.ConfigErrorRecoveryEnableTooltip = true;
 
-    // keyboard mapping
-    io.KeyMap[ImGuiKey_Tab] = VK_TAB;
-    io.KeyMap[ImGuiKey_LeftArrow] = VK_LEFT;
-    io.KeyMap[ImGuiKey_RightArrow] = VK_RIGHT;
-    io.KeyMap[ImGuiKey_UpArrow] = VK_UP;
-    io.KeyMap[ImGuiKey_DownArrow] = VK_DOWN;
-    io.KeyMap[ImGuiKey_PageUp] = VK_PRIOR;
-    io.KeyMap[ImGuiKey_PageDown] = VK_NEXT;
-    io.KeyMap[ImGuiKey_Home] = VK_HOME;
-    io.KeyMap[ImGuiKey_End] = VK_END;
-    io.KeyMap[ImGuiKey_Insert] = VK_INSERT;
-    io.KeyMap[ImGuiKey_Delete] = VK_DELETE;
-    io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
-    io.KeyMap[ImGuiKey_Space] = VK_SPACE;
-    io.KeyMap[ImGuiKey_Enter] = VK_RETURN;
-    io.KeyMap[ImGuiKey_Escape] = VK_ESCAPE;
-    io.KeyMap[ImGuiKey_KeypadEnter] = VK_RETURN;
-    io.KeyMap[ImGuiKey_A] = 'A';
-    io.KeyMap[ImGuiKey_C] = 'C';
-    io.KeyMap[ImGuiKey_V] = 'V';
-    io.KeyMap[ImGuiKey_X] = 'X';
-    io.KeyMap[ImGuiKey_Y] = 'Y';
-    io.KeyMap[ImGuiKey_Z] = 'Z';
-
     // get display size
     ImGui_ImplSpice_UpdateDisplaySize();
 
@@ -176,7 +152,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
         }
 
         // set mouse position
-        io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
         POINT pos;
         if (HWND active_window = ::GetForegroundWindow()) {
             if (active_window == g_hWnd
@@ -184,7 +160,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
             || ::IsChild(g_hWnd, active_window)
             || active_window == SPICETOUCH_TOUCH_HWND) {
                 if (::GetCursorPos(&pos) && ::ScreenToClient(g_hWnd, &pos)) {
-                    io.MousePos = ImVec2(
+                    io.AddMousePosEvent(
                             (float) pos.x * io.DisplaySize.x / window_size.x,
                             (float) pos.y * io.DisplaySize.y / window_size.y);
                 }
@@ -195,7 +171,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
         if (io.MousePos.x == -FLT_MAX || io.MousePos.y == -FLT_MAX) {
             if (SPICETOUCH_TOUCH_HWND) {
                 if (::GetCursorPos(&pos) && ::ScreenToClient(SPICETOUCH_TOUCH_HWND, &pos)) {
-                    io.MousePos = ImVec2(
+                    io.AddMousePosEvent(
                             (float) pos.x * io.DisplaySize.x / window_size.x,
                             (float) pos.y * io.DisplaySize.y / window_size.y);
                 }
@@ -212,8 +188,9 @@ static void ImGui_ImplSpice_UpdateMousePos() {
 
             // use the first touch point
             auto &tp = touch_points[0];
-            io.MousePos.x = tp.x * io.DisplaySize.x / window_size.x;
-            io.MousePos.y = tp.y * io.DisplaySize.y / window_size.y;
+            io.AddMousePosEvent(
+                tp.x * io.DisplaySize.x / window_size.x,
+                tp.y * io.DisplaySize.y / window_size.y);
 
             // update cursor position
             if (!tp.mouse) {
@@ -226,7 +203,9 @@ static void ImGui_ImplSpice_UpdateMousePos() {
             }
 
             // delay press
-            io.MouseDown[0] = delay_touch++ >= delay_touch_target && last_touch_id == tp.id;
+            if (delay_touch++ >= delay_touch_target && last_touch_id == tp.id) {
+                io.AddMouseButtonEvent(ImGuiKey_MouseLeft, true);
+            }
             if (last_touch_id == ~0u) {
                 last_touch_id = tp.id;
             }
@@ -240,6 +219,9 @@ static void ImGui_ImplSpice_UpdateMousePos() {
     }
 }
 
+// previous keyboard state (using BYTE[] for use with ToAscii routine)
+BYTE KeysDownOld[255] = {};
+
 void ImGui_ImplSpice_NewFrame() {
 
     // check if font is built
@@ -252,39 +234,16 @@ void ImGui_ImplSpice_NewFrame() {
     io.DeltaTime = (float) (current_time - g_Time) / g_TicksPerSecond;
     g_Time = current_time;
 
-    // remember old state
-    BYTE KeysDownOld[sizeof(io.KeysDown)];
-    for (size_t i = 0; i < sizeof(io.KeysDown); i++) {
-        KeysDownOld[i] = io.KeysDown[i] ? ~0 : 0;
-    }
-    KeysDownOld[VK_SHIFT] |= KeysDownOld[VK_LSHIFT];
-    KeysDownOld[VK_SHIFT] |= KeysDownOld[VK_RSHIFT];
-
-    // reset keys state
-    io.MouseWheel = 0;
-    io.KeyCtrl = false;
-    io.KeyShift = false;
-    io.KeyAlt = false;
-    io.KeySuper = false;
-    memset(io.KeysDown, false, sizeof(io.KeysDown));
-    memset(io.MouseDown, false, sizeof(io.MouseDown));
+    // new keyboard state combining all devices
+    BYTE KeysDownNew[255] = {};
 
     // early quit if window not in focus
     if (!superexit::has_focus()) {
         return;
     }
 
-    // read keyboard modifiers inputs
-    io.KeyCtrl = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
-    io.KeyShift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
-    io.KeyAlt = (::GetKeyState(VK_MENU) & 0x8000) != 0;
-    io.KeySuper = (::GetKeyState(VK_LWIN) & 0x8000) != 0;
-    io.KeySuper |= (::GetKeyState(VK_RWIN) & 0x8000) != 0;
-
-    // apply windows mouse buttons
-    io.MouseDown[0] |= (get_async_primary_mouse()) != 0;
-    io.MouseDown[1] |= (get_async_secondary_mouse()) != 0;
-    io.MouseDown[2] |= (GetAsyncKeyState(VK_MBUTTON)) != 0;
+    // mouse states, combining all devices
+    bool mouse_state[3] = {};
 
     // read new keys state
     static long mouse_wheel_last = 0;
@@ -299,26 +258,25 @@ void ImGui_ImplSpice_NewFrame() {
                     // mouse button triggers
                     if (GetSystemMetrics(SM_SWAPBUTTON)) {
                         if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
-                            io.MouseDown[0] = true;
+                            mouse_state[ImGuiMouseButton_Left] = true;
                         }
                         if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
-                            io.MouseDown[1] = true;
+                            mouse_state[ImGuiMouseButton_Right] = true;
                         }
                     } else {
                         if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
-                            io.MouseDown[0] = true;
+                            mouse_state[ImGuiMouseButton_Left] = true;
                         }
                         if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
-                            io.MouseDown[1] = true;
+                            mouse_state[ImGuiMouseButton_Right] = true;
                         }
                     }
                     if (mouse->key_states[rawinput::MOUSEBTN_MIDDLE]) {
-                        io.MouseDown[2] = true;
+                        mouse_state[ImGuiMouseButton_Middle] = true;
                     }
 
                     // final mouse wheel value should be all devices combined
                     mouse_wheel += mouse->pos_wheel;
-
                     break;
                 }
                 case rawinput::KEYBOARD: {
@@ -333,8 +291,9 @@ void ImGui_ImplSpice_NewFrame() {
                             state |= key_states[page_index + vKey];
                         }
 
-                        // trigger
-                        io.KeysDown[vKey] |= state;
+                        if (state) {
+                            KeysDownNew[vKey] = ~0;
+                        }
 
                         // generate character input, but only if WM_CHAR didn't take over the
                         // functionality
@@ -346,6 +305,7 @@ void ImGui_ImplSpice_NewFrame() {
                                     static_cast<const BYTE *>(KeysDownOld),
                                     reinterpret_cast<LPWORD>(buf),
                                     0);
+                            
                             if (ret > 0) {
                                 for (int i = 0; i < ret; i++) {
                                     overlay::OVERLAY->input_char(buf[i]);
@@ -361,31 +321,66 @@ void ImGui_ImplSpice_NewFrame() {
         }
     }
 
-    // navigator input
-    auto buttons = games::get_buttons_overlay(eamuse_get_game());
-    if (buttons && (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered())) {
-        struct {
-            size_t index;
-            Button &btn;
-        } NAV_MAPPING[] = {
-                { ImGuiNavInput_Activate, buttons->at(games::OverlayButtons::NavigatorActivate )},
-                { ImGuiNavInput_Cancel, buttons->at(games::OverlayButtons::NavigatorCancel) },
-                { ImGuiNavInput_DpadUp, buttons->at(games::OverlayButtons::NavigatorUp) },
-                { ImGuiNavInput_DpadDown, buttons->at(games::OverlayButtons::NavigatorDown) },
-                { ImGuiNavInput_DpadLeft, buttons->at(games::OverlayButtons::NavigatorLeft) },
-                { ImGuiNavInput_DpadRight, buttons->at(games::OverlayButtons::NavigatorRight) },
+    // merge modifier keys
+    KeysDownNew[VK_CONTROL] |= KeysDownNew[VK_LCONTROL] | KeysDownNew[VK_RCONTROL];
+    KeysDownNew[VK_MENU] |= KeysDownNew[VK_LMENU] | KeysDownNew[VK_RSHIFT];
+    KeysDownNew[VK_SHIFT] |= KeysDownNew[VK_LSHIFT] | KeysDownNew[VK_RSHIFT];
+
+    // combined keys
+    {
+        static struct {
+            ImGuiKey index;
+            UINT vKey;
+        } KEY_MAPPING[] = {
+            { ImGuiKey_Tab, VK_TAB },
+            { ImGuiKey_LeftArrow, VK_LEFT },
+            { ImGuiKey_RightArrow, VK_RIGHT },
+            { ImGuiKey_UpArrow, VK_UP },
+            { ImGuiKey_DownArrow, VK_DOWN },
+            { ImGuiKey_PageUp, VK_PRIOR },
+            { ImGuiKey_PageDown, VK_NEXT },
+            { ImGuiKey_Home, VK_HOME },
+            { ImGuiKey_End, VK_END },
+            { ImGuiKey_Insert, VK_INSERT },
+            { ImGuiKey_Delete, VK_DELETE },
+            { ImGuiKey_Backspace, VK_BACK },
+            { ImGuiKey_Space, VK_SPACE },
+            { ImGuiKey_Enter, VK_RETURN },
+            { ImGuiKey_Escape, VK_ESCAPE },
+            { ImGuiKey_KeypadEnter, VK_RETURN },
+            { ImGuiKey_A, 'A' },
+            { ImGuiKey_C, 'C' },
+            { ImGuiKey_V, 'V' },
+            { ImGuiKey_X, 'X' },
+            { ImGuiKey_Y, 'Y' },
+            { ImGuiKey_Z, 'Z' },
+            { ImGuiMod_Ctrl, VK_CONTROL },
+            { ImGuiMod_Alt, VK_MENU },
+            { ImGuiMod_Shift, VK_SHIFT },
         };
-        for (auto mapping : NAV_MAPPING) {
-            if (GameAPI::Buttons::getState(RI_MGR, mapping.btn)) {
-                io.NavInputs[mapping.index] = 1;
+        for (const auto& mapping : KEY_MAPPING) {
+            if ((KeysDownNew[mapping.vKey] != 0) != (KeysDownOld[mapping.vKey] != 0)) {
+                io.AddKeyEvent(mapping.index, (KeysDownNew[mapping.vKey] != 0));
             }
+        }
+    }
+
+    // remember current key state for next frame
+    memcpy(KeysDownOld, KeysDownNew, sizeof(KeysDownOld));
+    // needed for ToAscii to correctly detect caps lock state
+    KeysDownOld[VK_CAPITAL] = ::GetKeyState(VK_CAPITAL) & 0x0001;
+
+    // combined mouse
+    for (size_t i = 0; i < std::size(mouse_state); i++) {
+        if (mouse_state[i] != io.MouseDown[i]) {
+            io.AddMouseButtonEvent(i, mouse_state[i]);
         }
     }
 
     // set mouse wheel
     auto mouse_diff = mouse_wheel - mouse_wheel_last;
     mouse_wheel_last = mouse_wheel;
-    io.MouseWheel = mouse_diff;
+    io.AddMouseWheelEvent(0, mouse_diff);
 
     // update OS mouse position
     ImGui_ImplSpice_UpdateMousePos();
