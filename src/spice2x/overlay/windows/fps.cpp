@@ -12,7 +12,8 @@ namespace overlay::windows {
                       | ImGuiWindowFlags_AlwaysAutoResize
                       | ImGuiWindowFlags_NoFocusOnAppearing
                       | ImGuiWindowFlags_NoNavFocus
-                      | ImGuiWindowFlags_NoNavInputs;
+                      | ImGuiWindowFlags_NoNavInputs
+                      | ImGuiWindowFlags_NoDocking;
         this->bg_alpha = 0.4f;
         this->start_time = std::chrono::system_clock::now();
     }

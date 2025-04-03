@@ -31,7 +31,8 @@ namespace overlay::windows {
         // ImGuiWindowFlags_NoBackground is needed as the background is drawn on top of the subscreen image
         this->flags = ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoBackground;
+            ImGuiWindowFlags_NoBackground |
+            ImGuiWindowFlags_NoDocking;
 
         this->size_max = ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
         this->size_min = ImVec2(240, 135 + ImGui::GetFrameHeight());

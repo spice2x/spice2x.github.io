@@ -15,7 +15,8 @@ namespace overlay::windows {
 
         this->flags = ImGuiWindowFlags_NoResize
                       | ImGuiWindowFlags_NoCollapse
-                      | ImGuiWindowFlags_AlwaysAutoResize;
+                      | ImGuiWindowFlags_AlwaysAutoResize
+                      | ImGuiWindowFlags_NoDocking;
     }
 
     void ExitPrompt::build_button(
@@ -113,6 +114,7 @@ namespace overlay::windows {
                 nullptr,
                 ImGuiWindowFlags_NoMove |
                 ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoDocking |
                 ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::TextUnformatted("Exit the game now?");
 
