@@ -240,9 +240,12 @@ void overlay::SpiceOverlay::init() {
     io.UserData = this;
     io.ConfigFlags = ImGuiConfigFlags_NavEnableKeyboard
                      | ImGuiConfigFlags_NavEnableGamepad
-                     | ImGuiConfigFlags_NavEnableSetMousePos
-                     | ImGuiConfigFlags_DockingEnable
-                     | ImGuiConfigFlags_ViewportsEnable;
+                     | ImGuiConfigFlags_NavEnableSetMousePos;
+
+    if (!cfg::CONFIGURATOR_STANDALONE) {
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    }
     if (is_touch_available()) {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
     }
