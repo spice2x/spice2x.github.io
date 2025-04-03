@@ -17,7 +17,8 @@
     !defined(IMGUI_DISABLE_DEFAULT_ALLOCATORS) || \
     !defined(IMGUI_USE_BGRA_PACKED_COLOR) || \
     !defined(IMGUI_HAS_VIEWPORT) || \
-    !defined(IMGUI_HAS_DOCK)
+    !defined(IMGUI_HAS_DOCK) || \
+    !defined(IMGUI_DISABLE_DEMO_WINDOWS)
 #error "fix imconfig.h after updating imgui version"
 #endif
 
@@ -51,6 +52,7 @@ bool ImGui_ImplSpice_Init(HWND hWnd) {
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     io.BackendPlatformName = "imgui_impl_spice";
+    io.ConfigErrorRecoveryEnableTooltip = true;
 
     // keyboard mapping
     io.KeyMap[ImGuiKey_Tab] = VK_TAB;

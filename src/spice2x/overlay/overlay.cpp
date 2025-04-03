@@ -59,6 +59,7 @@ namespace overlay {
     std::mutex OVERLAY_MUTEX;
     std::unique_ptr<overlay::SpiceOverlay> OVERLAY = nullptr;
     ImFont* DSEG_FONT = nullptr;
+    bool SHOW_DEBUG_LOG_WINDOW = false;
 }
 
 static void *ImGui_Alloc(size_t sz, void *user_data) {
@@ -245,6 +246,10 @@ void overlay::SpiceOverlay::init() {
     if (is_touch_available()) {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
     }
+
+    // temporarily turn this off as it can cause crashes during font load failures
+    // turns back on in ImGui_ImplSpice_Init
+    io.ConfigErrorRecoveryEnableTooltip = false;
 
     io.MouseDrawCursor = !GRAPHICS_SHOW_CURSOR;
 
@@ -453,6 +458,10 @@ void overlay::SpiceOverlay::new_frame() {
     // build windows
     for (auto &window : this->windows) {
         window->build();
+    }
+
+    if (SHOW_DEBUG_LOG_WINDOW) {
+        ImGui::ShowDebugLogWindow(&SHOW_DEBUG_LOG_WINDOW);
     }
 
     // end frame
