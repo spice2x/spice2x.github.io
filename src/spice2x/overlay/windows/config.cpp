@@ -36,6 +36,8 @@
 
 namespace overlay::windows {
 
+    // same width as dummy marker
+    const float INDENT = 22.f;
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
@@ -248,10 +250,8 @@ namespace overlay::windows {
                 // help text for binding buttons, if the game has one
                 const auto help_text = games::get_buttons_help(this->games_selected_name);
                 if (!help_text.empty()) {
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8);
                     ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Button Layout");
                     ImGui::Spacing();
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8);
                     ImGui::TextWrapped("%s", help_text.c_str());
                     ImGui::TextUnformatted("");
                 }
@@ -262,15 +262,15 @@ namespace overlay::windows {
                 // keypad buttons
                 ImGui::TextUnformatted("");
                 if (this->games_selected_name == "Beatmania IIDX") {
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8);
+                    ImGui::Indent(INDENT);
                     ImGui::TextColored(
                         ImVec4(1, 0.5f, 0.5f, 1.f),
                         "WARNING: Lightning Model (TDJ) I/O will ignore the keypad!");
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8);
                     ImGui::TextWrapped(
                         "Use Toggle Sub Screen button to show the overlay and use your mouse, "
                         "connect using SpiceCompanion app, or connect a touch screen to enter "
                         "the PIN.");
+                    ImGui::Unindent(INDENT);
                     ImGui::TextUnformatted("");
                 }
                 auto keypad_buttons = games::get_buttons_keypads(this->games_selected_name);
@@ -563,213 +563,300 @@ namespace overlay::windows {
     }
 
     void Config::build_buttons(const std::string &name, std::vector<Button> *buttons, int min, int max) {
-        ImGui::Columns(3, "ButtonsColumns", true);
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "%s Button", name.c_str());
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Binding");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Actions");
-        ImGui::SameLine();
-        ImGui::HelpMarker("Use 'Bind' to bind a button to a device using RawInput.\n"
-                          "Use 'Naive' for device independent binding using GetAsyncKeyState.");
-        ImGui::NextColumn();
+
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "%s Buttons", name.c_str());
         ImGui::Separator();
+        if (ImGui::BeginTable("ButtonsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 240);
 
-        // check if empty
-        if (!buttons || buttons->empty()) {
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-        }
+            // check if empty
+            if (!buttons || buttons->empty()) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Indent(INDENT);
+                ImGui::TextDisabled("-");
+                ImGui::Unindent(INDENT);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+            }
 
-        // check buttons
-        if (buttons) {
-            int button_it_max = max < 0 ? buttons->size() - 1 : std::min((int) buttons->size() - 1, max);
-            for (int button_it = min; button_it <= button_it_max; button_it++) {
-                auto &button_in = buttons->at(button_it);
+            // check buttons
+            if (buttons) {
+                int button_it_max = max < 0 ? buttons->size() - 1 : std::min((int) buttons->size() - 1, max);
+                for (int button_it = min; button_it <= button_it_max; button_it++) {
+                    auto &button_in = buttons->at(button_it);
 
-                // get button based on page
-                auto button = &button_in;
-                auto &button_alternatives = button->getAlternatives();
-                if (this->buttons_page > 0) {
-                    while ((int) button_alternatives.size() < this->buttons_page) {
-                        button_alternatives.emplace_back(button->getName());
-                    }
-                    button = &button_alternatives.at(this->buttons_page - 1);
-                }
-
-                // get button info
-                ImGui::PushID(button);
-                auto button_name = button->getName();
-                auto button_display = button->getDisplayString(RI_MGR.get());
-                auto button_state = GameAPI::Buttons::getState(RI_MGR, *button);
-                auto button_velocity = GameAPI::Buttons::getVelocity(RI_MGR, *button);
-
-                // list entry
-                bool style_color = false;
-                if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
-                    style_color = true;
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
-                } else if (button_display.empty()) {
-                    style_color = true;
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
-                }
-                ImGui::AlignTextToFramePadding();
-                ImGui::Text("%s", button_name.c_str());
-                ImGui::NextColumn();
-                ImGui::AlignTextToFramePadding();
-                ImGui::Text("%s", button_display.empty() ? "None" : button_display.c_str());
-                ImGui::NextColumn();
-                if (style_color) {
-                    ImGui::PopStyleColor();
-                }
-
-                // normal button binding
-                std::string bind_name = "Bind " + button_name;
-                if (ImGui::Button("Bind")
-                || (buttons_many_active && buttons_many_active_section == name && !buttons_bind_active
-                && !buttons_many_naive && buttons_many_index == button_it
-                && ++buttons_many_delay > 25)) {
-                    ImGui::OpenPopup(bind_name.c_str());
-                    buttons_bind_active = true;
-                    if (buttons_many_active) {
-                        buttons_many_delay = 0;
-                        buttons_many_index = button_it;
-                        buttons_many_naive = false;
-                        buttons_many_active_section = name;
-                    }
-
-                    // midi freeze
-                    RI_MGR->devices_midi_freeze(true);
-
-                    // reset updated devices
-                    RI_MGR->devices_get_updated();
-
-                    // remember start values in bind data
-                    for (auto device : RI_MGR->devices_get()) {
-                        switch (device.type) {
-                            case rawinput::MOUSE: {
-                                memcpy(device.mouseInfo->key_states_bind,
-                                        device.mouseInfo->key_states,
-                                        sizeof(device.mouseInfo->key_states_bind));
-                                break;
-                            }
-                            case rawinput::HID: {
-                                for (size_t i = 0; i < device.hidInfo->value_states.size(); i++)
-                                    device.hidInfo->bind_value_states[i] = device.hidInfo->value_states[i];
-                                break;
-                            }
-                            case rawinput::MIDI: {
-                                for (size_t i = 0; i < device.midiInfo->states.size(); i++)
-                                    device.midiInfo->bind_states[i] = device.midiInfo->states[i];
-                                for (size_t i = 0; i < device.midiInfo->controls_precision.size(); i++)
-                                    device.midiInfo->controls_precision_bind[i] =
-                                            device.midiInfo->controls_precision[i];
-                                for (size_t i = 0; i < device.midiInfo->controls_single.size(); i++)
-                                    device.midiInfo->controls_single_bind[i] = device.midiInfo->controls_single[i];
-                                for (size_t i = 0; i < device.midiInfo->controls_onoff.size(); i++)
-                                    device.midiInfo->controls_onoff_bind[i] = device.midiInfo->controls_onoff[i];
-                                break;
-                            }
-                            default:
-                                break;
+                    // get button based on page
+                    auto button = &button_in;
+                    auto &button_alternatives = button->getAlternatives();
+                    if (this->buttons_page > 0) {
+                        while ((int) button_alternatives.size() < this->buttons_page) {
+                            button_alternatives.emplace_back(button->getName());
                         }
+                        button = &button_alternatives.at(this->buttons_page - 1);
                     }
-                }
-                if (ImGui::BeginPopupModal(bind_name.c_str(), NULL,
-                        ImGuiWindowFlags_AlwaysAutoResize)) {
 
-                    // modal content
-                    ImGui::Text("Please press any button.");
-                    ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Hint: Press ESC to cancel!");
-                    if (ImGui::Button("Cancel")) {
-                        RI_MGR->devices_midi_freeze(false);
-                        buttons_bind_active = false;
-                        buttons_many_index = -1;
-                        ImGui::CloseCurrentPopup();
-                    } else {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
 
-                        // iterate updated devices
-                        auto updated_devices = RI_MGR->devices_get_updated();
-                        for (auto device : updated_devices) {
-                            std::lock_guard<std::mutex> lock(*device->mutex);
-                            switch (device->type) {
+                    // get button info
+                    ImGui::PushID(button);
+                    auto button_name = button->getName();
+                    auto button_display = button->getDisplayString(RI_MGR.get());
+                    auto button_state = GameAPI::Buttons::getState(RI_MGR, *button);
+                    auto button_velocity = GameAPI::Buttons::getVelocity(RI_MGR, *button);
+
+                    // list entry
+                    bool style_color = false;
+                    if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
+                        style_color = true;
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
+                    } else if (button_display.empty()) {
+                        style_color = true;
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
+                    }
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Indent(INDENT);
+                    ImGui::Text("%s", button_name.c_str());
+                    ImGui::Unindent(INDENT);
+
+                    ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Text("%s", button_display.empty() ? "-" : button_display.c_str());
+
+                    ImGui::TableNextColumn();
+                    if (style_color) {
+                        ImGui::PopStyleColor();
+                    }
+
+                    // normal button binding
+                    std::string bind_name = "Bind " + button_name;
+                    if (ImGui::Button("Bind")
+                    || (buttons_many_active && buttons_many_active_section == name && !buttons_bind_active
+                    && !buttons_many_naive && buttons_many_index == button_it
+                    && ++buttons_many_delay > 25)) {
+                        ImGui::OpenPopup(bind_name.c_str());
+                        buttons_bind_active = true;
+                        if (buttons_many_active) {
+                            buttons_many_delay = 0;
+                            buttons_many_index = button_it;
+                            buttons_many_naive = false;
+                            buttons_many_active_section = name;
+                        }
+
+                        // midi freeze
+                        RI_MGR->devices_midi_freeze(true);
+
+                        // reset updated devices
+                        RI_MGR->devices_get_updated();
+
+                        // remember start values in bind data
+                        for (auto device : RI_MGR->devices_get()) {
+                            switch (device.type) {
                                 case rawinput::MOUSE: {
-                                    auto mouse = device->mouseInfo;
-                                    for (size_t i = 0; i < sizeof(mouse->key_states_bind); i++) {
-                                        if (mouse->key_states[i] && !mouse->key_states_bind[i]
-                                        && !ImGui::IsItemHovered()) {
-
-                                            // bind key
-                                            button->setDeviceIdentifier(device->name);
-                                            button->setVKey(static_cast<unsigned short>(i));
-                                            button->setAnalogType(BAT_NONE);
-                                            ::Config::getInstance().updateBinding(
-                                                    games_list[games_selected], *button, buttons_page - 1);
-                                            ImGui::CloseCurrentPopup();
-                                            buttons_bind_active = false;
-                                            inc_buttons_many_index(button_it_max);
-                                            RI_MGR->devices_midi_freeze(false);
-                                            break;
-                                        }
-                                    }
-                                    break;
-                                }
-                                case rawinput::KEYBOARD: {
-                                    auto kb = device->keyboardInfo;
-                                    for (unsigned short vkey = 0; vkey < 1024; vkey++) {
-
-                                        // check if key is down
-                                        if (vkey != VK_NUMLOCK && kb->key_states[vkey]) {
-
-                                            // cancel on escape key
-                                            if (vkey == VK_ESCAPE) {
-                                                ImGui::CloseCurrentPopup();
-                                                buttons_bind_active = false;
-                                                buttons_many_index = -1;
-                                                RI_MGR->devices_midi_freeze(false);
-                                                break;
-                                            }
-
-                                            // bind key
-                                            button->setDeviceIdentifier(device->name);
-                                            button->setVKey(vkey);
-                                            button->setAnalogType(BAT_NONE);
-                                            ::Config::getInstance().updateBinding(
-                                                    games_list[games_selected], *button, buttons_page - 1);
-                                            ImGui::CloseCurrentPopup();
-                                            buttons_bind_active = false;
-                                            inc_buttons_many_index(button_it_max);
-                                            RI_MGR->devices_midi_freeze(false);
-                                            break;
-                                        }
-                                    }
+                                    memcpy(device.mouseInfo->key_states_bind,
+                                            device.mouseInfo->key_states,
+                                            sizeof(device.mouseInfo->key_states_bind));
                                     break;
                                 }
                                 case rawinput::HID: {
-                                    auto hid = device->hidInfo;
+                                    for (size_t i = 0; i < device.hidInfo->value_states.size(); i++)
+                                        device.hidInfo->bind_value_states[i] = device.hidInfo->value_states[i];
+                                    break;
+                                }
+                                case rawinput::MIDI: {
+                                    for (size_t i = 0; i < device.midiInfo->states.size(); i++)
+                                        device.midiInfo->bind_states[i] = device.midiInfo->states[i];
+                                    for (size_t i = 0; i < device.midiInfo->controls_precision.size(); i++)
+                                        device.midiInfo->controls_precision_bind[i] =
+                                                device.midiInfo->controls_precision[i];
+                                    for (size_t i = 0; i < device.midiInfo->controls_single.size(); i++)
+                                        device.midiInfo->controls_single_bind[i] = device.midiInfo->controls_single[i];
+                                    for (size_t i = 0; i < device.midiInfo->controls_onoff.size(); i++)
+                                        device.midiInfo->controls_onoff_bind[i] = device.midiInfo->controls_onoff[i];
+                                    break;
+                                }
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::HelpTooltip(
+                            "Use 'Bind' to bind a button to a device using RawInput.\n"
+                            "Use 'Naive' for device independent binding using GetAsyncKeyState.");
+                    }
 
-                                    // ignore touchscreen and digitizer button inputs
-                                    // digitizer has funky stuff like "Touch Valid" "Data Valid" always held high
-                                    if (!rawinput::touch::is_touchscreen(device) &&
-                                        hid->caps.UsagePage != 0x0D) {
+                    if (ImGui::BeginPopupModal(bind_name.c_str(), NULL,
+                            ImGuiWindowFlags_AlwaysAutoResize)) {
 
-                                        // button caps
-                                        auto button_states_list = &hid->button_states;
-                                        size_t button_index = 0;
-                                        for (auto &button_states : *button_states_list) {
-                                            for (size_t i = 0; i < button_states.size(); i++) {
+                        // modal content
+                        ImGui::Text("Please press any button.");
+                        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Hint: Press ESC to cancel!");
+                        if (ImGui::Button("Cancel")) {
+                            RI_MGR->devices_midi_freeze(false);
+                            buttons_bind_active = false;
+                            buttons_many_index = -1;
+                            ImGui::CloseCurrentPopup();
+                        } else {
 
-                                                // check if button is down
-                                                if (button_states[i]) {
+                            // iterate updated devices
+                            auto updated_devices = RI_MGR->devices_get_updated();
+                            for (auto device : updated_devices) {
+                                std::lock_guard<std::mutex> lock(*device->mutex);
+                                switch (device->type) {
+                                    case rawinput::MOUSE: {
+                                        auto mouse = device->mouseInfo;
+                                        for (size_t i = 0; i < sizeof(mouse->key_states_bind); i++) {
+                                            if (mouse->key_states[i] && !mouse->key_states_bind[i]
+                                            && !ImGui::IsItemHovered()) {
 
-                                                    // bind key
+                                                // bind key
+                                                button->setDeviceIdentifier(device->name);
+                                                button->setVKey(static_cast<unsigned short>(i));
+                                                button->setAnalogType(BAT_NONE);
+                                                ::Config::getInstance().updateBinding(
+                                                        games_list[games_selected], *button, buttons_page - 1);
+                                                ImGui::CloseCurrentPopup();
+                                                buttons_bind_active = false;
+                                                inc_buttons_many_index(button_it_max);
+                                                RI_MGR->devices_midi_freeze(false);
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    case rawinput::KEYBOARD: {
+                                        auto kb = device->keyboardInfo;
+                                        for (unsigned short vkey = 0; vkey < 1024; vkey++) {
+
+                                            // check if key is down
+                                            if (vkey != VK_NUMLOCK && kb->key_states[vkey]) {
+
+                                                // cancel on escape key
+                                                if (vkey == VK_ESCAPE) {
+                                                    ImGui::CloseCurrentPopup();
+                                                    buttons_bind_active = false;
+                                                    buttons_many_index = -1;
+                                                    RI_MGR->devices_midi_freeze(false);
+                                                    break;
+                                                }
+
+                                                // bind key
+                                                button->setDeviceIdentifier(device->name);
+                                                button->setVKey(vkey);
+                                                button->setAnalogType(BAT_NONE);
+                                                ::Config::getInstance().updateBinding(
+                                                        games_list[games_selected], *button, buttons_page - 1);
+                                                ImGui::CloseCurrentPopup();
+                                                buttons_bind_active = false;
+                                                inc_buttons_many_index(button_it_max);
+                                                RI_MGR->devices_midi_freeze(false);
+                                                break;
+                                            }
+                                        }
+                                        break;
+                                    }
+                                    case rawinput::HID: {
+                                        auto hid = device->hidInfo;
+
+                                        // ignore touchscreen and digitizer button inputs
+                                        // digitizer has funky stuff like "Touch Valid" "Data Valid" always held high
+                                        if (!rawinput::touch::is_touchscreen(device) &&
+                                            hid->caps.UsagePage != 0x0D) {
+
+                                            // button caps
+                                            auto button_states_list = &hid->button_states;
+                                            size_t button_index = 0;
+                                            for (auto &button_states : *button_states_list) {
+                                                for (size_t i = 0; i < button_states.size(); i++) {
+
+                                                    // check if button is down
+                                                    if (button_states[i]) {
+
+                                                        // bind key
+                                                        button->setDeviceIdentifier(device->name);
+                                                        button->setVKey(static_cast<unsigned short>(button_index + i));
+                                                        button->setAnalogType(BAT_NONE);
+                                                        ::Config::getInstance().updateBinding(
+                                                                games_list[games_selected], *button,
+                                                                buttons_page - 1);
+                                                        ImGui::CloseCurrentPopup();
+                                                        buttons_bind_active = false;
+                                                        inc_buttons_many_index(button_it_max);
+                                                        RI_MGR->devices_midi_freeze(false);
+                                                        break;
+                                                    }
+                                                }
+                                                button_index += button_states.size();
+                                            }
+                                        }
+
+                                        // value caps
+                                        auto value_states = &hid->value_states;
+                                        auto bind_value_states = &hid->bind_value_states;
+                                        auto value_names = &hid->value_caps_names;
+                                        for (size_t i = 0; i < value_states->size(); i++) {
+                                            auto &state = value_states->at(i);
+                                            auto &bind_state = bind_value_states->at(i);
+                                            auto &value_name = value_names->at(i);
+
+                                            // check for valid axis names
+                                            if (value_name == "X" ||
+                                                value_name == "Y" ||
+                                                value_name == "Rx" ||
+                                                value_name == "Ry" ||
+                                                value_name == "Z")
+                                            {
+                                                // check if axis is in activation area
+                                                float normalized = (state - 0.5f) * 2.f;
+                                                float diff = std::fabs(state - bind_state);
+                                                if (std::fabs(normalized) > 0.9f && diff > 0.1f) {
+                                                    auto bat = normalized > 0 ? BAT_POSITIVE : BAT_NEGATIVE;
+
+                                                    // bind value
                                                     button->setDeviceIdentifier(device->name);
-                                                    button->setVKey(static_cast<unsigned short>(button_index + i));
-                                                    button->setAnalogType(BAT_NONE);
+                                                    button->setVKey(static_cast<unsigned short>(i));
+                                                    button->setAnalogType(bat);
+                                                    button->setDebounceUp(0.0);
+                                                    button->setDebounceDown(0.0);
+                                                    button->setVelocityThreshold(0);
+                                                    ::Config::getInstance().updateBinding(
+                                                            games_list[games_selected], *button,
+                                                            buttons_page - 1);
+                                                    ImGui::CloseCurrentPopup();
+                                                    buttons_bind_active = false;
+                                                    inc_buttons_many_index(button_it_max);
+                                                    RI_MGR->devices_midi_freeze(false);
+                                                    break;
+
+                                                } else if (diff > 0.3f) {
+                                                    bind_state = state;
+                                                }
+                                            }
+
+                                            // hat switch
+                                            if (value_name == "Hat switch") {
+
+                                                // get hat switch values
+                                                ButtonAnalogType buffer[3], buffer_bind[3];
+                                                Button::getHatSwitchValues(state, buffer);
+                                                Button::getHatSwitchValues(bind_state, buffer_bind);
+
+                                                // check the first entry only
+                                                if (buffer[0] != BAT_NONE && buffer[0] != buffer_bind[0]) {
+
+                                                    // bind value
+                                                    button->setDeviceIdentifier(device->name);
+                                                    button->setVKey(static_cast<unsigned short>(i));
+                                                    button->setAnalogType(buffer[0]);
+                                                    button->setDebounceUp(0.0);
+                                                    button->setDebounceDown(0.0);
+                                                    button->setVelocityThreshold(0);
                                                     ::Config::getInstance().updateBinding(
                                                             games_list[games_selected], *button,
                                                             buttons_page - 1);
@@ -780,140 +867,142 @@ namespace overlay::windows {
                                                     break;
                                                 }
                                             }
-                                            button_index += button_states.size();
                                         }
+                                        break;
                                     }
+                                    case rawinput::MIDI: {
+                                        auto midi = device->midiInfo;
 
-                                    // value caps
-                                    auto value_states = &hid->value_states;
-                                    auto bind_value_states = &hid->bind_value_states;
-                                    auto value_names = &hid->value_caps_names;
-                                    for (size_t i = 0; i < value_states->size(); i++) {
-                                        auto &state = value_states->at(i);
-                                        auto &bind_state = bind_value_states->at(i);
-                                        auto &value_name = value_names->at(i);
-
-                                        // check for valid axis names
-                                        if (value_name == "X" ||
-                                            value_name == "Y" ||
-                                            value_name == "Rx" ||
-                                            value_name == "Ry" ||
-                                            value_name == "Z")
-                                        {
-                                            // check if axis is in activation area
-                                            float normalized = (state - 0.5f) * 2.f;
-                                            float diff = std::fabs(state - bind_state);
-                                            if (std::fabs(normalized) > 0.9f && diff > 0.1f) {
-                                                auto bat = normalized > 0 ? BAT_POSITIVE : BAT_NEGATIVE;
-
-                                                // bind value
-                                                button->setDeviceIdentifier(device->name);
-                                                button->setVKey(static_cast<unsigned short>(i));
-                                                button->setAnalogType(bat);
-                                                button->setDebounceUp(0.0);
-                                                button->setDebounceDown(0.0);
-                                                button->setVelocityThreshold(0);
-                                                ::Config::getInstance().updateBinding(
-                                                        games_list[games_selected], *button,
-                                                        buttons_page - 1);
-                                                ImGui::CloseCurrentPopup();
-                                                buttons_bind_active = false;
-                                                inc_buttons_many_index(button_it_max);
-                                                RI_MGR->devices_midi_freeze(false);
-                                                break;
-
-                                            } else if (diff > 0.3f) {
-                                                bind_state = state;
-                                            }
-                                        }
-
-                                        // hat switch
-                                        if (value_name == "Hat switch") {
-
-                                            // get hat switch values
-                                            ButtonAnalogType buffer[3], buffer_bind[3];
-                                            Button::getHatSwitchValues(state, buffer);
-                                            Button::getHatSwitchValues(bind_state, buffer_bind);
-
-                                            // check the first entry only
-                                            if (buffer[0] != BAT_NONE && buffer[0] != buffer_bind[0]) {
-
-                                                // bind value
-                                                button->setDeviceIdentifier(device->name);
-                                                button->setVKey(static_cast<unsigned short>(i));
-                                                button->setAnalogType(buffer[0]);
-                                                button->setDebounceUp(0.0);
-                                                button->setDebounceDown(0.0);
-                                                button->setVelocityThreshold(0);
-                                                ::Config::getInstance().updateBinding(
-                                                        games_list[games_selected], *button,
-                                                        buttons_page - 1);
-                                                ImGui::CloseCurrentPopup();
-                                                buttons_bind_active = false;
-                                                inc_buttons_many_index(button_it_max);
-                                                RI_MGR->devices_midi_freeze(false);
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    break;
-                                }
-                                case rawinput::MIDI: {
-                                    auto midi = device->midiInfo;
-
-                                    // iterate all 128 notes on 16 channels
-                                    for (unsigned short index = 0; index < midi->states.size(); index++) {
-                                        bool bind_key = false;
-                                        if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
-                                            // check if note is down
-                                            if (midi->states[index]) {
-                                                // check if it wasn't down before
-                                                if (!midi->bind_states[index]) {
-                                                    bind_key = true;
+                                        // iterate all 128 notes on 16 channels
+                                        for (unsigned short index = 0; index < midi->states.size(); index++) {
+                                            bool bind_key = false;
+                                            if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
+                                                // check if note is down
+                                                if (midi->states[index]) {
+                                                    // check if it wasn't down before
+                                                    if (!midi->bind_states[index]) {
+                                                        bind_key = true;
+                                                    }
+                                                } else {
+                                                    // note was on when dialog opened, is now off
+                                                    midi->bind_states[index] = false;
                                                 }
                                             } else {
-                                                // note was on when dialog opened, is now off
-                                                midi->bind_states[index] = false;
+                                                const auto on = midi->v2_last_on_time[index];
+                                                const auto now = get_performance_milliseconds();
+                                                // if NOTE ON was received in the last 120 milliseconds, bind this note
+                                                if ((now - on) < 120.0) {
+                                                    bind_key = true;
+                                                }
                                             }
-                                        } else {
-                                            const auto on = midi->v2_last_on_time[index];
-                                            const auto now = get_performance_milliseconds();
-                                            // if NOTE ON was received in the last 120 milliseconds, bind this note
-                                            if ((now - on) < 120.0) {
-                                                bind_key = true;
+
+                                            if (bind_key) {
+                                                // bind key
+                                                button->setDeviceIdentifier(device->name);
+                                                button->setVKey(index);
+                                                button->setAnalogType(BAT_NONE);
+                                                button->setDebounceUp(0.0);
+                                                button->setDebounceDown(0.0);
+                                                // same idea as setMidiVKey - keep velocity threshold consistent
+                                                button->setVelocityThreshold(
+                                                    device->midiInfo->v2_velocity_threshold[button->getVKey()]);
+                                                ::Config::getInstance().updateBinding(
+                                                        games_list[games_selected], *button,
+                                                        buttons_page - 1);
+                                                ImGui::CloseCurrentPopup();
+                                                buttons_bind_active = false;
+                                                inc_buttons_many_index(button_it_max);
+                                                RI_MGR->devices_midi_freeze(false);
+                                                break;
                                             }
                                         }
 
-                                        if (bind_key) {
-                                            // bind key
-                                            button->setDeviceIdentifier(device->name);
-                                            button->setVKey(index);
-                                            button->setAnalogType(BAT_NONE);
-                                            button->setDebounceUp(0.0);
-                                            button->setDebounceDown(0.0);
-                                            // same idea as setMidiVKey - keep velocity threshold consistent
-                                            button->setVelocityThreshold(
-                                                device->midiInfo->v2_velocity_threshold[button->getVKey()]);
-                                            ::Config::getInstance().updateBinding(
-                                                    games_list[games_selected], *button,
-                                                    buttons_page - 1);
-                                            ImGui::CloseCurrentPopup();
-                                            buttons_bind_active = false;
-                                            inc_buttons_many_index(button_it_max);
-                                            RI_MGR->devices_midi_freeze(false);
-                                            break;
-                                        }
-                                    }
+                                        // check precision controls
+                                        for (unsigned short index = 0; index < midi->controls_precision.size(); index++) {
+                                            if (midi->controls_precision[index] > 0) {
+                                                if (midi->controls_precision_bind[index] == 0) {
 
-                                    // check precision controls
-                                    for (unsigned short index = 0; index < midi->controls_precision.size(); index++) {
-                                        if (midi->controls_precision[index] > 0) {
-                                            if (midi->controls_precision_bind[index] == 0) {
+                                                    // bind control
+                                                    button->setDeviceIdentifier(device->name);
+                                                    button->setVKey(index);
+                                                    button->setAnalogType(BAT_MIDI_CTRL_PRECISION);
+                                                    button->setDebounceUp(0.0);
+                                                    button->setDebounceDown(0.0);
+                                                    button->setVelocityThreshold(0);
+                                                    ::Config::getInstance().updateBinding(
+                                                            games_list[games_selected], *button,
+                                                            buttons_page - 1);
+                                                    ImGui::CloseCurrentPopup();
+                                                    buttons_bind_active = false;
+                                                    inc_buttons_many_index(button_it_max);
+                                                    RI_MGR->devices_midi_freeze(false);
+                                                    break;
+                                                }
+                                            } else {
+                                                midi->controls_precision_bind[index] = 0;
+                                            }
+                                        }
+
+                                        // check single controls
+                                        for (unsigned short index = 0; index < midi->controls_single.size(); index++) {
+                                            if (midi->controls_single[index] > 0) {
+                                                if (midi->controls_single_bind[index] == 0) {
+
+                                                    // bind control
+                                                    button->setDeviceIdentifier(device->name);
+                                                    button->setVKey(index);
+                                                    button->setAnalogType(BAT_MIDI_CTRL_SINGLE);
+                                                    button->setDebounceUp(0.0);
+                                                    button->setDebounceDown(0.0);
+                                                    button->setVelocityThreshold(0);
+                                                    ::Config::getInstance().updateBinding(
+                                                            games_list[games_selected], *button,
+                                                            buttons_page - 1);
+                                                    ImGui::CloseCurrentPopup();
+                                                    buttons_bind_active = false;
+                                                    inc_buttons_many_index(button_it_max);
+                                                    RI_MGR->devices_midi_freeze(false);
+                                                    break;
+                                                }
+                                            } else {
+                                                midi->controls_single_bind[index] = 0;
+                                            }
+                                        }
+
+                                        // check on/off controls
+                                        for (unsigned short index = 0; index < midi->controls_onoff.size(); index++) {
+                                            if (midi->controls_onoff[index]) {
+                                                if (!midi->controls_onoff_bind[index]) {
+
+                                                    // bind control
+                                                    button->setDeviceIdentifier(device->name);
+                                                    button->setVKey(index);
+                                                    button->setAnalogType(BAT_MIDI_CTRL_ONOFF);
+                                                    button->setDebounceUp(0.0);
+                                                    button->setDebounceDown(0.0);
+                                                    button->setVelocityThreshold(0);
+                                                    ::Config::getInstance().updateBinding(
+                                                            games_list[games_selected], *button,
+                                                            buttons_page - 1);
+                                                    ImGui::CloseCurrentPopup();
+                                                    buttons_bind_active = false;
+                                                    inc_buttons_many_index(button_it_max);
+                                                    RI_MGR->devices_midi_freeze(false);
+                                                    break;
+                                                }
+                                            } else {
+                                                midi->controls_onoff_bind[index] = 0;
+                                            }
+                                        }
+
+                                        for (unsigned short ch = 0; ch < midi->pitch_bend.size(); ch++) {
+                                            // check pitch bend down 
+                                            if (midi->pitch_bend[ch] < 0) {
 
                                                 // bind control
                                                 button->setDeviceIdentifier(device->name);
-                                                button->setVKey(index);
-                                                button->setAnalogType(BAT_MIDI_CTRL_PRECISION);
+                                                button->setVKey(ch);
+                                                button->setAnalogType(BAT_MIDI_PITCH_DOWN);
                                                 button->setDebounceUp(0.0);
                                                 button->setDebounceDown(0.0);
                                                 button->setVelocityThreshold(0);
@@ -926,20 +1015,14 @@ namespace overlay::windows {
                                                 RI_MGR->devices_midi_freeze(false);
                                                 break;
                                             }
-                                        } else {
-                                            midi->controls_precision_bind[index] = 0;
-                                        }
-                                    }
 
-                                    // check single controls
-                                    for (unsigned short index = 0; index < midi->controls_single.size(); index++) {
-                                        if (midi->controls_single[index] > 0) {
-                                            if (midi->controls_single_bind[index] == 0) {
+                                            // check pitch bend up
+                                            if (midi->pitch_bend[ch] > 0) {
 
                                                 // bind control
                                                 button->setDeviceIdentifier(device->name);
-                                                button->setVKey(index);
-                                                button->setAnalogType(BAT_MIDI_CTRL_SINGLE);
+                                                button->setVKey(ch);
+                                                button->setAnalogType(BAT_MIDI_PITCH_UP);
                                                 button->setDebounceUp(0.0);
                                                 button->setDebounceDown(0.0);
                                                 button->setVelocityThreshold(0);
@@ -952,20 +1035,23 @@ namespace overlay::windows {
                                                 RI_MGR->devices_midi_freeze(false);
                                                 break;
                                             }
-                                        } else {
-                                            midi->controls_single_bind[index] = 0;
                                         }
+
+                                        break;
                                     }
+                                    case rawinput::PIUIO_DEVICE: {
+                                        auto piuio_dev = device->piuioDev;
 
-                                    // check on/off controls
-                                    for (unsigned short index = 0; index < midi->controls_onoff.size(); index++) {
-                                        if (midi->controls_onoff[index]) {
-                                            if (!midi->controls_onoff_bind[index]) {
+                                        // iterate all PIUIO inputs
+                                        for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_INPUTS; i++) {
 
-                                                // bind control
+                                            // check for down event
+                                            if (piuio_dev->IsPressed(i) && !piuio_dev->WasPressed(i)) {
+
+                                                // bind key
                                                 button->setDeviceIdentifier(device->name);
-                                                button->setVKey(index);
-                                                button->setAnalogType(BAT_MIDI_CTRL_ONOFF);
+                                                button->setVKey(i);
+                                                button->setAnalogType(BAT_NONE);
                                                 button->setDebounceUp(0.0);
                                                 button->setDebounceDown(0.0);
                                                 button->setVelocityThreshold(0);
@@ -978,232 +1064,140 @@ namespace overlay::windows {
                                                 RI_MGR->devices_midi_freeze(false);
                                                 break;
                                             }
-                                        } else {
-                                            midi->controls_onoff_bind[index] = 0;
-                                        }
-                                    }
-
-                                    for (unsigned short ch = 0; ch < midi->pitch_bend.size(); ch++) {
-                                        // check pitch bend down 
-                                        if (midi->pitch_bend[ch] < 0) {
-
-                                            // bind control
-                                            button->setDeviceIdentifier(device->name);
-                                            button->setVKey(ch);
-                                            button->setAnalogType(BAT_MIDI_PITCH_DOWN);
-                                            button->setDebounceUp(0.0);
-                                            button->setDebounceDown(0.0);
-                                            button->setVelocityThreshold(0);
-                                            ::Config::getInstance().updateBinding(
-                                                    games_list[games_selected], *button,
-                                                    buttons_page - 1);
-                                            ImGui::CloseCurrentPopup();
-                                            buttons_bind_active = false;
-                                            inc_buttons_many_index(button_it_max);
-                                            RI_MGR->devices_midi_freeze(false);
-                                            break;
                                         }
 
-                                        // check pitch bend up
-                                        if (midi->pitch_bend[ch] > 0) {
-
-                                            // bind control
-                                            button->setDeviceIdentifier(device->name);
-                                            button->setVKey(ch);
-                                            button->setAnalogType(BAT_MIDI_PITCH_UP);
-                                            button->setDebounceUp(0.0);
-                                            button->setDebounceDown(0.0);
-                                            button->setVelocityThreshold(0);
-                                            ::Config::getInstance().updateBinding(
-                                                    games_list[games_selected], *button,
-                                                    buttons_page - 1);
-                                            ImGui::CloseCurrentPopup();
-                                            buttons_bind_active = false;
-                                            inc_buttons_many_index(button_it_max);
-                                            RI_MGR->devices_midi_freeze(false);
-                                            break;
-                                        }
+                                        break;
                                     }
-
-                                    break;
-                                }
-                                case rawinput::PIUIO_DEVICE: {
-                                    auto piuio_dev = device->piuioDev;
-
-                                    // iterate all PIUIO inputs
-                                    for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_INPUTS; i++) {
-
-                                        // check for down event
-                                        if (piuio_dev->IsPressed(i) && !piuio_dev->WasPressed(i)) {
-
-                                            // bind key
-                                            button->setDeviceIdentifier(device->name);
-                                            button->setVKey(i);
-                                            button->setAnalogType(BAT_NONE);
-                                            button->setDebounceUp(0.0);
-                                            button->setDebounceDown(0.0);
-                                            button->setVelocityThreshold(0);
-                                            ::Config::getInstance().updateBinding(
-                                                    games_list[games_selected], *button,
-                                                    buttons_page - 1);
-                                            ImGui::CloseCurrentPopup();
-                                            buttons_bind_active = false;
-                                            inc_buttons_many_index(button_it_max);
-                                            RI_MGR->devices_midi_freeze(false);
-                                            break;
-                                        }
-                                    }
-
-                                    break;
-                                }
-                                default:
-                                    break;
-                            }
-                        }
-                    }
-
-                    // clean up
-                    ImGui::EndPopup();
-                }
-
-                // naive binding
-                ImGui::SameLine();
-                std::string naive_string = "Naive " + button_name;
-                if (ImGui::Button("Naive")
-                || (buttons_many_active && buttons_many_active_section == name && !buttons_bind_active
-                    && buttons_many_naive && buttons_many_index == button_it
-                    && ++buttons_many_delay > 25)) {
-                    ImGui::OpenPopup(naive_string.c_str());
-                    if (buttons_many_active) {
-                        buttons_many_index = button_it;
-                        buttons_many_naive = true;
-                        buttons_many_delay = 0;
-                        buttons_many_active_section = name;
-                    }
-
-                    // grab current keyboard state
-                    for (unsigned short int i = 0x01; i < 0xFF; i++) {
-                        buttons_keyboard_state[i] = GetAsyncKeyState(i) != 0;
-                    }
-                }
-                if (ImGui::BeginPopupModal(naive_string.c_str(), NULL,
-                        ImGuiWindowFlags_AlwaysAutoResize)) {
-                    buttons_bind_active = true;
-
-                    // modal content
-                    ImGui::Text("Please press any button.");
-                    const bool escape_cancels_bind = (this->tab_selected != ConfigTab::CONFIG_TAB_OVERLAY);
-                    if (escape_cancels_bind) {
-                        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Hint: Press ESC to cancel!");
-                    }
-                    if (ImGui::Button("Cancel")) {
-                        buttons_bind_active = false;
-                        buttons_many_index = -1;
-                        ImGui::CloseCurrentPopup();
-                    } else {
-
-                        // get new keyboard state
-                        bool keyboard_state_new[sizeof(buttons_keyboard_state)];
-                        for (size_t i = 0; i < sizeof(keyboard_state_new); i++) {
-                            keyboard_state_new[i] = GetAsyncKeyState(i) != 0;
-                        }
-
-                        // detect key presses
-                        for (unsigned short int vKey = 0x01; vKey < sizeof(buttons_keyboard_state); vKey++) {
-
-                            // ignore num lock escape sequence
-                            if (vKey != VK_NUMLOCK) {
-
-                                // check for key press
-                                if (keyboard_state_new[vKey] && !buttons_keyboard_state[vKey]) {
-
-                                    // ignore escape
-                                    if ((!escape_cancels_bind || vKey != VK_ESCAPE) &&
-                                        (vKey != VK_LBUTTON || !ImGui::IsItemHovered())) {
-
-                                        // bind key
-                                        button->setDeviceIdentifier("");
-                                        button->setVKey(vKey);
-                                        button->setDebounceUp(0.0);
-                                        button->setDebounceDown(0.0);
-                                        button->setVelocityThreshold(0);
-                                        ::Config::getInstance().updateBinding(
-                                                games_list[games_selected], *button,
-                                                buttons_page - 1);
-                                        inc_buttons_many_index(button_it_max);
-                                    } else {
-                                        buttons_many_index = -1;
-                                    }
-
-                                    buttons_bind_active = false;
-                                    ImGui::CloseCurrentPopup();
+                                    default:
+                                        break;
                                 }
                             }
                         }
 
                         // clean up
-                        memcpy(buttons_keyboard_state, keyboard_state_new, sizeof(buttons_keyboard_state));
+                        ImGui::EndPopup();
                     }
-                    ImGui::EndPopup();
-                }
 
-                // edit button
-                ImGui::SameLine();
-                std::string edit_name = "Edit " + button->getName();
-                if (ImGui::Button("Edit")) {
-                    ImGui::OpenPopup(edit_name.c_str());
-                }
-                if (ImGui::BeginPopupModal(edit_name.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    bool dirty = false;
-                    auto device = RI_MGR->devices_get(button->getDeviceIdentifier());
-
-                    // binding
-                    ImGui::Text("Binding");
-
-                    // combo for devices
-                    std::string device_desc = (device != nullptr) ? device->desc : "Empty (Naive)";
-                    if (ImGui::BeginCombo("Device Identifier", device_desc.c_str())) {
-                        if (ImGui::Selectable("Empty (Naive)", button->isNaive())) {
-                            button->setDeviceIdentifier("");
-                            dirty = true;
-                        }   
-                        if (button->isNaive()) {
-                            ImGui::SetItemDefaultFocus();
+                    // naive binding
+                    ImGui::SameLine();
+                    std::string naive_string = "Naive " + button_name;
+                    if (ImGui::Button("Naive")
+                    || (buttons_many_active && buttons_many_active_section == name && !buttons_bind_active
+                        && buttons_many_naive && buttons_many_index == button_it
+                        && ++buttons_many_delay > 25)) {
+                        ImGui::OpenPopup(naive_string.c_str());
+                        if (buttons_many_active) {
+                            buttons_many_index = button_it;
+                            buttons_many_naive = true;
+                            buttons_many_delay = 0;
+                            buttons_many_active_section = name;
                         }
-                        for (auto &device : RI_MGR->devices_get()) {
-                            bool selected = button->getDeviceIdentifier() == device.name.c_str();
-                            const auto device_desc = fmt::format("{}##{}", device.desc, device.name);
-                            if (ImGui::Selectable(device_desc.c_str(), selected)) {
-                                button->setDeviceIdentifier(device.name);
-                                // reset controls when switching devices
-                                button->setAnalogType(ButtonAnalogType::BAT_NONE);
-                                button->setVelocityThreshold(0);
-                                button->setVKey(0);
-                                button->setInvert(false);
-                                dirty = true;
+
+                        // grab current keyboard state
+                        for (unsigned short int i = 0x01; i < 0xFF; i++) {
+                            buttons_keyboard_state[i] = GetAsyncKeyState(i) != 0;
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::HelpTooltip(
+                            "Use 'Bind' to bind a button to a device using RawInput.\n"
+                            "Use 'Naive' for device independent binding using GetAsyncKeyState.");
+                    }
+
+                    if (ImGui::BeginPopupModal(naive_string.c_str(), NULL,
+                            ImGuiWindowFlags_AlwaysAutoResize)) {
+                        buttons_bind_active = true;
+
+                        // modal content
+                        ImGui::Text("Please press any button.");
+                        const bool escape_cancels_bind = (this->tab_selected != ConfigTab::CONFIG_TAB_OVERLAY);
+                        if (escape_cancels_bind) {
+                            ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Hint: Press ESC to cancel!");
+                        }
+                        if (ImGui::Button("Cancel")) {
+                            buttons_bind_active = false;
+                            buttons_many_index = -1;
+                            ImGui::CloseCurrentPopup();
+                        } else {
+
+                            // get new keyboard state
+                            bool keyboard_state_new[sizeof(buttons_keyboard_state)];
+                            for (size_t i = 0; i < sizeof(keyboard_state_new); i++) {
+                                keyboard_state_new[i] = GetAsyncKeyState(i) != 0;
                             }
-                            if (selected) {
+
+                            // detect key presses
+                            for (unsigned short int vKey = 0x01; vKey < sizeof(buttons_keyboard_state); vKey++) {
+
+                                // ignore num lock escape sequence
+                                if (vKey != VK_NUMLOCK) {
+
+                                    // check for key press
+                                    if (keyboard_state_new[vKey] && !buttons_keyboard_state[vKey]) {
+
+                                        // ignore escape
+                                        if ((!escape_cancels_bind || vKey != VK_ESCAPE) &&
+                                            (vKey != VK_LBUTTON || !ImGui::IsItemHovered())) {
+
+                                            // bind key
+                                            button->setDeviceIdentifier("");
+                                            button->setVKey(vKey);
+                                            button->setDebounceUp(0.0);
+                                            button->setDebounceDown(0.0);
+                                            button->setVelocityThreshold(0);
+                                            ::Config::getInstance().updateBinding(
+                                                    games_list[games_selected], *button,
+                                                    buttons_page - 1);
+                                            inc_buttons_many_index(button_it_max);
+                                        } else {
+                                            buttons_many_index = -1;
+                                        }
+
+                                        buttons_bind_active = false;
+                                        ImGui::CloseCurrentPopup();
+                                    }
+                                }
+                            }
+
+                            // clean up
+                            memcpy(buttons_keyboard_state, keyboard_state_new, sizeof(buttons_keyboard_state));
+                        }
+                        ImGui::EndPopup();
+                    }
+
+                    // edit button
+                    ImGui::SameLine();
+                    std::string edit_name = "Edit " + button->getName();
+                    if (ImGui::Button("Edit")) {
+                        ImGui::OpenPopup(edit_name.c_str());
+                    }
+                    if (ImGui::BeginPopupModal(edit_name.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                        bool dirty = false;
+                        auto device = RI_MGR->devices_get(button->getDeviceIdentifier());
+
+                        // binding
+                        ImGui::Text("Binding");
+
+                        // combo for devices
+                        std::string device_desc = (device != nullptr) ? device->desc : "Empty (Naive)";
+                        if (ImGui::BeginCombo("Device Identifier", device_desc.c_str())) {
+                            if (ImGui::Selectable("Empty (Naive)", button->isNaive())) {
+                                button->setDeviceIdentifier("");
+                                dirty = true;
+                            }   
+                            if (button->isNaive()) {
                                 ImGui::SetItemDefaultFocus();
                             }
-                        }
-                        ImGui::EndCombo();
-                    }
-
-                    // analog type (only for HID)
-                    const auto bat = button->getAnalogType();
-                    if ((device != nullptr) && (device->type == rawinput::DeviceType::HID)) {
-                        if (ImGui::BeginCombo("HID Analog Type", ButtonAnalogTypeStr[bat])) {
-                            for (int i = 0; i <= (int)ButtonAnalogType::BAT_ANY; i++) {
-
-                                // exclude the MIDI types since they are not relevant here
-                                if ((int)ButtonAnalogType::BAT_MIDI_CTRL_PRECISION <= i &&
-                                    i <= (int)ButtonAnalogType::BAT_MIDI_PITCH_UP) {
-                                    continue;
-                                }
-
-                                bool selected = (int) bat == i;
-                                if (ImGui::Selectable(ButtonAnalogTypeStr[i], selected)) {
-                                    button->setAnalogType((ButtonAnalogType) i);
+                            for (auto &device : RI_MGR->devices_get()) {
+                                bool selected = button->getDeviceIdentifier() == device.name.c_str();
+                                const auto device_desc = fmt::format("{}##{}", device.desc, device.name);
+                                if (ImGui::Selectable(device_desc.c_str(), selected)) {
+                                    button->setDeviceIdentifier(device.name);
+                                    // reset controls when switching devices
+                                    button->setAnalogType(ButtonAnalogType::BAT_NONE);
+                                    button->setVelocityThreshold(0);
+                                    button->setVKey(0);
+                                    button->setInvert(false);
                                     dirty = true;
                                 }
                                 if (selected) {
@@ -1212,1095 +1206,1141 @@ namespace overlay::windows {
                             }
                             ImGui::EndCombo();
                         }
-                        ImGui::SameLine();
-                        ImGui::HelpMarker(
-                            "Positive - tilting analog stick to + direction\n"
-                            "Negative - tilting analog stick to - direction\n"
-                            "Hat Direction - D-Pad direction is pressed\n"
-                            "Hat Neutral - D-Pad direction is NOT pressed\n"
-                            "Any Direction - analog stick has non-zero value (where zero is all the way left)"
-                            );
-                    }
 
-                    // midi
-                    if ((device != nullptr) && (device->type == rawinput::DeviceType::MIDI)) {
-                        auto type = button->getAnalogType();
-                        if (ImGui::RadioButton("MIDI Note", type == ButtonAnalogType::BAT_NONE)) {
-                            button->setMidiVKey(RI_MGR.get(), true, 1, 0);
-                            dirty = true;
-                        }
-                        ImGui::SameLine();
-                        ImGui::HelpMarker("Piano key, drum pad...");
-                        if (ImGui::RadioButton("MIDI Continuous Control (CC)",
-                                type == ButtonAnalogType::BAT_MIDI_CTRL_PRECISION ||
-                                type == ButtonAnalogType::BAT_MIDI_CTRL_SINGLE ||
-                                type == ButtonAnalogType::BAT_MIDI_CTRL_ONOFF)) {
-                            button->setMidiVKey(RI_MGR.get(), false, 1, 0);
-                            button->setVelocityThreshold(0);
-                            dirty = true;
-                        }
-                        ImGui::SameLine();
-                        ImGui::HelpMarker("Knobs, pedals, sliders...");
-                        if (ImGui::RadioButton(
-                                "Pitch Bend",
-                                type == ButtonAnalogType::BAT_MIDI_PITCH_UP ||
-                                type == ButtonAnalogType::BAT_MIDI_PITCH_DOWN)) {
-                            button->setVKey(0);
-                            button->setAnalogType(ButtonAnalogType::BAT_MIDI_PITCH_UP);
-                            button->setVelocityThreshold(0);
-                            dirty = true;
-                        }
-                        
-                        type = button->getAnalogType();
+                        // analog type (only for HID)
+                        const auto bat = button->getAnalogType();
+                        if ((device != nullptr) && (device->type == rawinput::DeviceType::HID)) {
+                            if (ImGui::BeginCombo("HID Analog Type", ButtonAnalogTypeStr[bat])) {
+                                for (int i = 0; i <= (int)ButtonAnalogType::BAT_ANY; i++) {
 
-                        int midi_channel = 0;
-                        int midi_index = 0;
-                        button->getMidiVKey(midi_channel, midi_index);
-                        if (type == ButtonAnalogType::BAT_NONE ||
-                            type == ButtonAnalogType::BAT_MIDI_CTRL_PRECISION ||
-                            type == ButtonAnalogType::BAT_MIDI_CTRL_SINGLE ||
-                            type == ButtonAnalogType::BAT_MIDI_CTRL_ONOFF) {
-
-                            // midi channel selection
-                            if (ImGui::InputInt("MIDI Channel", &midi_channel, 1, 1)) {
-                                // wrap around
-                                if (midi_channel < 1) {
-                                    midi_channel = 16;
-                                } else if (16 < midi_channel) {
-                                    midi_channel = 1;
-                                }
-                            }
-                            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                                dirty = true;
-                            }
-                            ImGui::SameLine();
-                            ImGui::HelpMarker(
-                                "Select the MIDI channel. "
-                                "Consult the manual of your instrument.\n\n"
-                                "Typically, Channel 1 is the default, but Channel 10 is reserved for drums.");
-
-                            // note or CC selection
-                            if (type == ButtonAnalogType::BAT_NONE) {
-                                if (ImGui::InputInt("MIDI Note #", &midi_index, 1, 8)) {
-                                    // notes range in [0, 127] - wrap around if outside range
-                                    if (128 <= midi_index) {
-                                        midi_index = 0;
-                                    } else if (midi_index < 0) {
-                                        midi_index = 127;
+                                    // exclude the MIDI types since they are not relevant here
+                                    if ((int)ButtonAnalogType::BAT_MIDI_CTRL_PRECISION <= i &&
+                                        i <= (int)ButtonAnalogType::BAT_MIDI_PITCH_UP) {
+                                        continue;
                                     }
-                                }
-                            } else {
-                                if (ImGui::InputInt("MIDI CC #", &midi_index, 1, 8)) {
-                                    // skip LSB range [0x20, 0x3F]
-                                    if (midi_index == 0x3F) {
-                                        midi_index = 0x1F;
-                                    } else if (0x20 <= midi_index && midi_index < 0x3F) {
-                                        midi_index = 0x40;
 
-                                    // skip range [0x60, 0x65] 
-                                    } else if (midi_index == 0x65) {
-                                        midi_index = 0x5F;
-                                    } else if (0x60 <= midi_index && midi_index < 0x65) {
-                                        midi_index = 0x66;
-
-                                    // wrap around
-                                    } else if (0x78 <= midi_index) {
-                                        midi_index = 0;
-                                    } else if (midi_index < 0) {
-                                        midi_index = 0x77;
+                                    bool selected = (int) bat == i;
+                                    if (ImGui::Selectable(ButtonAnalogTypeStr[i], selected)) {
+                                        button->setAnalogType((ButtonAnalogType) i);
+                                        dirty = true;
                                     }
-                                }
-                            }
-                            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                                dirty = true;
-                            }
-                            if (type != ButtonAnalogType::BAT_NONE) {
-                                ImGui::TextDisabled("Valid CC: 0-31, 64-95, 102-119");
-                            }
-                            if (dirty) {
-                                button->setMidiVKey(
-                                    RI_MGR.get(),
-                                    (type == ButtonAnalogType::BAT_NONE),
-                                    midi_channel, midi_index);
-                            }
-
-                            if (type == ButtonAnalogType::BAT_NONE) {
-                                // when we called GameAPI::Buttons::getState(...) above (possibly for the first time)
-                                // at the api level we would have retrieved the software threshold from Button and
-                                // applied it to the rawinput MIDI layer already
-                                // therefore, initially retrieve the value from rawinput, but save to both if changed
-                                int velocity_threshold = device->midiInfo->v2_velocity_threshold[button->getVKey()];
-                                ImGui::TextUnformatted("\n");
-                                ImGui::AlignTextToFramePadding();
-                                if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
-                                    ImGui::TextDisabled("Velocity Threshold (Disabled)");
-                                    ImGui::SameLine();
-                                    ImGui::HelpMarker("Disabled because legacy MIDI algorithm is in use.");
-                                } else {
-                                    ImGui::TextUnformatted("Velocity Threshold");
-                                    ImGui::SameLine();
-                                    ImGui::WarnMarker(
-                                        "Ignore Note-On events if velocity is below this threshold. "
-                                        "Helpful for preventing misfires on sensitive drum pads.",
-                                        "This value is set per MIDI note, not per game button. This means that if "
-                                        "you have multiple bindings to the same MIDI note, they will share the "
-                                        "same threshold value.");
-                                }
-
-                                ImGui::Separator();
-                                if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
-                                    ImGui::BeginDisabled();
-                                    int velocity_threshold_fake = 0;
-                                    ImGui::SliderInt(
-                                        "",
-                                        &velocity_threshold_fake,
-                                        0,
-                                        0x7f,
-                                        "%d/127",
-                                        ImGuiSliderFlags_AlwaysClamp);
-                                    ImGui::EndDisabled();
-                                } else {
-                                    if (ImGui::SliderInt(
-                                            "",
-                                            &velocity_threshold,
-                                            0,
-                                            0x7f,
-                                            "%d/127",
-                                            ImGuiSliderFlags_AlwaysClamp)) {
-                                        // set in the binding...
-                                        button->setVelocityThreshold(velocity_threshold);
-                                        // ... then set on the device as well for rawinput to pick up
-                                        device->midiInfo->v2_velocity_threshold_set_on_device[button->getVKey()] = true;
-                                        device->midiInfo->v2_velocity_threshold[button->getVKey()] = velocity_threshold;
+                                    if (selected) {
+                                        ImGui::SetItemDefaultFocus();
                                     }
-                                }
-                                if (ImGui::IsItemDeactivatedAfterEdit()) {
-                                    dirty = true;
-                                }
-                                ImGui::SameLine();
-                                ImGui::TextDisabled("Min. %d%%", velocity_threshold * 100 / 127);
-
-                            } else if (type == ButtonAnalogType::BAT_MIDI_CTRL_PRECISION ||
-                                       type == ButtonAnalogType::BAT_MIDI_CTRL_SINGLE) { 
-
-                                ImGui::TextUnformatted("\n");
-                                ImGui::AlignTextToFramePadding();
-                                if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
-                                    ImGui::TextDisabled("Threshold (Disabled)");
-                                    ImGui::SameLine();
-                                    ImGui::HelpMarker("Disabled because legacy MIDI algorithm is in use.");
-                                } else {
-                                    ImGui::TextUnformatted("Threshold");
-                                    ImGui::SameLine();
-                                    ImGui::HelpMarker(
-                                         "Value from CC must be greater than this value to be considered on. "
-                                         "For example, if this is a hi-hat pedal, how far you have to press down.");
-                                }
-
-                                ImGui::Separator();
-                                int threshold = button->getVelocityThreshold();
-                                if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
-                                    ImGui::BeginDisabled();
-                                    int threshold_fake = 0;
-                                    ImGui::SliderInt(
-                                        "",
-                                        &threshold_fake,
-                                        0,
-                                        0x7f,
-                                        "%d/127",
-                                        ImGuiSliderFlags_AlwaysClamp);
-                                    ImGui::EndDisabled();
-                                } else {
-                                    if (ImGui::SliderInt(
-                                            "",
-                                            &threshold,
-                                            0,
-                                            0x7f,
-                                            "%d/127",
-                                            ImGuiSliderFlags_AlwaysClamp)) {
-                                        button->setVelocityThreshold(threshold);
-                                    }
-                                }
-                                if (ImGui::IsItemDeactivatedAfterEdit()) {
-                                    dirty = true;
-                                }
-                                ImGui::SameLine();
-                                ImGui::TextDisabled("Min. %d%%", threshold * 100 / 127);
-                            }
-
-                        } else if (type == ButtonAnalogType::BAT_MIDI_PITCH_DOWN ||
-                            type == ButtonAnalogType::BAT_MIDI_PITCH_UP) {
-
-                            if (ImGui::InputInt("MIDI Channel", &midi_channel, 1, 1)) {
-                                // wrap around
-                                if (midi_channel < 1) {
-                                    midi_channel = 16;
-                                } else if (16 < midi_channel) {
-                                    midi_channel = 1;
-                                }
-                            }
-                            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                                button->setVKey(midi_channel - 1);
-                                dirty = true;
-                            }
-
-                            const bool is_up = type == ButtonAnalogType::BAT_MIDI_PITCH_UP;
-                            if (ImGui::BeginCombo(
-                                    "Direction",
-                                    is_up ? "Pitch Up" : "Pitch Down",
-                                    ImGuiComboFlags_HeightSmall)) {
-                                
-                                if (ImGui::Selectable("Pitch Up", is_up)) {
-                                    button->setAnalogType(ButtonAnalogType::BAT_MIDI_PITCH_UP);
-                                    dirty = true;
-                                }
-                                if (is_up) {
-                                    ImGui::SetItemDefaultFocus();
-                                }
-                                if (ImGui::Selectable("Pitch Down", !is_up)) {
-                                    button->setAnalogType(ButtonAnalogType::BAT_MIDI_PITCH_DOWN);
-                                    dirty = true;
-                                }
-                                if (!is_up) {
-                                    ImGui::SetItemDefaultFocus();
                                 }
                                 ImGui::EndCombo();
                             }
-                        }
-
-                    } else {
-                        int vKey = button->getVKey();
-                        if (ImGui::InputInt(button->isNaive() ? "Virtual Key" : "Index", &vKey, 1, 1)) {
-                            button->setVKey(vKey);
-                        }
-                        if (ImGui::IsItemDeactivatedAfterEdit()) {
-                            dirty = true;
-                        }
-                    }
-
-                    // preview
-                    if (!button_display.empty()) {
-                        ImGui::TextUnformatted("\nPreview");
-                        ImGui::Separator();
-                        if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
-                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
-                        }
-                        ImGui::Text("%s\n\n", button_display.c_str());
-                        if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
-                            ImGui::PopStyleColor();
-                        }
-                    } else {
-                        ImGui::TextUnformatted("");
-                    }
-
-                    // options
-                    ImGui::Text("Options");
-
-                    // check for debounce
-                    if (button->getDebounceUp() || button->getDebounceDown()
-                    || (device != nullptr && (
-                            device->type == rawinput::MOUSE ||
-                            device->type == rawinput::KEYBOARD ||
-                            (device->type == rawinput::HID && button->getAnalogType() == BAT_NONE)
-                    ))) {
-
-                        // debounce up
-                        auto debounce_up = button->getDebounceUp() * 1000;
-                        if (ImGui::InputDouble("Debounce Up (ms)", &debounce_up, 1, 1, "%.2f")) {
-                            debounce_up = std::max(0.0, debounce_up);
-                            button->setDebounceUp(debounce_up * 0.001);
-                        }
-                        if (ImGui::IsItemDeactivatedAfterEdit()) {
-                            dirty = true;
-                        }
-                        ImGui::SameLine();
-                        ImGui::HelpMarker("Time a button needs to be up to be detected as up.\n"
-                                          "Can solve micro switch issues with long notes for example.");
-
-                        // debounce down
-                        auto debounce_down = button->getDebounceDown() * 1000;
-                        if (ImGui::InputDouble("Debounce Down (ms)", &debounce_down, 1, 1, "%.2f")) {
-                            debounce_down = std::max(0.0, debounce_down);
-                            button->setDebounceDown(debounce_down * 0.001);
-                        }
-                        if (ImGui::IsItemDeactivatedAfterEdit()) {
-                            dirty = true;
-                        }
-                        ImGui::SameLine();
-                        ImGui::HelpMarker("Time a button needs to be down to be detected as down.\n"
-                                          "This setting will add noticable input lag.");
-                    }
-
-                    // invert
-                    bool invert = button->getInvert();
-                    if (ImGui::Checkbox("Invert", &invert)) {
-                        button->setInvert(invert);
-                        dirty = true;
-                    }
-
-                    // state display
-                    ImGui::TextUnformatted("");
-                    if (device != nullptr && device->type == rawinput::MIDI) {
-                        ImGui::Text("Button State");
-                        ImGui::SameLine();
-                        ImGui::HelpMarker(
-                            "When interpreted as digital input; for most games including GITADORA\n\n"
-                            "This is just a preview; each game's I/O engine will behave differently (such as poll rate) "
-                            "so make sure you test your input in the game's test menu"
-                            );
-                        ImGui::ProgressBar(
-                            button_state == GameAPI::Buttons::State::BUTTON_PRESSED ? 1.0f : 0.f);
-                        ImGui::Text("Velocity");
-                        ImGui::SameLine();
-                        ImGui::HelpMarker(
-                            "When interpreted as velocity-sensitive input, such as Nostalgia\n\n"
-                            "This is just a preview; each game's I/O engine will behave differently (such as poll rate) "
-                            "so make sure you test your input in the game's test menu"
-                            );
-                        ImGui::ProgressBar(button_velocity);
-                    } else {
-                        ImGui::Text("State");
-                        ImGui::ProgressBar(button_velocity);
-                    }
-
-                    // check if dirty
-                    if (dirty) {
-                        ::Config::getInstance().updateBinding(
-                                games_list[games_selected], *button, buttons_page - 1);
-                    }
-
-                    // close button
-                    ImGui::TextUnformatted("");
-                    if (ImGui::Button("Save & Close")) {
-                        buttons_many_active = false;
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
-                }
-
-                // clear button
-                if (button_display.size() > 0) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Clear")) {
-                        button->setDeviceIdentifier("");
-                        button->setVKey(0xFF);
-                        button->setAnalogType(BAT_NONE);
-                        button->setDebounceUp(0.0);
-                        button->setDebounceDown(0.0);
-                        button->setVelocityThreshold(0);
-                        button->setInvert(false);
-                        button->setLastState(GameAPI::Buttons::BUTTON_NOT_PRESSED);
-                        button->setLastVelocity(0);
-                        ::Config::getInstance().updateBinding(
-                                games_list[games_selected], *button,
-                                buttons_page - 1);
-                    }
-                }
-
-                // clean up
-                ImGui::NextColumn();
-                ImGui::PopID();
-            }
-        }
-        ImGui::Columns();
-    }
-
-    void Config::build_analogs(const std::string &name, std::vector<Analog> *analogs) {
-        ImGui::Columns(3, "AnalogsColumns", true);
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "%s Analog", name.c_str()); ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Binding"); ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Actions"); ImGui::NextColumn();
-        ImGui::Separator();
-
-        // check if empty
-        if (!analogs || analogs->empty()) {
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-        }
-
-        // check analogs
-        if (analogs) {
-            for (auto &analog : *analogs) {
-
-                // get analog info
-                ImGui::PushID(&analog);
-                auto analog_name = analog.getName();
-                auto analog_display = analog.getDisplayString(RI_MGR.get());
-                auto analog_state = GameAPI::Analogs::getState(RI_MGR, analog);
-
-                // list entry
-                ImGui::ProgressBar(analog_state, ImVec2(32.f, 0));
-                ImGui::SameLine();
-                if (analog_display.empty()) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
-                }
-                ImGui::Text("%s", analog_name.c_str());
-                ImGui::NextColumn();
-                ImGui::AlignTextToFramePadding();
-                ImGui::Text("%s", analog_display.empty() ? "None" : analog_display.c_str());
-                ImGui::NextColumn();
-                if (analog_display.empty()) {
-                    ImGui::PopStyleColor();
-                }
-
-                // analog binding
-                if (ImGui::Button("Bind")) {
-                    ImGui::OpenPopup("Analog Binding");
-
-                    // get devices
-                    this->analogs_devices.clear();
-                    for (auto &device : RI_MGR->devices_get()) {
-                        switch (device.type) {
-                            case rawinput::MOUSE:
-                                this->analogs_devices.emplace_back(&device);
-                                break;
-                            case rawinput::HID:
-                                if (!device.hidInfo->value_caps_names.empty())
-                                    this->analogs_devices.emplace_back(&device);
-                                break;
-                            case rawinput::MIDI:
-                                this->analogs_devices.emplace_back(&device);
-                                break;
-                            default:
-                                continue;
-                        }
-
-                        // check if this is the current device
-                        if (device.name == analog.getDeviceIdentifier()) {
-                            analogs_devices_selected = this->analogs_devices.size() - 1;
-                        }
-                    }
-                }
-                if (ImGui::BeginPopupModal("Analog Binding", NULL,
-                        ImGuiWindowFlags_AlwaysAutoResize)) {
-
-                    // device selector
-                    auto analog_device_changed = ImGui::Combo(
-                        "Device",
-                        &this->analogs_devices_selected,
-                        [](void* data, int i, const char **item) {
-                            *item = ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
-                            return true;
-                        },
-                        &this->analogs_devices, (int) this->analogs_devices.size());
-
-                    // obtain controls
-                    std::vector<std::string> control_names;
-                    std::vector<int> analogs_midi_indices;
-                    if (this->analogs_devices_selected >= 0) {
-                        auto device = this->analogs_devices.at(this->analogs_devices_selected);
-                        switch (device->type) {
-                            case rawinput::MOUSE: {
-
-                                // add X/Y axis and mouse wheel
-                                control_names.push_back("X");
-                                control_names.push_back("Y");
-                                control_names.push_back("Scroll Wheel");
-                                break;
-                            }
-                            case rawinput::HID: {
-
-                                // add value names
-                                for (auto &analog_name : device->hidInfo->value_caps_names) {
-                                    control_names.push_back(analog_name);
-                                }
-                                break;
-                            }
-                            case rawinput::MIDI: {
-
-                                // add precision values, if they have been detected since launch
-                                auto precision = device->midiInfo->controls_precision;
-                                for (size_t i = 0; i < precision.size(); i++) {
-                                    if (device->midiInfo->controls_precision_set[i]) {
-                                        const int channel = (i / 32) + 1;
-                                        const int cc_index = (i % 32);
-                                        control_names.push_back(
-                                            fmt::format("Prec Ctrl Ch.{} CC#{}", channel, cc_index)
-                                        );
-                                        analogs_midi_indices.push_back(i);
-                                    }
-                                }
-
-                                // add single values, if they have been detected since launch
-                                auto single = device->midiInfo->controls_single;
-                                for (size_t i = 0; i < single.size(); i++) {
-                                    if (device->midiInfo->controls_single_set[i]) {
-                                        const int channel = (i / 44) + 1;
-                                        int cc_index = (i % 44);
-                                        if (cc_index < 26) {
-                                            cc_index += 0x46; // single byte range
-                                        } else {
-                                            cc_index = cc_index - 26 + 0x66; // undefined single byte range
-                                        }
-                                        control_names.push_back(
-                                            fmt::format("Ctrl Ch.{} CC#{}", channel, cc_index)
-                                        );
-                                        analogs_midi_indices.push_back(i + precision.size());
-                                    }
-                                }
-
-                                // add onoff values, if they have been detected since launch
-                                auto onoff = device->midiInfo->controls_onoff;
-                                for (size_t i = 0; i < onoff.size(); i++) {
-                                    if (device->midiInfo->controls_onoff_set[i]) {
-                                        const int channel = (i / 6) + 1;
-                                        const int cc_index = (i % 6) + 0x40;
-                                        control_names.push_back(
-                                            fmt::format("OnOff Ch.{} CC#{}", channel, cc_index)
-                                        );
-                                        analogs_midi_indices.push_back(i + precision.size() + single.size());
-                                    }
-                                }
-
-                                // add pitch bend, if they have been detected since launch
-                                auto pitch = device->midiInfo->pitch_bend;
-                                for (size_t ch = 0; ch < pitch.size(); ch++) {
-                                    if (device->midiInfo->pitch_bend_set[ch]) {
-                                        control_names.push_back(fmt::format("Pitch Ch.{}", ch + 1));
-                                        analogs_midi_indices.push_back(
-                                            ch + 
-                                            precision.size() +
-                                            single.size() +
-                                            onoff.size());
-                                    }
-                                }
-                            }
-                            default:
-                                break;
-                        }
-
-                        // select the previously chosen value
-                        auto selected_control = 0;
-                        if (!analog_device_changed) {
-                            if (analogs_midi_indices.empty()) {
-                                selected_control = analog.getIndex();
-                            } else {
-                                for (size_t i = 0; i < analogs_midi_indices.size(); i++) {
-                                    if (analog.getIndex() == analogs_midi_indices.at(i)) {
-                                        selected_control = i;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (0 <= selected_control && selected_control < static_cast<int>(control_names.size())) {
-                                this->analogs_devices_control_selected = selected_control;
-                            }
-                        }
-                    }
-
-                    // controls
-                    ImGui::Combo("Control",
-                                 &this->analogs_devices_control_selected,
-                                 [](void* data, int i, const char **item) {
-                                     *item = ((std::vector<std::string>*) data)->at(i).c_str();
-                                     return true;
-                                 },
-                                 &control_names, control_names.size());
-
-                    // multiplier/sensitivity/deadzone
-                    if (this->analogs_devices_selected >= 0) {
-                        auto device = this->analogs_devices.at(this->analogs_devices_selected);
-
-                        if (device->type == rawinput::MIDI) {
                             ImGui::SameLine();
                             ImGui::HelpMarker(
-                                "From the MIDI specification:\n"
-                                "  Prec Ctrl = Double precision control (CC 0-31)\n"
-                                "  OnOff = On or Off control, pedals (CC 64-69)\n"
-                                "  Ctrl = Single precision control (CC 70-95, 102-119)\n"
+                                "Positive - tilting analog stick to + direction\n"
+                                "Negative - tilting analog stick to - direction\n"
+                                "Hat Direction - D-Pad direction is pressed\n"
+                                "Hat Neutral - D-Pad direction is NOT pressed\n"
+                                "Any Direction - analog stick has non-zero value (where zero is all the way left)"
                                 );
-                            ImGui::TextDisabled(
-                                "Hint: don't see MIDI controls in drop down?\n"
-                                "Use your knob/slider/pedal and try again.");
                         }
 
-                        if (device->type == rawinput::HID) {
-                            auto multiplier = analog.getMultiplier();
-                            int multiplier_index = 7; // 1:1
-                            if (multiplier < -1) {
-                                // turn -8 into [0], -2 into [6], and so on
-                                multiplier_index = multiplier + 8;
-                            } else if (1 < multiplier) {
-                                // turn 2 into [8], 8 into [14], etc
-                                multiplier_index = multiplier + 6;
+                        // midi
+                        if ((device != nullptr) && (device->type == rawinput::DeviceType::MIDI)) {
+                            auto type = button->getAnalogType();
+                            if (ImGui::RadioButton("MIDI Note", type == ButtonAnalogType::BAT_NONE)) {
+                                button->setMidiVKey(RI_MGR.get(), true, 1, 0);
+                                dirty = true;
                             }
-                            const bool value_changed = ImGui::Combo(
-                                "Multiplier",
-                                &multiplier_index,
-                                "1/8\0" // [0]
-                                "1/7\0" // [1]
-                                "1/6\0" // [2]
-                                "1/5\0" // [3]
-                                "1/4\0" // [4]
-                                "1/3\0" // [5]
-                                "1/2\0" // [6]
-                                "1:1\0" // [7] <-- default
-                                "2x\0"  // [8]
-                                "3x\0"  // [9]
-                                "4x\0"  // [10]
-                                "5x\0"  // [11]
-                                "6x\0"  // [12]
-                                "7x\0"  // [13]
-                                "8x\0"  // [14]
-                                "\0");
-
                             ImGui::SameLine();
-                            ImGui::HelpMarker("Apply a static integer multiplier or divisor to the input.");
-                            if (value_changed) {
-                                if (multiplier_index < 7) {
-                                    // turn [0] into -8, [6] to -2, etc
-                                    multiplier = multiplier_index - 8;
-                                } else if (7 < multiplier_index) {
-                                    // turn [8] to 2, [14] to 8, etc
-                                    multiplier = multiplier_index - 6;
+                            ImGui::HelpMarker("Piano key, drum pad...");
+                            if (ImGui::RadioButton("MIDI Continuous Control (CC)",
+                                    type == ButtonAnalogType::BAT_MIDI_CTRL_PRECISION ||
+                                    type == ButtonAnalogType::BAT_MIDI_CTRL_SINGLE ||
+                                    type == ButtonAnalogType::BAT_MIDI_CTRL_ONOFF)) {
+                                button->setMidiVKey(RI_MGR.get(), false, 1, 0);
+                                button->setVelocityThreshold(0);
+                                dirty = true;
+                            }
+                            ImGui::SameLine();
+                            ImGui::HelpMarker("Knobs, pedals, sliders...");
+                            if (ImGui::RadioButton(
+                                    "Pitch Bend",
+                                    type == ButtonAnalogType::BAT_MIDI_PITCH_UP ||
+                                    type == ButtonAnalogType::BAT_MIDI_PITCH_DOWN)) {
+                                button->setVKey(0);
+                                button->setAnalogType(ButtonAnalogType::BAT_MIDI_PITCH_UP);
+                                button->setVelocityThreshold(0);
+                                dirty = true;
+                            }
+                            
+                            type = button->getAnalogType();
+
+                            int midi_channel = 0;
+                            int midi_index = 0;
+                            button->getMidiVKey(midi_channel, midi_index);
+                            if (type == ButtonAnalogType::BAT_NONE ||
+                                type == ButtonAnalogType::BAT_MIDI_CTRL_PRECISION ||
+                                type == ButtonAnalogType::BAT_MIDI_CTRL_SINGLE ||
+                                type == ButtonAnalogType::BAT_MIDI_CTRL_ONOFF) {
+
+                                // midi channel selection
+                                if (ImGui::InputInt("MIDI Channel", &midi_channel, 1, 1)) {
+                                    // wrap around
+                                    if (midi_channel < 1) {
+                                        midi_channel = 16;
+                                    } else if (16 < midi_channel) {
+                                        midi_channel = 1;
+                                    }
+                                }
+                                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                    dirty = true;
+                                }
+                                ImGui::SameLine();
+                                ImGui::HelpMarker(
+                                    "Select the MIDI channel. "
+                                    "Consult the manual of your instrument.\n\n"
+                                    "Typically, Channel 1 is the default, but Channel 10 is reserved for drums.");
+
+                                // note or CC selection
+                                if (type == ButtonAnalogType::BAT_NONE) {
+                                    if (ImGui::InputInt("MIDI Note #", &midi_index, 1, 8)) {
+                                        // notes range in [0, 127] - wrap around if outside range
+                                        if (128 <= midi_index) {
+                                            midi_index = 0;
+                                        } else if (midi_index < 0) {
+                                            midi_index = 127;
+                                        }
+                                    }
                                 } else {
-                                    multiplier = 1;
+                                    if (ImGui::InputInt("MIDI CC #", &midi_index, 1, 8)) {
+                                        // skip LSB range [0x20, 0x3F]
+                                        if (midi_index == 0x3F) {
+                                            midi_index = 0x1F;
+                                        } else if (0x20 <= midi_index && midi_index < 0x3F) {
+                                            midi_index = 0x40;
+
+                                        // skip range [0x60, 0x65] 
+                                        } else if (midi_index == 0x65) {
+                                            midi_index = 0x5F;
+                                        } else if (0x60 <= midi_index && midi_index < 0x65) {
+                                            midi_index = 0x66;
+
+                                        // wrap around
+                                        } else if (0x78 <= midi_index) {
+                                            midi_index = 0;
+                                        } else if (midi_index < 0) {
+                                            midi_index = 0x77;
+                                        }
+                                    }
                                 }
-                                analog.setMultiplier(multiplier);
-                            }
-                        }
-                        if (device->type == rawinput::MOUSE || device->type == rawinput::HID) {
-                            auto sensitivity = sqrtf(analog.getSensitivity());
-                            const bool value_changed =
-                                ImGui::SliderFloat("Sensitivity", &sensitivity, 0.f, 2.f, "%.3f");
-                            ImGui::SameLine();
-                            ImGui::HelpMarker(
-                                "Adjust floating point multiplier to relative movement.\n\n"
-                                "Value is squared before being multiplied (e.g., 1.44 is 2x sensitivity, 2.00 is 4x).\n\n"
-                                "Dependent on how often the game polls for input. Intended for angular input (knobs, turntables)");
-                            if (value_changed) {
-                                analog.setSensitivity(sensitivity * sensitivity);
-                            }
-                        }
-                        if (device->type == rawinput::HID || device->type == rawinput::MIDI) {
-                            auto deadzone = analog.getDeadzone();
-                            const bool value_changed =
-                                ImGui::SliderFloat("Deadzone", &deadzone, -0.999f, 0.999f, "%.3f");
-                            if (value_changed) {
-                                analog.setDeadzone(deadzone);
-                            }
-                            ImGui::SameLine();
-                            ImGui::HelpMarker("Positive values specify a deadzone around the middle.\n"
-                                              "Negative values specify a deadzone from the minimum value.");
+                                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                    dirty = true;
+                                }
+                                if (type != ButtonAnalogType::BAT_NONE) {
+                                    ImGui::TextDisabled("Valid CC: 0-31, 64-95, 102-119");
+                                }
+                                if (dirty) {
+                                    button->setMidiVKey(
+                                        RI_MGR.get(),
+                                        (type == ButtonAnalogType::BAT_NONE),
+                                        midi_channel, midi_index);
+                                }
 
-                            // deadzone mirror
-                            bool deadzone_mirror = analog.getDeadzoneMirror();
-                            ImGui::Checkbox("Deadzone Mirror", &deadzone_mirror);
-                            ImGui::SameLine();
-                            ImGui::HelpMarker("Positive deadzone values cut off at edges instead.\n"
-                                              "Negative deadzone values cut off at maximum value instead.");
-                            if (deadzone_mirror != analog.getDeadzoneMirror()) {
-                                analog.setDeadzoneMirror(deadzone_mirror);
-                            }
-                        }
-                    }
+                                if (type == ButtonAnalogType::BAT_NONE) {
+                                    // when we called GameAPI::Buttons::getState(...) above (possibly for the first time)
+                                    // at the api level we would have retrieved the software threshold from Button and
+                                    // applied it to the rawinput MIDI layer already
+                                    // therefore, initially retrieve the value from rawinput, but save to both if changed
+                                    int velocity_threshold = device->midiInfo->v2_velocity_threshold[button->getVKey()];
+                                    ImGui::TextUnformatted("\n");
+                                    ImGui::AlignTextToFramePadding();
+                                    if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
+                                        ImGui::TextDisabled("Velocity Threshold (Disabled)");
+                                        ImGui::SameLine();
+                                        ImGui::HelpMarker("Disabled because legacy MIDI algorithm is in use.");
+                                    } else {
+                                        ImGui::TextUnformatted("Velocity Threshold");
+                                        ImGui::SameLine();
+                                        ImGui::WarnMarker(
+                                            "Ignore Note-On events if velocity is below this threshold. "
+                                            "Helpful for preventing misfires on sensitive drum pads.",
+                                            "This value is set per MIDI note, not per game button. This means that if "
+                                            "you have multiple bindings to the same MIDI note, they will share the "
+                                            "same threshold value.");
+                                    }
 
-                    // invert axis
-                    bool invert = analog.getInvert();
-                    ImGui::Checkbox("Invert Axis", &invert);
-                    ImGui::SameLine();
-                    ImGui::HelpMarker("Flip the direction of analog input.");
-                    if (invert != analog.getInvert()) {
-                        analog.setInvert(invert);
-                    }
-                    
-                    if (this->analogs_devices_selected >= 0) {
-                        const auto device = this->analogs_devices.at(this->analogs_devices_selected);
-                        if (device->type == rawinput::HID) {
-                            // smoothing
-                            bool smoothing = analog.getSmoothing();
-                            ImGui::BeginDisabled(analog.isRelativeMode());
-                            ImGui::Checkbox("Smooth Axis (adds latency)", &smoothing);
-                            ImGui::SameLine();
-                            ImGui::HelpMarker(
-                                "Apply a moving average algorithm; intended for angular input (knobs, turntables). "
-                                "Adds a slight bit of latency to input as the algorithm averages out recent input. "
-                                "Only use in dire situations where the input is too jittery for the game.");
-                            ImGui::EndDisabled();
-                            if (smoothing != analog.getSmoothing()) {
-                                analog.setSmoothing(smoothing);
+                                    ImGui::Separator();
+                                    if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
+                                        ImGui::BeginDisabled();
+                                        int velocity_threshold_fake = 0;
+                                        ImGui::SliderInt(
+                                            "",
+                                            &velocity_threshold_fake,
+                                            0,
+                                            0x7f,
+                                            "%d/127",
+                                            ImGuiSliderFlags_AlwaysClamp);
+                                        ImGui::EndDisabled();
+                                    } else {
+                                        if (ImGui::SliderInt(
+                                                "",
+                                                &velocity_threshold,
+                                                0,
+                                                0x7f,
+                                                "%d/127",
+                                                ImGuiSliderFlags_AlwaysClamp)) {
+                                            // set in the binding...
+                                            button->setVelocityThreshold(velocity_threshold);
+                                            // ... then set on the device as well for rawinput to pick up
+                                            device->midiInfo->v2_velocity_threshold_set_on_device[button->getVKey()] = true;
+                                            device->midiInfo->v2_velocity_threshold[button->getVKey()] = velocity_threshold;
+                                        }
+                                    }
+                                    if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                        dirty = true;
+                                    }
+                                    ImGui::SameLine();
+                                    ImGui::TextDisabled("Min. %d%%", velocity_threshold * 100 / 127);
+
+                                } else if (type == ButtonAnalogType::BAT_MIDI_CTRL_PRECISION ||
+                                        type == ButtonAnalogType::BAT_MIDI_CTRL_SINGLE) { 
+
+                                    ImGui::TextUnformatted("\n");
+                                    ImGui::AlignTextToFramePadding();
+                                    if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
+                                        ImGui::TextDisabled("Threshold (Disabled)");
+                                        ImGui::SameLine();
+                                        ImGui::HelpMarker("Disabled because legacy MIDI algorithm is in use.");
+                                    } else {
+                                        ImGui::TextUnformatted("Threshold");
+                                        ImGui::SameLine();
+                                        ImGui::HelpMarker(
+                                            "Value from CC must be greater than this value to be considered on. "
+                                            "For example, if this is a hi-hat pedal, how far you have to press down.");
+                                    }
+
+                                    ImGui::Separator();
+                                    int threshold = button->getVelocityThreshold();
+                                    if (rawinput::get_midi_algorithm() == rawinput::MidiNoteAlgorithm::LEGACY) {
+                                        ImGui::BeginDisabled();
+                                        int threshold_fake = 0;
+                                        ImGui::SliderInt(
+                                            "",
+                                            &threshold_fake,
+                                            0,
+                                            0x7f,
+                                            "%d/127",
+                                            ImGuiSliderFlags_AlwaysClamp);
+                                        ImGui::EndDisabled();
+                                    } else {
+                                        if (ImGui::SliderInt(
+                                                "",
+                                                &threshold,
+                                                0,
+                                                0x7f,
+                                                "%d/127",
+                                                ImGuiSliderFlags_AlwaysClamp)) {
+                                            button->setVelocityThreshold(threshold);
+                                        }
+                                    }
+                                    if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                        dirty = true;
+                                    }
+                                    ImGui::SameLine();
+                                    ImGui::TextDisabled("Min. %d%%", threshold * 100 / 127);
+                                }
+
+                            } else if (type == ButtonAnalogType::BAT_MIDI_PITCH_DOWN ||
+                                type == ButtonAnalogType::BAT_MIDI_PITCH_UP) {
+
+                                if (ImGui::InputInt("MIDI Channel", &midi_channel, 1, 1)) {
+                                    // wrap around
+                                    if (midi_channel < 1) {
+                                        midi_channel = 16;
+                                    } else if (16 < midi_channel) {
+                                        midi_channel = 1;
+                                    }
+                                }
+                                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                    button->setVKey(midi_channel - 1);
+                                    dirty = true;
+                                }
+
+                                const bool is_up = type == ButtonAnalogType::BAT_MIDI_PITCH_UP;
+                                if (ImGui::BeginCombo(
+                                        "Direction",
+                                        is_up ? "Pitch Up" : "Pitch Down",
+                                        ImGuiComboFlags_HeightSmall)) {
+                                    
+                                    if (ImGui::Selectable("Pitch Up", is_up)) {
+                                        button->setAnalogType(ButtonAnalogType::BAT_MIDI_PITCH_UP);
+                                        dirty = true;
+                                    }
+                                    if (is_up) {
+                                        ImGui::SetItemDefaultFocus();
+                                    }
+                                    if (ImGui::Selectable("Pitch Down", !is_up)) {
+                                        button->setAnalogType(ButtonAnalogType::BAT_MIDI_PITCH_DOWN);
+                                        dirty = true;
+                                    }
+                                    if (!is_up) {
+                                        ImGui::SetItemDefaultFocus();
+                                    }
+                                    ImGui::EndCombo();
+                                }
                             }
 
-                            // relative input mode
-                            bool relative_analog = analog.isRelativeMode();
-                            ImGui::Checkbox("Relative Axis (experimental)", &relative_analog);
-                            ImGui::SameLine();
-                            ImGui::HelpMarker(
-                                "Use relative directional input instead of positional values.\n\n"
-                                "Can be used to translate analog sticks to knob input, for example.\n\n"
-                                "WARNING: speed depends on how often the game polls for input! "
-                                "Strongly recommended that you go into the game's test menu instead "
-                                "of adjusting in spicecfg.");
-                            if (relative_analog != analog.isRelativeMode()) {
-                                analog.setRelativeMode(relative_analog);
+                        } else {
+                            int vKey = button->getVKey();
+                            if (ImGui::InputInt(button->isNaive() ? "Virtual Key" : "Index", &vKey, 1, 1)) {
+                                button->setVKey(vKey);
                             }
-
-                            // delay buffer
-                            int delay = analog.getDelayBufferDepth();
-                            ImGui::InputInt("Delay (experimental)", &delay, 1, 10);
                             if (ImGui::IsItemDeactivatedAfterEdit()) {
-                                delay = CLAMP(delay, 0, 256);
-                                analog.setDelayBufferDepth(delay);
+                                dirty = true;
+                            }
+                        }
+
+                        // preview
+                        if (!button_display.empty()) {
+                            ImGui::TextUnformatted("\nPreview");
+                            ImGui::Separator();
+                            if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
+                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
+                            }
+                            ImGui::Text("%s\n\n", button_display.c_str());
+                            if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
+                                ImGui::PopStyleColor();
+                            }
+                        } else {
+                            ImGui::TextUnformatted("");
+                        }
+
+                        // options
+                        ImGui::Text("Options");
+
+                        // check for debounce
+                        if (button->getDebounceUp() || button->getDebounceDown()
+                        || (device != nullptr && (
+                                device->type == rawinput::MOUSE ||
+                                device->type == rawinput::KEYBOARD ||
+                                (device->type == rawinput::HID && button->getAnalogType() == BAT_NONE)
+                        ))) {
+
+                            // debounce up
+                            auto debounce_up = button->getDebounceUp() * 1000;
+                            if (ImGui::InputDouble("Debounce Up (ms)", &debounce_up, 1, 1, "%.2f")) {
+                                debounce_up = std::max(0.0, debounce_up);
+                                button->setDebounceUp(debounce_up * 0.001);
+                            }
+                            if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                dirty = true;
                             }
                             ImGui::SameLine();
+                            ImGui::HelpMarker("Time a button needs to be up to be detected as up.\n"
+                                            "Can solve micro switch issues with long notes for example.");
+
+                            // debounce down
+                            auto debounce_down = button->getDebounceDown() * 1000;
+                            if (ImGui::InputDouble("Debounce Down (ms)", &debounce_down, 1, 1, "%.2f")) {
+                                debounce_down = std::max(0.0, debounce_down);
+                                button->setDebounceDown(debounce_down * 0.001);
+                            }
+                            if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                dirty = true;
+                            }
+                            ImGui::SameLine();
+                            ImGui::HelpMarker("Time a button needs to be down to be detected as down.\n"
+                                            "This setting will add noticable input lag.");
+                        }
+
+                        // invert
+                        bool invert = button->getInvert();
+                        if (ImGui::Checkbox("Invert", &invert)) {
+                            button->setInvert(invert);
+                            dirty = true;
+                        }
+
+                        // state display
+                        ImGui::TextUnformatted("");
+                        if (device != nullptr && device->type == rawinput::MIDI) {
+                            ImGui::Text("Button State");
+                            ImGui::SameLine();
                             ImGui::HelpMarker(
-                                "Adds a delay to input. This is poll-based, not time-based.\n\n"
-                                "WARNING: delay depends on how often the game polls for input! "
-                                "Strongly recommended that you go into the game's test menu instead "
-                                "of adjusting in spicecfg.");
+                                "When interpreted as digital input; for most games including GITADORA\n\n"
+                                "This is just a preview; each game's I/O engine will behave differently (such as poll rate) "
+                                "so make sure you test your input in the game's test menu"
+                                );
+                            ImGui::ProgressBar(
+                                button_state == GameAPI::Buttons::State::BUTTON_PRESSED ? 1.0f : 0.f);
+                            ImGui::Text("Velocity");
+                            ImGui::SameLine();
+                            ImGui::HelpMarker(
+                                "When interpreted as velocity-sensitive input, such as Nostalgia\n\n"
+                                "This is just a preview; each game's I/O engine will behave differently (such as poll rate) "
+                                "so make sure you test your input in the game's test menu"
+                                );
+                            ImGui::ProgressBar(button_velocity);
+                        } else {
+                            ImGui::Text("State");
+                            ImGui::ProgressBar(button_velocity);
                         }
+
+                        // check if dirty
+                        if (dirty) {
+                            ::Config::getInstance().updateBinding(
+                                    games_list[games_selected], *button, buttons_page - 1);
+                        }
+
+                        // close button
+                        ImGui::TextUnformatted("");
+                        if (ImGui::Button("Save & Close")) {
+                            buttons_many_active = false;
+                            ImGui::CloseCurrentPopup();
+                        }
+                        ImGui::EndPopup();
                     }
 
-                    // current state
-                    ImGui::Separator();
-                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "Preview");
-                    float value = GameAPI::Analogs::getState(RI_MGR, analog);
-                    ImGui::ProgressBar(value);
-
-                    // centered knob preview
-                    const float knob_size = 64.f;
-                    auto width = ImGui::GetContentRegionAvail().x - knob_size;
-                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (width / 2));
-                    ImGui::Knob(value, knob_size);
-
-                    // update analog
-                    if (analogs_devices_selected >= 0 && analogs_devices_selected < (int) analogs_devices.size()) {
-
-                        // update identifier on change
-                        auto identifier = this->analogs_devices.at(this->analogs_devices_selected)->name;
-                        if (identifier != analog.getDeviceIdentifier()) {
-                            analog.setDeviceIdentifier(identifier);
+                    // clear button
+                    if (button_display.size() > 0) {
+                        ImGui::SameLine();
+                        if (ImGui::Button("Clear")) {
+                            button->setDeviceIdentifier("");
+                            button->setVKey(0xFF);
+                            button->setAnalogType(BAT_NONE);
+                            button->setDebounceUp(0.0);
+                            button->setDebounceDown(0.0);
+                            button->setVelocityThreshold(0);
+                            button->setInvert(false);
+                            button->setLastState(GameAPI::Buttons::BUTTON_NOT_PRESSED);
+                            button->setLastVelocity(0);
+                            ::Config::getInstance().updateBinding(
+                                    games_list[games_selected], *button,
+                                    buttons_page - 1);
                         }
-
-                        // update control
-                        if (this->analogs_devices_control_selected >= 0) {
-
-                            // MIDI devices have their own dynamic indices
-                            auto index = this->analogs_devices_control_selected;
-                            if (!analogs_midi_indices.empty()) {
-                                if (this->analogs_devices_control_selected < (int) analogs_midi_indices.size()) {
-                                    index = analogs_midi_indices[this->analogs_devices_control_selected];
-                                }
-                            }
-
-                            // update index on change
-                            if ((int) analog.getIndex() != index) {
-                                analog.setIndex(index);
-                            }
-                        }
-                    }
-
-                    // close button
-                    ImGui::Separator();
-                    if (ImGui::Button("Save & Close")) {
-                        ::Config::getInstance().updateBinding(games_list[games_selected], analog);
-                        ImGui::CloseCurrentPopup();
                     }
 
                     // clean up
-                    ImGui::EndPopup();
+                    ImGui::PopID();
                 }
-
-                // clear analog
-                if (analog_display.size() > 0) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Clear")) {
-                        analog.clearBindings();
-                        analog.setLastState(0.f);
-                        ::Config::getInstance().updateBinding(
-                                games_list[games_selected], analog);
-                    }
-                }
-
-                // clean up
-                ImGui::NextColumn();
-                ImGui::PopID();
             }
+
+            ImGui::EndTable();
         }
-        ImGui::Columns();
+    }
+
+    void Config::build_analogs(const std::string &name, std::vector<Analog> *analogs) {
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Analogs");
+        ImGui::Separator();
+        if (ImGui::BeginTable("AnalogsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 240);
+
+            // check if empty
+            if (!analogs || analogs->empty()) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Indent(INDENT);
+                ImGui::TextDisabled("-");
+                ImGui::Unindent(INDENT);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+            }
+
+            // check analogs
+            if (analogs) {
+                for (auto &analog : *analogs) {
+
+                    // get analog info
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::PushID(&analog);
+
+                    auto analog_name = analog.getName();
+                    auto analog_display = analog.getDisplayString(RI_MGR.get());
+                    auto analog_state = GameAPI::Analogs::getState(RI_MGR, analog);
+
+                    // list entry
+                    ImGui::ProgressBar(analog_state, ImVec2(32.f, 0));
+                    ImGui::SameLine();
+                    if (analog_display.empty()) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
+                    }
+                    ImGui::Text("%s", analog_name.c_str());
+
+                    ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Text("%s", analog_display.empty() ? "-" : analog_display.c_str());
+
+                    ImGui::TableNextColumn();
+                    if (analog_display.empty()) {
+                        ImGui::PopStyleColor();
+                    }
+
+                    // analog binding
+                    if (ImGui::Button("Bind")) {
+                        ImGui::OpenPopup("Analog Binding");
+
+                        // get devices
+                        this->analogs_devices.clear();
+                        for (auto &device : RI_MGR->devices_get()) {
+                            switch (device.type) {
+                                case rawinput::MOUSE:
+                                    this->analogs_devices.emplace_back(&device);
+                                    break;
+                                case rawinput::HID:
+                                    if (!device.hidInfo->value_caps_names.empty())
+                                        this->analogs_devices.emplace_back(&device);
+                                    break;
+                                case rawinput::MIDI:
+                                    this->analogs_devices.emplace_back(&device);
+                                    break;
+                                default:
+                                    continue;
+                            }
+
+                            // check if this is the current device
+                            if (device.name == analog.getDeviceIdentifier()) {
+                                analogs_devices_selected = this->analogs_devices.size() - 1;
+                            }
+                        }
+                    }
+                    if (ImGui::BeginPopupModal("Analog Binding", NULL,
+                            ImGuiWindowFlags_AlwaysAutoResize)) {
+
+                        // device selector
+                        auto analog_device_changed = ImGui::Combo(
+                            "Device",
+                            &this->analogs_devices_selected,
+                            [](void* data, int i, const char **item) {
+                                *item = ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
+                                return true;
+                            },
+                            &this->analogs_devices, (int) this->analogs_devices.size());
+
+                        // obtain controls
+                        std::vector<std::string> control_names;
+                        std::vector<int> analogs_midi_indices;
+                        if (this->analogs_devices_selected >= 0) {
+                            auto device = this->analogs_devices.at(this->analogs_devices_selected);
+                            switch (device->type) {
+                                case rawinput::MOUSE: {
+
+                                    // add X/Y axis and mouse wheel
+                                    control_names.push_back("X");
+                                    control_names.push_back("Y");
+                                    control_names.push_back("Scroll Wheel");
+                                    break;
+                                }
+                                case rawinput::HID: {
+
+                                    // add value names
+                                    for (auto &analog_name : device->hidInfo->value_caps_names) {
+                                        control_names.push_back(analog_name);
+                                    }
+                                    break;
+                                }
+                                case rawinput::MIDI: {
+
+                                    // add precision values, if they have been detected since launch
+                                    auto precision = device->midiInfo->controls_precision;
+                                    for (size_t i = 0; i < precision.size(); i++) {
+                                        if (device->midiInfo->controls_precision_set[i]) {
+                                            const int channel = (i / 32) + 1;
+                                            const int cc_index = (i % 32);
+                                            control_names.push_back(
+                                                fmt::format("Prec Ctrl Ch.{} CC#{}", channel, cc_index)
+                                            );
+                                            analogs_midi_indices.push_back(i);
+                                        }
+                                    }
+
+                                    // add single values, if they have been detected since launch
+                                    auto single = device->midiInfo->controls_single;
+                                    for (size_t i = 0; i < single.size(); i++) {
+                                        if (device->midiInfo->controls_single_set[i]) {
+                                            const int channel = (i / 44) + 1;
+                                            int cc_index = (i % 44);
+                                            if (cc_index < 26) {
+                                                cc_index += 0x46; // single byte range
+                                            } else {
+                                                cc_index = cc_index - 26 + 0x66; // undefined single byte range
+                                            }
+                                            control_names.push_back(
+                                                fmt::format("Ctrl Ch.{} CC#{}", channel, cc_index)
+                                            );
+                                            analogs_midi_indices.push_back(i + precision.size());
+                                        }
+                                    }
+
+                                    // add onoff values, if they have been detected since launch
+                                    auto onoff = device->midiInfo->controls_onoff;
+                                    for (size_t i = 0; i < onoff.size(); i++) {
+                                        if (device->midiInfo->controls_onoff_set[i]) {
+                                            const int channel = (i / 6) + 1;
+                                            const int cc_index = (i % 6) + 0x40;
+                                            control_names.push_back(
+                                                fmt::format("OnOff Ch.{} CC#{}", channel, cc_index)
+                                            );
+                                            analogs_midi_indices.push_back(i + precision.size() + single.size());
+                                        }
+                                    }
+
+                                    // add pitch bend, if they have been detected since launch
+                                    auto pitch = device->midiInfo->pitch_bend;
+                                    for (size_t ch = 0; ch < pitch.size(); ch++) {
+                                        if (device->midiInfo->pitch_bend_set[ch]) {
+                                            control_names.push_back(fmt::format("Pitch Ch.{}", ch + 1));
+                                            analogs_midi_indices.push_back(
+                                                ch + 
+                                                precision.size() +
+                                                single.size() +
+                                                onoff.size());
+                                        }
+                                    }
+                                }
+                                default:
+                                    break;
+                            }
+
+                            // select the previously chosen value
+                            auto selected_control = 0;
+                            if (!analog_device_changed) {
+                                if (analogs_midi_indices.empty()) {
+                                    selected_control = analog.getIndex();
+                                } else {
+                                    for (size_t i = 0; i < analogs_midi_indices.size(); i++) {
+                                        if (analog.getIndex() == analogs_midi_indices.at(i)) {
+                                            selected_control = i;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (0 <= selected_control && selected_control < static_cast<int>(control_names.size())) {
+                                    this->analogs_devices_control_selected = selected_control;
+                                }
+                            }
+                        }
+
+                        // controls
+                        ImGui::Combo("Control",
+                                    &this->analogs_devices_control_selected,
+                                    [](void* data, int i, const char **item) {
+                                        *item = ((std::vector<std::string>*) data)->at(i).c_str();
+                                        return true;
+                                    },
+                                    &control_names, control_names.size());
+
+                        // multiplier/sensitivity/deadzone
+                        if (this->analogs_devices_selected >= 0) {
+                            auto device = this->analogs_devices.at(this->analogs_devices_selected);
+
+                            if (device->type == rawinput::MIDI) {
+                                ImGui::SameLine();
+                                ImGui::HelpMarker(
+                                    "From the MIDI specification:\n"
+                                    "  Prec Ctrl = Double precision control (CC 0-31)\n"
+                                    "  OnOff = On or Off control, pedals (CC 64-69)\n"
+                                    "  Ctrl = Single precision control (CC 70-95, 102-119)\n"
+                                    );
+                                ImGui::TextDisabled(
+                                    "Hint: don't see MIDI controls in drop down?\n"
+                                    "Use your knob/slider/pedal and try again.");
+                            }
+
+                            if (device->type == rawinput::HID) {
+                                auto multiplier = analog.getMultiplier();
+                                int multiplier_index = 7; // 1:1
+                                if (multiplier < -1) {
+                                    // turn -8 into [0], -2 into [6], and so on
+                                    multiplier_index = multiplier + 8;
+                                } else if (1 < multiplier) {
+                                    // turn 2 into [8], 8 into [14], etc
+                                    multiplier_index = multiplier + 6;
+                                }
+                                const bool value_changed = ImGui::Combo(
+                                    "Multiplier",
+                                    &multiplier_index,
+                                    "1/8\0" // [0]
+                                    "1/7\0" // [1]
+                                    "1/6\0" // [2]
+                                    "1/5\0" // [3]
+                                    "1/4\0" // [4]
+                                    "1/3\0" // [5]
+                                    "1/2\0" // [6]
+                                    "1:1\0" // [7] <-- default
+                                    "2x\0"  // [8]
+                                    "3x\0"  // [9]
+                                    "4x\0"  // [10]
+                                    "5x\0"  // [11]
+                                    "6x\0"  // [12]
+                                    "7x\0"  // [13]
+                                    "8x\0"  // [14]
+                                    "\0");
+
+                                ImGui::SameLine();
+                                ImGui::HelpMarker("Apply a static integer multiplier or divisor to the input.");
+                                if (value_changed) {
+                                    if (multiplier_index < 7) {
+                                        // turn [0] into -8, [6] to -2, etc
+                                        multiplier = multiplier_index - 8;
+                                    } else if (7 < multiplier_index) {
+                                        // turn [8] to 2, [14] to 8, etc
+                                        multiplier = multiplier_index - 6;
+                                    } else {
+                                        multiplier = 1;
+                                    }
+                                    analog.setMultiplier(multiplier);
+                                }
+                            }
+                            if (device->type == rawinput::MOUSE || device->type == rawinput::HID) {
+                                auto sensitivity = sqrtf(analog.getSensitivity());
+                                const bool value_changed =
+                                    ImGui::SliderFloat("Sensitivity", &sensitivity, 0.f, 2.f, "%.3f");
+                                ImGui::SameLine();
+                                ImGui::HelpMarker(
+                                    "Adjust floating point multiplier to relative movement.\n\n"
+                                    "Value is squared before being multiplied (e.g., 1.44 is 2x sensitivity, 2.00 is 4x).\n\n"
+                                    "Dependent on how often the game polls for input. Intended for angular input (knobs, turntables)");
+                                if (value_changed) {
+                                    analog.setSensitivity(sensitivity * sensitivity);
+                                }
+                            }
+                            if (device->type == rawinput::HID || device->type == rawinput::MIDI) {
+                                auto deadzone = analog.getDeadzone();
+                                const bool value_changed =
+                                    ImGui::SliderFloat("Deadzone", &deadzone, -0.999f, 0.999f, "%.3f");
+                                if (value_changed) {
+                                    analog.setDeadzone(deadzone);
+                                }
+                                ImGui::SameLine();
+                                ImGui::HelpMarker("Positive values specify a deadzone around the middle.\n"
+                                                "Negative values specify a deadzone from the minimum value.");
+
+                                // deadzone mirror
+                                bool deadzone_mirror = analog.getDeadzoneMirror();
+                                ImGui::Checkbox("Deadzone Mirror", &deadzone_mirror);
+                                ImGui::SameLine();
+                                ImGui::HelpMarker("Positive deadzone values cut off at edges instead.\n"
+                                                "Negative deadzone values cut off at maximum value instead.");
+                                if (deadzone_mirror != analog.getDeadzoneMirror()) {
+                                    analog.setDeadzoneMirror(deadzone_mirror);
+                                }
+                            }
+                        }
+
+                        // invert axis
+                        bool invert = analog.getInvert();
+                        ImGui::Checkbox("Invert Axis", &invert);
+                        ImGui::SameLine();
+                        ImGui::HelpMarker("Flip the direction of analog input.");
+                        if (invert != analog.getInvert()) {
+                            analog.setInvert(invert);
+                        }
+                        
+                        if (this->analogs_devices_selected >= 0) {
+                            const auto device = this->analogs_devices.at(this->analogs_devices_selected);
+                            if (device->type == rawinput::HID) {
+                                // smoothing
+                                bool smoothing = analog.getSmoothing();
+                                ImGui::BeginDisabled(analog.isRelativeMode());
+                                ImGui::Checkbox("Smooth Axis (adds latency)", &smoothing);
+                                ImGui::SameLine();
+                                ImGui::HelpMarker(
+                                    "Apply a moving average algorithm; intended for angular input (knobs, turntables). "
+                                    "Adds a slight bit of latency to input as the algorithm averages out recent input. "
+                                    "Only use in dire situations where the input is too jittery for the game.");
+                                ImGui::EndDisabled();
+                                if (smoothing != analog.getSmoothing()) {
+                                    analog.setSmoothing(smoothing);
+                                }
+
+                                // relative input mode
+                                bool relative_analog = analog.isRelativeMode();
+                                ImGui::Checkbox("Relative Axis (experimental)", &relative_analog);
+                                ImGui::SameLine();
+                                ImGui::HelpMarker(
+                                    "Use relative directional input instead of positional values.\n\n"
+                                    "Can be used to translate analog sticks to knob input, for example.\n\n"
+                                    "WARNING: speed depends on how often the game polls for input! "
+                                    "Strongly recommended that you go into the game's test menu instead "
+                                    "of adjusting in spicecfg.");
+                                if (relative_analog != analog.isRelativeMode()) {
+                                    analog.setRelativeMode(relative_analog);
+                                }
+
+                                // delay buffer
+                                int delay = analog.getDelayBufferDepth();
+                                ImGui::InputInt("Delay (experimental)", &delay, 1, 10);
+                                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                    delay = CLAMP(delay, 0, 256);
+                                    analog.setDelayBufferDepth(delay);
+                                }
+                                ImGui::SameLine();
+                                ImGui::HelpMarker(
+                                    "Adds a delay to input. This is poll-based, not time-based.\n\n"
+                                    "WARNING: delay depends on how often the game polls for input! "
+                                    "Strongly recommended that you go into the game's test menu instead "
+                                    "of adjusting in spicecfg.");
+                            }
+                        }
+
+                        // current state
+                        ImGui::Separator();
+                        ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "Preview");
+                        float value = GameAPI::Analogs::getState(RI_MGR, analog);
+                        ImGui::ProgressBar(value);
+
+                        // centered knob preview
+                        const float knob_size = 64.f;
+                        auto width = ImGui::GetContentRegionAvail().x - knob_size;
+                        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (width / 2));
+                        ImGui::Knob(value, knob_size);
+
+                        // update analog
+                        if (analogs_devices_selected >= 0 && analogs_devices_selected < (int) analogs_devices.size()) {
+
+                            // update identifier on change
+                            auto identifier = this->analogs_devices.at(this->analogs_devices_selected)->name;
+                            if (identifier != analog.getDeviceIdentifier()) {
+                                analog.setDeviceIdentifier(identifier);
+                            }
+
+                            // update control
+                            if (this->analogs_devices_control_selected >= 0) {
+
+                                // MIDI devices have their own dynamic indices
+                                auto index = this->analogs_devices_control_selected;
+                                if (!analogs_midi_indices.empty()) {
+                                    if (this->analogs_devices_control_selected < (int) analogs_midi_indices.size()) {
+                                        index = analogs_midi_indices[this->analogs_devices_control_selected];
+                                    }
+                                }
+
+                                // update index on change
+                                if ((int) analog.getIndex() != index) {
+                                    analog.setIndex(index);
+                                }
+                            }
+                        }
+
+                        // close button
+                        ImGui::Separator();
+                        if (ImGui::Button("Save & Close")) {
+                            ::Config::getInstance().updateBinding(games_list[games_selected], analog);
+                            ImGui::CloseCurrentPopup();
+                        }
+
+                        // clean up
+                        ImGui::EndPopup();
+                    }
+
+                    // clear analog
+                    if (analog_display.size() > 0) {
+                        ImGui::SameLine();
+                        if (ImGui::Button("Clear")) {
+                            analog.clearBindings();
+                            analog.setLastState(0.f);
+                            ::Config::getInstance().updateBinding(
+                                    games_list[games_selected], analog);
+                        }
+                    }
+
+                    // clean up
+                    ImGui::PopID();
+                }
+            }
+
+            ImGui::EndTable();
+        }
     }
 
     void Config::build_lights(const std::string &name, std::vector<Light> *lights) {
-        ImGui::Columns(3, "LightsColumns", true);
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Name"); ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Binding"); ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Actions"); ImGui::SameLine();
-        ImGui::HelpMarker("Use 'Bind' to redirect cabinet light outputs to HID-compatible value output devices.");
-        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Lights");
         ImGui::Separator();
+        if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 240);
 
-        // check if empty
-        if (!lights || lights->empty()) {
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-        }
+            // check if empty
+            if (!lights || lights->empty()) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Indent(INDENT);
+                ImGui::TextDisabled("-");
+                ImGui::Unindent(INDENT);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+            }
 
-        // check lights
-        if (lights) {
-            for (auto &light_in : *lights) {
+            // check lights
+            if (lights) {
+                for (auto &light_in : *lights) {
 
-                // get light based on page
-                auto light = &light_in;
-                auto &light_alternatives = light->getAlternatives();
-                if (this->lights_page > 0) {
-                    while ((int) light_alternatives.size() < this->lights_page) {
-                        light_alternatives.emplace_back(light->getName());
+                    // get light based on page
+                    auto light = &light_in;
+                    auto &light_alternatives = light->getAlternatives();
+                    if (this->lights_page > 0) {
+                        while ((int) light_alternatives.size() < this->lights_page) {
+                            light_alternatives.emplace_back(light->getName());
+                        }
+                        light = &light_alternatives.at(this->lights_page - 1);
                     }
-                    light = &light_alternatives.at(this->lights_page - 1);
-                }
 
-                // get light info
-                auto light_name = light->getName();
-                auto light_display = light->getDisplayString(RI_MGR.get());
-                auto light_state = GameAPI::Lights::readLight(RI_MGR, *light);
+                    // get light info
+                    auto light_name = light->getName();
+                    auto light_display = light->getDisplayString(RI_MGR.get());
+                    auto light_state = GameAPI::Lights::readLight(RI_MGR, *light);
 
-                // list entry
-                if (light_display.empty()) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
-                }
-                ImGui::PushID(light);
-                ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
-                ImGui::SameLine();
-                ImGui::Text("%s", light_name.c_str());
-                ImGui::NextColumn();
-                ImGui::AlignTextToFramePadding();
-                ImGui::Text("%s", light_display.empty() ? "None" : light_display.c_str());
-                ImGui::NextColumn();
-                if (light_display.empty()) {
-                    ImGui::PopStyleColor();
-                }
+                    // list entry
+                    if (light_display.empty()) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
+                    }
+                    ImGui::PushID(light);
+                    ImGui::TableNextRow();
 
-                // light binding
-                if (ImGui::Button("Bind")) {
-                    ImGui::OpenPopup("Light Binding");
-                    light->override_enabled = true;
+                    // progress bar & light name
+                    ImGui::TableNextColumn();
+                    ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
+                    ImGui::SameLine();
+                    ImGui::Text("%s", light_name.c_str());
 
-                    // get devices
-                    this->lights_devices.clear();
-                    for (auto &device : RI_MGR->devices_get()) {
-                        switch (device.type) {
-                            case rawinput::HID:
-                                if (!device.hidInfo->button_output_caps_list.empty()
-                                    || !device.hidInfo->value_output_caps_list.empty())
+                    // binding name
+                    ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Text("%s", light_display.empty() ? "-" : light_display.c_str());
+
+                    // bind / clear buttons
+                    ImGui::TableNextColumn();
+                    if (light_display.empty()) {
+                        ImGui::PopStyleColor();
+                    }
+
+                    // light binding
+                    if (ImGui::Button("Bind")) {
+                        ImGui::OpenPopup("Light Binding");
+                        light->override_enabled = true;
+
+                        // get devices
+                        this->lights_devices.clear();
+                        for (auto &device : RI_MGR->devices_get()) {
+                            switch (device.type) {
+                                case rawinput::HID:
+                                    if (!device.hidInfo->button_output_caps_list.empty()
+                                        || !device.hidInfo->value_output_caps_list.empty())
+                                        this->lights_devices.emplace_back(&device);
+                                    break;
+                                case rawinput::SEXTET_OUTPUT:
+                                case rawinput::PIUIO_DEVICE:
+                                case rawinput::SMX_STAGE:
+                                case rawinput::SMX_DEDICAB:
                                     this->lights_devices.emplace_back(&device);
-                                break;
-                            case rawinput::SEXTET_OUTPUT:
-                            case rawinput::PIUIO_DEVICE:
-                            case rawinput::SMX_STAGE:
-                            case rawinput::SMX_DEDICAB:
-                                this->lights_devices.emplace_back(&device);
-                                break;
-                            default:
-                                continue;
-                        }
+                                    break;
+                                default:
+                                    continue;
+                            }
 
-                        // check if this is the current device
-                        if (device.name == light->getDeviceIdentifier()) {
-                            this->lights_devices_selected = (int) this->lights_devices.size() - 1;
-                            this->lights_devices_control_selected = light->getIndex();
+                            // check if this is the current device
+                            if (device.name == light->getDeviceIdentifier()) {
+                                this->lights_devices_selected = (int) this->lights_devices.size() - 1;
+                                this->lights_devices_control_selected = light->getIndex();
+                            }
                         }
                     }
-                }
-                if (ImGui::BeginPopupModal("Light Binding", NULL,
-                        ImGuiWindowFlags_AlwaysAutoResize)) {
+                    if (ImGui::BeginPopupModal("Light Binding", NULL,
+                            ImGuiWindowFlags_AlwaysAutoResize)) {
 
-                    // device selector
-                    bool control_changed = false;
-                    if (ImGui::Combo("Device",
-                                     &this->lights_devices_selected,
-                                     [] (void* data, int i, const char **item) {
-                                         *item = ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
-                                         return true;
-                                     },
-                                     &this->lights_devices, (int) this->lights_devices.size())) {
-                        this->lights_devices_control_selected = 0;
-                        control_changed = true;
-                    }
-
-                    // obtain controls
-                    std::vector<std::string> control_names;
-                    if (lights_devices_selected >= 0 && lights_devices_selected < (int) lights_devices.size()) {
-                        auto device = lights_devices[lights_devices_selected];
-                        switch (device->type) {
-                            case rawinput::HID: {
-                                size_t index = 0;
-
-                                // add button names
-                                for (auto &button_name : device->hidInfo->button_output_caps_names) {
-
-                                    // build name
-                                    std::string name = button_name;
-                                    if (index > 0xFF)
-                                        name += " (0x" + bin2hex(&((char*) &index)[1], 1) + bin2hex(&((char*) &index)[0], 1) + ")";
-                                    else
-                                        name += " (0x" + bin2hex(&((char*) &index)[0], 1) + ")";
-
-                                    // add name
-                                    control_names.push_back(name);
-                                    index++;
-                                }
-
-                                // add value names
-                                for (auto &value_name : device->hidInfo->value_output_caps_names) {
-
-                                    // build name
-                                    std::string name = value_name;
-                                    if (index > 0xFF)
-                                        name += " (0x" + bin2hex(&((char*) &index)[1], 1)
-                                                + bin2hex(&((char*) &index)[0], 1)
-                                                + ", value cap)";
-                                    else
-                                        name += " (0x" + bin2hex(&((char*) &index)[0], 1) + ", value cap)";
-
-                                    // add name
-                                    control_names.push_back(name);
-                                    index++;
-                                }
-
-                                break;
-                            }
-                            case rawinput::SEXTET_OUTPUT: {
-
-                                // add all names of sextet device
-                                for (int i = 0; i < rawinput::SextetDevice::LIGHT_COUNT; i++) {
-                                    std::string name(rawinput::SextetDevice::LIGHT_NAMES[i]);
-
-                                    // add name
-                                    control_names.push_back(name);
-                                }
-                                break;
-                            }
-                            case rawinput::PIUIO_DEVICE: {
-
-                                // add all names of PIUIO device
-                                for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_LIGHTS; i++) {
-                                    std::string name(rawinput::PIUIO::LIGHT_NAMES[i]);
-
-                                    // add name
-                                    control_names.push_back(name);
-                                }
-                                break;
-                            }
-                            case rawinput::SMX_STAGE: {
-
-                                // add all names of SMX device
-                                for (int i = 0; i < rawinput::SmxStageDevice::TOTAL_LIGHT_COUNT; i++) {
-                                    control_names.push_back(rawinput::SmxStageDevice::GetLightNameByIndex(i));
-                                }
-                                break;
-                            }
-                            case rawinput::SMX_DEDICAB: {
-
-                                // add all names of SMX dedicab device
-                                for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
-                                    control_names.push_back(rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
-                                }
-                                break;
-                            }
-                            default:
-                                break;
+                        // device selector
+                        bool control_changed = false;
+                        if (ImGui::Combo("Device",
+                                        &this->lights_devices_selected,
+                                        [] (void* data, int i, const char **item) {
+                                            *item = ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
+                                            return true;
+                                        },
+                                        &this->lights_devices, (int) this->lights_devices.size())) {
+                            this->lights_devices_control_selected = 0;
+                            control_changed = true;
                         }
-                    }
 
-                    // controls
-                    if (ImGui::Combo("Light Control",
-                                 &this->lights_devices_control_selected,
-                                 [] (void* data, int i, const char **item) {
-                                     *item = ((std::vector<std::string> *) data)->at(i).c_str();
-                                     return true;
-                                 },
-                                 &control_names, control_names.size())) {
-                        control_changed = true;
-                    }
+                        // obtain controls
+                        std::vector<std::string> control_names;
+                        if (lights_devices_selected >= 0 && lights_devices_selected < (int) lights_devices.size()) {
+                            auto device = lights_devices[lights_devices_selected];
+                            switch (device->type) {
+                                case rawinput::HID: {
+                                    size_t index = 0;
 
-                    // update light
-                    if (lights_devices_selected >= 0 && lights_devices_selected < (int) lights_devices.size()) {
-                        auto identifier = this->lights_devices[lights_devices_selected]->name;
-                        if (identifier != light->getDeviceIdentifier()) {
-                            light->setDeviceIdentifier(identifier);
-                            ::Config::getInstance().updateBinding(
-                                    games_list[games_selected], *light,
-                                    lights_page - 1);
+                                    // add button names
+                                    for (auto &button_name : device->hidInfo->button_output_caps_names) {
+
+                                        // build name
+                                        std::string name = button_name;
+                                        if (index > 0xFF)
+                                            name += " (0x" + bin2hex(&((char*) &index)[1], 1) + bin2hex(&((char*) &index)[0], 1) + ")";
+                                        else
+                                            name += " (0x" + bin2hex(&((char*) &index)[0], 1) + ")";
+
+                                        // add name
+                                        control_names.push_back(name);
+                                        index++;
+                                    }
+
+                                    // add value names
+                                    for (auto &value_name : device->hidInfo->value_output_caps_names) {
+
+                                        // build name
+                                        std::string name = value_name;
+                                        if (index > 0xFF)
+                                            name += " (0x" + bin2hex(&((char*) &index)[1], 1)
+                                                    + bin2hex(&((char*) &index)[0], 1)
+                                                    + ", value cap)";
+                                        else
+                                            name += " (0x" + bin2hex(&((char*) &index)[0], 1) + ", value cap)";
+
+                                        // add name
+                                        control_names.push_back(name);
+                                        index++;
+                                    }
+
+                                    break;
+                                }
+                                case rawinput::SEXTET_OUTPUT: {
+
+                                    // add all names of sextet device
+                                    for (int i = 0; i < rawinput::SextetDevice::LIGHT_COUNT; i++) {
+                                        std::string name(rawinput::SextetDevice::LIGHT_NAMES[i]);
+
+                                        // add name
+                                        control_names.push_back(name);
+                                    }
+                                    break;
+                                }
+                                case rawinput::PIUIO_DEVICE: {
+
+                                    // add all names of PIUIO device
+                                    for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_LIGHTS; i++) {
+                                        std::string name(rawinput::PIUIO::LIGHT_NAMES[i]);
+
+                                        // add name
+                                        control_names.push_back(name);
+                                    }
+                                    break;
+                                }
+                                case rawinput::SMX_STAGE: {
+
+                                    // add all names of SMX device
+                                    for (int i = 0; i < rawinput::SmxStageDevice::TOTAL_LIGHT_COUNT; i++) {
+                                        control_names.push_back(rawinput::SmxStageDevice::GetLightNameByIndex(i));
+                                    }
+                                    break;
+                                }
+                                case rawinput::SMX_DEDICAB: {
+
+                                    // add all names of SMX dedicab device
+                                    for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
+                                        control_names.push_back(rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
+                                    }
+                                    break;
+                                }
+                                default:
+                                    break;
+                            }
                         }
-                        if (this->lights_devices_control_selected >= 0) {
-                            if ((int) light->getIndex() != this->lights_devices_control_selected) {
-                                light->setIndex(this->lights_devices_control_selected);
+
+                        // controls
+                        if (ImGui::Combo("Light Control",
+                                    &this->lights_devices_control_selected,
+                                    [] (void* data, int i, const char **item) {
+                                        *item = ((std::vector<std::string> *) data)->at(i).c_str();
+                                        return true;
+                                    },
+                                    &control_names, control_names.size())) {
+                            control_changed = true;
+                        }
+
+                        // update light
+                        if (lights_devices_selected >= 0 && lights_devices_selected < (int) lights_devices.size()) {
+                            auto identifier = this->lights_devices[lights_devices_selected]->name;
+                            if (identifier != light->getDeviceIdentifier()) {
+                                light->setDeviceIdentifier(identifier);
                                 ::Config::getInstance().updateBinding(
                                         games_list[games_selected], *light,
                                         lights_page - 1);
                             }
+                            if (this->lights_devices_control_selected >= 0) {
+                                if ((int) light->getIndex() != this->lights_devices_control_selected) {
+                                    light->setIndex(this->lights_devices_control_selected);
+                                    ::Config::getInstance().updateBinding(
+                                            games_list[games_selected], *light,
+                                            lights_page - 1);
+                                }
+                            }
                         }
-                    }
 
-                    // value preview
-                    ImGui::Separator();
-                    float value_orig = GameAPI::Lights::readLight(RI_MGR, *light);
-                    float value = value_orig;
-                    ImGui::SliderFloat("Preview", &value, 0.f, 1.f);
+                        // value preview
+                        ImGui::Separator();
+                        float value_orig = GameAPI::Lights::readLight(RI_MGR, *light);
+                        float value = value_orig;
+                        ImGui::SliderFloat("Preview", &value, 0.f, 1.f);
 
-                    // manual button controls
-                    if (ImGui::Button("Turn On")) {
-                        value = 1.f;
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Turn Off")) {
-                        value = 0.f;
-                    }
-
-                    // manual lock
-                    if (!cfg::CONFIGURATOR_STANDALONE) {
+                        // manual button controls
+                        if (ImGui::Button("Turn On")) {
+                            value = 1.f;
+                        }
                         ImGui::SameLine();
-                        ImGui::Checkbox("Lock", &light->override_enabled);
-                    }
-
-                    // apply new value
-                    if (value != value_orig || control_changed) {
-                        if (light->override_enabled) {
-                            light->override_state = value;
+                        if (ImGui::Button("Turn Off")) {
+                            value = 0.f;
                         }
-                        auto ident = light->getDeviceIdentifier();
-                        GameAPI::Lights::writeLight(RI_MGR->devices_get(ident), light->getIndex(), value);
-                        RI_MGR->devices_flush_output();
+
+                        // manual lock
+                        if (!cfg::CONFIGURATOR_STANDALONE) {
+                            ImGui::SameLine();
+                            ImGui::Checkbox("Lock", &light->override_enabled);
+                        }
+
+                        // apply new value
+                        if (value != value_orig || control_changed) {
+                            if (light->override_enabled) {
+                                light->override_state = value;
+                            }
+                            auto ident = light->getDeviceIdentifier();
+                            GameAPI::Lights::writeLight(RI_MGR->devices_get(ident), light->getIndex(), value);
+                            RI_MGR->devices_flush_output();
+                        }
+
+                        // close button
+                        ImGui::Separator();
+                        if (ImGui::Button("Close")) {
+                            ImGui::CloseCurrentPopup();
+                            light->override_enabled = false;
+                        }
+
+                        // clean up
+                        ImGui::EndPopup();
                     }
 
-                    // close button
-                    ImGui::Separator();
-                    if (ImGui::Button("Close")) {
-                        ImGui::CloseCurrentPopup();
-                        light->override_enabled = false;
+                    // clear light
+                    if (light_display.size() > 0) {
+                        ImGui::SameLine();
+                        if (ImGui::Button("Clear")) {
+                            light->setDeviceIdentifier("");
+                            light->setIndex(0xFF);
+                            ::Config::getInstance().updateBinding(
+                                    games_list[games_selected], *light,
+                                    lights_page - 1);
+                        }
                     }
 
                     // clean up
-                    ImGui::EndPopup();
+                    ImGui::PopID();
                 }
-
-                // clear light
-                if (light_display.size() > 0) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Clear")) {
-                        light->setDeviceIdentifier("");
-                        light->setIndex(0xFF);
-                        ::Config::getInstance().updateBinding(
-                                games_list[games_selected], *light,
-                                lights_page - 1);
-                    }
-                }
-
-                // clean up
-                ImGui::NextColumn();
-                ImGui::PopID();
             }
+
+            ImGui::EndTable();
         }
-        ImGui::Columns();
     }
 
     void Config::build_cards() {
@@ -2563,279 +2603,305 @@ namespace overlay::windows {
         std::vector<Option> *options, const std::string &category, const std::string *filter) {
         int options_count;  
 
-        ImGui::Columns(3, "OptionsColumns", true);
-        if (!category.empty() ) {
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), category.c_str());
+        // category name
+        std::string cat = "Options";
+        if (!category.empty()) {
+            cat = category;
         } else if (filter != nullptr) {
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Search results");
-        } else {
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Options");
+            cat = "Search results";
         }
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Parameter");
-        ImGui::SameLine();
-        ImGui::HelpMarker(
-            "These are the command-line parameters you can use in your .bat file to set the options.\n"
-            "Example: spice.exe -w -ea\n"
-            "         spice64.exe -api 1337 -apipass changeme");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Setting");
-        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), cat.c_str());
         ImGui::Separator();
 
-        // iterate options
-        options_count = 0;
-        for (auto &option : *options) {
-            // get option definition
-            auto &definition = option.get_definition();
+        // render table
+        // tables must share the same ID to have synced column settings
+        if (ImGui::BeginTable("OptionsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("CMD Line Parameter", ImGuiTableColumnFlags_WidthFixed, 216);
+            ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, 240);
 
-            // check category
-            if (!category.empty() && definition.category != category) {
-                continue;
-            }
-
-            // check hidden option
-            if (!this->options_show_hidden && option.value.empty()) {
-
-                // skip hidden entries
-                if (definition.hidden) {
+            // iterate options
+            options_count = 0;
+            for (auto &option : *options) {
+                
+                // get option definition
+                auto &definition = option.get_definition();
+                
+                // check category
+                if (!category.empty() && definition.category != category) {
                     continue;
                 }
-
-                // check for game exclusivity
-                if (!definition.game_name.empty()) {
-                    if (definition.game_name != this->games_selected_name) {
+                
+                // check hidden option
+                if (!this->options_show_hidden && option.value.empty()) {
+                    
+                    // skip hidden entries
+                    if (definition.hidden) {
+                        continue;
+                    }
+                    
+                    // check for game exclusivity
+                    if (!definition.game_name.empty()) {
+                        if (definition.game_name != this->games_selected_name) {
+                            continue;
+                        }
+                    }
+                }
+                
+                // filter
+                if (filter != nullptr) {
+                    if (filter->empty()) {
+                        continue;
+                    }
+                    if (!option.search_match(*filter)) {
+                        continue;
+                    }
+                    // limit to 30 results
+                    if (30 < options_count) {
                         continue;
                     }
                 }
-            }
 
-            // filter
-            if (filter != nullptr) {
-                if (filter->empty()) {
-                    continue;
-                }
-                if (!option.search_match(*filter)) {
-                    continue;
-                }
-                // limit to 30 results
-                if (30 < options_count) {
-                    continue;
-                }
-            }
+                options_count += 1;
+                
+                // list entry
+                ImGui::PushID(&option);
+                ImGui::Indent(INDENT);
+                ImGui::TableNextRow();
 
-            options_count += 1;
-
-            // list entry
-            ImGui::PushID(&option);
-            ImGui::AlignTextToFramePadding();
-            if (option.is_active()) {
-                // active option
-                if (option.disabled || definition.disabled) {
-                    ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
+                // option name
+                ImGui::TableNextColumn();
+                ImGui::AlignTextToFramePadding();
+                if (option.is_active()) {
+                    // active option
+                    if (option.disabled || definition.disabled) {
+                        ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
+                    } else {
+                        ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", definition.title.c_str());
+                    }
+                } else if (definition.hidden
+                || (!definition.game_name.empty() && definition.game_name != this->games_selected_name)) {
+                    // wrong game - grayed out
+                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", definition.title.c_str());
                 } else {
-                    ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", definition.title.c_str());
+                    // normal text
+                    ImGui::Text("%s", definition.title.c_str());
                 }
-            } else if (definition.hidden
-            || (!definition.game_name.empty() && definition.game_name != this->games_selected_name)) {
-                // wrong game - grayed out
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", definition.title.c_str());
-            } else {
-                // normal text
-                ImGui::Text("%s", definition.title.c_str());
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::HelpTooltip(definition.desc.c_str());
-            }
-            ImGui::NextColumn();
-            ImGui::AlignTextToFramePadding();
-            if (definition.display_name.empty()) {
-                ImGui::TextDisabled("-%s", definition.name.c_str());
-            } else {
-                ImGui::TextDisabled("-%s", definition.display_name.c_str());
-            }
-            ImGui::NextColumn();
-            if (option.disabled || definition.disabled) {
-                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-            }
-            switch (definition.type) {
-                case OptionType::Bool: {
-                    bool state = !option.value.empty();
-                    if (ImGui::Checkbox(state ? "ON" : "off", &state)) {
-                        this->options_dirty = true;
-                        option.value = state ? "/ENABLED" : "";
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
-                    }
-                    break;
+                if (ImGui::IsItemHovered()) {
+                    ImGui::HelpTooltip(definition.desc.c_str());
                 }
-                case OptionType::Integer: {
-                    char buffer[512];
-                    strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
-                    buffer[sizeof(buffer) - 1] = '\0';
-                    auto digits_filter = [](ImGuiInputTextCallbackData* data) {
-                        if ('0' <= data->EventChar && data->EventChar <= '9') {
-                            return 0;
-                        }
-                        return 1; // discard
-                    };
 
-                    const char *hint = definition.setting_name.empty() ? "Enter number..."
-                            : definition.setting_name.c_str();
-
-                    ImGui::InputTextWithHint(
-                        "", hint,
-                        buffer, sizeof(buffer) - 1,
-                        ImGuiInputTextFlags_CallbackCharFilter, digits_filter);
-                    // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
-                    if (ImGui::IsItemEdited()) {
-                        this->options_dirty = true;
-                        option.value = buffer;
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
-                    }
-                    break;
+                // command line parameter
+                ImGui::TableNextColumn();
+                ImGui::AlignTextToFramePadding();
+                std::string param = "-";
+                if (definition.display_name.empty()) {
+                    param += definition.name;
+                } else {
+                    param += definition.display_name;
                 }
-                case OptionType::Hex: {
-                    char buffer[512];
-                    strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
-                    buffer[sizeof(buffer) - 1] = '\0';
-                    auto digits_filter = [](ImGuiInputTextCallbackData* data) {
-                        if ('0' <= data->EventChar && data->EventChar <= '9') {
-                            return 0;
-                        }
-                        if ('a' <= data->EventChar && data->EventChar <= 'f') {
-                            return 0;
-                        }
-                        if ('A' <= data->EventChar && data->EventChar <= 'F') {
-                            return 0;
-                        }
-                        if (data->EventChar == 'x' || data->EventChar == 'X') {
-                            return 0;
-                        }
-                        return 1; // discard
-                    };
-                    const char *hint = definition.setting_name.empty() ? "Enter hex..."
-                            : definition.setting_name.c_str();
-
-                    ImGui::InputTextWithHint("", hint,
-                        buffer, sizeof(buffer) - 1,
-                        ImGuiInputTextFlags_CallbackCharFilter, digits_filter);
-                    // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
-                    if (ImGui::IsItemEdited()) {
-                        this->options_dirty = true;
-                        option.value = buffer;
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
-                    }
-                    break;
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", param.c_str());
+                if (ImGui::IsItemHovered()) {
+                    const auto help =
+                        param +
+                        "\n\nClick to copy the parameter to the clipboard.\n\n"
+                        "These are the command-line parameters you can use in your .bat file to set the options.\n"
+                        "Example: spice.exe -w -ea\n"
+                        "         spice64.exe -api 1337 -apipass changeme";
+                    ImGui::HelpTooltip(help.c_str());
+                        
                 }
-                case OptionType::Text: {
-                    char buffer[512];
-                    strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
-                    buffer[sizeof(buffer) - 1] = '\0';
-
-                    const char *hint = definition.setting_name.empty() ? "Enter value..."
-                            : definition.setting_name.c_str();
-
-                    ImGui::InputTextWithHint("", hint, buffer, sizeof(buffer) - 1);
-                    // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
-                    if (ImGui::IsItemEdited()) {
-                        this->options_dirty = true;
-                        option.value = buffer;
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
-                    }
-                    break;
+                if (ImGui::IsItemClicked()) {
+                    clipboard::copy_text(param.c_str());
                 }
-                case OptionType::Enum: {
-                    std::string current_item = option.value_text();
-                    for (auto &element : definition.elements) {
-                        if (element.first == current_item) {
-                            current_item += fmt::format(" ({})", element.second);
+
+                // option widgets
+                ImGui::TableNextColumn();
+                if (option.disabled || definition.disabled) {
+                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                }
+                switch (definition.type) {
+                    case OptionType::Bool: {
+                        bool state = !option.value.empty();
+                        if (ImGui::Checkbox(state ? "ON" : "off", &state)) {
+                            this->options_dirty = true;
+                            option.value = state ? "/ENABLED" : "";
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
                     }
-                    if (current_item.empty()) {
-                        current_item = "Default";
+                    case OptionType::Integer: {
+                        char buffer[512];
+                        strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
+                        buffer[sizeof(buffer) - 1] = '\0';
+                        auto digits_filter = [](ImGuiInputTextCallbackData* data) {
+                            if ('0' <= data->EventChar && data->EventChar <= '9') {
+                                return 0;
+                            }
+                            return 1; // discard
+                        };
+
+                        const char *hint = definition.setting_name.empty() ? "Enter number..."
+                                : definition.setting_name.c_str();
+
+                        ImGui::InputTextWithHint(
+                            "", hint,
+                            buffer, sizeof(buffer) - 1,
+                            ImGuiInputTextFlags_CallbackCharFilter, digits_filter);
+                        // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
+                        if (ImGui::IsItemEdited()) {
+                            this->options_dirty = true;
+                            option.value = buffer;
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
                     }
-                    if (ImGui::BeginCombo("##combo", current_item.c_str(), 0)) {
+                    case OptionType::Hex: {
+                        char buffer[512];
+                        strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
+                        buffer[sizeof(buffer) - 1] = '\0';
+                        auto digits_filter = [](ImGuiInputTextCallbackData* data) {
+                            if ('0' <= data->EventChar && data->EventChar <= '9') {
+                                return 0;
+                            }
+                            if ('a' <= data->EventChar && data->EventChar <= 'f') {
+                                return 0;
+                            }
+                            if ('A' <= data->EventChar && data->EventChar <= 'F') {
+                                return 0;
+                            }
+                            if (data->EventChar == 'x' || data->EventChar == 'X') {
+                                return 0;
+                            }
+                            return 1; // discard
+                        };
+                        const char *hint = definition.setting_name.empty() ? "Enter hex..."
+                                : definition.setting_name.c_str();
+
+                        ImGui::InputTextWithHint("", hint,
+                            buffer, sizeof(buffer) - 1,
+                            ImGuiInputTextFlags_CallbackCharFilter, digits_filter);
+                        // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
+                        if (ImGui::IsItemEdited()) {
+                            this->options_dirty = true;
+                            option.value = buffer;
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
+                    }
+                    case OptionType::Text: {
+                        char buffer[512];
+                        strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
+                        buffer[sizeof(buffer) - 1] = '\0';
+
+                        const char *hint = definition.setting_name.empty() ? "Enter value..."
+                                : definition.setting_name.c_str();
+
+                        ImGui::InputTextWithHint("", hint, buffer, sizeof(buffer) - 1);
+                        // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
+                        if (ImGui::IsItemEdited()) {
+                            this->options_dirty = true;
+                            option.value = buffer;
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
+                    }
+                    case OptionType::Enum: {
+                        std::string current_item = option.value_text();
                         for (auto &element : definition.elements) {
-                            bool selected = current_item == element.first;
-                            std::string label = element.first;
-                            if (!element.second.empty()) {
-                                label += fmt::format(" ({})", element.second);
-                            }
-                            if (ImGui::Selectable(label.c_str(), selected)) {
-                                this->options_dirty = true;
-                                option.value = element.first;
-                                ::Config::getInstance().updateBinding(games_list[games_selected], option);
-                            }
-                            if (selected) {
-                                ImGui::SetItemDefaultFocus();
+                            if (element.first == current_item) {
+                                current_item += fmt::format(" ({})", element.second);
                             }
                         }
-                        ImGui::EndCombo();
+                        if (current_item.empty()) {
+                            current_item = "Default";
+                        }
+                        if (ImGui::BeginCombo("##combo", current_item.c_str(), 0)) {
+                            for (auto &element : definition.elements) {
+                                bool selected = current_item == element.first;
+                                std::string label = element.first;
+                                if (!element.second.empty()) {
+                                    label += fmt::format(" ({})", element.second);
+                                }
+                                if (ImGui::Selectable(label.c_str(), selected)) {
+                                    this->options_dirty = true;
+                                    option.value = element.first;
+                                    ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                                }
+                                if (selected) {
+                                    ImGui::SetItemDefaultFocus();
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::HelpTooltip(definition.desc.c_str());
+                        }
+                        break;
                     }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::HelpTooltip(definition.desc.c_str());
+                    default: {
+                        ImGui::Text("Unknown option type");
+                        break;
                     }
-                    break;
                 }
-                default: {
-                    ImGui::Text("Unknown option type");
-                    break;
+
+                // clear button
+                if (!option.disabled && !definition.disabled && option.is_active() && option.get_definition().type != OptionType::Bool) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Clear")) {
+                        this->options_dirty = true;
+                        option.value = "";
+                        ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                    }
                 }
-            }
 
-            // clear button
-            if (!option.disabled && !definition.disabled && option.is_active() && option.get_definition().type != OptionType::Bool) {
-                ImGui::SameLine();
-                if (ImGui::Button("Clear")) {
-                    this->options_dirty = true;
-                    option.value = "";
-                    ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                // clean up disabled item flags
+                if (option.disabled || definition.disabled) {
+                    ImGui::PopItemFlag();
+                    ImGui::PopStyleVar();
                 }
+
+                // disabled help
+                if (option.disabled && !definition.disabled) {
+                    ImGui::SameLine();
+                    ImGui::HelpMarker(
+                        "This option can not be edited because it was overriden by command-line options.\n"
+                        "Run spicecfg.exe to configure the options and then run spice(64).exe directly.");
+                }
+
+                // next item
+                ImGui::PopID();
+                ImGui::Unindent(INDENT);
             }
 
-            // clean up disabled item flags
-            if (option.disabled || definition.disabled) {
-                ImGui::PopItemFlag();
-                ImGui::PopStyleVar();
+            // check if empty
+            if (options_count == 0) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Indent(INDENT);
+                ImGui::TextDisabled("-");
+                ImGui::Unindent(INDENT);
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("-");
             }
-
-            // disabled help
-            if (option.disabled && !definition.disabled) {
-                ImGui::SameLine();
-                ImGui::HelpMarker(
-                    "This option can not be edited because it was overriden by command-line options.\n"
-                    "Run spicecfg.exe to configure the options and then run spice(64).exe directly.");
-            }
-
-            // next item
-            ImGui::PopID();
-            ImGui::NextColumn();
+            ImGui::EndTable();
         }
-            
-        // check if empty
-        if (options_count == 0) {
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-            ImGui::TextUnformatted("-");
-            ImGui::NextColumn();
-        }
 
-        ImGui::Columns(1);
         ImGui::TextUnformatted("");
     }
 

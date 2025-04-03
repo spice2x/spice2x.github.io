@@ -39,12 +39,12 @@ namespace ImGui {
 
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        if (desc) {
+        if (desc && desc[0]) {
             ImGui::TextUnformatted(desc);
             ImGui::TextUnformatted("");
         }
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 0.f, 1.f));
-        if (warn) {
+        if (warn && warn[0]) {
             ImGui::TextUnformatted("WARNING:");
             ImGui::TextUnformatted(warn);
         }

@@ -241,7 +241,7 @@ void overlay::SpiceOverlay::init() {
                      | ImGuiConfigFlags_NavEnableGamepad
                      | ImGuiConfigFlags_NavEnableSetMousePos
                      | ImGuiConfigFlags_DockingEnable
-                     | ImGuiConfigFlags_ViewportsEnablecd;
+                     | ImGuiConfigFlags_ViewportsEnable;
     if (is_touch_available()) {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
     }
