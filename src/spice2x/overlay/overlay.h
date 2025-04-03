@@ -129,6 +129,7 @@ namespace overlay {
         bool hotkey_toggle_last = false;
 
         void init();
+        void add_font(const char* font, ImFontConfig* config, const ImWchar* glyphs);
     };
 
     // global
