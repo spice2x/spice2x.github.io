@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "external/imgui/imgui.h"
+#include "imgui.h"
 
 struct IDirect3DDevice9;
 

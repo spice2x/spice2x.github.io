@@ -211,7 +211,7 @@ add_compile_definitions(
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DACIOEMU_LOG")
 
 # add project directory to include path so we can comfortably import
-include_directories(${spicetools_SOURCE_DIR})
+include_directories(${spicetools_SOURCE_DIR} ${spicetools_SOURCE_DIR}/external/imgui)
 
 # add external libraries
 add_subdirectory(external/fmt EXCLUDE_FROM_ALL)
@@ -516,7 +516,6 @@ set(SOURCE_FILES ${SOURCE_FILES}
         overlay/overlay.cpp
         overlay/window.cpp
         overlay/imgui/extensions.cpp
-        overlay/imgui/impl_dx9.cpp
         overlay/imgui/impl_spice.cpp
         overlay/imgui/impl_sw.cpp
         overlay/windows/acio_status_buffers.cpp

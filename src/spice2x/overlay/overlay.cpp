@@ -11,10 +11,7 @@
 #include "util/resutils.h"
 #include "build/resource.h"
 
-#include "imgui/impl_dx9.h"
-#include "imgui/impl_spice.h"
-#include "imgui/impl_sw.h"
-#include "overlay/imgui/impl_dx9.h"
+#include "external/imgui/backends/imgui_impl_dx9.h"
 #include "overlay/imgui/impl_spice.h"
 #include "overlay/imgui/impl_sw.h"
 

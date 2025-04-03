@@ -22,14 +22,14 @@
 //  2018-02-16: Misc: Obsoleted the io.RenderDrawListsFn callback and exposed ImGui_ImplDX9_RenderDrawData() in the .h file so you can call it yourself.
 //  2018-02-06: Misc: Removed call to ImGui::Shutdown() which is not available from 1.60 WIP, user needs to call CreateContext/DestroyContext themselves.
 
-#include "impl_dx9.h"
+#include "imgui_impl_dx9.h"
 
 #include <algorithm>
 
 // DirectX
 #include <d3d9.h>
 
-#include "external/imgui/imgui.h"
+#include "imgui.h"
 
 // allow std::min use
 #ifdef min
