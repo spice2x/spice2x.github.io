@@ -1761,9 +1761,8 @@ void ImGuiIO::AddMouseButtonEvent(int mouse_button, bool down)
     IM_ASSERT(Ctx != NULL);
     ImGuiContext& g = *Ctx;
     IM_ASSERT(mouse_button >= 0 && mouse_button < ImGuiMouseButton_COUNT);
-    if (!AppAcceptingEvents) {
+    if (!AppAcceptingEvents)
         return;
-    }
 
     // On MacOS X: Convert Ctrl(Super)+Left click into Right-click: handle held button.
     if (ConfigMacOSXBehaviors && mouse_button == 0 && MouseCtrlLeftAsRightClick)
@@ -1777,9 +1776,8 @@ void ImGuiIO::AddMouseButtonEvent(int mouse_button, bool down)
     // Filter duplicate
     const ImGuiInputEvent* latest_event = FindLatestInputEvent(&g, ImGuiInputEventType_MouseButton, (int)mouse_button);
     const bool latest_button_down = latest_event ? latest_event->MouseButton.Down : g.IO.MouseDown[mouse_button];
-    if (latest_button_down == down) {
+    if (latest_button_down == down)
         return;
-    }
 
     // On MacOS X: Convert Ctrl(Super)+Left click into Right-click.
     // - Note that this is actual physical Ctrl which is ImGuiMod_Super for us.
