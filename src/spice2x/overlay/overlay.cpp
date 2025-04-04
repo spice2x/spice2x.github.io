@@ -7,6 +7,7 @@
 #include "hooks/graphics/graphics.h"
 #include "misc/eamuse.h"
 #include "touch/touch.h"
+#include "util/fileutils.h"
 #include "util/logging.h"
 #include "util/resutils.h"
 #include "build/resource.h"
@@ -59,6 +60,7 @@ namespace overlay {
     std::mutex OVERLAY_MUTEX;
     std::unique_ptr<overlay::SpiceOverlay> OVERLAY = nullptr;
     ImFont* DSEG_FONT = nullptr;
+    bool SHOW_DEBUG_LOG_WINDOW = false;
 }
 
 static void *ImGui_Alloc(size_t sz, void *user_data) {
@@ -239,12 +241,19 @@ void overlay::SpiceOverlay::init() {
     io.UserData = this;
     io.ConfigFlags = ImGuiConfigFlags_NavEnableKeyboard
                      | ImGuiConfigFlags_NavEnableGamepad
-                     | ImGuiConfigFlags_NavEnableSetMousePos
-                     | ImGuiConfigFlags_DockingEnable
-                     | ImGuiConfigFlags_ViewportsEnable;
+                     | ImGuiConfigFlags_NavEnableSetMousePos;
+
+    if (!cfg::CONFIGURATOR_STANDALONE) {
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    }
     if (is_touch_available()) {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
     }
+
+    // temporarily turn this off as it can cause crashes during font load failures
+    // turns back on in ImGui_ImplSpice_Init
+    io.ConfigErrorRecoveryEnableTooltip = false;
 
     io.MouseDrawCursor = !GRAPHICS_SHOW_CURSOR;
 
@@ -260,20 +269,14 @@ void overlay::SpiceOverlay::init() {
     // add fallback fonts for missing glyph ranges
     ImFontConfig config {};
     config.MergeMode = true;
-    io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\simsun.ttc)",
-            13.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-    io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\arial.ttf)",
-            13.0f, &config, io.Fonts->GetGlyphRangesCyrillic());
-    io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\meiryu.ttc)",
-            13.0f, &config, io.Fonts->GetGlyphRangesJapanese());
-    io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\meiryo.ttc)",
-            13.0f, &config, io.Fonts->GetGlyphRangesJapanese());
-    io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\gulim.ttc)",
-            13.0f, &config, io.Fonts->GetGlyphRangesKorean());
-    io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\cordia.ttf)",
-            13.0f, &config, io.Fonts->GetGlyphRangesThai());
-    io.Fonts->AddFontFromFileTTF(R"(C:\Windows\Fonts\arial.ttf)",
-            13.0f, &config, io.Fonts->GetGlyphRangesVietnamese());
+
+    add_font("simsun.ttc", &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+    add_font("arial.ttc", &config, io.Fonts->GetGlyphRangesCyrillic());
+    add_font("meiryu.ttc", &config, io.Fonts->GetGlyphRangesJapanese());
+    add_font("meiryo.ttc", &config, io.Fonts->GetGlyphRangesJapanese());
+    add_font("gulim.ttc", &config, io.Fonts->GetGlyphRangesKorean());
+    add_font("cordia.ttc", &config, io.Fonts->GetGlyphRangesThai());
+    add_font("arial.ttc", &config, io.Fonts->GetGlyphRangesVietnamese());
 
     // add special font
     if (avs::game::is_model("LDJ")) {
@@ -453,6 +456,10 @@ void overlay::SpiceOverlay::new_frame() {
     // build windows
     for (auto &window : this->windows) {
         window->build();
+    }
+
+    if (SHOW_DEBUG_LOG_WINDOW) {
+        ImGui::ShowDebugLogWindow(&SHOW_DEBUG_LOG_WINDOW);
     }
 
     // end frame
@@ -689,4 +696,22 @@ uint32_t *overlay::SpiceOverlay::sw_get_pixel_data(int *width, int *height) {
     *width = this->pixel_data_width;
     *height = this->pixel_data_height;
     return &this->pixel_data[0];
+}
+
+void overlay::SpiceOverlay::add_font(const char* font, ImFontConfig* config, const ImWchar* glyphs) {
+    CHAR fonts_dir[MAX_PATH];
+    ExpandEnvironmentStringsA(R"(%SYSTEMROOT%\Fonts\)", fonts_dir, MAX_PATH);
+    std::filesystem::path full_path = fonts_dir;
+    full_path += font;
+
+    if (fileutils::file_exists(full_path)) {
+        log_misc("overlay", "loading font: {}", full_path.string());
+        ImGui::GetIO().Fonts->AddFontFromFileTTF(
+            full_path.string().c_str(),
+            13.0f,
+            config,
+            glyphs);
+    } else {
+        log_misc("overlay", "font not found: {}", full_path.string());
+    }
 }

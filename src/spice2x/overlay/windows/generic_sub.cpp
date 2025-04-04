@@ -206,7 +206,7 @@ namespace overlay::windows {
         bottom_right.x += overlay_content_top_left.x;
         bottom_right.y += overlay_content_top_left.y;
         ImGui::GetBackgroundDrawList()->AddImage(
-            reinterpret_cast<void *>(this->texture),
+            reinterpret_cast<ImTextureID>(this->texture),
             overlay_content_top_left,
             bottom_right);
 

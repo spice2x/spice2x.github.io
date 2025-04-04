@@ -3054,13 +3054,13 @@ namespace overlay::windows {
 
         // workaround for popups triggered by menu, see https://github.com/ocornut/imgui/issues/331
         if (about_popup) {
-            ImGui::OpenPopup("About");
+            ImGui::OpenPopup("About##topbarpopup");
         }
         if (licenses_popup) {
-            ImGui::OpenPopup("Licenses");
+            ImGui::OpenPopup("Licenses##topbarpopup");
         }
         if (shutdown_popup) {
-            ImGui::OpenPopup("System");
+            ImGui::OpenPopup("System##topbarpopup");
         }
 
         // draw popups
@@ -3069,7 +3069,7 @@ namespace overlay::windows {
             bool unused_open = true;
 
             if (ImGui::BeginPopupModal(
-                "System",
+                "System##topbarpopup",
                 &unused_open,
                 ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize)) {
 
@@ -3108,13 +3108,15 @@ namespace overlay::windows {
             
             ImGui::SetNextWindowSize(popup_size, ImGuiCond_Appearing);
             ImGui::SetNextWindowPos(popup_pos, ImGuiCond_Appearing);
-            if (ImGui::BeginPopupModal("About", &unused_open)) {
+            bool unused_open2 = true;
+            if (ImGui::BeginPopupModal("About##topbarpopup", &unused_open2)) {
                 this->build_about();
                 ImGui::EndPopup();
             }
             ImGui::SetNextWindowSize(popup_size, ImGuiCond_Appearing);
             ImGui::SetNextWindowPos(popup_pos, ImGuiCond_Appearing);
-            if (ImGui::BeginPopupModal("Licenses", &unused_open)) {
+            bool unused_open3 = true;
+            if (ImGui::BeginPopupModal("Licenses##topbarpopup", &unused_open3)) {
                 this->build_licenses();
                 ImGui::EndPopup();
             }

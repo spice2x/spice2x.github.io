@@ -178,9 +178,11 @@ namespace overlay::windows {
                     static_cast<int>(ImGui::GetIO().DisplaySize.x),
                     static_cast<int>(ImGui::GetIO().DisplaySize.y));
 
-            // removed for size (along with setting IMGUI_DISABLE_DEMO_WINDOWS
-            // and IMGUI_DISABLE_DEBUG_TOOLS) - saves about 300kb in each
-            // binary
+            if (ImGui::Button("ImGui Debug Log")) {
+                overlay::SHOW_DEBUG_LOG_WINDOW = !overlay::SHOW_DEBUG_LOG_WINDOW;
+            }
+
+            // removed for size (IMGUI_DISABLE_DEMO_WINDOWS)
 
             // metrics button
             // this->metrics_open |= ImGui::Button("Metrics Window");

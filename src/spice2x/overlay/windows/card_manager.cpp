@@ -115,7 +115,6 @@ namespace overlay::windows {
             ImGui::BeginDisabled();
             ImGui::Button("  <No card>  \n  xxxx xxxx xxxx xxxx  ");
             ImGui::EndDisabled();
-            ImGui::PopStyleColor(4);
         }
     }
 

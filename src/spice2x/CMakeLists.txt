@@ -217,8 +217,6 @@ include_directories(${spicetools_SOURCE_DIR} ${spicetools_SOURCE_DIR}/external/i
 add_subdirectory(external/fmt EXCLUDE_FROM_ALL)
 add_subdirectory(external/discord-rpc EXCLUDE_FROM_ALL)
 add_subdirectory(external/hash-library EXCLUDE_FROM_ALL)
-add_compile_definitions(IMGUI_DISABLE_DEMO_WINDOWS)
-add_compile_definitions(IMGUI_DISABLE_DEBUG_TOOLS)
 add_subdirectory(external/imgui EXCLUDE_FROM_ALL)
 add_subdirectory(external/minhook EXCLUDE_FROM_ALL)
 add_subdirectory(external/cpu_features EXCLUDE_FROM_ALL)
