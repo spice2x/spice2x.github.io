@@ -361,27 +361,6 @@ void ImGui_ImplSpice_NewFrame() {
         }
     }
 
-    // navigator input
-    auto buttons = games::get_buttons_overlay(eamuse_get_game());
-    if (buttons && (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered())) {
-        struct {
-            size_t index;
-            Button &btn;
-        } NAV_MAPPING[] = {
-                { ImGuiNavInput_Activate, buttons->at(games::OverlayButtons::NavigatorActivate )},
-                { ImGuiNavInput_Cancel, buttons->at(games::OverlayButtons::NavigatorCancel) },
-                { ImGuiNavInput_DpadUp, buttons->at(games::OverlayButtons::NavigatorUp) },
-                { ImGuiNavInput_DpadDown, buttons->at(games::OverlayButtons::NavigatorDown) },
-                { ImGuiNavInput_DpadLeft, buttons->at(games::OverlayButtons::NavigatorLeft) },
-                { ImGuiNavInput_DpadRight, buttons->at(games::OverlayButtons::NavigatorRight) },
-        };
-        for (auto mapping : NAV_MAPPING) {
-            if (GameAPI::Buttons::getState(RI_MGR, mapping.btn)) {
-                io.NavInputs[mapping.index] = 1;
-            }
-        }
-    }
-
     // set mouse wheel
     auto mouse_diff = mouse_wheel - mouse_wheel_last;
     mouse_wheel_last = mouse_wheel;
