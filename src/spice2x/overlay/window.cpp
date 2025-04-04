@@ -99,10 +99,9 @@ void overlay::Window::build() {
             for (auto &child : this->children) {
                 child->build();
             }
-
-            // end window
-            ImGui::End();
         }
+        // end window
+        ImGui::End();
 
         if (this->remove_window_padding) {
             ImGui::PopStyleVar();
