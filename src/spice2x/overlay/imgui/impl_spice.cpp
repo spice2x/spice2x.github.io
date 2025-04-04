@@ -214,10 +214,8 @@ static void ImGui_ImplSpice_UpdateMousePos(bool *mouseleft_down) {
             last_touch_id = ~0;
         }
 
-        // finally, inject events to ImGui
-        if (mousepos.x != -FLT_MAX && mousepos.y != -FLT_MAX) {
-            io.AddMousePosEvent(mousepos.x, mousepos.y);
-        }
+        // finally, inject events to ImGui (even if it's -FLT_MAX)
+        io.AddMousePosEvent(mousepos.x, mousepos.y);
     }
 }
 
