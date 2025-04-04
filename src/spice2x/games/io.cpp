@@ -461,18 +461,6 @@ namespace games {
         vkey_defaults.push_back(0xFF);
         names.emplace_back("Force Exit Game");
         vkey_defaults.push_back(0xFF);
-        names.emplace_back("Navigator Activate");
-        vkey_defaults.push_back(0xFF);
-        names.emplace_back("Navigator Cancel");
-        vkey_defaults.push_back(0xFF);
-        names.emplace_back("Navigator Up");
-        vkey_defaults.push_back(0xFF);
-        names.emplace_back("Navigator Down");
-        vkey_defaults.push_back(0xFF);
-        names.emplace_back("Navigator Left");
-        vkey_defaults.push_back(0xFF);
-        names.emplace_back("Navigator Right");
-        vkey_defaults.push_back(0xFF);
         names.emplace_back("Hotkey Enable 1");
         vkey_defaults.push_back(0xFF);
         names.emplace_back("Hotkey Enable 2");
