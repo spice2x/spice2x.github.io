@@ -129,7 +129,8 @@ bool ImGui_ImplSpice_UpdateMouseCursor() {
     return true;
 }
 
-static void ImGui_ImplSpice_UpdateMousePos() {
+static void ImGui_ImplSpice_UpdateMousePos(bool *mouseleft_down) {
+    ImVec2 mousepos(-FLT_MAX, -FLT_MAX);
 
     // get current window size
     RECT rect;
@@ -152,7 +153,6 @@ static void ImGui_ImplSpice_UpdateMousePos() {
         }
 
         // set mouse position
-        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
         POINT pos;
         if (HWND active_window = ::GetForegroundWindow()) {
             if (active_window == g_hWnd
@@ -160,7 +160,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
             || ::IsChild(g_hWnd, active_window)
             || active_window == SPICETOUCH_TOUCH_HWND) {
                 if (::GetCursorPos(&pos) && ::ScreenToClient(g_hWnd, &pos)) {
-                    io.AddMousePosEvent(
+                    mousepos = ImVec2(
                             (float) pos.x * io.DisplaySize.x / window_size.x,
                             (float) pos.y * io.DisplaySize.y / window_size.y);
                 }
@@ -168,10 +168,10 @@ static void ImGui_ImplSpice_UpdateMousePos() {
         }
 
         // fallback to touch hwnd
-        if (io.MousePos.x == -FLT_MAX || io.MousePos.y == -FLT_MAX) {
+        if (mousepos.x == -FLT_MAX || mousepos.y == -FLT_MAX) {
             if (SPICETOUCH_TOUCH_HWND) {
                 if (::GetCursorPos(&pos) && ::ScreenToClient(SPICETOUCH_TOUCH_HWND, &pos)) {
-                    io.AddMousePosEvent(
+                    mousepos = ImVec2(
                             (float) pos.x * io.DisplaySize.x / window_size.x,
                             (float) pos.y * io.DisplaySize.y / window_size.y);
                 }
@@ -188,9 +188,8 @@ static void ImGui_ImplSpice_UpdateMousePos() {
 
             // use the first touch point
             auto &tp = touch_points[0];
-            io.AddMousePosEvent(
-                tp.x * io.DisplaySize.x / window_size.x,
-                tp.y * io.DisplaySize.y / window_size.y);
+            mousepos.x = tp.x * io.DisplaySize.x / window_size.x;
+            mousepos.y = tp.y * io.DisplaySize.y / window_size.y;
 
             // update cursor position
             if (!tp.mouse) {
@@ -203,9 +202,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
             }
 
             // delay press
-            if (delay_touch++ >= delay_touch_target && last_touch_id == tp.id) {
-                io.AddMouseButtonEvent(ImGuiKey_MouseLeft, true);
-            }
+            *mouseleft_down = delay_touch++ >= delay_touch_target && last_touch_id == tp.id;
             if (last_touch_id == ~0u) {
                 last_touch_id = tp.id;
             }
@@ -215,6 +212,11 @@ static void ImGui_ImplSpice_UpdateMousePos() {
             // reset
             delay_touch = 0;
             last_touch_id = ~0;
+        }
+
+        // finally, inject events to ImGui
+        if (mousepos.x != -FLT_MAX && mousepos.y != -FLT_MAX) {
+            io.AddMousePosEvent(mousepos.x, mousepos.y);
         }
     }
 }
@@ -370,6 +372,13 @@ void ImGui_ImplSpice_NewFrame() {
     // needed for ToAscii to correctly detect caps lock state
     KeysDownOld[VK_CAPITAL] = ::GetKeyState(VK_CAPITAL) & 0x0001;
 
+    // update OS mouse position
+    bool touch_down = false;
+    ImGui_ImplSpice_UpdateMousePos(&touch_down);
+    if (touch_down) {
+        mouse_state[ImGuiMouseButton_Left] = true;
+    }
+
     // combined mouse
     for (size_t i = 0; i < std::size(mouse_state); i++) {
         if (mouse_state[i] != io.MouseDown[i]) {
@@ -381,9 +390,6 @@ void ImGui_ImplSpice_NewFrame() {
     auto mouse_diff = mouse_wheel - mouse_wheel_last;
     mouse_wheel_last = mouse_wheel;
     io.AddMouseWheelEvent(0, mouse_diff);
-
-    // update OS mouse position
-    ImGui_ImplSpice_UpdateMousePos();
 
     if (cfg::CONFIGURATOR_STANDALONE) {
         // if cursor is inside the client area, always set the OS cursor to what ImGui wants
