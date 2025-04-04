@@ -18,7 +18,8 @@
     !defined(IMGUI_USE_BGRA_PACKED_COLOR) || \
     !defined(IMGUI_HAS_VIEWPORT) || \
     !defined(IMGUI_HAS_DOCK) || \
-    !defined(IMGUI_DISABLE_DEMO_WINDOWS)
+    !defined(IMGUI_DISABLE_DEMO_WINDOWS) || \
+    defined(IMGUI_DISABLE_DEBUG_TOOLS)
 #error "fix imconfig.h after updating imgui version"
 #endif
 
