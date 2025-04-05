@@ -176,8 +176,17 @@ bool is_touch_available(LPCSTR caller) {
         log_misc("touch", "is_touch_available called by: {}", caller);
     }
 
+    if (!RI_MGR) {
+        log_fatal(
+            LOG_MODULE_NAME,
+            "is_touch_available called by {} before RI_MGR initialization!\n"
+            "this is a bug in spice, please file a bug report with log.txt",
+            caller
+        );
+    }
+
     // initialize handler
-    if (RI_MGR && rawinput::touch::is_enabled(RI_MGR.get())) {
+    if (rawinput::touch::is_enabled(RI_MGR.get())) {
         TOUCH_HANDLER = new RawInputTouchHandler();
     } else if (Win8Handler::is_available()) {
         TOUCH_HANDLER = new Win8Handler();
