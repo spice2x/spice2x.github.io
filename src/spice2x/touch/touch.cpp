@@ -148,9 +148,12 @@ static void touch_initialize() {
     // initialize handler
     if (rawinput::touch::is_enabled(RI_MGR.get())) {
         TOUCH_HANDLER = new RawInputTouchHandler();
-        log_info(LOG_MODULE_NAME, "RawInputTouchHandler initialized successfully");
+    } else if (Win8Handler::is_available()) {
+        TOUCH_HANDLER = new Win8Handler();
+    } else if (Win7Handler::is_available()) {
+        TOUCH_HANDLER = new Win7Handler();
     } else {
-        log_info(LOG_MODULE_NAME, "RawInputTouchHandler not initialized - no touchscreen found or force disabled");
+        log_warning(LOG_MODULE_NAME, "no touch handler available");
     }
 }
 
@@ -172,40 +175,24 @@ static inline void touch_unregister_window(HWND hWnd) {
 
 bool is_touch_available(LPCSTR caller) {
     static bool called_once = false;
-    if (!called_once) {
-        log_misc("touch", "is_touch_available called by: {}", caller);
-    }
 
     if (!RI_MGR) {
         log_fatal(
             LOG_MODULE_NAME,
-            "is_touch_available called by {} before RI_MGR initialization!\n"
-            "this is a bug in spice, please file a bug report with log.txt",
-            caller
-        );
+            "is_touch_available({}) - RI Manager not available, called too early! "
+            "This is a BUG in spice, please file a bug report with log.txt.",
+            caller);
     }
 
-    // initialize handler
-    if (rawinput::touch::is_enabled(RI_MGR.get())) {
-        TOUCH_HANDLER = new RawInputTouchHandler();
-    } else if (Win8Handler::is_available()) {
-        TOUCH_HANDLER = new Win8Handler();
-    } else if (Win7Handler::is_available()) {
-        TOUCH_HANDLER = new Win7Handler();
-    } else {
-        log_warning(LOG_MODULE_NAME, "no touch handler available");
-    }
+    // initialize touch handler
+    touch_initialize();
 
-    // Check if a touch handler has been set. No need to call `is_available` here
-    // as `touch_initialize` does that.
     if (!called_once) {
-        log_misc(
-            "touch",
-            "is_touch_available called by: {}, returning {}",
-            caller,
-            (TOUCH_HANDLER != nullptr) ? "TRUE" : "false");
+        log_misc("touch", "is_touch_available called by: {}, returning {}",
+            caller, (TOUCH_HANDLER != nullptr) ? "TRUE" : "false");
         called_once = true;
     }
+
     return TOUCH_HANDLER != nullptr;
 }
 
