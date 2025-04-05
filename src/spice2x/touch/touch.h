@@ -27,7 +27,7 @@ extern int SPICETOUCH_TOUCH_Y;
 extern int SPICETOUCH_TOUCH_WIDTH;
 extern int SPICETOUCH_TOUCH_HEIGHT;
 
-bool is_touch_available();
+bool is_touch_available(LPCSTR caller);
 
 void touch_attach_wnd(HWND hWnd);
 void touch_attach_dx_hook();

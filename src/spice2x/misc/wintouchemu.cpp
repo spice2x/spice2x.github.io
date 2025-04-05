@@ -36,7 +36,7 @@ namespace wintouchemu {
     bool LOG_FPS = false;
 
     static inline bool is_emu_enabled() {
-        return FORCE || !is_touch_available() || GRAPHICS_SHOW_CURSOR;
+        return FORCE || !is_touch_available("wintouchemu::is_emu_enabled") || GRAPHICS_SHOW_CURSOR;
     }
 
     static decltype(GetSystemMetrics) *GetSystemMetrics_orig = nullptr;

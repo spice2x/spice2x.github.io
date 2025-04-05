@@ -217,6 +217,7 @@ int main_implementation(int argc, char *argv[]) {
     bool attach_qks = false;
     bool attach_mfg = false;
     bool attach_museca = false;
+    bool show_cursor_if_no_touch = false;
 
     // misc settings
     size_t user_heap_size = 0;
@@ -1291,11 +1292,7 @@ int main_implementation(int argc, char *argv[]) {
                 avs::game::DLL_NAME = "system.dll";
                 attach_io = true;
                 attach_shogikai = true;
-
-                // automatically show cursor when no touchscreen is available
-                if (!is_touch_available()) {
-                    GRAPHICS_SHOW_CURSOR = true;
-                }
+                show_cursor_if_no_touch = true;
                 break;
             }
 
@@ -1338,12 +1335,7 @@ int main_implementation(int argc, char *argv[]) {
 
                 // game crash fix
                 easrv_maint = false;
-
-                // automatically show cursor when no touchscreen is available
-                if (!is_touch_available()) {
-                    GRAPHICS_SHOW_CURSOR = true;
-                }
-
+                show_cursor_if_no_touch = true;
                 break;
             }
 
@@ -1458,12 +1450,7 @@ int main_implementation(int argc, char *argv[]) {
                 avs::game::DLL_NAME = "nostalgia.dll";
                 attach_io = true;
                 attach_nostalgia = true;
-
-                // automatically show cursor when no touchscreen is available
-                if (!is_touch_available()) {
-                    GRAPHICS_SHOW_CURSOR = true;
-                }
-
+                show_cursor_if_no_touch = true;
                 break;
             }
 
@@ -1569,12 +1556,7 @@ int main_implementation(int argc, char *argv[]) {
                 avs::game::DLL_NAME = "arknck.dll";
                 attach_io = true;
                 attach_we = true;
-
-                // automatically show cursor when no touchscreen is available
-                if (!is_touch_available()) {
-                    GRAPHICS_SHOW_CURSOR = true;
-                }
-
+                show_cursor_if_no_touch = true;
                 break;
             }
 
@@ -1607,10 +1589,7 @@ int main_implementation(int argc, char *argv[]) {
                 avs::game::DLL_NAME = "kamunity.dll";
                 attach_io = true;
                 attach_ccj = true;
-                // automatically show cursor when no touchscreen is available
-                if (!is_touch_available()) {
-                    GRAPHICS_SHOW_CURSOR = true;
-                }
+                show_cursor_if_no_touch = true;
                 break;
             }
 
@@ -1619,10 +1598,7 @@ int main_implementation(int argc, char *argv[]) {
                 avs::game::DLL_NAME = "kamunity.dll";
                 attach_io = true;
                 attach_qks = true;
-                // automatically show cursor when no touchscreen is available
-                if (!is_touch_available()) {
-                    GRAPHICS_SHOW_CURSOR = true;
-                }
+                show_cursor_if_no_touch = true;
                 break;
             }
 
@@ -1632,10 +1608,7 @@ int main_implementation(int argc, char *argv[]) {
                 attach_io = true;
                 attach_mfg = true;
                 launcher::signal::USE_VEH_WORKAROUND = true;
-                // automatically show cursor when no touchscreen is available
-                if (!is_touch_available()) {
-                    GRAPHICS_SHOW_CURSOR = true;
-                }
+                show_cursor_if_no_touch = true;
                 break;
             }
 
@@ -1644,10 +1617,7 @@ int main_implementation(int argc, char *argv[]) {
                 avs::game::DLL_NAME = "kamunity.dll";
                 attach_io = true;
                 attach_bc = true;
-                // automatically show cursor when no touchscreen is available
-                if (!is_touch_available()) {
-                    GRAPHICS_SHOW_CURSOR = true;
-                }
+                show_cursor_if_no_touch = true;
                 break;
             }
 
@@ -1842,6 +1812,11 @@ int main_implementation(int argc, char *argv[]) {
 
     // print devices
     RI_MGR->devices_print();
+
+    // for certain games, show cursor if no touch is available (must be called after RI_MGR is available)
+    if (show_cursor_if_no_touch && !is_touch_available("launcher::main_implementation")) {
+        GRAPHICS_SHOW_CURSOR = true;
+    }
 
     // cardio
     if (cardio_enabled) {

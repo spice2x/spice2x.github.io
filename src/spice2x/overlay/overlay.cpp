@@ -247,7 +247,7 @@ void overlay::SpiceOverlay::init() {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
-    if (is_touch_available()) {
+    if (is_touch_available("SpiceOverlay::init")) {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
     }
 
