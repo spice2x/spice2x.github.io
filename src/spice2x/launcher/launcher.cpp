@@ -124,6 +124,8 @@ std::string LOG_FILE_PATH = "";
 int LAUNCHER_ARGC = 0;
 char **LAUNCHER_ARGV = nullptr;
 std::unique_ptr<std::vector<Option>> LAUNCHER_OPTIONS;
+
+std::mutex CARD_OVERRIDES_LOCK;
 std::string CARD_OVERRIDES[2];
 
 // sub-systems
@@ -744,9 +746,11 @@ int main_implementation(int argc, char *argv[]) {
         SetDllDirectoryW(MODULE_PATH.c_str());
     }
     if (options[launcher::Options::Player1Card].is_active()) {
+        std::lock_guard<std::mutex> lock(CARD_OVERRIDES_LOCK);
         CARD_OVERRIDES[0] = options[launcher::Options::Player1Card].value_text();
     }
     if (options[launcher::Options::Player2Card].is_active()) {
+        std::lock_guard<std::mutex> lock(CARD_OVERRIDES_LOCK);
         CARD_OVERRIDES[1] = options[launcher::Options::Player2Card].value_text();
     }
     if (options[launcher::Options::Player1PinMacro].is_active()) {

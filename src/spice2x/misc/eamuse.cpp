@@ -66,7 +66,7 @@ bool eamuse_get_card(int active_count, int unit_id, uint8_t *card) {
     if (CARD_INSERT_UID_ENABLE[index]) {
         CARD_INSERT_UID_ENABLE[index] = false;
         memcpy(card, CARD_INSERT_UID[index], 8);
-        log_info("eamuse", "Inserted card from reader {}: {}", index, bin2hex(card, 8));
+        log_info("eamuse", "[P{}] Inserted card from reader: {}", index+1, bin2hex(card, 8));
         return true;
     }
 
@@ -83,35 +83,40 @@ bool eamuse_get_card(int active_count, int unit_id, uint8_t *card) {
 }
 
 bool eamuse_get_card(const std::filesystem::path &path, uint8_t *card, int index) {
-
+    // do a quick copy under lock
+    std::unique_lock<std::mutex> lock(CARD_OVERRIDES_LOCK);
+    const auto card_override = CARD_OVERRIDES[index];
+    lock.unlock();
+    
     // Check if card overrides are present
-    if (!CARD_OVERRIDES[index].empty()) {
+    if (!card_override.empty()) {
 
         // Override is present
         for (int n = 0; n < 16; n++) {
-            char c = CARD_OVERRIDES[index].c_str()[n];
+            char c = card_override.c_str()[n];
             bool digit = c >= '0' && c <= '9';
             bool character_big = c >= 'A' && c <= 'F';
             bool character_small = c >= 'a' && c <= 'f';
             if (!digit && !character_big && !character_small) {
                 log_warning("eamuse",
                             "{} card override contains an invalid character sequence at byte {} (16 characters, 0-9/A-F only)",
-                            CARD_OVERRIDES[index], n);
+                            card_override, n);
 
                 return false;
             }
         }
         // Log info
-        log_info("eamuse", "Inserted card override: {}", CARD_OVERRIDES[index]);
+        log_info("eamuse", "[P{}] Inserted card override: {}", index+1, card_override);
 
         // Card is valid, convert and set it.
-        hex2bin(CARD_OVERRIDES[index].c_str(), card);
+        hex2bin(card_override.c_str(), card);
 
         // cache it for auto-insert
-        if (AUTO_INSERT_CARD[index] && !AUTO_INSERT_CARD_CACHED[index]) {
+        // always overwrite from overrides since override may have changed by user in card manager
+        if (AUTO_INSERT_CARD[index]) {
             memcpy(AUTO_INSERT_CARD_CACHED_DATA[index], card, 8);
             AUTO_INSERT_CARD_CACHED[index] = true;
-            log_info("eamuse", "Auto card insert - caching this card in memory: {}", CARD_OVERRIDES[index]);
+            log_info("eamuse", "[P{}] Auto card insert - caching this card override in memory: {}", index+1, card_override);
         }
 
         // success
@@ -162,7 +167,7 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
     }
 
     // info
-    log_info("eamuse", "Inserted {}: {}", path.string(), buffer);
+    log_info("eamuse", "[P{}] Inserted {}: {}", index+1, path.string(), buffer);
 
     // convert hex to bytes
     hex2bin(buffer, card);
@@ -171,7 +176,7 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
     if (AUTO_INSERT_CARD[index] && !AUTO_INSERT_CARD_CACHED[index]) {
         memcpy(AUTO_INSERT_CARD_CACHED_DATA[index], card, 8);
         AUTO_INSERT_CARD_CACHED[index] = true;
-        log_info("eamuse", "Auto card insert - caching this card in memory: {}", buffer);
+        log_info("eamuse", "[P{}] Auto card insert - caching this card from file in memory: {}", index+1, buffer);
     }
 
     // success
@@ -211,7 +216,6 @@ bool eamuse_card_insert_consume(int active_count, int unit_id) {
         if (!CARD_INSERT[index]) {
             eamuse_card_insert(index);
             // not logging anything here to prevent spam
-            // log_info("eamuse", "Automatic card insert on {}/{} (-autocard)", unit_id + 1, active_count);
             return true;
         } else {
             return false;
@@ -223,7 +227,7 @@ bool eamuse_card_insert_consume(int active_count, int unit_id) {
     auto offset = unit_id * games::KeypadButtons::Size;
     if ((CARD_INSERT[index] && fabs(get_performance_seconds() - CARD_INSERT_TIME[index]) < CARD_INSERT_TIMEOUT)
         || GameAPI::Buttons::getState(RI_MGR, keypad_buttons->at(games::KeypadButtons::InsertCard + offset))) {
-        log_info("eamuse", "Card insert on {}/{}", unit_id + 1, active_count);
+        log_info("eamuse", "[P{}] Card insert on reader (total active count: {})", unit_id+1, active_count);
         CARD_INSERT[index] = false;
         return true;
     }

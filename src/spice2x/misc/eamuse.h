@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <string>
 #include <optional>
+#include <mutex>
 
 #include "external/scard/scard.h"
 
@@ -30,6 +31,7 @@ enum eam_io_keypad_scan_code {
     EAM_IO_INSERT = 13, /* SpiceTools Extension */
 };
 
+extern std::mutex CARD_OVERRIDES_LOCK;
 extern std::string CARD_OVERRIDES[2];
 extern bool AUTO_INSERT_CARD[2];
 extern float AUTO_INSERT_CARD_COOLDOWN;
@@ -66,6 +68,7 @@ void eamuse_set_keypad_overrides(size_t unit, uint16_t keypad_state);
 void eamuse_set_keypad_overrides_bt5(size_t unit, uint16_t keypad_state);
 void eamuse_set_keypad_overrides_reader(size_t unit, uint16_t keypad_state);
 void eamuse_set_keypad_overrides_overlay(size_t unit, uint16_t keypad_state);
+void eamuse_set_keypad_overrides_card_manager(size_t unit, uint16_t keypad_state);
 
 uint16_t eamuse_get_keypad_state(size_t unit);
 std::string eamuse_get_keypad_state_str(size_t unit);
