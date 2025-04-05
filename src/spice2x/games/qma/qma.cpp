@@ -63,7 +63,7 @@ namespace games::qma {
                 touch_attach_dx_hook();
 
                 // cursor
-                if (!is_touch_available()) {
+                if (!is_touch_available("QMATouchDevice::open")) {
                     ShowCursor(true);
                 }
             }

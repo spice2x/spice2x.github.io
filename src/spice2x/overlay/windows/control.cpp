@@ -751,7 +751,7 @@ namespace overlay::windows {
         if (ImGui::CollapsingHeader("Touch")) {
 
             // status
-            ImGui::Text("Status: %s", is_touch_available() ? "available" : "unavailable");
+            ImGui::Text("Status: %s", is_touch_available("Control::touch_view") ? "available" : "unavailable");
 
             // touch points
             ImGui::SetNextItemOpen(true, ImGuiCond_Once);

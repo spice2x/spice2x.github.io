@@ -138,15 +138,19 @@ static void touch_initialize() {
     }
     SPICETOUCH_INITIALIZED = true;
 
+    if (!RI_MGR) {
+        log_fatal(
+            LOG_MODULE_NAME,
+            "touch_initialize() - RI Manager not available, called too early! "
+            "This is a BUG in spice, please file a bug report with log.txt.");
+    }
+
     // initialize handler
-    if (RI_MGR && rawinput::touch::is_enabled(RI_MGR.get())) {
+    if (rawinput::touch::is_enabled(RI_MGR.get())) {
         TOUCH_HANDLER = new RawInputTouchHandler();
-    } else if (Win8Handler::is_available()) {
-        TOUCH_HANDLER = new Win8Handler();
-    } else if (Win7Handler::is_available()) {
-        TOUCH_HANDLER = new Win7Handler();
+        log_info(LOG_MODULE_NAME, "RawInputTouchHandler initialized successfully");
     } else {
-        log_warning(LOG_MODULE_NAME, "no touch handler available");
+        log_info(LOG_MODULE_NAME, "RawInputTouchHandler not initialized - no touchscreen found or force disabled");
     }
 }
 
@@ -166,13 +170,33 @@ static inline void touch_unregister_window(HWND hWnd) {
     }
 }
 
-bool is_touch_available() {
+bool is_touch_available(LPCSTR caller) {
+    static bool called_once = false;
+    if (!called_once) {
+        log_misc("touch", "is_touch_available called by: {}", caller);
+    }
 
-    // initialize touch handler
-    touch_initialize();
+    // initialize handler
+    if (RI_MGR && rawinput::touch::is_enabled(RI_MGR.get())) {
+        TOUCH_HANDLER = new RawInputTouchHandler();
+    } else if (Win8Handler::is_available()) {
+        TOUCH_HANDLER = new Win8Handler();
+    } else if (Win7Handler::is_available()) {
+        TOUCH_HANDLER = new Win7Handler();
+    } else {
+        log_warning(LOG_MODULE_NAME, "no touch handler available");
+    }
 
     // Check if a touch handler has been set. No need to call `is_available` here
     // as `touch_initialize` does that.
+    if (!called_once) {
+        log_misc(
+            "touch",
+            "is_touch_available called by: {}, returning {}",
+            caller,
+            (TOUCH_HANDLER != nullptr) ? "TRUE" : "false");
+        called_once = true;
+    }
     return TOUCH_HANDLER != nullptr;
 }
 
@@ -202,7 +226,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         SPICETOUCH_REGISTERED_TOUCH = true;
 
         // check if touch is available
-        if (is_touch_available()) {
+        if (is_touch_available("SpiceTouchWndProc")) {
 
             // notify the handler of our window
             TOUCH_HANDLER->window_register(hWnd);
