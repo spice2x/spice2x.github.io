@@ -1,0 +1,13 @@
+.vscode/*
+
+# JetBrains IDEs
+.idea
+.idea_modules
+*.iws
+
+# CMake
+cmake-build*
+
+# user config
+build_all.local.sh
+build_docker.local.sh
