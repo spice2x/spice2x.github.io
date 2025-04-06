@@ -36,28 +36,30 @@ namespace overlay::windows {
 
         // load -card0 / -card1
         // -card0 / -card1 override
-        std::lock_guard<std::mutex> lock(CARD_OVERRIDES_LOCK);
-        if (!CARD_OVERRIDES[0].empty()) {
-            const CardEntry card0 = {
-                .name = "P1 Default (-card0)",
-                .id = CARD_OVERRIDES[0],
-                .search_string = "p1 default (-card0)",
-                .read_only = true,
-                .color = {0.9f, 0.9f, 0.9f}
-            };
-            card_cmd_overrides[0].emplace(card0);
-            this->loaded_card[0] = card0;
-        }
-        if (eamuse_get_game_keypads() > 1 && !CARD_OVERRIDES[1].empty()) {
-            const CardEntry card1 = {
-                .name = "P2 Default (-card1)",
-                .id = CARD_OVERRIDES[1],
-                .search_string = "p2 default (-card1)",
-                .read_only = true,
-                .color = {0.9f, 0.9f, 0.9f}
-            };
-            card_cmd_overrides[1].emplace(card1);
-            this->loaded_card[1] = card1;
+        {
+            std::lock_guard<std::mutex> lock(CARD_OVERRIDES_LOCK);
+            if (!CARD_OVERRIDES[0].empty()) {
+                const CardEntry card0 = {
+                    .name = "P1 Default (-card0)",
+                    .id = CARD_OVERRIDES[0],
+                    .search_string = "p1 default (-card0)",
+                    .read_only = true,
+                    .color = {0.9f, 0.9f, 0.9f}
+                };
+                card_cmd_overrides[0].emplace(card0);
+                this->loaded_card[0] = card0;
+            }
+            if (eamuse_get_game_keypads() > 1 && !CARD_OVERRIDES[1].empty()) {
+                const CardEntry card1 = {
+                    .name = "P2 Default (-card1)",
+                    .id = CARD_OVERRIDES[1],
+                    .search_string = "p2 default (-card1)",
+                    .read_only = true,
+                    .color = {0.9f, 0.9f, 0.9f}
+                };
+                card_cmd_overrides[1].emplace(card1);
+                this->loaded_card[1] = card1;
+            }
         }
     }
 
