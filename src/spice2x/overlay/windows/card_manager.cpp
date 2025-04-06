@@ -67,7 +67,7 @@ namespace overlay::windows {
     }
 
     void CardManager::build_content() {
-        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Loaded cards");
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Active card overrides");
         ImGui::SameLine();
         ImGui::HelpMarker(
             "Click to insert card now, or press Insert Card key. Auto Card Insert will also use these cards.\n\n"
@@ -85,11 +85,7 @@ namespace overlay::windows {
                 if (eamuse_get_game_keypads() > (int)i) {
                     ImGui::TableNextColumn();
                     if (build_card(i) && this->loaded_card[i].has_value()) {
-                        uint8_t card_bin[8];
-                        const auto &card = this->loaded_card[i].value();
-                        if (card.id.length() == 16 && hex2bin(card.id.c_str(), card_bin)) {
-                            eamuse_card_insert(i, card_bin);
-                        }
+                        insert_card_over_api(i, this->loaded_card[i].value());
                     }
                 }
             }
@@ -324,17 +320,22 @@ namespace overlay::windows {
                 }
                 ImGui::PushID(i);
                 ImGui::BeginDisabled(this->current_card == nullptr);
-                if (ImGui::Button(i == 0 ? "Load P1" : "Load P2")) {
+                if (ImGui::Button(i == 0 ? "Load P1" : "Load P2") && this->current_card) {
                     this->loaded_card[i] = *this->current_card;
                     log_info(
                         "cardmanager",
-                        "updating reader [{}] card override with {} ({})",
-                        i,
+                        "[P{}] update override and insert card: {} ({})",
+                        i+1,
                         this->current_card->id,
                         this->current_card->name
                     );
+
+                    // update override
                     std::lock_guard<std::mutex> lock(CARD_OVERRIDES_LOCK);
                     CARD_OVERRIDES[i] = this->current_card->id;
+
+                    // insert card over api
+                    insert_card_over_api(i, this->loaded_card[i].value());
                 }
                 ImGui::EndDisabled();
                 ImGui::PopID();
@@ -598,5 +599,12 @@ namespace overlay::windows {
         this->color_buffer[0] = r / 255.f;
         this->color_buffer[1] = g / 255.f;
         this->color_buffer[2] = b / 255.f;
+    }
+
+    void CardManager::insert_card_over_api(int reader, CardEntry &card) {
+        uint8_t card_bin[8];
+        if (card.id.length() == 16 && hex2bin(card.id.c_str(), card_bin)) {
+            eamuse_card_insert(reader, card_bin);
+        }
     }
 }

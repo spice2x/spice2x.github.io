@@ -52,5 +52,7 @@ namespace overlay::windows {
         void build_card_list();
         void build_card_selectable(CardEntry &card);
         void build_footer();
+
+        void insert_card_over_api(int reader, CardEntry &card);
     };
 }
