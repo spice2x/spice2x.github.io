@@ -1,20 +1,11 @@
-FROM archlinux:base
+FROM ghcr.io/archlinux/archlinux:base-devel
 
-RUN pacman --noconfirm -Syu gettext \
-    base-devel \
-    git \
+RUN pacman --noconfirm -Syu git \
     bash \
     zip \
     upx \
-    sudo \
-    binutils \
-    file \
-    make \
-    gcc \
-    fakeroot \
-    diffutils \
+    ninja \
     cmake \
-    awk \
     unzip \
     mingw-w64-crt \
     mingw-w64-winpthreads \
@@ -22,4 +13,4 @@ RUN pacman --noconfirm -Syu gettext \
     mingw-w64-headers \
     mingw-w64-binutils
 RUN useradd user -m && echo "ALL ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-RUN su user -c "cd /tmp/ && git clone https://aur.archlinux.org/yay.git --depth=1 && cd yay && makepkg --noconfirm -si && yay --noconfirm -S mingw-w64-cmake"
+RUN su user -c "cd /tmp/ && git clone https://aur.archlinux.org/yay-bin.git --depth=1 && cd yay-bin && makepkg --noconfirm -si && yay --noconfirm -S mingw-w64-cmake"
