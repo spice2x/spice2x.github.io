@@ -91,6 +91,10 @@ namespace overlay::windows {
             }
             ImGui::EndTable();
         }
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+
         ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Available cards");
         build_card_list();
         ImGui::Separator();
