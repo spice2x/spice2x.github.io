@@ -74,34 +74,36 @@ echo "Build Type: $BUILD_TYPE"
 echo "Cores: $CORES"
 echo ""
 
-# 32 bit
-echo "Building 32bit targets..."
-echo "========================="
-if ((CLEAN_BUILD > 0))
-then
-	rm -rf ${BUILDDIR_32}
-fi
-mkdir -p ${BUILDDIR_32}
-pushd ${BUILDDIR_32} > /dev/null
-cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $OLDPWD && make -j ${CORES} ${TARGETS_32}
-popd > /dev/null
+time (
+	# 32 bit
+	echo "Building 32bit targets..."
+	echo "========================="
+	if ((CLEAN_BUILD > 0))
+	then
+		rm -rf ${BUILDDIR_32}
+	fi
+	mkdir -p ${BUILDDIR_32}
+	pushd ${BUILDDIR_32} > /dev/null
+	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $OLDPWD && ninja ${TARGETS_32}
+	popd > /dev/null
 
-# 64 bit
-echo ""
-echo "Building 64bit targets..."
-echo "========================="
-if ((CLEAN_BUILD > 0))
-then
-	rm -rf ${BUILDDIR_64}
-fi
-mkdir -p ${BUILDDIR_64}
-pushd ${BUILDDIR_64} > /dev/null
-cmake -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $OLDPWD && make -j ${CORES} ${TARGETS_64}
-popd > /dev/null
+	# 64 bit
+	echo ""
+	echo "Building 64bit targets..."
+	echo "========================="
+	if ((CLEAN_BUILD > 0))
+	then
+		rm -rf ${BUILDDIR_64}
+	fi
+	mkdir -p ${BUILDDIR_64}
+	pushd ${BUILDDIR_64} > /dev/null
+	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $OLDPWD && ninja ${TARGETS_64}
+	popd > /dev/null
 
-echo ""
-echo "Compilation process done :)"
-echo "==========================="
+	echo ""
+	echo "Compilation process done :)"
+	echo "==========================="
+)
 
 # generate PDBs
 if false  # ((DEBUG > 0))
