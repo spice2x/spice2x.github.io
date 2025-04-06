@@ -57,7 +57,7 @@ then
 fi
 
 # determine number of cores
-CORES=$(awk '/^processor\t/ {cores[$NF]++} END {print length(cores)}' /proc/cpuinfo)
+CORES=$(nproc)
 
 # print information
 echo ""

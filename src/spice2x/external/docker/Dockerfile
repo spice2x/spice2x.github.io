@@ -5,9 +5,7 @@ RUN pacman --noconfirm -Syu git \
     zip \
     upx \
     ninja \
-    diffutils \
     cmake \
-    awk \
     unzip \
     mingw-w64-crt \
     mingw-w64-winpthreads \
