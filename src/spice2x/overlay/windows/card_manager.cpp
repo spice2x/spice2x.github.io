@@ -5,9 +5,11 @@
 #include "external/rapidjson/document.h"
 #include "external/rapidjson/prettywriter.h"
 #include "misc/eamuse.h"
+#include "misc/clipboard.h"
 #include "util/utils.h"
 #include "util/fileutils.h"
 #include "cfg/configurator.h"
+#include "overlay/imgui/extensions.h"
 
 using namespace rapidjson;
 
@@ -31,15 +33,69 @@ namespace overlay::windows {
         if (fileutils::file_exists(this->config_path)) {
             this->config_load();
         }
+
+        // load -card0 / -card1
+        // -card0 / -card1 override
+        {
+            std::lock_guard<std::mutex> lock(CARD_OVERRIDES_LOCK);
+            if (!CARD_OVERRIDES[0].empty()) {
+                const CardEntry card0 = {
+                    .name = "P1 Default (-card0)",
+                    .id = CARD_OVERRIDES[0],
+                    .search_string = "p1 default (-card0)",
+                    .read_only = true,
+                    .color = {0.9f, 0.9f, 0.9f}
+                };
+                card_cmd_overrides[0].emplace(card0);
+                this->loaded_card[0] = card0;
+            }
+            if (eamuse_get_game_keypads() > 1 && !CARD_OVERRIDES[1].empty()) {
+                const CardEntry card1 = {
+                    .name = "P2 Default (-card1)",
+                    .id = CARD_OVERRIDES[1],
+                    .search_string = "p2 default (-card1)",
+                    .read_only = true,
+                    .color = {0.9f, 0.9f, 0.9f}
+                };
+                card_cmd_overrides[1].emplace(card1);
+                this->loaded_card[1] = card1;
+            }
+        }
     }
 
     CardManager::~CardManager() {
     }
 
     void CardManager::build_content() {
-        ImGui::SeparatorText("Selected card");
-        build_card();
-        ImGui::SeparatorText("Available cards");
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Active card overrides");
+        ImGui::SameLine();
+        ImGui::HelpMarker(
+            "Click to insert card now, or press Insert Card key. Auto Card Insert will also use these cards.\n\n"
+            "If no override is set, pressing Insert Card will read from card0.txt / card1.txt.");
+        if (ImGui::BeginTable("CardSetTable", eamuse_get_game_keypads() > 1 ? 2 : 1, ImGuiTableFlags_SizingFixedFit)) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted("Player 1");
+            if (eamuse_get_game_keypads() > 1) {
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("Player 2");
+            }
+            ImGui::TableNextRow();
+            for (size_t i = 0; i < 2; i++) {
+                if (eamuse_get_game_keypads() > (int)i) {
+                    ImGui::TableNextColumn();
+                    if (build_card(i) && this->loaded_card[i].has_value()) {
+                        insert_card_over_api(i, this->loaded_card[i].value());
+                    }
+                }
+            }
+            ImGui::EndTable();
+        }
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Available cards");
         build_card_list();
         ImGui::Separator();
         ImGui::Spacing();
@@ -48,44 +104,13 @@ namespace overlay::windows {
         build_card_editor();
     }
 
-    void CardManager::build_card() {
-        ImGui::BeginDisabled(this->current_card == nullptr);
-        // insert P1 button
-        if (ImGui::Button("Insert P1")) {
-            const auto card = this->current_card;
-            uint8_t card_bin[8];
-            if (card && card->id.length() == 16 && hex2bin(card->id.c_str(), card_bin)) {
-                eamuse_card_insert(0, card_bin);
-            }
-        }
-
-        // insert P2 button
-        if (eamuse_get_game_keypads() > 1) {
-            ImGui::SameLine();
-            if (ImGui::Button("Insert P2")) {
-                const auto card = this->current_card;
-                uint8_t card_bin[8];
-                if (card && card->id.length() == 16 && hex2bin(card->id.c_str(), card_bin)) {
-                    eamuse_card_insert(1, card_bin);
-                }
-            }
-        }
-
-        // edit selected card
-        ImGui::SameLine();
-        if (ImGui::Button("Edit Card")) {
-            open_card_editor();
-        }
-
-        ImGui::EndDisabled();
-
-        ImGui::Spacing();
-
-        // card ui
-        if (this->current_card) {
-            const auto card = this->current_card;
-            const ImVec4 color(card->color[0], card->color[1], card->color[2], 1.f);
-            float bg_luminance = (0.299f * card->color[0] + 0.587 * card->color[1] + 0.114 * card->color[2]);
+    bool CardManager::build_card(int reader) {
+        ImGui::PushID(reader);
+        bool clicked = false;
+        if (this->loaded_card[reader].has_value()) {
+            const auto &card = this->loaded_card[reader].value();
+            const ImVec4 color(card.color[0], card.color[1], card.color[2], 1.f);
+            float bg_luminance = (0.299f * card.color[0] + 0.587 * card.color[1] + 0.114 * card.color[2]);
 
             // text color
             ImVec4 text_color;
@@ -101,21 +126,25 @@ namespace overlay::windows {
             ImGui::PushStyleColor(ImGuiCol_Text, text_color);
             if (ImGui::Button(fmt::format(
                     "  {}  \n  {} {} {} {}  ",
-                    card->name.empty() ? "<blank>" : card->name.substr(0, 19),
-                    card->id.substr(0, 4).c_str(),
-                    card->id.substr(4, 4).c_str(),
-                    card->id.substr(8, 4).c_str(),
-                    card->id.substr(12, 4).c_str()
+                    card.name.empty() ? "<blank>" : card.name.substr(0, 19),
+                    card.id.substr(0, 4).c_str(),
+                    card.id.substr(4, 4).c_str(),
+                    card.id.substr(8, 4).c_str(),
+                    card.id.substr(12, 4).c_str()
                     ).c_str())) {
 
-                open_card_editor();
+                clicked = true;
             }
             ImGui::PopStyleColor(4);
         } else {
             ImGui::BeginDisabled();
-            ImGui::Button("  <No card>  \n  xxxx xxxx xxxx xxxx  ");
+            ImGui::Button("   (No override set)   \n"
+                          "  xxxx xxxx xxxx xxxx  ");
             ImGui::EndDisabled();
         }
+        
+        ImGui::PopID();
+        return clicked;
     }
 
     void CardManager::open_card_editor() {
@@ -139,13 +168,18 @@ namespace overlay::windows {
                     this->card_buffer,
                     std::size(this->card_buffer),
                     ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+            ImGui::EndDisabled();
             if (this->current_card == nullptr) {
                 ImGui::SameLine();
                 if (ImGui::Button("Generate")) {
                     generate_ea_card(this->card_buffer);
                 }
+            } else {
+                ImGui::SameLine();
+                if (ImGui::Button("Copy")) {
+                    clipboard::copy_text(this->current_card->id);
+                }
             }
-            ImGui::EndDisabled();
 
             // name field
             ImGui::InputTextWithHint("Card Name", "Main Card",
@@ -170,6 +204,18 @@ namespace overlay::windows {
                     this->current_card->color[1] = this->color_buffer[1];
                     this->current_card->color[2] = this->color_buffer[2];
                     generate_search_string(this->current_card);
+
+                    // ensure loaded cards are kept up to date
+                    // note: does not handle cases where multiple cards have the same ID
+                    for (size_t i = 0; i < 2; i++) {
+                        if (this->loaded_card[i].has_value() &&
+                            !this->loaded_card[i].value().read_only &&
+                            this->loaded_card[i].value().id == this->current_card->id) {
+                            this->loaded_card[i] = *this->current_card;
+                            break;
+                        }
+                    }
+
                 } else {
                     // create a new card
                     CardEntry card {
@@ -210,14 +256,54 @@ namespace overlay::windows {
         }
     }
 
+    void CardManager::build_card_selectable(CardEntry &card) {
+        // generate card name
+        std::string card_name = "";
+        if (card.id.length() == 16) {
+            card_name += card.id.substr(0, 4);
+            card_name += " ";
+            card_name += card.id.substr(4, 4);
+            card_name += " ";
+            card_name += card.id.substr(8, 4);
+            card_name += " ";
+            card_name += card.id.substr(12, 4);
+        } else {
+            card_name += card.id;
+        }
+        if (!card.name.empty()) {
+            card_name += " - ";
+            card_name += card.name;
+        }
+
+        ImGui::PushID(&card);
+
+        // color button
+        ImVec4 color(card.color[0], card.color[1], card.color[2], 1.f);
+        ImGui::PushStyleColor(ImGuiCol_Button, color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
+        ImGui::SmallButton(" ");
+        ImGui::PopStyleColor(3);
+
+        ImGui::SameLine();
+
+        // selectable item
+        if (ImGui::Selectable(card_name.c_str(), this->current_card == &card)) {
+            this->current_card = &card;
+        }
+
+        ImGui::PopID();
+    }
+
     void CardManager::build_card_list() {
 
         // search for card
         //
         // setting ImGuiInputTextFlags_CallbackCharFilter and pressing escape doesn't cause below 
         // to return true, making it necessary to provide a callback...
-        ImGui::SetNextItemWidth(220);
+        ImGui::SetNextItemWidth(240);
         if (ImGui::InputTextWithHint("", "Type here to search..", &this->search_filter)) {
+            this->current_card = nullptr;
             this->search_filter_in_lower_case = strtolower(this->search_filter);
         }
         if (!this->search_filter.empty()) {
@@ -226,11 +312,49 @@ namespace overlay::windows {
                 this->search_filter.clear();
                 this->search_filter_in_lower_case.clear();
             }
-        } else {
-            ImGui::SameLine();
-            
-            // move selected up/down the list
-            ImGui::BeginDisabled(this->current_card == nullptr);
+        }
+
+        // toolbar
+
+        // set card as p1/p2
+        for (size_t i = 0; i < 2; i++) {
+            if (eamuse_get_game_keypads() > (int)i) {
+                if (i != 0) {
+                    ImGui::SameLine();
+                }
+                ImGui::PushID(i);
+                ImGui::BeginDisabled(this->current_card == nullptr);
+                if (ImGui::Button(i == 0 ? "Load P1" : "Load P2") && this->current_card) {
+                    this->loaded_card[i] = *this->current_card;
+                    log_info(
+                        "cardmanager",
+                        "[P{}] update override and insert card: {} ({})",
+                        i+1,
+                        this->current_card->id,
+                        this->current_card->name
+                    );
+
+                    // update override
+                    std::lock_guard<std::mutex> lock(CARD_OVERRIDES_LOCK);
+                    CARD_OVERRIDES[i] = this->current_card->id;
+
+                    // insert card over api
+                    insert_card_over_api(i, this->loaded_card[i].value());
+                }
+                ImGui::EndDisabled();
+                ImGui::PopID();
+            }
+        }
+
+        // edit selected card
+        ImGui::SameLine();
+        ImGui::BeginDisabled(this->current_card == nullptr || this->current_card->read_only);
+        if (ImGui::Button("Edit")) {
+            open_card_editor();
+        }
+
+        // move selected up/down the list
+        if (this->search_filter.empty()) {
             ImGui::SameLine();
             if (ImGui::Button("Move Up")) {
                 for (auto it = this->cards.begin(); it != this->cards.end(); ++it) {
@@ -253,60 +377,37 @@ namespace overlay::windows {
                     }
                 }
             }
-            ImGui::EndDisabled();
         }
+        ImGui::EndDisabled();
 
         ImGui::Spacing();
 
         // cards list
-        // use all available vertical space, minus height of buttons, minus separator
+        // use all available vertical space, minus height footer (a row of buttons and separator)
         if (ImGui::BeginChild(
                 "cards",
                 ImVec2(0, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - 8.f))) {
+
+            // -card0 / -card1 override
+            for (size_t i = 0; i < 2; i++) {
+                if (card_cmd_overrides[i].has_value()) {
+                    build_card_selectable(card_cmd_overrides[i].value());
+                }
+            }
+
+            // cards from card manager JSON
             for (auto &card : this->cards) {
-
-                // get card name
-                std::string card_name = "";
-                if (card.id.length() == 16) {
-                    card_name += card.id.substr(0, 4);
-                    card_name += " ";
-                    card_name += card.id.substr(4, 4);
-                    card_name += " ";
-                    card_name += card.id.substr(8, 4);
-                    card_name += " ";
-                    card_name += card.id.substr(12, 4);
-                } else {
-                    card_name += card.id;
-                }
-                if (!card.name.empty()) {
-                    card_name += " - ";
-                    card_name += card.name;
-                }
-
+                
                 if (!this->search_filter_in_lower_case.empty() && !card.search_string.empty()) {
                     const bool matched =
-                        card.search_string.find(this->search_filter_in_lower_case) != std::string::npos;
-
+                    card.search_string.find(this->search_filter_in_lower_case) != std::string::npos;
+                    
                     if (!matched) {
                         continue;
                     }
                 }
 
-                // draw entry
-                ImGui::PushID(&card);
-
-                ImVec4 color(card.color[0], card.color[1], card.color[2], 1.f);
-                ImGui::PushStyleColor(ImGuiCol_Button, color);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
-                ImGui::SmallButton(" ");
-                ImGui::PopStyleColor(3);
-
-                ImGui::SameLine();
-                if (ImGui::Selectable(card_name.c_str(), this->current_card == &card)) {
-                    this->current_card = &card;
-                }
-                ImGui::PopID();
+                build_card_selectable(card);
             }
         }
         ImGui::EndChild();
@@ -502,5 +603,12 @@ namespace overlay::windows {
         this->color_buffer[0] = r / 255.f;
         this->color_buffer[1] = g / 255.f;
         this->color_buffer[2] = b / 255.f;
+    }
+
+    void CardManager::insert_card_over_api(int reader, CardEntry &card) {
+        uint8_t card_bin[8];
+        if (card.id.length() == 16 && hex2bin(card.id.c_str(), card_bin)) {
+            eamuse_card_insert(reader, card_bin);
+        }
     }
 }
