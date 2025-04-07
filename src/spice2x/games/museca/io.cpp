@@ -71,6 +71,8 @@ std::vector<Light> &games::museca::get_lights() {
 
         GameAPI::Lights::sortLights(
                 &lights,
+                "Start",
+                "Keypad",
                 "Title R",
                 "Title G",
                 "Title B",

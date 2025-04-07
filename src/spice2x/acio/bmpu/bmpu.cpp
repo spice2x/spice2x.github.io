@@ -33,6 +33,11 @@ static int __cdecl ac_io_bmpu_control_1p_start_led_off() {
     if (avs::game::is_model("KDM")) {
         auto &lights = games::dea::get_lights();
         Lights::writeLight(RI_MGR, lights.at(games::dea::Lights::P1Start), 0.f);
+
+    // MUSECA
+    } else if (avs::game::is_model("PIX")) {
+        auto &lights = games::museca::get_lights();
+        Lights::writeLight(RI_MGR, lights.at(games::museca::Lights::Start), 0.f);
     }
 
     return 1;
@@ -44,6 +49,11 @@ static int __cdecl ac_io_bmpu_control_1p_start_led_on() {
     if (avs::game::is_model("KDM")) {
         auto &lights = games::dea::get_lights();
         Lights::writeLight(RI_MGR, lights.at(games::dea::Lights::P1Start), 1.f);
+
+    // MUSECA
+    } else if (avs::game::is_model("PIX")) {
+        auto &lights = games::museca::get_lights();
+        Lights::writeLight(RI_MGR, lights.at(games::museca::Lights::Start), 1.f);
     }
 
     return 1;
@@ -55,6 +65,11 @@ static int __cdecl ac_io_bmpu_control_2p_start_led_off() {
     if (avs::game::is_model("KDM")) {
         auto &lights = games::dea::get_lights();
         Lights::writeLight(RI_MGR, lights.at(games::dea::Lights::P2Start), 0.f);
+    
+    // MUSECA
+    } else if (avs::game::is_model("PIX")) {
+        auto &lights = games::museca::get_lights();
+        Lights::writeLight(RI_MGR, lights.at(games::museca::Lights::Keypad), 0.f);
     }
 
     return 1;
@@ -66,6 +81,11 @@ static int __cdecl ac_io_bmpu_control_2p_start_led_on() {
     if (avs::game::is_model("KDM")) {
         auto &lights = games::dea::get_lights();
         Lights::writeLight(RI_MGR, lights.at(games::dea::Lights::P2Start), 1.f);
+
+    // MUSECA
+    } else if (avs::game::is_model("PIX")) {
+        auto &lights = games::museca::get_lights();
+        Lights::writeLight(RI_MGR, lights.at(games::museca::Lights::Keypad), 1.f);
     }
 
     return 1;
