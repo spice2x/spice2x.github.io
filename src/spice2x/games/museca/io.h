@@ -46,6 +46,8 @@ namespace games::museca {
     // all lights in correct order
     namespace Lights {
         enum {
+            Start,
+            Keypad,
             TitleR,
             TitleG,
             TitleB,
