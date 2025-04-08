@@ -1,4 +1,4 @@
-04/07/2025 [spice2x]
+04/08/2025 [spice2x]
     Ensure rawinput touch is default for all games (-wintouch to override)
     Various overlay UI fixes and improvements, update ImGui library
     Add missing lights in Museca
