@@ -1118,6 +1118,8 @@ int main_implementation(int argc, char *argv[]) {
     // log
 #ifdef SPICE64
     log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x)");
+#elif SPICE32_LARGE_ADDRESS_AWARE
+    log_info("launcher", "SpiceTools Bootstrap (x32) (Large Address Aware) (spice2x)");
 #else
     log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x)");
 #endif
