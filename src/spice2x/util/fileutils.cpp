@@ -264,3 +264,38 @@ std::vector<uint8_t> *fileutils::bin_read(const std::filesystem::path &path) {
     }
     return contents;
 }
+
+std::filesystem::path fileutils::get_config_file_path(const std::string module, const std::string filename, bool* file_exists) {
+    // try the spice2x path first, if it exists
+    const auto appdata_spice2x = std::filesystem::path(_wgetenv(L"APPDATA")) / "spice2x" / filename;
+    if (fileutils::file_exists(appdata_spice2x)) {
+        log_info(module, "loading config from %appdata%\\spice2x\\{}", filename);
+        if (file_exists) {
+            *file_exists = true;
+        }
+        return appdata_spice2x;
+    }
+
+    // fallback to older spice2x/spicetools path, if it exists
+    const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")) / filename;
+    if (fileutils::file_exists(appdata)) {
+        log_info(module, "loading config from %appdata%\\{}", filename);
+        if (file_exists) {
+            *file_exists = true;
+        }
+        return appdata;
+    }
+
+    // prefer new path if no existing file found
+    if (file_exists) {
+        *file_exists = false;
+    }
+    return appdata_spice2x;
+}
+
+bool fileutils::write_config_file(const std::filesystem::path path, std::string text) {
+    if (!fileutils::file_exists(path)) {
+        fileutils::dir_create_recursive(path.parent_path());
+    }
+    return fileutils::text_write(path, text);
+}

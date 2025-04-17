@@ -15,12 +15,18 @@ namespace cfg {
     std::optional<std::string> SCREEN_RESIZE_CFG_PATH_OVERRIDE;
 
     ScreenResize::ScreenResize() {
+        bool file_exists = false;
         if (SCREEN_RESIZE_CFG_PATH_OVERRIDE.has_value()) {
             this->config_path = SCREEN_RESIZE_CFG_PATH_OVERRIDE.value();
+            if (fileutils::file_exists(this->config_path)) {
+                log_info("ScreenResize", "loading config from: {}", this->config_path.string());
+                file_exists = true;
+            }
         } else {
-            this->config_path = std::filesystem::path(_wgetenv(L"APPDATA")) / L"spicetools_screen_resize.json";
+            this->config_path =
+                fileutils::get_config_file_path("ScreenResize", "spicetools_screen_resize.json", &file_exists);
         }
-        if (fileutils::file_exists(this->config_path)) {
+        if (file_exists) {
             this->config_load();
         }
     }
@@ -29,12 +35,6 @@ namespace cfg {
     }
     
     void ScreenResize::config_load() {
-        if (SCREEN_RESIZE_CFG_PATH_OVERRIDE.has_value()) {
-            log_info("ScreenResize", "loading custom config: {}", this->config_path.string());
-        } else {
-            log_info("ScreenResize", "loading global config from APPDATA");
-        }
-
         std::string config = fileutils::text_read(this->config_path);
         if (config.empty()) {
             log_info("ScreenResize", "config is empty");
@@ -221,10 +221,10 @@ namespace cfg {
         doc.Accept(writer);
 
         // save to file
-        if (fileutils::text_write(this->config_path, buffer.GetString())) {
+        if (fileutils::write_config_file(this->config_path, buffer.GetString())) {
             // this->config_dirty = false;
         } else {
-            log_warning("ScreenResize", "unable to save config file to {}", this->config_path.string());
+            log_warning("ScreenResize", "unable to save config file");
         }
     }
 }

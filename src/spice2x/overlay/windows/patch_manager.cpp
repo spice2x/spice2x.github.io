@@ -219,7 +219,8 @@ namespace overlay::windows {
             this->config_path = PATCH_MANAGER_CFG_PATH_OVERRIDE.value();
             log_info("patchmanager", "using custom config file path: {}", this->config_path.string().c_str());
         } else {
-            this->config_path = std::filesystem::path(_wgetenv(L"APPDATA")) / L"spicetools_patch_manager.json";
+            this->config_path =
+                fileutils::get_config_file_path("patchmanager", "spicetools_patch_manager.json");
         }
 
         if (!ldr_registered) {
@@ -1127,7 +1128,7 @@ namespace overlay::windows {
         doc.Accept(writer);
 
         // save to file
-        if (fileutils::text_write(config_path, buffer.GetString())) {
+        if (fileutils::write_config_file(config_path, buffer.GetString())) {
             config_dirty = false;
         } else {
             log_warning("patchmanager", "unable to save config file");

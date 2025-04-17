@@ -29,8 +29,11 @@ namespace overlay::windows {
         }
 
         this->toggle_button = games::OverlayButtons::ToggleCardManager;
-        this->config_path = std::filesystem::path(_wgetenv(L"APPDATA")) / L"spicetools_card_manager.json";
-        if (fileutils::file_exists(this->config_path)) {
+
+        bool file_exists = false;
+        this->config_path =
+            fileutils::get_config_file_path("cardmanager", "spicetools_card_manager.json", &file_exists);
+        if (file_exists) {
             this->config_load();
         }
 
@@ -434,8 +437,6 @@ namespace overlay::windows {
     }
 
     void CardManager::config_load() {
-        log_info("cardmanager", "loading config");
-
         // clear cards
         this->cards.clear();
 
@@ -566,10 +567,10 @@ namespace overlay::windows {
         doc.Accept(writer);
 
         // save to file
-        if (fileutils::text_write(this->config_path, buffer.GetString())) {
+        if (fileutils::write_config_file(this->config_path, buffer.GetString())) {
             this->config_dirty = false;
         } else {
-            log_warning("cardmanager", "unable to save config file to {}", this->config_path.string());
+            log_warning("cardmanager", "unable to save config file");
         }
     }
 
