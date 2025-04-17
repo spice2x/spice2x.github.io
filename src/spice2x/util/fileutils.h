@@ -35,5 +35,5 @@ namespace fileutils {
     std::vector<uint8_t> *bin_read(const std::filesystem::path &path);
 
     std::filesystem::path get_config_file_path(const std::string module, const std::string filename, bool* file_exists=nullptr);
-    bool write_config_file(const std::filesystem::path path, std::string text);
+    bool write_config_file(const std::string_view &module, const std::filesystem::path path, std::string text);
 }

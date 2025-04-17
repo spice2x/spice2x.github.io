@@ -170,8 +170,6 @@ namespace cfg {
     }
 
     void ScreenResize::config_save() {
-        log_info("ScreenResize", "saving config: {}", this->config_path.string());
-
         rapidjson::Document doc;
         std::string config = fileutils::text_read(this->config_path);
         if (!config.empty()) {
@@ -221,7 +219,7 @@ namespace cfg {
         doc.Accept(writer);
 
         // save to file
-        if (fileutils::write_config_file(this->config_path, buffer.GetString())) {
+        if (fileutils::write_config_file("ScreenResize", this->config_path, buffer.GetString())) {
             // this->config_dirty = false;
         } else {
             log_warning("ScreenResize", "unable to save config file");

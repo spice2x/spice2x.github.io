@@ -266,7 +266,7 @@ std::vector<uint8_t> *fileutils::bin_read(const std::filesystem::path &path) {
 }
 
 std::filesystem::path fileutils::get_config_file_path(const std::string module, const std::string filename, bool* file_exists) {
-    // try the spice2x path first, if it exists
+    // try %appdata%\spice2x path first, if it exists
     const auto appdata_spice2x = std::filesystem::path(_wgetenv(L"APPDATA")) / "spice2x" / filename;
     if (fileutils::file_exists(appdata_spice2x)) {
         log_info(module, "loading config from %appdata%\\spice2x\\{}", filename);
@@ -276,7 +276,7 @@ std::filesystem::path fileutils::get_config_file_path(const std::string module, 
         return appdata_spice2x;
     }
 
-    // fallback to older spice2x/spicetools path, if it exists
+    // fallback to older %appdata% path (older spice2x or mainline spicetools), if it exists
     const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")) / filename;
     if (fileutils::file_exists(appdata)) {
         log_info(module, "loading config from %appdata%\\{}", filename);
@@ -293,9 +293,15 @@ std::filesystem::path fileutils::get_config_file_path(const std::string module, 
     return appdata_spice2x;
 }
 
-bool fileutils::write_config_file(const std::filesystem::path path, std::string text) {
-    if (!fileutils::file_exists(path)) {
-        fileutils::dir_create_recursive(path.parent_path());
+bool fileutils::write_config_file(const std::string_view &module, const std::filesystem::path path, std::string text) {
+    if (!std::filesystem::exists(path.parent_path()) &&
+        !fileutils::dir_create_recursive(path.parent_path())) {
+        return false;
     }
+
+    const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")).string();
+    auto censored = path.string();
+    censored.replace(censored.find(appdata),appdata.length(),"%appdata%");
+    log_info(module, "saving config file: {}", censored);
     return fileutils::text_write(path, text);
 }

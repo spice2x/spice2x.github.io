@@ -567,7 +567,7 @@ namespace overlay::windows {
         doc.Accept(writer);
 
         // save to file
-        if (fileutils::write_config_file(this->config_path, buffer.GetString())) {
+        if (fileutils::write_config_file("cardmanager", this->config_path, buffer.GetString())) {
             this->config_dirty = false;
         } else {
             log_warning("cardmanager", "unable to save config file");

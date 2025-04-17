@@ -1128,7 +1128,7 @@ namespace overlay::windows {
         doc.Accept(writer);
 
         // save to file
-        if (fileutils::write_config_file(config_path, buffer.GetString())) {
+        if (fileutils::write_config_file("patchmanager", config_path, buffer.GetString())) {
             config_dirty = false;
         } else {
             log_warning("patchmanager", "unable to save config file");

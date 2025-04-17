@@ -652,7 +652,7 @@ namespace games::iidx {
         doc.Accept(writer);
 
         // save to file
-        if (fileutils::write_config_file(CAMERA_CONFIG_PATH, buffer.GetString())) {
+        if (fileutils::write_config_file("iidx::camhook", CAMERA_CONFIG_PATH, buffer.GetString())) {
         } else {
             log_warning("iidx:camhook", "unable to save config file");
         }
