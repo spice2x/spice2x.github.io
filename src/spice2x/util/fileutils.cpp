@@ -294,19 +294,22 @@ std::filesystem::path fileutils::get_config_file_path(const std::string module, 
 }
 
 bool fileutils::write_config_file(const std::string_view &module, const std::filesystem::path path, std::string text) {
-    const auto full_path = std::filesystem::weakly_canonical(path);
-    if (!full_path.parent_path().empty()) {
-        if (!std::filesystem::exists(full_path.parent_path()) &&
-            !fileutils::dir_create_recursive(full_path.parent_path())) {
-            return false;
-        }
-    }
-
+    // attempt to undo %appdata% expansion to hide user name
     const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")).string();
     auto censored = path.string();
     if (censored.find(appdata) != std::string::npos) {
         censored.replace(censored.find(appdata), appdata.length(), "%appdata%");
     }
+
+    // create directory path up to where the config file lives
+    if (!path.parent_path().empty() && !std::filesystem::exists(path.parent_path())) {
+        log_misc(module, "creating directory path to config file: {}", censored);
+        if (!fileutils::dir_create_recursive(path.parent_path())) {
+            return false;
+        }
+    }
+
+    // save file
     log_info(module, "saving config file: {}", censored);
     return fileutils::text_write(path, text);
 }
