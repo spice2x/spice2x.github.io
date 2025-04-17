@@ -494,7 +494,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
                         // get string index
                         ULONG string_index = 0;
                         if (button_caps.IsStringRange && button_caps.Range.StringMin != 0) {
-                            string_index = button_caps.Range.StringMin + static_cast<ULONG>(button_output_caps_list.size()) - 1;
+                            string_index = button_caps.Range.StringMin + static_cast<ULONG>(button_output_caps_names.size());
                         }
                         else if (!button_caps.IsStringRange && button_caps.NotRange.StringIndex != 0) {
                             string_index = button_caps.NotRange.StringIndex;
