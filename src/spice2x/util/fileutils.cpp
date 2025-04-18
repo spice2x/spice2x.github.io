@@ -297,8 +297,9 @@ bool fileutils::write_config_file(const std::string_view &module, const std::fil
     // attempt to undo %appdata% expansion to hide user name
     const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")).string();
     auto censored = path.string();
-    if (censored.find(appdata) != std::string::npos) {
-        censored.replace(censored.find(appdata), appdata.length(), "%appdata%");
+    const auto substr_offset = censored.find(appdata);
+    if (substr_offset != std::string::npos) {
+        censored.replace(substr_offset, appdata.length(), "%appdata%");
     }
 
     // create directory path up to where the config file lives
