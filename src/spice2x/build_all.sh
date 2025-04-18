@@ -19,6 +19,25 @@ function trap_error_exit {
 trap trap_error_dbg DEBUG
 trap trap_error_exit EXIT
 
+IGNORE_CACHE=0
+
+# Parse options
+while getopts "ih" opt; do
+  case $opt in
+    i) IGNORE_CACHE=1 ;;
+    h)
+      echo "Usage: $0 [-i]"
+      echo "  -i: Ignore build cache"
+      echo "  -h: Show this help"
+      exit 0
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
+
 # settings
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2> /dev/null || echo "none")
 GIT_HEAD=$(git rev-parse HEAD || echo "none")
@@ -73,6 +92,14 @@ echo "Distribution Name: $DIST_NAME"
 echo "Build Type: $BUILD_TYPE"
 echo "Cores: $CORES"
 echo ""
+
+if ((IGNORE_CACHE > 0))
+then
+  echo "Ignoring build cache..."
+else
+ export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+ export CMAKE_C_COMPILER_LAUNCHER=ccache
+fi
 
 time (
 	# 32 bit

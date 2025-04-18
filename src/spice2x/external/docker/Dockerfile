@@ -18,7 +18,4 @@ RUN su user -c "cd /tmp/ && git clone https://aur.archlinux.org/yay-bin.git --de
 
 ENV CCACHE_DIR=/ccache
 ENV CCACHE_MAXSIZE=10G
-RUN mkdir -p /ccache && chmod 777 /ccache
-
-ENV CMAKE_CXX_COMPILER_LAUNCHER=ccache
-ENV CMAKE_C_COMPILER_LAUNCHER=ccache
+RUN mkdir -p $CCACHE_DIR && chmod 777 $CCACHE_DIR
