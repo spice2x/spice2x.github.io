@@ -1170,13 +1170,17 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
 
-    if (options[launcher::Options::SDVXFullscreenLandscape].value_bool() && !GRAPHICS_WINDOWED) {
-#if SPICE64
-        GRAPHICS_FS_ORIENTATION_SWAP = true;
-#else
-        log_warning("launcher", "-sdvxlandscape is not supported in 32-bit SDVX, ignoring...");
-#endif
-    }
+//     // SDVXFullscreenLandscape disabled due to it messing with in-game camera angle
+//     // FullscreenOrientationFlip continues to live on, however.
+//
+//     if (options[launcher::Options::SDVXFullscreenLandscape].value_bool() && !GRAPHICS_WINDOWED) {
+// #if SPICE64
+//         GRAPHICS_FS_ORIENTATION_SWAP = true;
+// #else
+//         log_warning("launcher", "-sdvxlandscape is not supported in 32-bit SDVX, ignoring...");
+// #endif
+//     }
+
     if (options[launcher::Options::FullscreenOrientationFlip].value_bool() && !GRAPHICS_WINDOWED) {
         GRAPHICS_FS_ORIENTATION_SWAP = true;
     }
