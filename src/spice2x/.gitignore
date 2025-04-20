@@ -18,4 +18,4 @@ dist/*
 
 external/cv2pdb/*
 
-.ccache
+.ccache/*
