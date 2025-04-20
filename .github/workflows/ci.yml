@@ -13,12 +13,16 @@ jobs:
         working-directory: ./src/spice2x
     steps:
       - uses: actions/checkout@v4
-      - name: ccache
+      - name: Install ccache
         uses: hendrikmuhs/ccache-action@v1.2
       - name: Install MinGW
         uses: egor-tensin/setup-mingw@v2.2.0
         with:
           platform: x64
+      - name: Install ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
       - name: Calculate commit SHA
         id: vars
         run: |
