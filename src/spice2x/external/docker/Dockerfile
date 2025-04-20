@@ -15,7 +15,3 @@ RUN pacman --noconfirm -Syu git \
     ccache
 RUN useradd user -m && echo "ALL ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 RUN su user -c "cd /tmp/ && git clone https://aur.archlinux.org/yay-bin.git --depth=1 && cd yay-bin && makepkg --noconfirm -si && yay --noconfirm -S mingw-w64-cmake"
-
-ENV CCACHE_DIR=/ccache
-ENV CCACHE_MAXSIZE=10G
-RUN mkdir -p $CCACHE_DIR && chmod 777 $CCACHE_DIR

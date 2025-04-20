@@ -13,23 +13,18 @@ jobs:
         working-directory: ./src/spice2x
     steps:
       - uses: actions/checkout@v4
+      - name: Set ccache environment variables
+        run: |
+          echo "CCACHE_DIR=${{ github.workspace }}/src/spice2x/.ccache" >> $GITHUB_ENV
       - name: Install ccache
         uses: hendrikmuhs/ccache-action@v1.2
-      - name: Install MinGW
-        uses: egor-tensin/setup-mingw@v2.2.0
-        with:
-          platform: x64
-      - name: Install ninja
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build
       - name: Calculate commit SHA
         id: vars
         run: |
           calculatedSha=$(git rev-parse --short ${{ github.sha }})
           echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
       - name: Compile
-        run: ./build_all.sh
+        run: ./build_docker.sh
       - uses: actions/upload-artifact@v4
         with:
           name: spice2x-ci-${{ env.COMMIT_SHORT_SHA }}
