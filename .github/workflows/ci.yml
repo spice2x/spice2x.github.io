@@ -13,19 +13,19 @@ jobs:
         working-directory: ./src/spice2x
     steps:
       - uses: actions/checkout@v4
-      - name: Cache build
-        id: cache-build
-        uses: actions/cache@v4
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+      - name: Install MinGW
+        uses: egor-tensin/setup-mingw@v2.2.0
         with:
-          path: src/spice2x/.ccache
-          key: ccache
+          platform: x64
       - name: Calculate commit SHA
         id: vars
         run: |
           calculatedSha=$(git rev-parse --short ${{ github.sha }})
           echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
       - name: Compile
-        run: ./build_docker.sh
+        run: ./build_all.sh
       - uses: actions/upload-artifact@v4
         with:
           name: spice2x-ci-${{ env.COMMIT_SHORT_SHA }}
