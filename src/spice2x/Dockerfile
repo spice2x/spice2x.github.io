@@ -4,4 +4,4 @@ WORKDIR /src
 COPY --from=gitroot . /src/.git
 COPY . /src/src/spice2x
 WORKDIR /src/src/spice2x
-CMD ["./build_all.sh"]
+ENTRYPOINT ["./build_all.sh"]

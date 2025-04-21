@@ -17,3 +17,5 @@ bin/*
 dist/*
 
 external/cv2pdb/*
+
+.ccache/*
