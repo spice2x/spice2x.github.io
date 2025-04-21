@@ -13,6 +13,11 @@ jobs:
         working-directory: ./src/spice2x
     steps:
       - uses: actions/checkout@v4
+      - name: Set ccache environment variables
+        run: |
+          echo "CCACHE_DIR=${{ github.workspace }}/src/spice2x/.ccache" >> $GITHUB_ENV
+      - name: Install ccache
+        uses: hendrikmuhs/ccache-action@v1.2
       - name: Calculate commit SHA
         id: vars
         run: |

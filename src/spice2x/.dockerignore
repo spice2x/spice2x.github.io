@@ -2,3 +2,4 @@ bin/**
 dist/**
 docker/**
 cmake-build*
+.ccache/**
