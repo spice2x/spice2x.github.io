@@ -607,6 +607,22 @@ IF(NOT MSVC)
     set_target_properties(spicetools_spice PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
 endif()
 
+# spice_laa.exe
+###########
+
+set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/Win32D.rc)
+add_executable(spicetools_spice_laa ${SOURCE_FILES} ${RESOURCE_FILES})
+target_link_libraries(spicetools_spice_laa
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winscard winhttp
+        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+set_target_properties(spicetools_spice_laa PROPERTIES PREFIX "")
+set_target_properties(spicetools_spice_laa PROPERTIES OUTPUT_NAME "spice_laa")
+target_compile_definitions(spicetools_spice_laa PRIVATE SPICE32_LARGE_ADDRESS_AWARE=1)
+
+IF(NOT MSVC)
+    set_target_properties(spicetools_spice_laa PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32 -Wl,--large-address-aware")
+endif()
+
 # spice64.exe
 #############
 
@@ -625,7 +641,6 @@ target_compile_definitions(spicetools_spice64 PRIVATE SPICE64=1)
 IF(NOT MSVC)
     set_target_properties(spicetools_spice64 PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
 endif()
-
 
 # spicecfg.exe
 ##############
@@ -732,7 +747,7 @@ set_target_properties(spicetools_cfg
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools")
 
 # output 32bit
-set_target_properties(spicetools_spice spicetools_stubs_kbt spicetools_stubs_kld
+set_target_properties(spicetools_spice spicetools_spice_laa spicetools_stubs_kbt spicetools_stubs_kld
         PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/archive32"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/32"
