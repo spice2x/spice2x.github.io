@@ -1088,7 +1088,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Screen Resize Config Path",
         .name = "resizecfgpath",
         .desc = "Sets a custom file path for screen resize config file. "
-            "If left empty, %appdata%\\spicetools_screen_resize.json will be used",
+            "If left empty, %appdata%\\spice2x\\spicetools_screen_resize.json will be used",
         .type = OptionType::Text,
         .category = "Paths",
     },
@@ -1097,7 +1097,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Patch Manager Config Path",
         .name = "patchcfgpath",
         .desc = "Sets a custom file path for patch manager config file. Can be used to manage 'profiles' for auto-patches. "
-            "If left empty, %appdata%\\spicetools_patch_manager.json will be used",
+            "If left empty, %appdata%\\spice2x\\spicetools_patch_manager.json will be used",
         .type = OptionType::Text,
         .category = "Paths",
     },

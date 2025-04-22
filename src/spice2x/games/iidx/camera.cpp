@@ -60,7 +60,7 @@ namespace games::iidx {
     static IIDXLocalCamera *front_camera = nullptr;     // camera id #1
     std::vector<IIDXLocalCamera*> LOCAL_CAMERA_LIST = {};
     static IDirect3DDeviceManager9 *s_pD3DManager = nullptr;
-    std::filesystem::path CAMERA_CONFIG_PATH = std::filesystem::path(_wgetenv(L"APPDATA")) / L"spicetools_camera_control.json";
+    std::filesystem::path CAMERA_CONFIG_PATH;
     bool CAMERA_READY = false;
 
     bool parse_cmd_params() {
@@ -493,7 +493,8 @@ namespace games::iidx {
     }
 
     bool camera_config_load() {
-        log_info("iidx:camhook", "loading config");
+        CAMERA_CONFIG_PATH =
+            fileutils::get_config_file_path("iidx::camhook", "spicetools_camera_control.json");
 
         try {
             // read config file
@@ -651,9 +652,9 @@ namespace games::iidx {
         doc.Accept(writer);
 
         // save to file
-        if (fileutils::text_write(CAMERA_CONFIG_PATH, buffer.GetString())) {
+        if (fileutils::write_config_file("iidx::camhook", CAMERA_CONFIG_PATH, buffer.GetString())) {
         } else {
-            log_warning("iidx:camhook", "unable to save config file to {}", CAMERA_CONFIG_PATH.string());
+            log_warning("iidx:camhook", "unable to save config file");
         }
 
         return true;

@@ -264,3 +264,53 @@ std::vector<uint8_t> *fileutils::bin_read(const std::filesystem::path &path) {
     }
     return contents;
 }
+
+std::filesystem::path fileutils::get_config_file_path(const std::string module, const std::string filename, bool* file_exists) {
+    // try %appdata%\spice2x path first, if it exists
+    const auto appdata_spice2x = std::filesystem::path(_wgetenv(L"APPDATA")) / "spice2x" / filename;
+    if (fileutils::file_exists(appdata_spice2x)) {
+        log_info(module, "loading config from %appdata%\\spice2x\\{}", filename);
+        if (file_exists) {
+            *file_exists = true;
+        }
+        return appdata_spice2x;
+    }
+
+    // fallback to older %appdata% path (older spice2x or mainline spicetools), if it exists
+    const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")) / filename;
+    if (fileutils::file_exists(appdata)) {
+        log_info(module, "loading config from %appdata%\\{}", filename);
+        if (file_exists) {
+            *file_exists = true;
+        }
+        return appdata;
+    }
+
+    // prefer new path if no existing file found
+    if (file_exists) {
+        *file_exists = false;
+    }
+    return appdata_spice2x;
+}
+
+bool fileutils::write_config_file(const std::string_view &module, const std::filesystem::path path, std::string text) {
+    // attempt to undo %appdata% expansion to hide user name
+    const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")).string();
+    auto censored = path.string();
+    const auto substr_offset = censored.find(appdata);
+    if (substr_offset != std::string::npos) {
+        censored.replace(substr_offset, appdata.length(), "%appdata%");
+    }
+
+    // create directory path up to where the config file lives
+    if (!path.parent_path().empty() && !std::filesystem::exists(path.parent_path())) {
+        log_misc(module, "creating directory path to config file: {}", censored);
+        if (!fileutils::dir_create_recursive(path.parent_path())) {
+            return false;
+        }
+    }
+
+    // save file
+    log_info(module, "saving config file: {}", censored);
+    return fileutils::text_write(path, text);
+}
