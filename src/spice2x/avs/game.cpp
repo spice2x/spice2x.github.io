@@ -77,7 +77,7 @@ namespace avs {
             log_info("avs-game", "DLL path: {}", dll_path_s.c_str());
 
             // MAX_PATH is 260
-            if (140 < dll_path_s.length()) {
+            if (130 <= dll_path_s.length()) {
                 log_warning(
                     "avs-game",
                     "PATH TOO LONG WARNING\n\n\n"
