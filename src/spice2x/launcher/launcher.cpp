@@ -1806,6 +1806,9 @@ int main_implementation(int argc, char *argv[]) {
         exit(spicecfg_run(sextet_devices));
     }
 
+    // complain loudly & early about dll load ordering issue
+    libutils::check_duplicate_dlls();
+
     // print cpu features
     if (!cfg::CONFIGURATOR_STANDALONE && dump_sysinfo) {
         cpuutils::print_cpu_features();

@@ -24,6 +24,8 @@ namespace libutils {
         return try_library(module_name.c_str());
     }
 
+    void check_duplicate_dlls();
+
     // get module handle helpers
     HMODULE get_module(const char *module_name);
     HMODULE try_module(const char *module_name);
