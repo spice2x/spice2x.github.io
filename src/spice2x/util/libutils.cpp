@@ -326,13 +326,13 @@ intptr_t libutils::offset2rva(const std::filesystem::path &path, intptr_t offset
 }
 
 void libutils::check_duplicate_dlls() {
-    const auto spice_bin_path = libutils::module_file_name(nullptr).parent_path();
+    const auto &spice_bin_path = libutils::module_file_name(nullptr).parent_path();
     if (MODULE_PATH == spice_bin_path) {
         return;
     }
 
     for (const auto &file : std::filesystem::directory_iterator(MODULE_PATH)) {
-        const auto filename = file.path().filename();
+        const auto &filename = file.path().filename();
         const auto extension = strtolower(filename.extension().string());
 
         if (extension == ".dll" &&
