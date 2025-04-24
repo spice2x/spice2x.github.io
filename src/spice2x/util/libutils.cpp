@@ -348,7 +348,7 @@ void libutils::check_duplicate_dlls() {
                 "    2. {}\n\n"
                 "due to Windows DLL load order rules, #1 will load instead of #2.\n"
                 "this has unintended consequences and may crash your game!\n"
-                "so double check your files and delete conflicting DLLs from #1\n"
+                "resolve the conflict by deleting the stale copy of the DLL\n"
                 "-------------------------------------------------------------------\n\n\n",
                 filename.string(),
                 (spice_bin_path / filename).string(),
