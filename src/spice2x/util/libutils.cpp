@@ -7,6 +7,7 @@
 #include "logging.h"
 #include "utils.h"
 #include "peb.h"
+#include "util/fileutils.h"
 
 std::filesystem::path libutils::module_file_name(HMODULE module) {
     std::wstring buf;
@@ -322,4 +323,36 @@ intptr_t libutils::offset2rva(const std::filesystem::path &path, intptr_t offset
     CloseHandle(dll_mapping);
 
     return rva;
+}
+
+void libutils::check_duplicate_dlls() {
+    const auto spice_bin_path = libutils::module_file_name(nullptr).parent_path();
+    if (MODULE_PATH == spice_bin_path) {
+        return;
+    }
+
+    for (const auto &file : std::filesystem::directory_iterator(MODULE_PATH)) {
+        const auto filename = file.path().filename();
+        const auto extension = strtolower(filename.extension().string());
+
+        if (extension == ".dll" &&
+            fileutils::file_exists(spice_bin_path / filename)) {
+            log_warning(
+                "libutils",
+                "DLL CONFLICT WARNING\n\n\n"
+                "-------------------------------------------------------------------\n"
+                "WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING\n"
+                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+                "{} exists in BOTH of these directories:\n\n"
+                "    1. {}\n"
+                "    2. {}\n\n"
+                "due to Windows DLL load order rules, #1 will load instead of #2.\n"
+                "this has unintended consequences and may crash your game!\n"
+                "so double check your files and delete conflicting DLLs from #1\n"
+                "-------------------------------------------------------------------\n\n\n",
+                filename.string(),
+                (spice_bin_path / filename).string(),
+                (MODULE_PATH / filename).string());
+        }
+    }
 }
