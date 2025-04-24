@@ -76,18 +76,23 @@ namespace avs {
             const auto dll_path_s = dll_path.string();
             log_info("avs-game", "DLL path: {}", dll_path_s.c_str());
 
-            if (MAX_PATH <= (dll_path_s.length() + 64)) {
+            // MAX_PATH is 260
+            if (130 <= dll_path_s.length()) {
                 log_warning(
                     "avs-game",
                     "PATH TOO LONG WARNING\n\n\n"
                     "-------------------------------------------------------------------\n"
+                    "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+                    "WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING\n"
+                    "                           PATH TOO LONG                           \n"
                     "WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING\n"
                     "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-                    "'{}' has a length of {}\n"
-                    "Most of these games will behave unexpectedly when the path is too long,\n"
-                    "often resulting in random crashes. Move the game contents to a directory\n"
-                    "with shorter path.\n"
-                    "-------------------------------------------------------------------\n\n\n",
+                    "The path '{}'\n"
+                    "    has a length of {}\n"
+                    "Most of these games may behave unexpectedly when the path is too\n"
+                    "long, often resulting in random crashes. Move the game contents to\n"
+                    "a directory with shorter path.\n"
+                    "-------------------------------------------------------------------\n\n",
                     dll_path_s, dll_path_s.length());
             }
             if (!fileutils::file_exists(dll_path)) {
