@@ -1,3 +1,8 @@
+04/25/2025 [spice2x]
+    LargeAddressAware variant of spice.exe for Metal Gear
+    Save new JSON config files to %appdata%/spice2x
+    Various bug fixes
+
 04/08/2025 [spice2x]
     Ensure rawinput touch is default for all games (-wintouch to override)
     Various overlay UI fixes and improvements, update ImGui library
