@@ -266,8 +266,8 @@ namespace games::iidx::poke {
                                         y *= rawinput::TOUCHSCREEN_RANGE_Y;
                                     } else if (GRAPHICS_IIDX_WSUB) {
                                         // Scale to windowed subscreen
-                                        x *= GRAPHICS_IIDX_WSUB_WIDTH;
-                                        y *= GRAPHICS_IIDX_WSUB_HEIGHT;
+                                        x *= GRAPHICS_WSUB_WIDTH;
+                                        y *= GRAPHICS_WSUB_HEIGHT;
                                     } else if (GENERIC_SUB_WINDOW_FULLSIZE || !overlay::OVERLAY->get_active()) {
                                         // Overlay is not present, scale to main screen
                                         if (GRAPHICS_WINDOWED) {

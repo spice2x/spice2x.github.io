@@ -378,6 +378,24 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         dwStyle &= ~(WS_OVERLAPPEDWINDOW);
     }
 
+    if (is_sdvx_sub_window) {
+        graphics_load_windowed_subscreen_parameters();
+        if (GRAPHICS_WSUB_SIZE.has_value()) {
+            nWidth = GRAPHICS_WSUB_WIDTH;
+            nHeight = GRAPHICS_WSUB_HEIGHT;
+        } else {
+            GRAPHICS_WSUB_WIDTH = nWidth;
+            GRAPHICS_WSUB_HEIGHT = nHeight;
+        }
+        if (GRAPHICS_WSUB_POS.has_value()) {
+            x = GRAPHICS_WSUB_X;
+            y = GRAPHICS_WSUB_Y;
+        } else {
+            GRAPHICS_WSUB_X = x;
+            GRAPHICS_WSUB_Y = y;
+        }
+    }
+
     // call original
     HWND result = CreateWindowExA_orig(dwExStyle, lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight,
             hWndParent, hMenu, hInstance, lpParam);
@@ -532,11 +550,11 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
 
             dwStyle = GetWindowLongA(hWnd, GWL_STYLE);
 
-            SetRect(&rect, 0, 0, GRAPHICS_IIDX_WSUB_WIDTH, GRAPHICS_IIDX_WSUB_HEIGHT);
+            SetRect(&rect, 0, 0, GRAPHICS_WSUB_WIDTH, GRAPHICS_WSUB_HEIGHT);
             AdjustWindowRect(&rect, dwStyle, 0);
 
-            X = GRAPHICS_IIDX_WSUB_X;
-            Y = GRAPHICS_IIDX_WSUB_Y;
+            X = GRAPHICS_WSUB_X;
+            Y = GRAPHICS_WSUB_Y;
 
             nWidth = rect.right - rect.left;
             nHeight = rect.bottom - rect.top;

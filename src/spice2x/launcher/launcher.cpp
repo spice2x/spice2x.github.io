@@ -976,12 +976,16 @@ int main_implementation(int argc, char *argv[]) {
     GRAPHICS_WINDOW_ALWAYS_ON_TOP = options[launcher::Options::spice2x_WindowAlwaysOnTop].value_bool();
     GRAPHICS_WINDOW_BACKBUFFER_SCALE = options[launcher::Options::WindowForceScaling].value_bool();
 
-    // IIDX Windowed Subscreen
+    // IIDX/SDVX Windowed Subscreen
     if (options[launcher::Options::spice2x_IIDXWindowedSubscreenSize].is_active()) {
-        GRAPHICS_IIDX_WSUB_SIZE = options[launcher::Options::spice2x_IIDXWindowedSubscreenSize].value_text();
+        GRAPHICS_WSUB_SIZE = options[launcher::Options::spice2x_IIDXWindowedSubscreenSize].value_text();
+    } else if (options[launcher::Options::SDVXWindowedSubscreenSize].is_active()) {
+        GRAPHICS_WSUB_SIZE = options[launcher::Options::SDVXWindowedSubscreenSize].value_text();
     }
     if (options[launcher::Options::spice2x_IIDXWindowedSubscreenPosition].is_active()) {
-        GRAPHICS_IIDX_WSUB_POS = options[launcher::Options::spice2x_IIDXWindowedSubscreenPosition].value_text();
+        GRAPHICS_WSUB_POS = options[launcher::Options::spice2x_IIDXWindowedSubscreenPosition].value_text();
+    } else if (options[launcher::Options::SDVXWindowedSubscreenPosition].is_active()) {
+        GRAPHICS_WSUB_POS = options[launcher::Options::SDVXWindowedSubscreenPosition].value_text();
     }
     if (options[launcher::Options::IIDXWindowedSubscreenBorderless].value_bool() ||
         options[launcher::Options::SDVXWindowedSubscreenBorderless].value_bool()) {

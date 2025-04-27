@@ -2173,6 +2173,26 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
+        // SDVXWindowedSubscreenSize
+        .title = "SDVX Windowed Subscreen Size",
+        .name = "sdvxwsubsize",
+        .desc = "Size of the subscreen window. Defaults to (1920,1280).",
+        .type = OptionType::Text,
+        .setting_name = "1920,1080",
+        .game_name = "Sound Voltex",
+        .category = "Graphics (Windowed)",
+    },
+    {
+        // SDVXWindowedSubscreenPosition
+        .title = "SDVX Windowed Subscreen Position",
+        .name = "sdvxwsubpos",
+        .desc = "Initial position of the subscreen window. Defaults to (0,0).",
+        .type = OptionType::Text,
+        .setting_name = "0,0",
+        .game_name = "Sound Voltex",
+        .category = "Graphics (Windowed)",
+    },
+    {
         // SDVXWindowedSubscreenBorderless
         .title = "SDVX Windowed Subscreen Borderless",
         .name = "sdvxwsubborderless",

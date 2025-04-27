@@ -50,12 +50,12 @@ extern bool GRAPHICS_WINDOW_ALWAYS_ON_TOP;
 extern bool GRAPHICS_WINDOW_BACKBUFFER_SCALE;
 
 extern bool GRAPHICS_IIDX_WSUB;
-extern std::optional<std::string> GRAPHICS_IIDX_WSUB_SIZE;
-extern std::optional<std::string> GRAPHICS_IIDX_WSUB_POS;
-extern int GRAPHICS_IIDX_WSUB_WIDTH;
-extern int GRAPHICS_IIDX_WSUB_HEIGHT;
-extern int GRAPHICS_IIDX_WSUB_X;
-extern int GRAPHICS_IIDX_WSUB_Y;
+extern std::optional<std::string> GRAPHICS_WSUB_SIZE;
+extern std::optional<std::string> GRAPHICS_WSUB_POS;
+extern int GRAPHICS_WSUB_WIDTH;
+extern int GRAPHICS_WSUB_HEIGHT;
+extern int GRAPHICS_WSUB_X;
+extern int GRAPHICS_WSUB_Y;
 extern bool GRAPHICS_WSUB_BORDERLESS;
 extern bool GRAPHICS_WSUB_ALWAYS_ON_TOP;
 extern HWND TDJ_SUBSCREEN_WINDOW;

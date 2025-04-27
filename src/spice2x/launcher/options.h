@@ -233,6 +233,8 @@ namespace launcher {
             MidiNoteSustain,
             NostalgiaPoke,
             ForceBackBufferCount,
+            SDVXWindowedSubscreenSize,
+            SDVXWindowedSubscreenPosition,
             SDVXWindowedSubscreenBorderless,
             SDVXWindowedSubscreenAlwaysOnTop,
         };
