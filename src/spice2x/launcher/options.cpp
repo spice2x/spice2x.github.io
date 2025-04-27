@@ -1852,6 +1852,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Windowed)",
     },
     {
+        // IIDXWindowedSubscreenAlwaysOnTop
+        .title = "IIDX Windowed Subscreen Always On Top",
+        .name = "iidxwsubtop",
+        .desc = "Keep windowed subscreen on top",
+        .type = OptionType::Bool,
+        .game_name = "Beatmania IIDX",
+        .category = "Graphics (Windowed)",
+    },
+    {
         // spice2x_JubeatLegacyTouch
         .title = "JB Legacy Touch Targets",
         .name = "sp2x-jubeatlegacytouch",

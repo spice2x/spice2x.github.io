@@ -868,6 +868,9 @@ void graphics_hook_subscreen_window(HWND hWnd) {
         WSUB_WNDPROC_ORIG = reinterpret_cast<WNDPROC>(GetWindowLongPtrA(hWnd, GWLP_WNDPROC));
         SetWindowLongPtrA(hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WsubWindowProc));
     }
+    if (hWnd == TDJ_SUBSCREEN_WINDOW && GRAPHICS_IIDX_WSUB_ALWAYS_ON_TOP) {
+        graphics_update_z_order(hWnd, true);
+    }
 }
 
 void graphics_screens_register(int screen) {

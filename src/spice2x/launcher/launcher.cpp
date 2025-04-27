@@ -987,6 +987,10 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_IIDX_WSUB_BORDERLESS =
             options[launcher::Options::IIDXWindowedSubscreenBorderless].value_bool();
     }
+    if (options[launcher::Options::IIDXWindowedSubscreenAlwaysOnTop].is_active()) {
+        GRAPHICS_IIDX_WSUB_ALWAYS_ON_TOP =
+            options[launcher::Options::IIDXWindowedSubscreenAlwaysOnTop].value_bool();
+    }
 
     if (options[launcher::Options::spice2x_JubeatLegacyTouch].value_bool()) {
         games::jb::TOUCH_LEGACY_BOX = true;

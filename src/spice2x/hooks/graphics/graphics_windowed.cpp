@@ -33,6 +33,7 @@ int GRAPHICS_IIDX_WSUB_HEIGHT = 720;
 int GRAPHICS_IIDX_WSUB_X = 0;
 int GRAPHICS_IIDX_WSUB_Y = 0;
 bool GRAPHICS_IIDX_WSUB_BORDERLESS = false;
+bool GRAPHICS_IIDX_WSUB_ALWAYS_ON_TOP = false;
 
 // these flags are carefully constructed to ensure maximum compatibility
 // (e.g., DDR likes to hang when SetWindowPos is called with certain params)
@@ -109,7 +110,7 @@ void graphics_capture_initial_window(HWND hWnd) {
     }
     if (cfg::SCREENRESIZE->window_always_on_top) {
         log_info("graphics-windowed", "change window z-order - always on top");
-        graphics_update_z_order(hWnd);
+        graphics_update_z_order(hWnd, true);
     }
 
     // ensure spicetouch coordinates are initialized
@@ -399,7 +400,7 @@ void graphics_update_window_style(HWND hWnd) {
     log_debug("graphics-windowed", "graphics_update_window_style returned");
 }
 
-void graphics_update_z_order(HWND hWnd) {
+void graphics_update_z_order(HWND hWnd, bool always_on_top) {
     if (!GRAPHICS_WINDOWED) {
         return;
     }
@@ -407,7 +408,7 @@ void graphics_update_z_order(HWND hWnd) {
     log_debug("graphics-windowed", "graphics_update_z_order called");
 
     HWND insert_after = nullptr;
-    if (cfg::SCREENRESIZE->window_always_on_top) {
+    if (always_on_top) {
         insert_after = HWND_TOPMOST;
     } else {
         insert_after = HWND_NOTOPMOST;

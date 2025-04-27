@@ -208,6 +208,7 @@ namespace launcher {
             spice2x_IIDXWindowedSubscreenSize,
             spice2x_IIDXWindowedSubscreenPosition,
             IIDXWindowedSubscreenBorderless,
+            IIDXWindowedSubscreenAlwaysOnTop,
             spice2x_JubeatLegacyTouch,
             spice2x_RBTouchScale,
             spice2x_AsioForceUnload,

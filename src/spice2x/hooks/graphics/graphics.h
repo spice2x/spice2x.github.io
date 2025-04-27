@@ -57,6 +57,7 @@ extern int GRAPHICS_IIDX_WSUB_HEIGHT;
 extern int GRAPHICS_IIDX_WSUB_X;
 extern int GRAPHICS_IIDX_WSUB_Y;
 extern bool GRAPHICS_IIDX_WSUB_BORDERLESS;
+extern bool GRAPHICS_IIDX_WSUB_ALWAYS_ON_TOP;
 extern HWND TDJ_SUBSCREEN_WINDOW;
 extern HWND SDVX_SUBSCREEN_WINDOW;
 
@@ -95,7 +96,7 @@ std::string graphics_screenshot_genpath();
 void graphics_windowed_wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void graphics_capture_initial_window(HWND hWnd);
 void graphics_update_window_style(HWND hWnd);
-void graphics_update_z_order(HWND hWnd);
+void graphics_update_z_order(HWND hWnd, bool always_on_top);
 void graphics_move_resize_window(HWND hWnd);
 bool graphics_window_change_crashes_game();
 void graphics_load_windowed_subscreen_parameters();
