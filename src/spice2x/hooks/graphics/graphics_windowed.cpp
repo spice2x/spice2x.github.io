@@ -33,6 +33,8 @@ int GRAPHICS_IIDX_WSUB_HEIGHT = 720;
 int GRAPHICS_IIDX_WSUB_X = 0;
 int GRAPHICS_IIDX_WSUB_Y = 0;
 
+bool GRAPHICS_IIDX_WSUB_BORDERLESS = false;
+
 // these flags are carefully constructed to ensure maximum compatibility
 // (e.g., DDR likes to hang when SetWindowPos is called with certain params)
 static const DWORD SETWINDOWPOS_NOOP = 

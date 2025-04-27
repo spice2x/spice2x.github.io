@@ -983,6 +983,10 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_IIDXWindowedSubscreenPosition].is_active()) {
         GRAPHICS_IIDX_WSUB_POS = options[launcher::Options::spice2x_IIDXWindowedSubscreenPosition].value_text();
     }
+    if (options[launcher::Options::IIDXWindowedSubscreenBorderless].is_active()) {
+        GRAPHICS_IIDX_WSUB_BORDERLESS =
+            options[launcher::Options::IIDXWindowedSubscreenBorderless].value_bool();
+    }
 
     if (options[launcher::Options::spice2x_JubeatLegacyTouch].value_bool()) {
         games::jb::TOUCH_LEGACY_BOX = true;

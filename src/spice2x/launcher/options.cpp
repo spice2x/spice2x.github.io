@@ -1843,6 +1843,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Windowed)",
     },
     {
+        // IIDXWindowedSubscreenBorderless
+        .title = "IIDX Windowed Subscreen Borderless",
+        .name = "iidxwsubborderless",
+        .desc = "Remove window decoration from windowed subscreen",
+        .type = OptionType::Bool,
+        .game_name = "Beatmania IIDX",
+        .category = "Graphics (Windowed)",
+    },
+    {
         // spice2x_JubeatLegacyTouch
         .title = "JB Legacy Touch Targets",
         .name = "sp2x-jubeatlegacytouch",

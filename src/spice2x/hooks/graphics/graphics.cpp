@@ -374,6 +374,9 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window) {
         dwStyle &= ~(WS_MAXIMIZEBOX);
     }
+    if ((is_tdj_sub_window) && GRAPHICS_IIDX_WSUB_BORDERLESS) {
+        dwStyle &= ~(WS_OVERLAPPEDWINDOW);
+    }
 
     // call original
     HWND result = CreateWindowExA_orig(dwExStyle, lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight,
