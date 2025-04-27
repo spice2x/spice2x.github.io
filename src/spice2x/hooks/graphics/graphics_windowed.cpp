@@ -168,11 +168,6 @@ void graphics_load_windowed_subscreen_parameters() {
     if (!GRAPHICS_WINDOWED) {
         return;
     }
-    static bool run_once;
-    if (run_once) {
-        return;
-    }
-    run_once = true;
 
     log_debug("graphics-windowed", "graphics_load_windowed_subscreen_parameters called");
    
