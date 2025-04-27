@@ -983,13 +983,13 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_IIDXWindowedSubscreenPosition].is_active()) {
         GRAPHICS_IIDX_WSUB_POS = options[launcher::Options::spice2x_IIDXWindowedSubscreenPosition].value_text();
     }
-    if (options[launcher::Options::IIDXWindowedSubscreenBorderless].is_active()) {
-        GRAPHICS_IIDX_WSUB_BORDERLESS =
-            options[launcher::Options::IIDXWindowedSubscreenBorderless].value_bool();
+    if (options[launcher::Options::IIDXWindowedSubscreenBorderless].value_bool() ||
+        options[launcher::Options::SDVXWindowedSubscreenBorderless].value_bool()) {
+        GRAPHICS_WSUB_BORDERLESS = true;
     }
-    if (options[launcher::Options::IIDXWindowedSubscreenAlwaysOnTop].is_active()) {
-        GRAPHICS_IIDX_WSUB_ALWAYS_ON_TOP =
-            options[launcher::Options::IIDXWindowedSubscreenAlwaysOnTop].value_bool();
+    if (options[launcher::Options::IIDXWindowedSubscreenAlwaysOnTop].value_bool() ||
+        options[launcher::Options::SDVXWindowedSubscreenAlwaysOnTop].value_bool()) {
+        GRAPHICS_WSUB_ALWAYS_ON_TOP = true;
     }
 
     if (options[launcher::Options::spice2x_JubeatLegacyTouch].value_bool()) {

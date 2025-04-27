@@ -2171,6 +2171,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"2", "double buffer"},
             {"3", "triple buffer"},
         },
+    },
+    {
+        // SDVXWindowedSubscreenBorderless
+        .title = "SDVX Windowed Subscreen Borderless",
+        .name = "sdvxwsubborderless",
+        .desc = "Remove window decoration from windowed subscreen",
+        .type = OptionType::Bool,
+        .game_name = "Sound Voltex",
+        .category = "Graphics (Windowed)",
+    },
+    {
+        // SDVXWindowedSubscreenAlwaysOnTop
+        .title = "SDVX Windowed Subscreen Always On Top",
+        .name = "sdvxwsubtop",
+        .desc = "Keep windowed subscreen on top",
+        .type = OptionType::Bool,
+        .game_name = "Sound Voltex",
+        .category = "Graphics (Windowed)",
     }
 };
 

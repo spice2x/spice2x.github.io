@@ -233,6 +233,8 @@ namespace launcher {
             MidiNoteSustain,
             NostalgiaPoke,
             ForceBackBufferCount,
+            SDVXWindowedSubscreenBorderless,
+            SDVXWindowedSubscreenAlwaysOnTop,
         };
 
         enum class OptionsCategory {

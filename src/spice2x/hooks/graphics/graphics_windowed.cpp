@@ -32,8 +32,8 @@ int GRAPHICS_IIDX_WSUB_WIDTH = 1280;
 int GRAPHICS_IIDX_WSUB_HEIGHT = 720;
 int GRAPHICS_IIDX_WSUB_X = 0;
 int GRAPHICS_IIDX_WSUB_Y = 0;
-bool GRAPHICS_IIDX_WSUB_BORDERLESS = false;
-bool GRAPHICS_IIDX_WSUB_ALWAYS_ON_TOP = false;
+bool GRAPHICS_WSUB_BORDERLESS = false;
+bool GRAPHICS_WSUB_ALWAYS_ON_TOP = false;
 
 // these flags are carefully constructed to ensure maximum compatibility
 // (e.g., DDR likes to hang when SetWindowPos is called with certain params)
