@@ -1843,6 +1843,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Windowed)",
     },
     {
+        // IIDXWindowedSubscreenBorderless
+        .title = "IIDX Windowed Subscreen Borderless",
+        .name = "iidxwsubborderless",
+        .desc = "Remove window decoration from windowed subscreen",
+        .type = OptionType::Bool,
+        .game_name = "Beatmania IIDX",
+        .category = "Graphics (Windowed)",
+    },
+    {
+        // IIDXWindowedSubscreenAlwaysOnTop
+        .title = "IIDX Windowed Subscreen Always On Top",
+        .name = "iidxwsubtop",
+        .desc = "Keep windowed subscreen on top",
+        .type = OptionType::Bool,
+        .game_name = "Beatmania IIDX",
+        .category = "Graphics (Windowed)",
+    },
+    {
         // spice2x_JubeatLegacyTouch
         .title = "JB Legacy Touch Targets",
         .name = "sp2x-jubeatlegacytouch",
@@ -2153,6 +2171,44 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"2", "double buffer"},
             {"3", "triple buffer"},
         },
+    },
+    {
+        // SDVXWindowedSubscreenSize
+        .title = "SDVX Windowed Subscreen Size",
+        .name = "sdvxwsubsize",
+        .desc = "Size of the subscreen window. Defaults to (1920,1080)",
+        .type = OptionType::Text,
+        .setting_name = "1920,1080",
+        .game_name = "Sound Voltex",
+        .category = "Graphics (Windowed)",
+    },
+    {
+        // SDVXWindowedSubscreenPosition
+        .title = "SDVX Windowed Subscreen Position",
+        .name = "sdvxwsubpos",
+        .desc = "Initial position of the subscreen window. Defaults to (0,0)",
+        .type = OptionType::Text,
+        .setting_name = "0,0",
+        .game_name = "Sound Voltex",
+        .category = "Graphics (Windowed)",
+    },
+    {
+        // SDVXWindowedSubscreenBorderless
+        .title = "SDVX Windowed Subscreen Borderless",
+        .name = "sdvxwsubborderless",
+        .desc = "Remove window decoration from windowed subscreen",
+        .type = OptionType::Bool,
+        .game_name = "Sound Voltex",
+        .category = "Graphics (Windowed)",
+    },
+    {
+        // SDVXWindowedSubscreenAlwaysOnTop
+        .title = "SDVX Windowed Subscreen Always On Top",
+        .name = "sdvxwsubtop",
+        .desc = "Keep windowed subscreen on top",
+        .type = OptionType::Bool,
+        .game_name = "Sound Voltex",
+        .category = "Graphics (Windowed)",
     }
 };
 

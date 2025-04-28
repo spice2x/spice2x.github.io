@@ -26,12 +26,14 @@ bool GRAPHICS_WINDOW_BACKBUFFER_SCALE = false;
 
 // IIDX Windowed Subscreen - starts out as false, enabled by IIDX module on pre-attach as needed
 bool GRAPHICS_IIDX_WSUB = false;
-std::optional<std::string> GRAPHICS_IIDX_WSUB_SIZE;
-std::optional<std::string> GRAPHICS_IIDX_WSUB_POS;
-int GRAPHICS_IIDX_WSUB_WIDTH = 1280;
-int GRAPHICS_IIDX_WSUB_HEIGHT = 720;
-int GRAPHICS_IIDX_WSUB_X = 0;
-int GRAPHICS_IIDX_WSUB_Y = 0;
+std::optional<std::string> GRAPHICS_WSUB_SIZE;
+std::optional<std::string> GRAPHICS_WSUB_POS;
+int GRAPHICS_WSUB_WIDTH = 1280;
+int GRAPHICS_WSUB_HEIGHT = 720;
+int GRAPHICS_WSUB_X = 0;
+int GRAPHICS_WSUB_Y = 0;
+bool GRAPHICS_WSUB_BORDERLESS = false;
+bool GRAPHICS_WSUB_ALWAYS_ON_TOP = false;
 
 // these flags are carefully constructed to ensure maximum compatibility
 // (e.g., DDR likes to hang when SetWindowPos is called with certain params)
@@ -108,7 +110,7 @@ void graphics_capture_initial_window(HWND hWnd) {
     }
     if (cfg::SCREENRESIZE->window_always_on_top) {
         log_info("graphics-windowed", "change window z-order - always on top");
-        graphics_update_z_order(hWnd);
+        graphics_update_z_order(hWnd, true);
     }
 
     // ensure spicetouch coordinates are initialized
@@ -169,29 +171,29 @@ void graphics_load_windowed_subscreen_parameters() {
 
     log_debug("graphics-windowed", "graphics_load_windowed_subscreen_parameters called");
    
-    if (GRAPHICS_IIDX_WSUB_SIZE.has_value()) {
+    if (GRAPHICS_WSUB_SIZE.has_value()) {
         log_debug(
             "graphics-windowed",
-            "graphics_load_windowed_parameters - load GRAPHICS_IIDX_WSUB_SIZE");
+            "graphics_load_windowed_parameters - load GRAPHICS_WSUB_SIZE");
 
         std::pair<uint32_t, uint32_t> result;
-        if (parse_width_height(GRAPHICS_IIDX_WSUB_SIZE.value(), result)) {
-            GRAPHICS_IIDX_WSUB_WIDTH = result.first;
-            GRAPHICS_IIDX_WSUB_HEIGHT = result.second;
+        if (parse_width_height(GRAPHICS_WSUB_SIZE.value(), result)) {
+            GRAPHICS_WSUB_WIDTH = result.first;
+            GRAPHICS_WSUB_HEIGHT = result.second;
         } else {
             log_warning("graphics-windowed", "failed to parse -wsubsize");
         }
     }
 
-    if (GRAPHICS_IIDX_WSUB_POS.has_value()) {
+    if (GRAPHICS_WSUB_POS.has_value()) {
         log_debug(
             "graphics-windowed",
-            "graphics_load_windowed_parameters - load GRAPHICS_IIDX_WSUB_POS");
+            "graphics_load_windowed_parameters - load GRAPHICS_WSUB_POS");
 
         std::pair<uint32_t, uint32_t> result;
-        if (parse_width_height(GRAPHICS_IIDX_WSUB_POS.value(), result)) {
-            GRAPHICS_IIDX_WSUB_X = result.first;
-            GRAPHICS_IIDX_WSUB_Y = result.second;
+        if (parse_width_height(GRAPHICS_WSUB_POS.value(), result)) {
+            GRAPHICS_WSUB_X = result.first;
+            GRAPHICS_WSUB_Y = result.second;
         } else {
             log_warning("graphics-windowed", "failed to parse -wsubpos");
         }
@@ -398,7 +400,7 @@ void graphics_update_window_style(HWND hWnd) {
     log_debug("graphics-windowed", "graphics_update_window_style returned");
 }
 
-void graphics_update_z_order(HWND hWnd) {
+void graphics_update_z_order(HWND hWnd, bool always_on_top) {
     if (!GRAPHICS_WINDOWED) {
         return;
     }
@@ -406,7 +408,7 @@ void graphics_update_z_order(HWND hWnd) {
     log_debug("graphics-windowed", "graphics_update_z_order called");
 
     HWND insert_after = nullptr;
-    if (cfg::SCREENRESIZE->window_always_on_top) {
+    if (always_on_top) {
         insert_after = HWND_TOPMOST;
     } else {
         insert_after = HWND_NOTOPMOST;

@@ -207,6 +207,8 @@ namespace launcher {
             WindowForceScaling,
             spice2x_IIDXWindowedSubscreenSize,
             spice2x_IIDXWindowedSubscreenPosition,
+            IIDXWindowedSubscreenBorderless,
+            IIDXWindowedSubscreenAlwaysOnTop,
             spice2x_JubeatLegacyTouch,
             spice2x_RBTouchScale,
             spice2x_AsioForceUnload,
@@ -231,6 +233,10 @@ namespace launcher {
             MidiNoteSustain,
             NostalgiaPoke,
             ForceBackBufferCount,
+            SDVXWindowedSubscreenSize,
+            SDVXWindowedSubscreenPosition,
+            SDVXWindowedSubscreenBorderless,
+            SDVXWindowedSubscreenAlwaysOnTop,
         };
 
         enum class OptionsCategory {

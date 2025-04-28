@@ -173,8 +173,8 @@ namespace overlay::windows {
             "Change window decoration. Resizable Window may not cause your mouse cursor to change, "
             "but you can still drag to resize. Disabled for some games due to incompatibility.");
 
-        if (ImGui::Checkbox("Always on Top", &cfg::SCREENRESIZE->window_always_on_top) ) {
-            graphics_update_z_order(window);
+        if (ImGui::Checkbox("Always On Top", &cfg::SCREENRESIZE->window_always_on_top) ) {
+            graphics_update_z_order(window, cfg::SCREENRESIZE->window_always_on_top);
         }
         ImGui::BeginDisabled();
         ImGui::Checkbox("Forced Render Scaling", &GRAPHICS_WINDOW_BACKBUFFER_SCALE);
