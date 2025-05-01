@@ -359,12 +359,12 @@ void libutils::check_duplicate_dlls() {
 
 void libutils::warn_if_dll_exists(const std::string file_name) {
     if (fileutils::file_exists(MODULE_PATH / file_name)) {
-        log_warning("libutils", "found non-system {} in modules directory", file_name);
+        log_info("libutils", "found user-supplied {} in modules directory", file_name);
         return;
     }
     const auto &spice_bin_path = libutils::module_file_name(nullptr).parent_path();
     if (fileutils::file_exists(spice_bin_path / file_name)) {
-        log_warning("libutils", "found non-system {} next to spice executable path", file_name);
+        log_info("libutils", "found user-supplied {} next to spice executable path", file_name);
         return;
     }
 }
