@@ -1820,6 +1820,9 @@ int main_implementation(int argc, char *argv[]) {
         exit(spicecfg_run(sextet_devices));
     }
 
+    // log if custom d3d9.dll is found in path (purely for troubleshooting purposes)
+    libutils::warn_if_dll_exists("d3d9.dll");
+
     // complain loudly & early about dll load ordering issue
     libutils::check_duplicate_dlls();
 
