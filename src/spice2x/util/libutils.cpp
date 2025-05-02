@@ -357,7 +357,7 @@ void libutils::check_duplicate_dlls() {
     }
 }
 
-void libutils::warn_if_dll_exists(const std::string file_name) {
+void libutils::warn_if_dll_exists(const std::string &file_name) {
     if (fileutils::file_exists(MODULE_PATH / file_name)) {
         log_info("libutils", "found user-supplied {} in modules directory", file_name);
         return;
