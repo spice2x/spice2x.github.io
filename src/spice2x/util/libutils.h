@@ -25,6 +25,7 @@ namespace libutils {
     }
 
     void check_duplicate_dlls();
+    void warn_if_dll_exists(const std::string &file_name);
 
     // get module handle helpers
     HMODULE get_module(const char *module_name);

@@ -1820,6 +1820,16 @@ int main_implementation(int argc, char *argv[]) {
         exit(spicecfg_run(sextet_devices));
     }
 
+    // log some DLLs found in path (purely for troubleshooting purposes to detect
+    // dxvk, ForceD3D9On12, ifs_layeredfs, etc)
+    libutils::warn_if_dll_exists("d3d8.dll");
+    libutils::warn_if_dll_exists("d3d9.dll");
+    libutils::warn_if_dll_exists("d3d10core.dll");
+    libutils::warn_if_dll_exists("d3d11.dll");
+    libutils::warn_if_dll_exists("d3d12.dll");
+    libutils::warn_if_dll_exists("dxgi.dll");
+    libutils::warn_if_dll_exists("opengl32.dll");
+
     // complain loudly & early about dll load ordering issue
     libutils::check_duplicate_dlls();
 
