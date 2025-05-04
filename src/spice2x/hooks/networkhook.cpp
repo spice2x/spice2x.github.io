@@ -179,7 +179,7 @@ void networkhook_init() {
     strncpy(s_prefix, inet_ntoa(prefix), 16);
 
     // log preferences
-    log_info("network", "Network preferences: {}", s_network, s_subnet, s_prefix);
+    // log_info("network", "Network preferences: {}, {}, {}", s_network, s_subnet, s_prefix);
 
     // GetAdaptersInfo hook
     auto orig_addr = detour::iat_try(
