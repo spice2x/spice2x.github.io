@@ -1645,6 +1645,8 @@ namespace overlay::windows {
         std::string first_id = get_game_identifier(MODULE_PATH / firstDll);
         std::filesystem::path firstPath = fmt::format("patches/{}.json", first_id);
 
+        log_misc("patchmanager", "patch identifier of {}: {}", firstDll, first_id);
+
         auto extraDlls = getExtraDlls(firstDll);
         std::erase_if(extraDlls, [](const std::string& dll) {
             auto identifier = get_game_identifier(MODULE_PATH / dll);
