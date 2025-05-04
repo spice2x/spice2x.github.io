@@ -1195,6 +1195,28 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "API (Dev)",
     },
     {
+        // APIScreenMirrorQuality
+        .title = "API Screen Mirror Quality Override",
+        .name = "apiscreenq",
+        .desc = "JPEG compression level of mirrored images, overriding any client request. "
+            "Value must be between 0 (poor quality) and 100 (best quality), inclusive. Default: 70",
+        .type = OptionType::Integer,
+        .setting_name = "(0-100)",
+        .category = "SpiceCompanion and API",
+    },
+    {
+        // APIScreenMirrorDivide
+        .title = "API Screen Mirror Divide Override",
+        .name = "apiscreendiv",
+        .desc = "Divide value of mirrored images, overriding any client request. "
+            "Divide of 1 means send every pixel, 2 means every other pixel, 3 means every third pixel, and so on; "
+            "increasing the value drastically reduces transfer size at the cost of image quality. "
+            "Value must be 1 or greater. Default: 1",
+        .type = OptionType::Integer,
+        .setting_name = "1",
+        .category = "SpiceCompanion and API",
+    },
+    {
         .title = "Enable All IO Modules",
         .name = "io",
         .desc = "Manually enable ALL IO emulation",
