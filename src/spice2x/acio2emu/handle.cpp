@@ -31,7 +31,7 @@ namespace acio2emu {
         }
     };
 
-    IOBHandle::IOBHandle(std::wstring device) : device_(device) { 
+    IOBHandle::IOBHandle(LPCWSTR device) : device_(device) { 
         nodes_[0] = std::make_unique<MasterNode>(this); 
     }
 

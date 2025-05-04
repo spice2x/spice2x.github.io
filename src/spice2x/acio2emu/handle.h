@@ -26,7 +26,7 @@ namespace acio2emu {
         void forward_packet_(const Packet &packet);
 
     public:
-        IOBHandle(std::wstring device);
+        IOBHandle(LPCWSTR device);
 
         bool register_node(std::unique_ptr<Node> node);
         int number_of_nodes() const;
