@@ -306,6 +306,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Force the use of an adapter with the specified network. Must also provide -subnet",
         .type = OptionType::Text,
         .category = "Network Adapters",
+        .sensitive = true,
     },
     {
         .title = "Preferred NetAdapter Subnet",
