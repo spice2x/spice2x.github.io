@@ -15,5 +15,6 @@ namespace api::modules {
         void ticker_get(Request &req, Response &res);
         void ticker_set(Request &req, Response &res);
         void ticker_reset(Request &req, Response &res);
+        void tapeled_get(Request &req, Response &res);
     };
 }

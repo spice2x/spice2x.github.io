@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <optional>
+#include <vector>
 
 #include "games/game.h"
 
@@ -29,6 +30,19 @@ namespace games::iidx {
     extern char IIDXIO_LED_TICKER[10];
     extern bool IIDXIO_LED_TICKER_READONLY;
     extern std::mutex IIDX_LED_TICKER_LOCK;
+
+    constexpr int IIDX_TAPELED_TOTAL = 17;
+    // data mapping
+    struct TapeLedMapping {
+        std::vector<uint8_t[3]> data;
+        int index_r, index_g, index_b;
+
+        TapeLedMapping(size_t data_size, int index_r, int index_g, int index_b)
+        : index_r(index_r), index_g(index_g), index_b(index_b) {
+            data = std::vector<uint8_t[3]>(data_size);
+        }
+    };
+    extern TapeLedMapping TAPELED_MAPPING[IIDX_TAPELED_TOTAL];
 
     class IIDXGame : public games::Game {
     public:

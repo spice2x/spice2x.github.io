@@ -74,6 +74,26 @@ namespace games::iidx {
     bool IIDXIO_LED_TICKER_READONLY = false;
     std::mutex IIDX_LED_TICKER_LOCK;
 
+    TapeLedMapping TAPELED_MAPPING[IIDX_TAPELED_TOTAL] = {
+        { 19, Lights::StageLeftAvgR, Lights::StageLeftAvgG, Lights::StageLeftAvgB },
+        { 19, Lights::StageRightAvgR, Lights::StageRightAvgG, Lights::StageRightAvgB },
+        { 45, Lights::CabinetLeftAvgR, Lights::CabinetLeftAvgG, Lights::CabinetLeftAvgB },
+        { 45, Lights::CabinetRightAvgR, Lights::CabinetRightAvgG, Lights::CabinetRightAvgB },
+        { 21, Lights::ControlPanelUnderAvgR, Lights::ControlPanelUnderAvgG, Lights::ControlPanelUnderAvgB },
+        { 54, Lights::CeilingLeftAvgR, Lights::CeilingLeftAvgG, Lights::CeilingLeftAvgB },
+        { 11, Lights::TitleLeftAvgR, Lights::TitleLeftAvgG, Lights::TitleLeftAvgB },
+        { 11, Lights::TitleRightAvgR, Lights::TitleRightAvgG, Lights::TitleRightAvgB },
+        { 54, Lights::CeilingRightAvgR, Lights::CeilingRightAvgG, Lights::CeilingRightAvgB },
+        { 17, Lights::TouchPanelLeftAvgR, Lights::TouchPanelLeftAvgG, Lights::TouchPanelLeftAvgB },
+        { 17, Lights::TouchPanelRightAvgR, Lights::TouchPanelRightAvgG, Lights::TouchPanelRightAvgB },
+        { 68, Lights::SidePanelLeftInnerAvgR, Lights::SidePanelLeftInnerAvgG, Lights::SidePanelLeftInnerAvgB },
+        { 68, Lights::SidePanelLeftOuterAvgR, Lights::SidePanelLeftOuterAvgG, Lights::SidePanelLeftOuterAvgB },
+        { 61, Lights::SidePanelLeftAvgR, Lights::SidePanelLeftAvgG, Lights::SidePanelLeftAvgB },
+        { 68, Lights::SidePanelRightOuterAvgR, Lights::SidePanelRightOuterAvgG, Lights::SidePanelRightOuterAvgB },
+        { 68, Lights::SidePanelRightInnerAvgR, Lights::SidePanelRightInnerAvgG, Lights::SidePanelRightInnerAvgB },
+        { 61, Lights::SidePanelRightAvgR, Lights::SidePanelRightAvgG, Lights::SidePanelRightAvgB },
+    };
+
     static LONG WINAPI RegOpenKeyA_hook(HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult) {
         if (lpSubKey != nullptr && phkResult != nullptr) {
             if (hKey == HKEY_LOCAL_MACHINE &&

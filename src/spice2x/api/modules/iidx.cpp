@@ -17,6 +17,7 @@ namespace api::modules {
         functions["ticker_get"] = std::bind(&IIDX::ticker_get, this, _1, _2);
         functions["ticker_set"] = std::bind(&IIDX::ticker_set, this, _1, _2);
         functions["ticker_reset"] = std::bind(&IIDX::ticker_reset, this, _1, _2);
+        functions["tapeled_get"] = std::bind(&IIDX::tapeled_get, this, _1, _2);
     }
 
     /**
@@ -68,5 +69,45 @@ namespace api::modules {
 
         // disable read only
         games::iidx::IIDXIO_LED_TICKER_READONLY = false;
+    }
+
+    void IIDX::tapeled_get(Request &req, Response &res) {
+        static const std::string device_names[games::iidx::IIDX_TAPELED_TOTAL] = {
+            "stage_left",
+            "stage_right",
+            "cabinet_left",
+            "cabinet_right",
+            "control_panel_under",
+            "ceiling_left",
+            "title_left",
+            "title_right",
+            "ceiling_right",
+            "touch_panel_left",
+            "touch_panel_right",
+            "side_panel_left_inner",
+            "side_panel_left_outer",
+            "side_panel_left",
+            "side_panel_right_outer",
+            "side_panel_right_inner",
+            "side_panel_right"
+        };
+
+        Value response_object(kObjectType);
+
+        // Iterate through each device and dump its lights data into the response
+        for (size_t device = 0; device < games::iidx::IIDX_TAPELED_TOTAL; device++) {
+            const auto &data = games::iidx::TAPELED_MAPPING[device].data;
+
+            Value light_state(kArrayType);
+            for (const auto &led : data) {
+                light_state.PushBack(led[0], res.doc()->GetAllocator());
+                light_state.PushBack(led[1], res.doc()->GetAllocator());
+                light_state.PushBack(led[2], res.doc()->GetAllocator());
+            }
+
+            response_object.AddMember(StringRef(device_names[device]), light_state, res.doc()->GetAllocator());
+        }
+
+        res.add_data(response_object);
     }
 }

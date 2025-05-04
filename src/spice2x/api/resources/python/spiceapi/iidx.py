@@ -16,3 +16,8 @@ def iidx_ticker_set(con: Connection, text: str):
 def iidx_ticker_reset(con: Connection):
     req = Request("iidx", "ticker_reset")
     con.request(req)
+
+
+def iidx_tapeled_get(con: Connection):
+    res = con.request(Request("iidx", "tapeled_get"))
+    return res.get_data()

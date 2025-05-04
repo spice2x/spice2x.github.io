@@ -17,3 +17,8 @@ Future<void> iidxTickerReset(Connection con) {
   var req = Request("iidx", "ticker_reset");
   return con.request(req);
 }
+
+Future<void> iidxTapeledGet(Connection con) {
+  var req = Request("iidx", "tapeled_get");
+  return con.request(req);
+}
