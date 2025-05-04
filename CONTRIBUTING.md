@@ -86,5 +86,9 @@ if (conditional)
 }
 ```
 
-* Please give [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines) a read. Though, we don't use GSL.
+* Please give [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines) a read. A few things to point out in spice codebase:
+  * We don't use GSL.
+  * Don't throw exceptions.
+  * Stick to smart pointers. For interfacing with C Win32 API and raw buffers, use `unique_plain_ptr`.
+  * Writing in C is also completely acceptable.
 * Other than that, there are no strict rules for code formatting, but please attempt to emulate the style around the code you are modifying.
