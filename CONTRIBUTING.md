@@ -30,12 +30,11 @@ Do not change the names of options, buttons binds, analogs, etc - since they are
   * All currently supported games / versions must continue to work.
   * Backwards compatibility must be preserved, unless there is a really good reason to break it. This includes (but not limited to): global/local config files, command line parameters, game patches, device interop (e.g., card readers), and SpiceAPI / Companion interop.
   * Reasonable level of compatibility with the last release of original spicetools is expected. The stated goal of spice2x is to be a drop-in replacement for spicetools.
-  * Simply put, if someone has an existing install of spicetools/spice2x, copying over new version of spice2x should not result in different behavior or loss of functionality.
+  * Simply put, if someone has an existing install of spicetools/spice2x, copying over new version of spice2x should not result in vastly different behavior or major loss of functionality.
 * Make sure you compile with the included Docker script and ensure you do not introduce **any** new compiler warnings or build breaks. The Docker script is the standard build environment, your custom Linux build environment or MSVC can be used during development, but you must validate the final build using Docker.
-* Do not submit snippets of code as a "patch". Exceptions can be made for trivial changes (correct a typo, fix a single line of code...), but otherwise, a successfully compiled & fully tested patch file is required when submitting for review.
 * Do not make code changes in unrelated areas; i.e., do not run code linters and auto-formatters for parts of the code that you didn't modify.
 * Try to submit smaller chunks of code, instead one gigantic patch. For example, don't submit a patch for "Improve feature XYZ"; instead, submit "Change how A works to prepare for feature XYZ" "Refactor B for feature XYZ" "Add feature B to enable feature XYZ".
-* Write to the log for anything useful - it helps immensely with debugging post-mortem. At the same time though, avoid spamming the log for something trivial.
+* Write to the log for anything useful - it helps immensely with troubleshooting and debugging. At the same time though, avoid spamming the log for something trivial.
 
 ### UI text
 spice2x has a global audience; majority of the user base do not speak English as their first language.
@@ -44,7 +43,7 @@ Use simple English, avoid colloquialism, and use concise language, even if it's 
 
 ### Using OS APIs
 
-Avoid making permanent changes to user's OS configuration. For example, spice should not make a call to set power profile to Maximum Performance, or switch default audio device. Making the reverse call to restore settings on game shutdown is **not** good enough; there is no guarantee that spice will gracefully shutdown, since games (or spice) can crash. This is to avoid inadvertently putting user's PC into a bad state, which can be seen as malware-like behavior.
+Avoid making permanent changes to user's OS configuration. For example, spice must not make a call to set power profile to Maximum Performance, or switch default audio device. Making the reverse call to restore settings on game shutdown is **not** good enough; there is no guarantee that spice will gracefully shutdown, since games (or spice) can crash. This is to avoid inadvertently putting user's PC into a bad state, which can be seen as malware-like behavior.
 
 Watch out for legacy OS compatibility. Currently, the minimum support floor is Windows 7. If you use any Windows API, make sure it's supported in Windows 7. If you need to use API that is not present in Windows 7, you must not directly link against it, otherwise spice will fail to launch on older OSes. Take a look at Windows 8 touch code (win8.cpp) for examples on how to discover OS APIs via pointers.
 
@@ -87,4 +86,5 @@ if (conditional)
 }
 ```
 
+* Please give [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines) a read. Though, we don't use GSL.
 * Other than that, there are no strict rules for code formatting, but please attempt to emulate the style around the code you are modifying.
