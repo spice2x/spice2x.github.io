@@ -215,23 +215,42 @@ namespace sysutils {
         }
         std::string prefix("device");
         if (is_monitor) {
-            prefix = "        adapter";
+            prefix = "    adapter";
         }
-        log_misc("gpuinfo", "{} {} name   : {}", prefix.c_str(), index, adapter->DeviceName);
-        log_misc("gpuinfo", "{} {} string : {}", prefix.c_str(), index, adapter->DeviceString);
-        log_dbug("gpuinfo", "{} {} flags  : 0x{:x}", prefix.c_str(), index, adapter->StateFlags);
+        log_misc("gpuinfo", "{} {} device name   : {}", prefix.c_str(), index, adapter->DeviceName);
+        log_misc("gpuinfo", "{} {} device string : {}", prefix.c_str(), index, adapter->DeviceString);
+        log_dbug("gpuinfo", "{} {} flags         : 0x{:x}", prefix.c_str(), index, adapter->StateFlags);
+
+        if (!is_monitor)  {
+            DEVMODEA devmode = {};
+            devmode.dmSize = sizeof(devmode);
+            if (EnumDisplaySettingsA(adapter->DeviceName, ENUM_CURRENT_SETTINGS, &devmode)) {
+                log_misc(
+                    "gpuinfo",
+                    "{} {} resolution    : {}px * {}px @ {}Hz",
+                    prefix.c_str(),
+                    index,
+                    devmode.dmPelsWidth, devmode.dmPelsHeight,
+                    devmode.dmDisplayFrequency);
+            } else {
+                log_misc("gpuinfo", "EnumDisplaySettingsA failed");
+            }
+        }
     }
 
     void print_gpus() {
         DWORD device_index = 0;
-        DISPLAY_DEVICEA device;
+        DISPLAY_DEVICEA device = {};
         device.cb = sizeof(device);
-        log_misc("smbios", "dumping GPU/monitor information...");
+        log_misc(
+            "gpuinfo",
+            "dumping GPU/monitor information... "
+            "(note: these are current values **before** launching the game)");
         while (EnumDisplayDevicesA(nullptr, device_index, &device, 0)) {
             print_adapter(device_index, &device, false);
 
             DWORD monitor_index = 0;
-            DISPLAY_DEVICEA monitor;
+            DISPLAY_DEVICEA monitor = {};
             monitor.cb = sizeof(monitor);
             while (EnumDisplayDevicesA((PCHAR)device.DeviceName, monitor_index, &monitor, 0)) {
                 print_adapter(monitor_index, &monitor, true);
