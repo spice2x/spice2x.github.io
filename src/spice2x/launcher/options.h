@@ -136,6 +136,8 @@ namespace launcher {
             APISerialBaud,
             APIPretty,
             APIDebugMode,
+            APIScreenMirrorQuality,
+            APIScreenMirrorDivide,
             EnableAllIOModules,
             EnableACIOModule,
             EnableICCAModule,

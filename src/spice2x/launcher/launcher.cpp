@@ -6,6 +6,7 @@
 #include <shlwapi.h>
 #include <cfg/configurator.h>
 
+#include "api/modules/capture.h"
 #include "acio/acio.h"
 #include "acio/icca/icca.h"
 #include "api/controller.h"
@@ -813,6 +814,7 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::AdapterSubnet].is_active()) {
         NETWORK_SUBNET = options[launcher::Options::AdapterSubnet].value_text();
     }
+
     if (options[launcher::Options::APITCPPort].is_active()) {
         api_enable = true;
         api_port = options[launcher::Options::APITCPPort].value_uint32();
@@ -835,6 +837,13 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::APIDebugMode].value_bool()) {
         api_debug = true;
     }
+    if (options[launcher::Options::APIScreenMirrorQuality].is_active()) {
+        api::modules::CAPTURE_QUALITY = options[launcher::Options::APIScreenMirrorQuality].value_uint32();
+    }
+    if (options[launcher::Options::APIScreenMirrorDivide].is_active()) {
+        api::modules::CAPTURE_DIVIDE = options[launcher::Options::APIScreenMirrorDivide].value_uint32();
+    }
+
     if (options[launcher::Options::DisableDebugHooks].value_bool()) {
         debughook::DEBUGHOOK_LOGGING = false;
     }

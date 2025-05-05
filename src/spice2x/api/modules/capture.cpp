@@ -9,6 +9,9 @@ using namespace rapidjson;
 
 namespace api::modules {
 
+    std::optional<uint32_t> CAPTURE_QUALITY;
+    std::optional<uint32_t> CAPTURE_DIVIDE;
+
     static thread_local std::vector<uint8_t> CAPTURE_BUFFER;
 
     Capture::Capture() : Module("capture") {
@@ -44,12 +47,21 @@ namespace api::modules {
         int screen = 0;
         int quality = 70;
         int divide = 1;
-        if (req.params.Size() > 0 && req.params[0].IsUint())
+        if (req.params.Size() > 0 && req.params[0].IsUint()) {
             screen = req.params[0].GetUint();
-        if (req.params.Size() > 1 && req.params[1].IsUint())
+        }
+
+        if (CAPTURE_QUALITY.has_value()) {
+            quality = CAPTURE_QUALITY.value();
+        } else if (req.params.Size() > 1 && req.params[1].IsUint()) {
             quality = req.params[1].GetUint();
-        if (req.params.Size() > 2 && req.params[2].IsUint())
+        }
+
+        if (CAPTURE_DIVIDE.has_value()) {
+            divide = CAPTURE_DIVIDE.value();
+        } else if (req.params.Size() > 2 && req.params[2].IsUint()) {
             divide = req.params[2].GetUint();
+        }
 
         // receive JPEG data
         uint64_t timestamp = 0;

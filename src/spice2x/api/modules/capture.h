@@ -1,9 +1,14 @@
 #pragma once
 
+#include <optional>
+
 #include "api/module.h"
 #include "api/request.h"
 
 namespace api::modules {
+
+    extern std::optional<uint32_t> CAPTURE_QUALITY;
+    extern std::optional<uint32_t> CAPTURE_DIVIDE;
 
     class Capture : public Module {
     public:
