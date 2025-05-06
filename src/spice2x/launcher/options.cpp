@@ -2175,7 +2175,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Input Requires Focus",
         .name = "inputfocus",
         .desc =
-            "Determine button input behavior when game window is not in focus.\n\n"
+            "Determine input behavior when game window is not in focus.\n\n"
             "never: never check for window focus; allow input regardless of focus\n"
             "naive (default): only naive bindings check for window focus, rawinput binds are always allowed\n"
             "always: always check for window focus; input requires window focus",

@@ -595,6 +595,12 @@ float GameAPI::Analogs::getState(rawinput::Device *device, Analog &analog) {
     switch (device->type) {
         case rawinput::MOUSE: {
 
+            // check for focus
+            if (rawinput::NAIVE_REQUIRE_FOCUS && !superexit::has_focus()) {
+                value = analog.getLastState();
+                break;
+            }
+
             // get mouse position
             auto mouse = device->mouseInfo;
             long pos;
