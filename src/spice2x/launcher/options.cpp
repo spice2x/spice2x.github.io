@@ -2171,6 +2171,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "I/O Options",
     },
     {
+        // InputRequiresFocus
+        .title = "Input Requires Focus",
+        .name = "inputfocus",
+        .desc =
+            "Determine button input behavior when game window is not in focus.\n\n"
+            "For best performance, use 'never or 'naive'.\n\n"
+            "never: always check for window focus, for both naive and rawinput bindings\n"
+            "naive (default): only naive bindings check for window focus, rawinput binds are always allowed\n"
+            "always: never check for window focus; input is always processed\n",
+        .type = OptionType::Enum,
+        .category = "I/O Options",
+        .elements = {
+            {"never", ""},
+            {"naive", ""},
+            {"always", ""},
+        },
+    },
+    {
         // NostalgiaPoke
         .title = "Nost Screen Poke",
         .name = "nostpoke",

@@ -33,12 +33,14 @@ enum ButtonAnalogType {
 
 extern const char *ButtonAnalogTypeStr[];
 
+constexpr unsigned short INVALID_VKEY = UINT16_C(0xFF);
+
 class Button {
 private:
     std::vector<Button> alternatives;
     std::string name;
     std::string device_identifier = "";
-    unsigned short vKey = 0xFF;
+    unsigned short vKey = INVALID_VKEY;
     ButtonAnalogType analog_type = BAT_NONE;
     double debounce_up = 0.0;
     double debounce_down = 0.0;
@@ -68,12 +70,12 @@ public:
         if (this->override_enabled) {
             return true;
         }
-        if (this->vKey != 0xFF) {
+        if (this->vKey != INVALID_VKEY) {
             return true;
         }
 
         for (auto &alternative : this->alternatives) {
-            if (alternative.vKey != 0xFF) {
+            if (alternative.vKey != INVALID_VKEY) {
                 return true;
             }
         }
@@ -82,7 +84,7 @@ public:
     }
 
     inline void clearBindings() {
-        vKey = 0xFF;
+        vKey = INVALID_VKEY;
         alternatives.clear();
         device_identifier = "";
         analog_type = BAT_NONE;
