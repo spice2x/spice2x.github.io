@@ -1085,12 +1085,9 @@ int main_implementation(int argc, char *argv[]) {
         } else if (text == "never") {
             rawinput::NAIVE_REQUIRE_FOCUS = false;
             rawinput::RAWINPUT_REQUIRE_FOCUS = false;
-        } else {
-            // naive (default)
-            rawinput::NAIVE_REQUIRE_FOCUS = true;
-            rawinput::RAWINPUT_REQUIRE_FOCUS = false;
         }
     }
+
     if (options[launcher::Options::MidiAlgoVer].is_active()) {
         if (options[launcher::Options::MidiAlgoVer].value_text() == "legacy") {
             midi_algo = rawinput::MidiNoteAlgorithm::LEGACY;
