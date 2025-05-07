@@ -60,7 +60,7 @@ DIST_ENABLE=1
 DIST_FOLDER="./dist"
 DIST_NAME="spice2x-$(date +%y)-$(date +%m)-$(date +%d).zip"
 DIST_COMMENT=${DIST_NAME}$'\n'"$GIT_BRANCH - $GIT_HEAD"$'\nThank you for playing.'
-TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_spice spicetools_spice_laa"
+TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_spice spicetools_spice_laa spicetools_stubs_cpusbxpkm"
 TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEncodeAPI64 spicetools_stubs_nvcuvid spicetools_stubs_nvcuda spicetools_spice64"
 
 # determine build type
@@ -181,7 +181,7 @@ fi
 echo "Copy files to output directory..."
 rm -rf ${OUTDIR}
 mkdir -p ${OUTDIR}
-#mkdir -p ${OUTDIR}/stubs/32
+mkdir -p ${OUTDIR}/stubs/32
 mkdir -p ${OUTDIR}/stubs/64
 mkdir -p ${OUTDIR}/extras/largeaddressaware
 if false # ((DEBUG > 0))
@@ -200,6 +200,7 @@ then
     #cp ${BUILDDIR_64}/spicetools/64/nvEncodeAPI64.dll ${OUTDIR}/stubs/64 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
+	#cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
 else
     # release files
     cp ${BUILDDIR_32}/spicetools/spicecfg.exe ${OUTDIR} 2>/dev/null
@@ -213,6 +214,7 @@ else
     cp ${BUILDDIR_64}/spicetools/64/nvEncodeAPI64.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
 fi
 
 # pack source files to output directory
