@@ -28,6 +28,8 @@ namespace rawinput {
     int TOUCHSCREEN_RANGE_X = 0;
     int TOUCHSCREEN_RANGE_Y = 0;
     bool DUMP_HID_DEVICES_TO_LOG = false;
+    bool NAIVE_REQUIRE_FOCUS = true;
+    bool RAWINPUT_REQUIRE_FOCUS = false;
 
     // set this to something slightly longer than 16.67ms (60Hz) so that I/O can pick it up
     // this may need to be adjusted for each game in the future if there is a game that polls less

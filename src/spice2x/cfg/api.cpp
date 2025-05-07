@@ -1,5 +1,8 @@
 #include "api.h"
 
+#include <optional>
+
+#include "launcher/superexit.h"
 #include "rawinput/rawinput.h"
 #include "rawinput/piuio.h"
 #include "util/time.h"
@@ -64,18 +67,29 @@ GameAPI::Buttons::State GameAPI::Buttons::getState(rawinput::RawInputManager *ma
     auto current_button = &_button;
     auto alternatives = check_alts ? &current_button->getAlternatives() : nullptr;
     unsigned int button_count = 0;
+    std::optional<bool> window_has_focus;
     while (true) {
 
         // naive behavior
         if (current_button->isNaive()) {
+            GameAPI::Buttons::State state;
+            auto vkey = current_button->getVKey();
+
+            // check for focus
+            if (vkey != INVALID_VKEY && rawinput::NAIVE_REQUIRE_FOCUS) {
+                if (!window_has_focus.has_value()) {
+                    window_has_focus = superexit::has_focus();
+                }
+                if (!window_has_focus.value()) {
+                    vkey = INVALID_VKEY;
+                }
+            }
 
             // read
-            auto vkey = current_button->getVKey();
-            GameAPI::Buttons::State state;
-            if (vkey == 0xFF) {
+            if (vkey == INVALID_VKEY) {
                 state = BUTTON_NOT_PRESSED;
             } else {
-                state = (GetAsyncKeyState(current_button->getVKey()) & 0x8000) ? BUTTON_PRESSED : BUTTON_NOT_PRESSED;
+                state = (GetAsyncKeyState(vkey) & 0x8000) ? BUTTON_PRESSED : BUTTON_NOT_PRESSED;
             }
 
             // invert
@@ -105,6 +119,16 @@ GameAPI::Buttons::State GameAPI::Buttons::getState(rawinput::RawInputManager *ma
         // get device
         auto &devid = current_button->getDeviceIdentifier();
         auto device = manager->devices_get(devid, false); // TODO: fix to update only
+
+        // check for focus
+        if (device && rawinput::RAWINPUT_REQUIRE_FOCUS) {
+            if (!window_has_focus.has_value()) {
+                window_has_focus = superexit::has_focus();
+            }
+            if (!window_has_focus.value()) {
+                device = nullptr;
+            }
+        }
 
         // get state if device was marked as updated
         GameAPI::Buttons::State state = current_button->getLastState();
@@ -570,6 +594,12 @@ float GameAPI::Analogs::getState(rawinput::Device *device, Analog &analog) {
     // get value from device
     switch (device->type) {
         case rawinput::MOUSE: {
+
+            // check for focus
+            if (rawinput::NAIVE_REQUIRE_FOCUS && !superexit::has_focus()) {
+                value = analog.getLastState();
+                break;
+            }
 
             // get mouse position
             auto mouse = device->mouseInfo;

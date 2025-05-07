@@ -284,7 +284,7 @@ std::string Button::getDisplayString(rawinput::RawInputManager* manager) {
     std::string vKeyString = fmt::format("{:#x}", vKey);
 
     // device must be existing
-    if (this->device_identifier.empty() && vKey == 0xFF) {
+    if (this->device_identifier.empty() && vKey == INVALID_VKEY) {
         return "";
     }
 

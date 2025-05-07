@@ -233,6 +233,7 @@ namespace launcher {
             IIDXRecQuality,
             MidiAlgoVer,
             MidiNoteSustain,
+            InputRequiresFocus,
             NostalgiaPoke,
             ForceBackBufferCount,
             SDVXWindowedSubscreenSize,

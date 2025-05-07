@@ -28,6 +28,9 @@ namespace rawinput {
 
     extern uint32_t MIDI_NOTE_SUSTAIN;
 
+    extern bool NAIVE_REQUIRE_FOCUS;
+    extern bool RAWINPUT_REQUIRE_FOCUS;
+
     struct DeviceCallback {
         void *data;
         std::function<void(void*, Device*)> f;
