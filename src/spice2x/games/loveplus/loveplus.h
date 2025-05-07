@@ -4,6 +4,8 @@
 
 namespace games::loveplus {
 
+    extern bool CAMERA_ENABLE;
+
     // touch stuff
     void touch_update();
 

@@ -240,6 +240,7 @@ namespace launcher {
             SDVXWindowedSubscreenPosition,
             SDVXWindowedSubscreenBorderless,
             SDVXWindowedSubscreenAlwaysOnTop,
+            LovePlusCamEnable,
         };
 
         enum class OptionsCategory {

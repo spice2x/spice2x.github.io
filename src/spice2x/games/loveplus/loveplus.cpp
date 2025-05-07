@@ -13,6 +13,8 @@
 
 namespace games::loveplus {
 
+    bool CAMERA_ENABLE = false;
+
     // touch stuff
     static bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
@@ -117,8 +119,10 @@ namespace games::loveplus {
     }
 
     static LPSTR __stdcall GetCommandLineA_hook() {
-        static std::string lp_args = "-win -noCamera -noWatchDog -noIOError -noIrda -notarget";
-
+        std::string lp_args = "-win -noWatchDog -noIOError -noIrda -notarget";
+        if (!CAMERA_ENABLE) {
+            lp_args += " -noCamera";
+        }
         return lp_args.data();
     }
 
