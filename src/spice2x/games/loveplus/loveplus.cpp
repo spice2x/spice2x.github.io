@@ -30,16 +30,15 @@ namespace games::loveplus {
         if (!TOUCH_ATTACHED) {
 
             // Find the game window.
-            // We check the foreground window first, then fall back to searching for the window title
-            // All game versions seem to have their model first in the window title
-            HWND wnd = GetForegroundWindow();
-            if (!string_begins_with(GetActiveWindowTitle(), "LovePlus")) {
-                wnd = FindWindowBeginsWith(avs::game::MODEL);
-            }
+            HWND wnd = FindProcessWindowBeginsWith("LovePlusAC");
 
             // attach touch hook
             if (wnd) {
-                log_info("loveplus", "using window handle for touch: {}", fmt::ptr(wnd));
+                log_info(
+                    "loveplus",
+                    "using window handle for touch: {} ({})",
+                    fmt::ptr(wnd),
+                    get_window_title(wnd));
                 touch_create_wnd(wnd);
             } else {
                 log_info("loveplus", "falling back to the DirectX window handle for touch");
