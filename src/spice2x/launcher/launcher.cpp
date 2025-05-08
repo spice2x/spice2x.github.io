@@ -1109,6 +1109,10 @@ int main_implementation(int argc, char *argv[]) {
         rawinput::MIDI_NOTE_SUSTAIN = options[launcher::Options::MidiNoteSustain].value_uint32();
     }
 
+    if (options[launcher::Options::LovePlusCamEnable].value_bool()) {
+        games::loveplus::CAMERA_ENABLE = true;
+    }
+
     // API debugging
     if (api_debug && !cfg::CONFIGURATOR_STANDALONE) {
         API_CONTROLLER = std::make_unique<api::Controller>(api_port, api_pass, api_pretty);

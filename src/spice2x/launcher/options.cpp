@@ -2249,6 +2249,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Graphics (Windowed)",
+    },
+    {
+        // LovePlusCamEnable
+        .title = "LovePlus Camera Enable",
+        .name = "lovepluscam",
+        .desc = "Allow game to access camera; camera must be compatible with game",
+        .type = OptionType::Bool,
+        .game_name = "LovePlus",
+        .category = "Game Options",
     }
 };
 
