@@ -227,6 +227,7 @@ static inline std::vector<HWND> find_windows_beginning_with(const std::string &t
     return windows;
 }
 
+// exists for compat only; prefer to use FindProcessWindowBeginsWith instead
 static inline HWND FindWindowBeginsWith(std::string title) {
 
     // get all windows
@@ -245,6 +246,28 @@ static inline HWND FindWindowBeginsWith(std::string title) {
     }
 
     // nothing found
+    return nullptr;
+}
+
+static inline HWND FindProcessWindowBeginsWith(const std::string &title) {
+    // try foreground window first
+    HWND fg_win = GetForegroundWindow();
+    if (string_begins_with(get_window_title(fg_win), title)) {
+        DWORD fg_pid;
+        GetWindowThreadProcessId(fg_win, &fg_pid);
+        if (fg_pid == GetCurrentProcessId()) {
+            return fg_win;
+        }
+    }
+
+    // try different windows
+    for (const auto window : find_windows_beginning_with(title)) {
+        DWORD fg_pid;
+        GetWindowThreadProcessId(window, &fg_pid);
+        if (fg_pid == GetCurrentProcessId()) {
+            return window;
+        }
+    }
     return nullptr;
 }
 
