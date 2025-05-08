@@ -119,11 +119,13 @@ namespace games::loveplus {
     }
 
     static LPSTR __stdcall GetCommandLineA_hook() {
-        std::string lp_args = "-win -noWatchDog -noIOError -noIrda -notarget";
-        if (!CAMERA_ENABLE) {
-            lp_args += " -noCamera";
+        static std::string lp_args = "-win -noWatchDog -noIOError -noIrda -notarget";
+        static std::string lp_args_nocamera = lp_args + " -noCamera";
+        if (CAMERA_ENABLE) {
+            return lp_args.data();
+        } else {
+            return lp_args_nocamera.data();
         }
-        return lp_args.data();
     }
 
     LovePlusGame::LovePlusGame() : Game("LovePlus") {
