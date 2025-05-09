@@ -294,7 +294,7 @@ namespace games::shared {
 
         // error
         if (!clear) {
-            log_fatal("sdvx", "could not find path");
+            log_fatal("printer", "could not find path");
         }
 
         return "DUMMY";

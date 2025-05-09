@@ -241,6 +241,11 @@ namespace launcher {
             SDVXWindowedSubscreenBorderless,
             SDVXWindowedSubscreenAlwaysOnTop,
             LovePlusCamEnable,
+            LovePlusPrinterOutputPath,
+            LovePlusPrinterOutputClear,
+            LovePlusPrinterOutputOverwrite,
+            LovePlusPrinterOutputFormat,
+            LovePlusPrinterJPGQuality,
         };
 
         enum class OptionsCategory {

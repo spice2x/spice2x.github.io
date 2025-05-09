@@ -662,21 +662,42 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::SDVXPrinterEmulation].value_bool()) {
         attach_cpusbxpkm_printer = true;
     }
-    if (options[launcher::Options::SDVXPrinterOutputOverwrite].value_bool()) {
+
+    // printer overwrite
+    if (options[launcher::Options::SDVXPrinterOutputOverwrite].value_bool() ||
+        options[launcher::Options::LovePlusPrinterOutputOverwrite].value_bool()) {
         games::shared::PRINTER_OVERWRITE_FILE = true;
     }
+
+    // printer output path
     for (auto &path : options[launcher::Options::SDVXPrinterOutputPath].values_text()) {
         games::shared::PRINTER_PATH.push_back(path);
     }
+    for (auto &path : options[launcher::Options::LovePlusPrinterOutputPath].values_text()) {
+        games::shared::PRINTER_PATH.push_back(path);
+    }
+
+    // printer file format
     for (auto &path : options[launcher::Options::SDVXPrinterOutputFormat].values_text()) {
         games::shared::PRINTER_FORMAT.push_back(path);
     }
+    for (auto &path : options[launcher::Options::LovePlusPrinterOutputFormat].values_text()) {
+        games::shared::PRINTER_FORMAT.push_back(path);
+    }
+
+    // printer JPG quality
     if (options[launcher::Options::SDVXPrinterJPGQuality].is_active()) {
         games::shared::PRINTER_JPG_QUALITY = options[launcher::Options::SDVXPrinterJPGQuality].value_uint32();
+    } else if (options[launcher::Options::LovePlusPrinterJPGQuality].is_active()) {
+        games::shared::PRINTER_JPG_QUALITY = options[launcher::Options::LovePlusPrinterJPGQuality].value_uint32();
     }
-    if (options[launcher::Options::SDVXPrinterOutputClear].value_bool()) {
+
+    // printer output clear
+    if (options[launcher::Options::SDVXPrinterOutputClear].value_bool() ||
+        options[launcher::Options::LovePlusPrinterOutputClear].value_bool()) {
         games::shared::PRINTER_CLEAR = true;
     }
+
     if (options[launcher::Options::HTTP11].is_active()) {
         avs::ea3::HTTP11 = options[launcher::Options::HTTP11].value_uint32();
     }
