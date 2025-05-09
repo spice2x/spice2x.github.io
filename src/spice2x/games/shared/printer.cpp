@@ -334,20 +334,40 @@ namespace games::shared {
             image_data[index + 2] = tmp;
         }
 
-        // flip horizontally
-        for (int x = 0; x < image_width / 2; x++) {
-            for (int y = 0; y < image_height; y++) {
-                int index1 = (y * image_width + x) * 3;
-                int index2 = (y * image_width + image_width - x - 1) * 3;
-                uint8_t r = image_data[index1 + 0];
-                uint8_t g = image_data[index1 + 1];
-                uint8_t b = image_data[index1 + 2];
-                image_data[index1 + 0] = image_data[index2 + 0];
-                image_data[index1 + 1] = image_data[index2 + 1];
-                image_data[index1 + 2] = image_data[index2 + 2];
-                image_data[index2 + 0] = r;
-                image_data[index2 + 1] = g;
-                image_data[index2 + 2] = b;
+        if (avs::game::is_model("KLP")) {
+            // rotate image clockwise
+            log_info("printer", "rotate clockwise...");
+            auto rotated = new uint8_t[image_width * image_height * 3];
+            for (int x = 0; x < image_width; x++) {
+                for (int y = 0; y < image_height; y++) {
+                    int index1 = (y * image_width + x) * 3;
+                    int index2 = (x * image_height + y) * 3;
+                    rotated[index2 + 0] = image_data[index1 + 0];
+                    rotated[index2 + 1] = image_data[index1 + 1];
+                    rotated[index2 + 2] = image_data[index1 + 2];
+                }
+            }
+            delete[] image_data;
+            image_data = rotated;
+            std::swap(image_width, image_height);
+
+        } else {
+            // flip horizontally
+            log_info("printer", "flip horizontally...");
+            for (int x = 0; x < image_width / 2; x++) {
+                for (int y = 0; y < image_height; y++) {
+                    int index1 = (y * image_width + x) * 3;
+                    int index2 = (y * image_width + image_width - x - 1) * 3;
+                    uint8_t r = image_data[index1 + 0];
+                    uint8_t g = image_data[index1 + 1];
+                    uint8_t b = image_data[index1 + 2];
+                    image_data[index1 + 0] = image_data[index2 + 0];
+                    image_data[index1 + 1] = image_data[index2 + 1];
+                    image_data[index1 + 2] = image_data[index2 + 2];
+                    image_data[index2 + 0] = r;
+                    image_data[index2 + 1] = g;
+                    image_data[index2 + 2] = b;
+                }
             }
         }
 
