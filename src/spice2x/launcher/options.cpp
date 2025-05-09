@@ -694,7 +694,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "SDVX Printer Output Format",
         .name = "printerformat",
-        .desc = "Path to folder where images will be stored",
+        .desc = "File format for printer output",
         .type = OptionType::Text,
         .setting_name = "(png/bmp/tga/jpg)",
         .game_name = "Sound Voltex",
@@ -2258,7 +2258,49 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "LovePlus",
         .category = "Game Options",
-    }
+    },
+    {
+        .title = "LovePlus Printer Output Path",
+        .name = "lpprinterpath",
+        .desc = "Path to folder where images will be stored",
+        .type = OptionType::Text,
+        .game_name = "LovePlus",
+        .category = "Game Options (Advanced)",
+    },
+    {
+        .title = "LovePlus Printer Output Clear",
+        .name = "lpprinterclear",
+        .desc = "Clean up saved images in the output directory on startup",
+        .type = OptionType::Bool,
+        .game_name = "LovePlus",
+        .category = "Game Options (Advanced)",
+    },
+    {
+        .title = "LovePlus Printer Output Overwrite",
+        .name = "lpprinteroverwrite",
+        .desc = "Always overwrite the same file in output directory",
+        .type = OptionType::Bool,
+        .game_name = "LovePlus",
+        .category = "Game Options (Advanced)",
+    },
+    {
+        .title = "LovePlus Printer Output Format",
+        .name = "lpprinterformat",
+        .desc = "File format for printer output",
+        .type = OptionType::Text,
+        .setting_name = "(png/bmp/tga/jpg)",
+        .game_name = "LovePlus",
+        .category = "Game Options (Advanced)",
+    },
+    {
+        .title = "LovePlus Printer JPG Quality",
+        .name = "lpprinterjpgquality",
+        .desc = "Quality setting in percent if JPG format is used",
+        .type = OptionType::Integer,
+        .setting_name = "(0-100)",
+        .game_name = "LovePlus",
+        .category = "Game Options (Advanced)",
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {
