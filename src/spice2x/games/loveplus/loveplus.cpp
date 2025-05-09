@@ -126,6 +126,17 @@ namespace games::loveplus {
     LovePlusGame::LovePlusGame() : Game("LovePlus") {
     }
 
+    static bool lp_spam_remover(void *user, const std::string &data, logger::Style style, std::string &out) {
+        if (data.empty() || data[0] != '[') {
+            return false;
+        }
+        if (data.find(">  [INFO] err_code: 0, err_title: , err_str:") != std::string::npos) {
+            out = "";
+            return true;
+        }
+        return false;
+    }
+
     void LovePlusGame::attach() {
         Game::attach();
 
@@ -168,6 +179,9 @@ namespace games::loveplus {
         // get command line hook
         HMODULE lpac = libutils::try_library("lpac.dll");
         detour::iat("GetCommandLineA", GetCommandLineA_hook, lpac);
+
+        // remove log spam
+        logger::hook_add(lp_spam_remover, nullptr);
     }
 
     void LovePlusGame::detach() {
