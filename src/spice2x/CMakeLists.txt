@@ -124,8 +124,8 @@ else()
         # https://github.com/msys2/MINGW-packages/pull/6880
         # some games crash if some DLLS load above 4GB VA, so manually set base address to standard 32-bit VA,
         # and might as well double make sure ASLR is disabled here
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections,--disable-dynamicbase,--image-base=0x400000")
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,--disable-dynamicbase,--image-base=0x400000")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections,--disable-dynamicbase,--image-base=0x400000,--enable-stdcall-fixup")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,--disable-dynamicbase,--image-base=0x400000,--enable-stdcall-fixup")
 
         # set visibility to hidden
         set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fvisibility=hidden")
@@ -160,8 +160,8 @@ else()
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-fno-ident -ffunction-sections -fdata-sections")
 
         # linker fix to load below 4GB
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections,--disable-dynamicbase,--image-base=0x400000")
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,--disable-dynamicbase,--image-base=0x400000")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections,--disable-dynamicbase,--image-base=0x400000,--enable-stdcall-fixup")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections,--disable-dynamicbase,--image-base=0x400000,--enable-stdcall-fixup")
 
         # set visibility to hidden
         set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -fvisibility=hidden")
@@ -184,8 +184,8 @@ else()
         set(CMAKE_CXX_FLAGS_DEBUG "-gdwarf")
 
         # linker fix to load below 4GB
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-dynamicbase,--image-base=0x400000")
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--disable-dynamicbase,--image-base=0x400000")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-dynamicbase,--image-base=0x400000,--enable-stdcall-fixup")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--disable-dynamicbase,--image-base=0x400000,--enable-stdcall-fixup")
 
         # enable debug symbols on level 3 and keep frame pointers
         set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g3 -fno-omit-frame-pointer")
@@ -738,6 +738,16 @@ if(NOT MSVC)
     set_target_properties(spicetools_stubs_nvEncodeAPI64 PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
 endif()
 
+# cpusbxpkm.dll (32 bit)
+set(SOURCE_FILES stubs/cpusbxpkm.cpp)
+add_library(spicetools_stubs_cpusbxpkm SHARED ${SOURCE_FILES} stubs/cpusbxpkm.def)
+set_target_properties(spicetools_stubs_cpusbxpkm PROPERTIES PREFIX "")
+set_target_properties(spicetools_stubs_cpusbxpkm PROPERTIES OUTPUT_NAME "cpusbxpkm")
+
+if(NOT MSVC)
+    set_target_properties(spicetools_stubs_cpusbxpkm PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+endif()
+
 # output directories
 ####################
 
@@ -747,7 +757,7 @@ set_target_properties(spicetools_cfg
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools")
 
 # output 32bit
-set_target_properties(spicetools_spice spicetools_spice_laa spicetools_stubs_kbt spicetools_stubs_kld
+set_target_properties(spicetools_spice spicetools_spice_laa spicetools_stubs_kbt spicetools_stubs_kld spicetools_stubs_cpusbxpkm
         PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/archive32"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/32"

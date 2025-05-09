@@ -1,0 +1,18 @@
+EXPORTS
+    CPU9CheckPaperRemain
+    CPU9CheckPrinter
+    CPU9CheckPrintEnd
+    CPU9GetFWInfo
+    CPU9GetMediaType
+    CPU9GetTempInfo
+    CPU9GetTotalPrintCount
+    CPU9PreHeat
+    CPU9PrintJobCancel
+    CPU9PrintOut
+    CPU9SetPrintParameter2
+    CPUASendImage
+    CPUASendImagePrint
+    CPUASendImagePrint2
+    CPUASetPrintParameter
+    CPUXInit
+    CPUXSearchPrinters
