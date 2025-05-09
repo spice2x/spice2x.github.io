@@ -19,6 +19,8 @@ namespace games::loveplus {
     static bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
 
+    static std::string lp_args = "-noWatchDog -noIOError -noIrda -notarget";
+
     void touch_update() {
 
         // check if touch enabled
@@ -118,13 +120,7 @@ namespace games::loveplus {
     }
 
     static LPSTR __stdcall GetCommandLineA_hook() {
-        static std::string lp_args = "-win -noWatchDog -noIOError -noIrda -notarget";
-        static std::string lp_args_nocamera = lp_args + " -noCamera";
-        if (CAMERA_ENABLE) {
-            return lp_args.data();
-        } else {
-            return lp_args_nocamera.data();
-        }
+        return lp_args.data();
     }
 
     LovePlusGame::LovePlusGame() : Game("LovePlus") {
@@ -162,6 +158,13 @@ namespace games::loveplus {
         HMODULE seteq = libutils::try_library("ad_hd_seteq_dll.dll");
         detour::inline_hook((void *) SetEqualizer, libutils::try_proc(seteq, "SetEqualizer"));
 
+        // set up command line args
+        if (!CAMERA_ENABLE) {
+            lp_args += " -noCamera";
+        }
+        if (GRAPHICS_WINDOWED) {
+            lp_args += " -win";
+        }
         // get command line hook
         HMODULE lpac = libutils::try_library("lpac.dll");
         detour::iat("GetCommandLineA", GetCommandLineA_hook, lpac);
