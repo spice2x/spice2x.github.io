@@ -1,3 +1,14 @@
+05/09/2025 [spice2x]
+    Check for window focus when processing input (-inputfocus)
+    More options for IIDX/SDVX windowed subscreen
+    SpiceCompanion screen mirroring quality options
+    Various LovePlus improvements and fixes:
+        Allow camera access
+        Full screen mode
+        Add printer options
+        Add stub for printer DLL (cpusbxpkm.dll)
+    Logging improvements for better troubleshooting
+
 04/25/2025 [spice2x]
     LargeAddressAware variant of spice.exe for Metal Gear
     Save new JSON config files to %appdata%/spice2x
