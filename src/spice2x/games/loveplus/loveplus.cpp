@@ -123,9 +123,6 @@ namespace games::loveplus {
         return lp_args.data();
     }
 
-    LovePlusGame::LovePlusGame() : Game("LovePlus") {
-    }
-
     static bool lp_spam_remover(void *user, const std::string &data, logger::Style style, std::string &out) {
         if (data.empty() || data[0] != '[') {
             return false;
@@ -135,6 +132,14 @@ namespace games::loveplus {
             return true;
         }
         return false;
+    }
+
+    LovePlusGame::LovePlusGame() : Game("LovePlus") {
+        logger::hook_add(lp_spam_remover, nullptr);
+    }
+
+    LovePlusGame::~LovePlusGame() {
+        logger::hook_remove(lp_spam_remover, this);
     }
 
     void LovePlusGame::attach() {
@@ -180,8 +185,6 @@ namespace games::loveplus {
         HMODULE lpac = libutils::try_library("lpac.dll");
         detour::iat("GetCommandLineA", GetCommandLineA_hook, lpac);
 
-        // remove log spam
-        logger::hook_add(lp_spam_remover, nullptr);
     }
 
     void LovePlusGame::detach() {

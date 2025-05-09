@@ -12,6 +12,7 @@ namespace games::loveplus {
     class LovePlusGame : public games::Game {
     public:
         LovePlusGame();
+        virtual ~LovePlusGame() override;
         virtual void attach() override;
         virtual void detach() override;
     };
