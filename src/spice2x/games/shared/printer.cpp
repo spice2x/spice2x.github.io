@@ -326,7 +326,7 @@ namespace games::shared {
         memcpy(image_data, pBandImage->baseAddr, (size_t) (image_width * image_height * 3));
 
         // convert BGR to RGB
-        log_info("printer", "converting BGR to RGB...");
+        log_misc("printer", "converting BGR to RGB...");
         for (int pixel = 0; pixel < image_width * image_height; pixel++) {
             int index = pixel * 3;
             uint8_t tmp = image_data[index];
@@ -334,9 +334,9 @@ namespace games::shared {
             image_data[index + 2] = tmp;
         }
 
-        if (avs::game::is_model("KLP")) {
+        if (avs::game::is_model({"KLP", "KFC"})) {
             // rotate image clockwise
-            log_info("printer", "rotate clockwise...");
+            log_misc("printer", "rotate clockwise...");
             auto rotated = new uint8_t[image_width * image_height * 3];
             for (int x = 0; x < image_width; x++) {
                 for (int y = 0; y < image_height; y++) {
@@ -353,7 +353,7 @@ namespace games::shared {
 
         } else {
             // flip horizontally
-            log_info("printer", "flip horizontally...");
+            log_misc("printer", "flip horizontally...");
             for (int x = 0; x < image_width / 2; x++) {
                 for (int y = 0; y < image_height; y++) {
                     int index1 = (y * image_width + x) * 3;
@@ -372,7 +372,7 @@ namespace games::shared {
         }
 
         // iterate folders
-        log_info("printer", "writing files...");
+        log_misc("printer", "writing files...");
         for (const auto &path : PRINTER_PATH) {
             for (const auto &format : PRINTER_FORMAT) {
 
