@@ -375,15 +375,6 @@ bool spiceapi::iidx_ticker_reset(spiceapi::Connection &con) {
     return true;
 }
 
-bool spiceapi::iidx_tapeled_get(spiceapi::Connection &con) {
-    auto req = request_gen("iidx", "tapeled_get");
-    auto res = response_get(con.request(doc2str(req)));
-    if (!res)
-        return false;
-    delete res;
-    return true;
-}
-
 bool spiceapi::info_avs(spiceapi::Connection &con, spiceapi::InfoAvs &info) {
     auto req = request_gen("info", "avs");
     auto res = response_get(con.request(doc2str(req)));

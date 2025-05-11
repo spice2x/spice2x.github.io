@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace tapeledutils {
 
@@ -19,6 +21,15 @@ namespace tapeledutils {
         float g;
         float b;
     } rgb_float3_t;
+
+    struct tape_led {
+        std::vector<rgb_float3_t> data;
+        int index_r, index_g, index_b; // Averaged RGB light output indexes
+        std::string lightName;
+
+        tape_led(size_t data_size, int index_r, int index_g, int index_b, std::string lightName)
+        : data(std::vector<rgb_float3_t>(data_size)), index_r(index_r), index_g(index_g), index_b(index_b), lightName(std::move(lightName)) {}
+    };
 
     bool is_enabled();
     rgb_float3_t pick_color_from_led_tape(uint8_t *data, size_t data_size);

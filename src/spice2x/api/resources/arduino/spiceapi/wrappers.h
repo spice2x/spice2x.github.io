@@ -435,17 +435,6 @@ namespace spiceapi {
         return true;
     }
 
-    bool iidx_tapeled_get(Connection &con) {
-        auto req = request_gen("iidx", "tapeled_get");
-        auto req_str = doc2str(req);
-        delete req;
-        auto res = response_get(con, con.request(req_str));
-        if (!res)
-            return false;
-        delete res;
-        return true;
-    }
-
     bool info_avs(Connection &con, InfoAvs &info) {
         auto req = request_gen("info", "avs");
         auto req_str = doc2str(req);

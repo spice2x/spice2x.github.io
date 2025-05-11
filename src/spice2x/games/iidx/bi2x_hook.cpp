@@ -414,9 +414,10 @@ namespace games::iidx {
         // check index bounds
         if (tapeledutils::is_enabled() && index < std::size(TAPELED_MAPPING)) {
             auto &map = TAPELED_MAPPING[index];
+            const auto data_size = map.data.capacity();
 
             // pick a color to use
-            const auto rgb = tapeledutils::pick_color_from_led_tape(data, map.data.capacity());
+            const auto rgb = tapeledutils::pick_color_from_led_tape(data, data_size);
 
             // program the lights into API
             auto &lights = get_lights();
@@ -424,9 +425,10 @@ namespace games::iidx {
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_g], rgb.g);
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_b], rgb.b);
 
-            for (unsigned int i = 0; i < map.data.capacity(); ++i) {
-                const auto color = &data[i * 3];
-                memcpy(&map.data[i], color, sizeof(uint8_t) * 3);
+            for (unsigned int i = 0; i < data_size; ++i) {
+                map.data[i].r = data[i * 3];
+                map.data[i].g = data[i * 3 + 1];
+                map.data[i].b = data[i * 3 + 2];
             }
         }
 
