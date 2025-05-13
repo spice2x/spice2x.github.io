@@ -2,8 +2,12 @@
 
 #include <mutex>
 #include <optional>
+#include <vector>
 
 #include "games/game.h"
+
+#include "external/robin_hood.h"
+#include "util/tapeled.h"
 
 namespace games::iidx {
 
@@ -29,6 +33,10 @@ namespace games::iidx {
     extern char IIDXIO_LED_TICKER[10];
     extern bool IIDXIO_LED_TICKER_READONLY;
     extern std::mutex IIDX_LED_TICKER_LOCK;
+
+    constexpr int IIDX_TAPELED_TOTAL = 17;
+    // data mapping
+    extern tapeledutils::tape_led TAPELED_MAPPING[IIDX_TAPELED_TOTAL];
 
     class IIDXGame : public games::Game {
     public:

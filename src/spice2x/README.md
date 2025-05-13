@@ -247,6 +247,25 @@ which also means that your hex edits are applicable directly.
   - sets the contents of the 16 segment display and disables writes from game
 - ticker_reset()
   - re-enables writes from game
+- tapeled_get(name: str, ...)
+  - returns a list containing a dict of the current tape LED states. The dict keys are:
+    - `Stage Left`
+    - `Stage Right`
+    - `Cabinet Left`
+    - `Cabinet Right`
+    - `Control Panel Under`
+    - `Ceiling Left`
+    - `Title Left`
+    - `Title Right`
+    - `Ceiling Right`
+    - `Touch Panel Left`
+    - `Touch Panel Right`
+    - `Side Panel Left Inner`
+    - `Side Panel Left Outer`
+    - `Side Panel Left`
+    - `Side Panel Right Outer`
+    - `Side Panel Right Inner`
+    - `Side Panel Right`
 
 #### LCD
 - info()

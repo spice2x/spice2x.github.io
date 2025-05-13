@@ -28,6 +28,8 @@
 #include "util/sigscan.h"
 #include "util/utils.h"
 
+#include "external/robin_hood.h"
+
 #include "bi2a.h"
 #include "bi2x_hook.h"
 #include "ezusb.h"
@@ -73,6 +75,26 @@ namespace games::iidx {
     char IIDXIO_LED_TICKER[10] = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\x00'};
     bool IIDXIO_LED_TICKER_READONLY = false;
     std::mutex IIDX_LED_TICKER_LOCK;
+
+    tapeledutils::tape_led TAPELED_MAPPING[IIDX_TAPELED_TOTAL] = {
+        { 19, Lights::StageLeftAvgR, Lights::StageLeftAvgG, Lights::StageLeftAvgB, "Stage Left" },
+        { 19, Lights::StageRightAvgR, Lights::StageRightAvgG, Lights::StageRightAvgB, "Stage Right" },
+        { 45, Lights::CabinetLeftAvgR, Lights::CabinetLeftAvgG, Lights::CabinetLeftAvgB, "Cabinet Left" },
+        { 45, Lights::CabinetRightAvgR, Lights::CabinetRightAvgG, Lights::CabinetRightAvgB, "Cabinet Right" },
+        { 21, Lights::ControlPanelUnderAvgR, Lights::ControlPanelUnderAvgG, Lights::ControlPanelUnderAvgB, "Control Panel Under" },
+        { 54, Lights::CeilingLeftAvgR, Lights::CeilingLeftAvgG, Lights::CeilingLeftAvgB, "Ceiling Left" },
+        { 11, Lights::TitleLeftAvgR, Lights::TitleLeftAvgG, Lights::TitleLeftAvgB, "Title Left" },
+        { 11, Lights::TitleRightAvgR, Lights::TitleRightAvgG, Lights::TitleRightAvgB, "Title Right" },
+        { 54, Lights::CeilingRightAvgR, Lights::CeilingRightAvgG, Lights::CeilingRightAvgB, "Ceiling Right" },
+        { 17, Lights::TouchPanelLeftAvgR, Lights::TouchPanelLeftAvgG, Lights::TouchPanelLeftAvgB, "Touch Panel Left" },
+        { 17, Lights::TouchPanelRightAvgR, Lights::TouchPanelRightAvgG, Lights::TouchPanelRightAvgB, "Touch Panel Right" },
+        { 68, Lights::SidePanelLeftInnerAvgR, Lights::SidePanelLeftInnerAvgG, Lights::SidePanelLeftInnerAvgB, "Side Panel Left Inner" },
+        { 68, Lights::SidePanelLeftOuterAvgR, Lights::SidePanelLeftOuterAvgG, Lights::SidePanelLeftOuterAvgB, "Side Panel Left Outer" },
+        { 61, Lights::SidePanelLeftAvgR, Lights::SidePanelLeftAvgG, Lights::SidePanelLeftAvgB, "Side Panel Left" },
+        { 68, Lights::SidePanelRightOuterAvgR, Lights::SidePanelRightOuterAvgG, Lights::SidePanelRightOuterAvgB, "Side Panel Right Outer" },
+        { 68, Lights::SidePanelRightInnerAvgR, Lights::SidePanelRightInnerAvgG, Lights::SidePanelRightInnerAvgB, "Side Panel Right Inner" },
+        { 61, Lights::SidePanelRightAvgR, Lights::SidePanelRightAvgG, Lights::SidePanelRightAvgB, "Side Panel Right" },
+    };
 
     static LONG WINAPI RegOpenKeyA_hook(HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult) {
         if (lpSubKey != nullptr && phkResult != nullptr) {

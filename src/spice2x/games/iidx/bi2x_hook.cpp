@@ -409,50 +409,27 @@ namespace games::iidx {
          * 16 - side panel right - 183 bytes - 61 colors
          *
          * data is stored in RGB order, 3 bytes per color
-         *
-         * TODO: expose this data via API
          */
 
-        // data mapping
-        static struct TapeLedMapping {
-            size_t data_size;
-            int index_r, index_g, index_b;
-
-            TapeLedMapping(size_t data_size, int index_r, int index_g, int index_b)
-            : data_size(data_size), index_r(index_r), index_g(index_g), index_b(index_b) {}
-
-        } mapping[] = {
-                { 19, Lights::StageLeftAvgR, Lights::StageLeftAvgG, Lights::StageLeftAvgB },
-                { 19, Lights::StageRightAvgR, Lights::StageRightAvgG, Lights::StageRightAvgB },
-                { 45, Lights::CabinetLeftAvgR, Lights::CabinetLeftAvgG, Lights::CabinetLeftAvgB },
-                { 45, Lights::CabinetRightAvgR, Lights::CabinetRightAvgG, Lights::CabinetRightAvgB },
-                { 21, Lights::ControlPanelUnderAvgR, Lights::ControlPanelUnderAvgG, Lights::ControlPanelUnderAvgB },
-                { 54, Lights::CeilingLeftAvgR, Lights::CeilingLeftAvgG, Lights::CeilingLeftAvgB },
-                { 11, Lights::TitleLeftAvgR, Lights::TitleLeftAvgG, Lights::TitleLeftAvgB },
-                { 11, Lights::TitleRightAvgR, Lights::TitleRightAvgG, Lights::TitleRightAvgB },
-                { 54, Lights::CeilingRightAvgR, Lights::CeilingRightAvgG, Lights::CeilingRightAvgB },
-                { 17, Lights::TouchPanelLeftAvgR, Lights::TouchPanelLeftAvgG, Lights::TouchPanelLeftAvgB },
-                { 17, Lights::TouchPanelRightAvgR, Lights::TouchPanelRightAvgG, Lights::TouchPanelRightAvgB },
-                { 68, Lights::SidePanelLeftInnerAvgR, Lights::SidePanelLeftInnerAvgG, Lights::SidePanelLeftInnerAvgB },
-                { 68, Lights::SidePanelLeftOuterAvgR, Lights::SidePanelLeftOuterAvgG, Lights::SidePanelLeftOuterAvgB },
-                { 61, Lights::SidePanelLeftAvgR, Lights::SidePanelLeftAvgG, Lights::SidePanelLeftAvgB },
-                { 68, Lights::SidePanelRightOuterAvgR, Lights::SidePanelRightOuterAvgG, Lights::SidePanelRightOuterAvgB },
-                { 68, Lights::SidePanelRightInnerAvgR, Lights::SidePanelRightInnerAvgG, Lights::SidePanelRightInnerAvgB },
-                { 61, Lights::SidePanelRightAvgR, Lights::SidePanelRightAvgG, Lights::SidePanelRightAvgB },
-        };
-
         // check index bounds
-        if (tapeledutils::is_enabled() && index < std::size(mapping)) {
-            auto &map = mapping[index];
+        if (tapeledutils::is_enabled() && index < std::size(TAPELED_MAPPING)) {
+            auto &map = TAPELED_MAPPING[index];
+            const auto data_size = map.data.capacity();
 
             // pick a color to use
-            const auto rgb = tapeledutils::pick_color_from_led_tape(data, map.data_size);
+            const auto rgb = tapeledutils::pick_color_from_led_tape(data, data_size);
 
             // program the lights into API
             auto &lights = get_lights();
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_r], rgb.r);
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_g], rgb.g);
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_b], rgb.b);
+
+            for (unsigned int i = 0; i < data_size; ++i) {
+                map.data[i].r = data[i * 3];
+                map.data[i].g = data[i * 3 + 1];
+                map.data[i].b = data[i * 3 + 2];
+            }
         }
 
         if (This != custom_node) {
