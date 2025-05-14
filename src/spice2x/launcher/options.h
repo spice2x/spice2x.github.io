@@ -259,7 +259,6 @@ namespace launcher {
     }
 
     extern bool USE_CMD_OVERRIDE;
-    extern bool LOG_CMD_OVERRIDE_HELP;
     
     const std::vector<std::string> &get_categories(Options::OptionsCategory category);
     const std::vector<OptionDefinition> &get_option_definitions();

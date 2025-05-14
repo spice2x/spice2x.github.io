@@ -1226,7 +1226,27 @@ int main_implementation(int argc, char *argv[]) {
     }
     log_info("launcher", "arguments:\n{}", arguments.str());
 
-    if (launcher::LOG_CMD_OVERRIDE_HELP) {
+    // print out conflicts
+    size_t conflicts = 0;
+    for (const auto &option : options) {
+        if (option.conflicting && option.get_definition().type != OptionType::Bool) {
+            conflicts += 1;
+            if (launcher::USE_CMD_OVERRIDE) {
+                log_warning(
+                    "launcher",
+                    "multiple values for -{}, command line args take precedence: {}",
+                    option.get_definition().name, 
+                    option.value);
+            } else {
+                log_warning(
+                    "launcher",
+                    "multiple values for -{}, spicecfg values take precedence: {}",
+                    option.get_definition().name,
+                    option.value);
+            }
+        }
+    }
+    if (conflicts) {
         if (launcher::USE_CMD_OVERRIDE) {
             log_info(
                 "launcher",

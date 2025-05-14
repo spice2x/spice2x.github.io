@@ -44,7 +44,6 @@ static const std::vector<std::string> CATEGORY_ORDER_NONE = {
 };
 
 bool launcher::USE_CMD_OVERRIDE = false;
-bool launcher::LOG_CMD_OVERRIDE_HELP = false;
 
 /*
  * Option Definitions
@@ -2522,26 +2521,7 @@ std::vector<Option> launcher::merge_options(
                                 new_option.value_add(value);
                             }
                         }
-
-                        // note that we are early, before logging is initialized
-                        // so these messages get logged to the console only, not the log file
-                        if (option.get_definition().type != OptionType::Bool) {
-                            LOG_CMD_OVERRIDE_HELP = true;
-                            if (USE_CMD_OVERRIDE) {
-                                log_warning(
-                                    "options",
-                                    "multiple values detected in -{}, command line args take precedence: {}",
-                                    new_option.get_definition().name,
-                                    new_option.value);
-                            } else {
-                                log_warning(
-                                    "options",
-                                    "multiple values detected in -{}, spicecfg values take precedence: {}",
-                                    new_option.get_definition().name,
-                                    new_option.value);
-                            }
-                        }
-
+                        new_option.conflicting = true;
                     } else {
                         auto &new_option = merged.emplace_back(override.get_definition(), "");
                         new_option.disabled = true;
