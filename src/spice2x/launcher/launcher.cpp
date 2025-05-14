@@ -244,6 +244,11 @@ int main_implementation(int argc, char *argv[]) {
     // parse arguments
     LAUNCHER_OPTIONS = launcher::parse_options(argc, argv);
 
+    // command line override (must be done before merging options with cfg)
+    if (LAUNCHER_OPTIONS->at(launcher::Options::OptionConflictResolution).value_bool()) {
+        launcher::USE_CMD_OVERRIDE = true;
+    }
+
     // determine config file path - must be done before anything else
     const auto &cfg_path = LAUNCHER_OPTIONS->at(launcher::Options::ConfigurationPath);
     if (cfg_path.is_active()) {
@@ -285,6 +290,7 @@ int main_implementation(int argc, char *argv[]) {
         cfg::CONFIGURATOR_TYPE = cfg::ConfigType::Config;
         cfg_run = true;
     }
+
     if (options[launcher::Options::EAmusementEmulation].value_bool() &&
         options[launcher::Options::ServiceURL].is_active() &&
         !cfg::CONFIGURATOR_STANDALONE) {
@@ -1219,6 +1225,18 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
     log_info("launcher", "arguments:\n{}", arguments.str());
+
+    if (launcher::LOG_CMD_OVERRIDE_HELP) {
+        if (launcher::USE_CMD_OVERRIDE) {
+            log_info(
+                "launcher",
+                "user specified -cmdoverride, therefore command line args took precedence over spicecfg"); 
+        } else {
+            log_warning(
+                "launcher",
+                "spicecfg values take precedence over command line args; to change this behavior, use -cmdoverride");
+        }
+    }
 
     if (options[launcher::Options::FullscreenResolution].is_active()) {
         std::pair<uint32_t, uint32_t> result;

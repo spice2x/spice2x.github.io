@@ -246,6 +246,7 @@ namespace launcher {
             LovePlusPrinterOutputOverwrite,
             LovePlusPrinterOutputFormat,
             LovePlusPrinterJPGQuality,
+            OptionConflictResolution,
         };
 
         enum class OptionsCategory {
@@ -257,6 +258,9 @@ namespace launcher {
         };
     }
 
+    extern bool USE_CMD_OVERRIDE;
+    extern bool LOG_CMD_OVERRIDE_HELP;
+    
     const std::vector<std::string> &get_categories(Options::OptionsCategory category);
     const std::vector<OptionDefinition> &get_option_definitions();
     std::unique_ptr<std::vector<Option>> parse_options(int argc, char *argv[]);
