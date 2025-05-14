@@ -2315,9 +2315,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // OptionConflictResolution
-        .title = "Command Line Args Overridee",
+        .title = "Command Line Args Override",
         .name = "cmdoverride",
-        .desc = "By default, option values in spicecfg take precedence over comamnd-line args, for legacy compat.\n"
+        .desc = "By default, option values in spicecfg take precedence over command-line args, for legacy compat.\n"
             "When this is specified in command line, command-line args take precedence instead",
         .type = OptionType::Bool,
         .category = "Development",
