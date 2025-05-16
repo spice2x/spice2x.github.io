@@ -43,6 +43,8 @@ static const std::vector<std::string> CATEGORY_ORDER_NONE = {
     ""
 };
 
+bool launcher::USE_CMD_OVERRIDE = false;
+
 /*
  * Option Definitions
  * Be aware that the order must be the same as in the enum launcher::Options!
@@ -81,6 +83,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Network",
     },
     {
+        // ServiceURL
         .title = "EA Service URL",
         .name = "url",
         .desc = "Sets a custom service URL override",
@@ -142,6 +145,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Windowed)",
     },
     {
+        // InjectHook
         .title = "Inject DLL Hooks",
         .name = "k",
         .desc = "Multiple files are allowed; use multiple -k flags, or in SpiceCfg, separate by "
@@ -152,6 +156,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Common",
     },
     {
+        // EarlyInjectHook
         .title = "Inject Early DLL Hooks",
         .name = "z",
         .desc = "Equivalent to 'Inject DLL Hooks' option, but ensures hooks are injected before "
@@ -668,6 +673,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // SDVXPrinterOutputPath
         .title = "SDVX Printer Output Path",
         .name = "printerpath",
         .desc = "Path to folder where images will be stored",
@@ -692,6 +698,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // SDVXPrinterOutputFormat
         .title = "SDVX Printer Output Format",
         .name = "printerformat",
         .desc = "File format for printer output",
@@ -1311,6 +1318,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Touch Parameters",
     },
     {
+        // ICCAReaderPort
         .title = "ICCA Reader Port",
         .name = "reader",
         .desc = "Connects to and uses a ICCA on a given COM port",
@@ -1387,6 +1395,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
+        // SextetStreamPort
         .title = "SextetStream Port",
         .name = "sextet",
         .desc = "Use a SextetStream device on a given COM port",
@@ -2260,6 +2269,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // LovePlusPrinterOutputPath
         .title = "LovePlus Printer Output Path",
         .name = "lpprinterpath",
         .desc = "Path to folder where images will be stored",
@@ -2284,6 +2294,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // LovePlusPrinterOutputFormat
         .title = "LovePlus Printer Output Format",
         .name = "lpprinterformat",
         .desc = "File format for printer output",
@@ -2300,6 +2311,16 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "(0-100)",
         .game_name = "LovePlus",
         .category = "Game Options (Advanced)",
+    },
+    {
+        // OptionConflictResolution
+        .title = "Command Line Args Override",
+        .name = "cmdoverride",
+        .desc = "By default, option values in spicecfg take precedence over command-line args, for legacy compat.\n"
+            "When this is specified in command line, command-line args take precedence instead",
+        .type = OptionType::Bool,
+        .category = "Development",
+        .disabled = true,
     },
 };
 
@@ -2482,12 +2503,25 @@ std::vector<Option> launcher::merge_options(
                         auto &new_option = merged.emplace_back(option.get_definition(), "");
                         new_option.disabled = true;
 
-                        for (auto &value : option.values()) {
-                            new_option.value_add(value);
+                        if (USE_CMD_OVERRIDE) {
+                            // command-line arguments take precedence (opt-in)
+                            for (auto &value : override.values()) {
+                                new_option.value_add(value);
+                            }
+                            for (auto &value : option.values()) {
+                                new_option.value_add(value);
+                            }
+                        } else {
+                            // spicecfg options take precedence (default)
+                            // this sucks, but it's the default for legacy spicetools compat
+                            for (auto &value : option.values()) {
+                                new_option.value_add(value);
+                            }
+                            for (auto &value : override.values()) {
+                                new_option.value_add(value);
+                            }
                         }
-                        for (auto &value : override.values()) {
-                            new_option.value_add(value);
-                        }
+                        new_option.conflicting = true;
                     } else {
                         auto &new_option = merged.emplace_back(override.get_definition(), "");
                         new_option.disabled = true;
@@ -2503,7 +2537,6 @@ std::vector<Option> launcher::merge_options(
             }
         }
     }
-
     return merged;
 }
 

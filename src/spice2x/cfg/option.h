@@ -43,6 +43,7 @@ public:
     std::string value;
     std::vector<Option> alternatives;
     bool disabled = false;
+    bool conflicting = false;
 
     explicit Option(OptionDefinition definition, std::string value = "") :
         definition(std::move(definition)), value(std::move(value)) {
