@@ -16,7 +16,6 @@
 #include "avs/ea3.h"
 #include "avs/game.h"
 #include "launcher/launcher.h"
-#include "launcher/shutdown.h"
 #include "launcher/options.h"
 #include "misc/eamuse.h"
 #include "overlay/imgui/extensions.h"
@@ -2914,7 +2913,7 @@ namespace overlay::windows {
         ImGui::TextUnformatted("");
 
         if (ImGui::Button(PROJECT_URL)) {
-            launch_shell(PROJECT_URL, nullptr);
+            launch_shell(PROJECT_URL);
         }
 
         ImGui::TextUnformatted("");
@@ -2979,7 +2978,6 @@ namespace overlay::windows {
     void Config::build_menu(int *game_selected) {
         bool about_popup = false;
         bool licenses_popup = false;
-        bool shutdown_popup = false;
         if (ImGui::BeginMenuBar()) {
 
             // [spice2x]
@@ -2987,7 +2985,7 @@ namespace overlay::windows {
             ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(1.f, 0.f, 0.f, 1.f));
             ImGui::BeginDisabled(!cfg::CONFIGURATOR_STANDALONE);
             if (ImGui::MenuItem("[spice2x]")) {
-                launch_shell(PROJECT_URL, nullptr);
+                launch_shell(PROJECT_URL);
             }
             ImGui::EndDisabled();
             ImGui::PopStyleColor();
@@ -2996,14 +2994,14 @@ namespace overlay::windows {
             ImGui::Separator();
 
             // game selector
-            ImGui::PushItemWidth(MIN(580, MAX(80, ImGui::GetWindowSize().x - 520)));
+            ImGui::PushItemWidth(MIN(700, MAX(100, ImGui::GetWindowSize().x - 400)));
             ImGui::Combo("##game_selector", game_selected, games_names.data(), (int)games_list.size());
             ImGui::PopItemWidth();
 
             ImGui::Separator();
 
             // shortcuts
-            if (ImGui::BeginMenu("Shortcuts", cfg::CONFIGURATOR_STANDALONE)) {
+            if (ImGui::BeginMenu("Shortcuts")) {
                 if (ImGui::MenuItem("USB Game Controllers")) {
                     launch_shell("control.exe", "joy.cpl");
                 }
@@ -3016,27 +3014,25 @@ namespace overlay::windows {
                 ImGui::EndMenu();
             }
 
-            // popup menus
-            if (ImGui::MenuItem("Licenses")) {
-                licenses_popup = true;
-            }
-            if (ImGui::MenuItem("About")) {
-                about_popup = true;
-            }
-
-            // power - only active in games
-            if (ImGui::BeginMenu("Power", !cfg::CONFIGURATOR_STANDALONE)) {
-                if (ImGui::MenuItem("Restart Game")) {
-                    launcher::restart();
+            // help
+            if (ImGui::BeginMenu("Help")) {
+                if (ImGui::MenuItem("spice2x home")) {
+                    launch_shell(PROJECT_URL);
                 }
-                if (ImGui::MenuItem("Exit Game")) {
-                    launcher::shutdown();
+                if (ImGui::MenuItem("FAQ")) {
+                    launch_shell("https://github.com/spice2x/spice2x.github.io/wiki/Known-issues");
+                }
+                if (ImGui::MenuItem("Wiki")) {
+                    launch_shell("https://github.com/spice2x/spice2x.github.io/wiki");
                 }
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
-                if (ImGui::MenuItem("Shutdown PC")) {
-                    shutdown_popup = true;
+                if (ImGui::MenuItem("Licenses")) {
+                    licenses_popup = true;
+                }
+                if (ImGui::MenuItem("About")) {
+                    about_popup = true;
                 }
                 ImGui::EndMenu();
             }
@@ -3059,45 +3055,9 @@ namespace overlay::windows {
         if (licenses_popup) {
             ImGui::OpenPopup("Licenses##topbarpopup");
         }
-        if (shutdown_popup) {
-            ImGui::OpenPopup("System##topbarpopup");
-        }
 
         // draw popups
         {
-            // unused_open is needed for close button to appear on the popup
-            bool unused_open = true;
-
-            if (ImGui::BeginPopupModal(
-                "System##topbarpopup",
-                &unused_open,
-                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize)) {
-
-                static bool force_shutdown = false;
-                ImGui::Spacing();
-                ImGui::Checkbox("Force", &force_shutdown);
-                ImGui::Spacing();
-
-                const ImVec2 button_size(100.f, 0.f);
-
-                ImGui::Spacing();
-                if (ImGui::Button("Shutdown PC", button_size)) {
-                    this->shutdown_system(force_shutdown, false);
-                }
-                ImGui::Spacing();
-                if (ImGui::Button("Reboot PC", button_size)) {
-                    this->shutdown_system(force_shutdown, true);
-                }
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
-                if (ImGui::Button("Cancel", button_size)) {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::Spacing();
-                ImGui::EndPopup();
-            }
-
             const ImVec2 popup_size(
                 std::min(ImGui::GetIO().DisplaySize.x * 0.9f, 800.f),
                 std::min(ImGui::GetIO().DisplaySize.y * 0.9f, 800.f));
@@ -3121,24 +3081,5 @@ namespace overlay::windows {
                 ImGui::EndPopup();
             }
         }
-    }
-
-    void Config::shutdown_system(bool force, bool reboot_instead) {
-        if (!acquire_shutdown_privs()) {
-            return;
-        }
-        UINT flags = 0;
-        if (force) {
-            flags |= EWX_FORCE;
-        }
-        if (reboot_instead) {
-            flags |= EWX_REBOOT;
-        } else {
-            flags |= EWX_SHUTDOWN | EWX_HYBRID_SHUTDOWN;
-        }
-        if (!ExitWindowsEx(flags, SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_MAINTENANCE)) {
-            return;
-        }
-        launcher::shutdown(0);
     }
 }
