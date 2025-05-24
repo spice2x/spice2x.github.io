@@ -1912,6 +1912,9 @@ int main_implementation(int argc, char *argv[]) {
     libutils::warn_if_dll_exists("d3d12.dll");
     libutils::warn_if_dll_exists("dxgi.dll");
     libutils::warn_if_dll_exists("opengl32.dll");
+    libutils::warn_if_dll_exists("nvcuda.dll");
+    libutils::warn_if_dll_exists("nvcuvid.dll");
+    libutils::warn_if_dll_exists("nvEncodeAPI64.dll");
 
     // complain loudly & early about dll load ordering issue
     libutils::check_duplicate_dlls();
