@@ -2982,23 +2982,21 @@ namespace overlay::windows {
 
             // [spice2x]
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.f, 0.f, 1.f));
-            ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(1.f, 0.f, 0.f, 1.f));
-            ImGui::BeginDisabled(!cfg::CONFIGURATOR_STANDALONE);
-            if (ImGui::MenuItem("[spice2x]")) {
-                launch_shell(PROJECT_URL);
+            if (ImGui::BeginMenu("[spice2x]")) {
+                ImGui::PopStyleColor();
+                if (ImGui::MenuItem("spice2x.github.io")) {
+                    launch_shell(PROJECT_URL);
+                }
+                if (ImGui::MenuItem("Licenses")) {
+                    licenses_popup = true;
+                }
+                if (ImGui::MenuItem("About")) {
+                    about_popup = true;
+                }
+                ImGui::EndMenu();
+            } else {
+                ImGui::PopStyleColor();
             }
-            ImGui::EndDisabled();
-            ImGui::PopStyleColor();
-            ImGui::PopStyleColor();
-
-            ImGui::Separator();
-
-            // game selector
-            ImGui::PushItemWidth(MIN(700, MAX(100, ImGui::GetWindowSize().x - 400)));
-            ImGui::Combo("##game_selector", game_selected, games_names.data(), (int)games_list.size());
-            ImGui::PopItemWidth();
-
-            ImGui::Separator();
 
             // shortcuts
             if (ImGui::BeginMenu("Shortcuts")) {
@@ -3016,28 +3014,19 @@ namespace overlay::windows {
 
             // help
             if (ImGui::BeginMenu("Help")) {
-                if (ImGui::MenuItem("spice2x home")) {
-                    launch_shell(PROJECT_URL);
-                }
                 if (ImGui::MenuItem("FAQ")) {
                     launch_shell("https://github.com/spice2x/spice2x.github.io/wiki/Known-issues");
                 }
                 if (ImGui::MenuItem("Wiki")) {
                     launch_shell("https://github.com/spice2x/spice2x.github.io/wiki");
                 }
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
-                if (ImGui::MenuItem("Licenses")) {
-                    licenses_popup = true;
-                }
-                if (ImGui::MenuItem("About")) {
-                    about_popup = true;
-                }
                 ImGui::EndMenu();
             }
 
-            ImGui::Separator();
+            // game selector
+            ImGui::PushItemWidth(MIN(700, MAX(100, ImGui::GetWindowSize().x - 400)));
+            ImGui::Combo("##game_selector", game_selected, games_names.data(), (int)games_list.size());
+            ImGui::PopItemWidth();
 
             ImGui::BeginDisabled();
             if (!avs::game::is_model("000")) {
