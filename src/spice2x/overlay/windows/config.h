@@ -95,7 +95,7 @@ namespace overlay::windows {
         void build_about();
         void build_licenses();
         void build_launcher();
-        void launch_shell(LPCSTR app, LPCSTR file);
+        void launch_shell(LPCSTR app, LPCSTR file=nullptr);
 
         static void build_page_selector(int *page);
         void build_menu(int *game_selected);
