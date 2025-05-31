@@ -1,3 +1,8 @@
+05/31/2025 [spice2x]
+    IIDX: tape LED over API
+    UI tweaks
+    Option to make command line args take precedence
+
 05/09/2025 [spice2x]
     Check for window focus when processing input (-inputfocus)
     More options for IIDX/SDVX windowed subscreen
