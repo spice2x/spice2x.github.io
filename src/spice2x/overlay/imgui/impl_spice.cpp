@@ -221,7 +221,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
         static size_t delay_touch = 0;
         static size_t delay_touch_target = 2;
         static DWORD last_touch_id = ~0u;
-        if (!touch_points.empty() && !is_windowed_subscreen) {
+        if (!touch_points.empty()) {
 
             // use the first touch point
             auto &tp = touch_points[0];
