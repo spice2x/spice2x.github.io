@@ -12,6 +12,7 @@
 #include "touch/touch.h"
 #include "util/logging.h"
 #include "util/utils.h"
+#include "hooks/graphics/graphics.h"
 
 #if !defined(IMGUI_ENABLE_WIN32_DEFAULT_IME_FUNCTIONS) || \
     !defined(IMGUI_DISABLE_DEFAULT_ALLOCATORS) || \
@@ -175,10 +176,22 @@ static void ImGui_ImplSpice_UpdateMousePos() {
                     static_cast<int>(pos.y / io.DisplaySize.y * window_size.y));
         }
 
+        const auto active_window = ::GetForegroundWindow();
+
+        // if the main focus is a windowed subscreen, put the imgui cursor in a place that won't
+        // trigger any overlay, don't process anything else
+        const auto is_windowed_subscreen = 
+            (GRAPHICS_IIDX_WSUB && active_window == TDJ_SUBSCREEN_WINDOW) ||
+            (active_window == SDVX_SUBSCREEN_WINDOW);
+        if (is_windowed_subscreen) {
+            io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
+            return;
+        }
+
         // set mouse position
         io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
         POINT pos;
-        if (HWND active_window = ::GetForegroundWindow()) {
+        if (active_window) {
             if (active_window == g_hWnd
             || ::IsChild(active_window, g_hWnd)
             || ::IsChild(g_hWnd, active_window)
@@ -208,7 +221,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
         static size_t delay_touch = 0;
         static size_t delay_touch_target = 2;
         static DWORD last_touch_id = ~0u;
-        if (!touch_points.empty()) {
+        if (!touch_points.empty() && !is_windowed_subscreen) {
 
             // use the first touch point
             auto &tp = touch_points[0];

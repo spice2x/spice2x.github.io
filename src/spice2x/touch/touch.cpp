@@ -240,8 +240,11 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         rawinput::touch::display_update();
     }
 
+    const auto is_windowed_sub =
+        (GRAPHICS_IIDX_WSUB && hWnd == TDJ_SUBSCREEN_WINDOW) || (hWnd == SDVX_SUBSCREEN_WINDOW);
+
     if (msg == WM_CLOSE) { 
-        if ((GRAPHICS_IIDX_WSUB && hWnd == TDJ_SUBSCREEN_WINDOW) || (hWnd == SDVX_SUBSCREEN_WINDOW)) {
+        if (is_windowed_sub) {
             log_misc("touch", "ignore WM_CLOSE for subscreen window");
             return false;
         }
@@ -461,11 +464,14 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
     };
 
     // check if imgui is handling this mouse event
-    if (overlay::OVERLAY != nullptr && overlay::OVERLAY->get_active() && ImGui::GetIO().WantCaptureMouse) {
+    if (is_windowed_sub) {
+        // do nothing, don't let imgui hijack clicks on the sub window
+        result.action = ACTION_PASS;
+
+    } else if (overlay::OVERLAY != nullptr && overlay::OVERLAY->get_active() && ImGui::GetIO().WantCaptureMouse) {
         result.action = ACTION_RETURN_DEFAULT;
 
     } else if (TOUCH_HANDLER != nullptr) {
-
         // call touch handler
         TOUCH_HANDLER->handle_message(result, hWnd, msg, wParam, lParam);
     }
