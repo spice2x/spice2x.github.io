@@ -41,6 +41,7 @@
 namespace acio {
     HINSTANCE DLL_INSTANCE = nullptr;
     std::vector<acio::ACIOModule *> MODULES;
+    std::atomic<bool> IO_INIT_IN_PROGRESS = false;
 }
 
 /*
@@ -58,6 +59,7 @@ static inline acio::HookMode get_hookmode() {
 
 void acio::attach() {
     log_info("acio", "SpiceTools ACIO");
+    IO_INIT_IN_PROGRESS = true;
 
     // load settings and instance
     acio::DLL_INSTANCE = LoadLibraryA("libacio.dll");
@@ -111,6 +113,8 @@ void acio::attach() {
     for (auto &module : MODULES) {
         module->attach();
     }
+
+    IO_INIT_IN_PROGRESS = false;
 }
 
 void acio::attach_icca() {
