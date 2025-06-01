@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <dbghelp.h>
 
+#include "acio/acio.h"
 #include "external/stackwalker/stackwalker.h"
 #include "hooks/libraryhook.h"
 #include "launcher/shutdown.h"
@@ -96,6 +97,19 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
 
         // print signal
         log_warning("signal", "exception raised: {}", exception_code(ExceptionRecord));
+
+        // check ACIO init failures
+        if (acio::IO_INIT_IN_PROGRESS) {
+            log_warning(
+                "signal",
+                "exception raised during ACIO init, this usually happens when a third party application interferes with hooks");
+            log_warning(
+                "signal",
+                "    please check for the following, disable them, and try launching the game again:");
+            log_warning(
+                "signal",
+                "    RivaTuner Statistics Server (RTSS), MSI Afterburner, kernel mode anti-cheat");
+        }
 
         // walk the exception chain
         struct _EXCEPTION_RECORD *record_cause = ExceptionRecord->ExceptionRecord;
