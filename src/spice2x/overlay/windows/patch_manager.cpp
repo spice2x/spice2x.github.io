@@ -80,7 +80,7 @@ namespace overlay::windows {
         {"arkmmd.dll", {"gamemmd.dll"}},
         {"arkklp.dll", {"lpac.dll"}},
         {"arknck.dll", {"weac.dll"}},
-        {"gdxg.dll", {"game.dll"}}
+        {"gdxg.dll", {"game.dll", "libshare-pj.dll"}}
     };
 
     static size_t url_recent_idx = -1;
