@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <string>
 #include <windows.h>
+#include <sys/stat.h>
 
 namespace avs {
     namespace core {
