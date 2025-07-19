@@ -2077,15 +2077,6 @@ int main_implementation(int argc, char *argv[]) {
         networkhook_init();
     }
 
-    // layeredfs
-    if (fileutils::dir_exists("data_mods") &&
-        !fileutils::file_exists("ifs_hook.dll") &&
-        !fileutils::file_exists(MODULE_PATH / "ifs_hook.dll")) {
-        log_warning("launcher", "data_mods directory was found, but ifs_hook.dll is not present; your mods will not load");
-        log_warning("launcher", "to fix this, download ifs_layeredfs and add it as a DLL hook (-k)");
-        log_warning("launcher", "https://github.com/mon/ifs_layeredfs");
-    }
-
     update_msvcrt_args(argc, argv);
 
     // load hooks
@@ -2097,6 +2088,14 @@ int main_implementation(int argc, char *argv[]) {
         } else {
             bt5api_hook(module);
         }
+    }
+
+    // layeredfs
+    if (fileutils::dir_exists("data_mods") &&
+        GetModuleHandleA("ifs_hook.dll") == nullptr) {
+        log_warning("launcher", "data_mods directory was found, but ifs_hook.dll is not present; your mods will not load");
+        log_warning("launcher", "to fix this, download ifs_layeredfs and add it as a DLL hook (-k)");
+        log_warning("launcher", "https://github.com/mon/ifs_layeredfs");
     }
 
     // apply patches
