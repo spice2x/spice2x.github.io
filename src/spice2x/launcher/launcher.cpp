@@ -1915,6 +1915,7 @@ int main_implementation(int argc, char *argv[]) {
     libutils::warn_if_dll_exists("nvcuda.dll");
     libutils::warn_if_dll_exists("nvcuvid.dll");
     libutils::warn_if_dll_exists("nvEncodeAPI64.dll");
+    libutils::warn_if_dll_exists("msvcr100.dll");
 
     // complain loudly & early about dll load ordering issue
     libutils::check_duplicate_dlls();
