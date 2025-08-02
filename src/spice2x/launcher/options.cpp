@@ -1591,9 +1591,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .elements = {{"0", "90 (CW)"}, {"1", "270 (CCW)"}},
     },
     {
-        .title = "Log Level",
+        .title = "AVS Log Level",
         .name = "loglevel",
-        .desc = "Set the level of detail that gets written to the log",
+        .desc = "Set the level of detail for AVS log messages written to the log. Does not affect logging from spice",
         .type = OptionType::Enum,
         .category = "Performance",
         .elements = {{"fatal", ""}, {"warning", ""}, {"info", ""}, {"misc", ""}, {"all", ""}, {"disable", ""}},
