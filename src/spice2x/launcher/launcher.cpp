@@ -150,6 +150,9 @@ static bool check_dll(const std::string &model) {
 
 void update_msvcrt_args(int argc, char *argv[]);
 
+void dump_button_bindings(std::vector<Button> *buttons);
+void dump_analog_bindings();
+
 int main_implementation(int argc, char *argv[]) {
 
     // remember argv, argv
@@ -1937,6 +1940,21 @@ int main_implementation(int argc, char *argv[]) {
     // print devices
     RI_MGR->devices_print();
 
+    auto buttons = games::get_buttons(eamuse_get_game());
+    log_misc("rawinput", "Button mappings:");
+    dump_button_bindings(buttons);
+
+    log_misc("rawinput", "Keypad button mappings:");
+    auto keypads = games::get_buttons_keypads(eamuse_get_game());
+    dump_button_bindings(keypads);
+
+    log_misc("rawinput", "Overlay button mappings:");
+    auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
+    dump_button_bindings(overlay_buttons);
+
+    log_misc("rawinput", "Analog mappings:");
+    dump_analog_bindings();
+
     // for certain games, show cursor if no touch is available (must be called after RI_MGR is available)
     if (show_cursor_if_no_touch && !is_touch_available("launcher::main_implementation")) {
         GRAPHICS_SHOW_CURSOR = true;
@@ -2319,6 +2337,65 @@ void update_msvcrt_args(int argc, char *argv[]) {
 #else
     log_misc("launcher", "not UCRT, skipping msvcrt!_argc / _argv hacks");
 #endif
+}
+
+void dump_button_bindings(std::vector<Button> *buttons) {
+    if (!buttons) {
+        return;
+    }
+
+    for (auto button = buttons->begin(); button != buttons->end(); ++button) {
+        if (!button->isSet()) {
+            continue;
+        }
+
+        if (button->isNaive()) {
+            log_misc(
+                "rawinput", "    [{}] dev=Naive, vkey={}",
+                button->getName(),
+                button->getVKey()
+                );
+        } else {
+            log_misc(
+                "rawinput", "    [{}] dev={}, vkey={}, analogtype={}",
+                button->getName(),
+                button->getDeviceIdentifier(),
+                button->getVKey(),
+                button->getAnalogType()
+                );
+        }
+
+        for (auto& alt : button->getAlternatives()) {
+            if (alt.getVKey() == INVALID_VKEY) {
+                continue;
+            }
+            log_misc(
+                "rawinput", "    [{}] (alt) dev={}, vkey={}, analogtype={}",
+                button->getName(),
+                alt.isNaive() ? "Naive" : alt.getDeviceIdentifier(),
+                alt.getVKey(),
+                alt.getAnalogType()
+                );
+        }
+    }
+}
+
+void dump_analog_bindings() {
+    auto analogs = games::get_analogs(eamuse_get_game());
+    if (!analogs) {
+        return;
+    }
+    for (auto& analog : *analogs) {
+        if (!analog.isSet()) {
+            continue;
+        }
+        log_misc(
+            "rawinput", "    [{}] dev={}, index={}",
+            analog.getName(),
+            analog.getDeviceIdentifier(),
+            analog.getIndex()
+            );
+    }
 }
 
 #ifndef SPICETOOLS_SPICECFG_STANDALONE
