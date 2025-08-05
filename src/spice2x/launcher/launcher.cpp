@@ -2344,34 +2344,34 @@ void dump_button_bindings(std::vector<Button> *buttons) {
         return;
     }
 
-    for (auto& button : *buttons) {
-        if (!button.isSet()) {
+    for (auto button = buttons->begin(); button != buttons->end(); ++button) {
+        if (!button->isSet()) {
             continue;
         }
 
-        if (button.isNaive()) {
+        if (button->isNaive()) {
             log_misc(
                 "rawinput", "    [{}] dev=Naive, vkey={}",
-                button.getName(),
-                button.getVKey()
+                button->getName(),
+                button->getVKey()
                 );
         } else {
             log_misc(
                 "rawinput", "    [{}] dev={}, vkey={}, analogtype={}",
-                button.getName(),
-                button.getDeviceIdentifier(),
-                button.getVKey(),
-                button.getAnalogType()
+                button->getName(),
+                button->getDeviceIdentifier(),
+                button->getVKey(),
+                button->getAnalogType()
                 );
         }
 
-        for (auto& alt : button.getAlternatives()) {
+        for (auto& alt : button->getAlternatives()) {
             if (alt.getVKey() == INVALID_VKEY) {
                 continue;
             }
             log_misc(
                 "rawinput", "    [{}] (alt) dev={}, vkey={}, analogtype={}",
-                button.getName(),
+                button->getName(),
                 alt.isNaive() ? "Naive" : alt.getDeviceIdentifier(),
                 alt.getVKey(),
                 alt.getAnalogType()
