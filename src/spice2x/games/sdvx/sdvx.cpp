@@ -39,7 +39,6 @@ namespace games::sdvx {
     const char *ORIGINAL_ASIO_DEVICE_NAME = "XONAR SOUND CARD(64)";
 
     // settings
-    bool DISABLECAMS = false;
     bool NATIVETOUCH = false;
     uint8_t DIGITAL_KNOB_SENS = 16;
     SdvxOverlayPosition OVERLAY_POS = SDVX_OVERLAY_BOTTOM;
@@ -369,17 +368,17 @@ namespace games::sdvx {
         winuser_hook_init(avs::game::DLL_INSTANCE);
 
         // hook camera
-        if (!DISABLECAMS) {
-            camera_init();
-        }
+        camera_init();
 
-        // RGB CAMERA error ignore
-        if (!replace_pattern(
+        // RGB CAMERA error ignore for SDVX5
+        // SDVX5: boot sequence triggers camera error if camera is not detected
+        // SDVX6: boots fine, but game title screen in attract loop will have camera error (cosmetic only)
+        if (replace_pattern(
                 avs::game::DLL_INSTANCE,
                 "418D480484C074218D51FD",
                 "????????????9090??????",
                 0, 0)) {
-            log_info("sdvx", "did not find matching signature for camera error patch");
+            log_info("sdvx", "applied camera error patch (sdvx5)");
         }
 
         // remove log spam
