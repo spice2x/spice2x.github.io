@@ -433,9 +433,6 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::LoadSoundVoltexModule].value_bool()) {
         attach_sdvx = true;
     }
-    if (options[launcher::Options::SDVXDisableCameras].value_bool()) {
-        games::sdvx::DISABLECAMS = true;
-    }
     if (options[launcher::Options::SDVXNativeTouch].value_bool()) {
         games::sdvx::NATIVETOUCH = true;
     }

@@ -717,10 +717,13 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
-        .title = "SDVX Disable Cameras",
+        .title = "SDVX Disable Cameras (DEPRECATED - no longer needed)",
         .name = "sdvxdisablecams",
-        .desc = "Disables cameras",
+        .desc = "This option does nothing.\n\n"
+            "This option was used in the past to fix cameras in SDVX5 but this is no longer "
+            "needed as camera check will always be skipped with a built-in patch.",
         .type = OptionType::Bool,
+        .hidden = true,
         .game_name = "Sound Voltex",
         .category = "Game Options",
     },
