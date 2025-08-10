@@ -27,6 +27,7 @@ namespace games::ddr {
 
     // settings
     bool SDMODE = false;
+    bool NO_CODEC_REGISTRATION = false;
 
     uint8_t DDR_TAPELEDS[TAPELED_DEVICE_COUNT][50][3] {};
 
@@ -51,6 +52,50 @@ namespace games::ddr {
 
     DDRGame::DDRGame() : Game("Dance Dance Revolution") {
     }
+
+    void DDRGame::register_codecs() {
+        // find where spice.exe / spice64.exe is located
+        const auto &spice_bin_path = libutils::module_file_name(nullptr).parent_path();
+
+        // find the com directory
+        std::filesystem::path dir = "";
+        if (MODULE_PATH == spice_bin_path) {
+            // try: \com
+            dir = spice_bin_path / "com";
+        } else {
+            // try: modules\..\com
+            dir = MODULE_PATH / ".." / "com";
+        }
+
+        if (fileutils::dir_exists(dir)) {
+            log_info("ddr", "looking for codecs in this directory: {}", dir.string());
+        } else {
+            log_info("ddr", "codecs directory not found: {}", dir.string());
+            return;
+        }
+
+        for (const auto &file : std::filesystem::directory_iterator(dir)) {
+            const auto &filename = file.path().filename();
+            const auto extension = strtolower(filename.extension().string());
+
+            if (extension != ".dll") {
+                continue;
+            }
+
+            log_info("ddr", "found DLL: {}", filename.string());
+            if (filename == "k-clvsd.dll" || filename.string().find("xactengine") == 0) {
+                const std::string cmd = "regsvr32.exe /s " + file.path().string();
+                
+                int result = 0;
+                std::thread t([cmd, &result]() {
+                    result = system(cmd.c_str());
+                });
+                t.join();
+                log_info("ddr", "`{}` returned {}", cmd, result);
+            }
+        }
+    }
+    
 
     void DDRGame::pre_attach() {
         if (!cfg::CONFIGURATOR_STANDALONE && avs::game::is_model("TDX")) {
@@ -86,6 +131,10 @@ namespace games::ddr {
                 "!!!                                                               !!!\n"
                 "!!!                                                               !!!\n\n\n"
                 );
+        }
+
+        if (!cfg::CONFIGURATOR_STANDALONE && !NO_CODEC_REGISTRATION) {
+            this->register_codecs();
         }
     }
 

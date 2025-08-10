@@ -810,6 +810,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // DDRSkipCodecRegisteration
+        .title = "DDR Skip Codec Registration",
+        .name = "ddrnocodec",
+        .desc = "Prevent automatic registration of codecs in the com folder",
+        .type = OptionType::Bool,
+        .game_name = "Dance Dance Revolution",
+        .category = "Game Options (Advanced)",
+    },
+    {
         .title = "Force Load Pop'n Music Module",
         .name = "pnm",
         .desc = "Manually enable Pop'n Music module",

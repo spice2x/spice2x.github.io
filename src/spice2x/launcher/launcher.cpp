@@ -629,6 +629,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::DDR43Mode].value_bool()) {
         games::ddr::SDMODE = true;
     }
+    if (options[launcher::Options::DDRSkipCodecRegisteration].value_bool()) {
+        games::ddr::NO_CODEC_REGISTRATION = true;
+    }
     if (options[launcher::Options::LoadSteelChronicleModule].value_bool()) {
         attach_sc = true;
     }

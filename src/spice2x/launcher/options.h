@@ -86,6 +86,7 @@ namespace launcher {
             spice2x_SDVXSubRedraw,
             LoadDDRModule,
             DDR43Mode,
+            DDRSkipCodecRegisteration,
             LoadPopnMusicModule,
             PopnMusicForceHDMode,
             PopnMusicForceSDMode,
