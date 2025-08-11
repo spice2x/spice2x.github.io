@@ -1,3 +1,7 @@
+08/11/2025 [spice2x]
+    SDVX: fix camera hook, remove -sdvxdisablecams
+    DDR: automatically register codecs in com folder on boot
+
 06/03/2025 [spice2x]
     Add libshare-pj.dll to Gitadora patch import
     Detect ACIO init failures
