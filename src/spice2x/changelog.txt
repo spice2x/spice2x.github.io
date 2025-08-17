@@ -1,3 +1,6 @@
+08/17/2025 [spice2x]
+    DDR: fix codec registration failure when path contains spaces
+
 08/11/2025 [spice2x]
     SDVX: fix camera hook, remove -sdvxdisablecams
     DDR: automatically register codecs in com folder on boot
