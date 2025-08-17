@@ -84,11 +84,12 @@ namespace games::ddr {
 
             log_info("ddr", "found DLL: {}", filename.string());
             if (filename == "k-clvsd.dll" || filename.string().find("xactengine") == 0) {
-                const std::string cmd = "regsvr32.exe /s " + file.path().string();
-                
+                const std::wstring wcmd = L"regsvr32.exe /s \"" + file.path().wstring() + L"\"";
+                const std::string cmd = "regsvr32.exe /s \"" + file.path().string() + "\"";
+
                 int result = 0;
-                std::thread t([cmd, &result]() {
-                    result = system(cmd.c_str());
+                std::thread t([wcmd, &result]() {
+                    result = _wsystem(wcmd.c_str());
                 });
                 t.join();
                 log_info("ddr", "`{}` returned {}", cmd, result);
