@@ -356,6 +356,12 @@ namespace avs {
                 }
             }
 
+            // fall back to default PCBID if node is not found
+            if (!EA3_PCBID[0] && PCBID_CUSTOM.empty()) {
+                log_warning("avs-ea3", "no PCBID set, falling back to default PCBID value (04040000000000000000)");
+                PCBID_CUSTOM = "04040000000000000000";
+            }
+
             // custom PCBID
             if (!PCBID_CUSTOM.empty()) {
 
@@ -399,7 +405,7 @@ namespace avs {
                         avs::core::NODE_TYPE_str, "/ea3/id/accountid", &EA3_ACCOUNTID);
             }
 
-            // check if PCBID is defined
+            // check if PCBID is defined - should never hit, left for sanity check only
             if (avs::core::property_search(ea3_config, nullptr, "/ea3/id/pcbid") == nullptr) {
                 log_fatal("avs-ea3", "node not found: /ea3/id/pcbid (try using -p to specify PCBID)");
             } else if (strlen(EA3_PCBID) == 0) {
