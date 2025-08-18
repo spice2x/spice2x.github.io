@@ -80,7 +80,7 @@ namespace avs {
             if (130 <= dll_path_s.length()) {
                 log_warning(
                     "avs-game",
-                    "PATH TOO LONG WARNING\n\n\n"
+                    "PATH TOO LONG WARNING\n\n"
                     "-------------------------------------------------------------------\n"
                     "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
                     "WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING\n"
@@ -95,10 +95,26 @@ namespace avs {
                     "-------------------------------------------------------------------\n\n",
                     dll_path_s, dll_path_s.length());
             }
+
+            // ddr gamemdx.dll user error
+            if (avs::game::is_model("MDX") && DLL_NAME == "gamemdx.dll") {
+                log_fatal(
+                    "ddr",
+                    "BAD GAME DLL ERROR\n\n"
+                    "!!!                                                            !!!\n"
+                    "!!! -exec gamemdx.dll was specified                            !!!\n"
+                    "!!! this is the wrong DLL; the game will not load              !!!\n"
+                    "!!! remove -exec argument and try again.                       !!!\n"
+                    "!!!                                                            !!!\n"
+                    );
+            }
+
+            // file not found on disk
             if (!fileutils::file_exists(dll_path)) {
                 log_warning("avs-game", "game DLL could not be found on disk: {}", dll_path.string().c_str());
                 log_warning("avs-game", "double check -exec and -modules parameters; unless you know what you're doing, leave them blank");
             }
+
             if (fileutils::verify_header_pe(dll_path)) {
                 DLL_INSTANCE = libutils::load_library(dll_path);
             }
@@ -106,7 +122,7 @@ namespace avs {
             // load entry points
             dll_entry_init = (ENTRY_INIT_T) libutils::get_proc(DLL_INSTANCE, ENTRY_INIT_NAME);
             dll_entry_main = (ENTRY_MAIN_T) libutils::get_proc(DLL_INSTANCE, ENTRY_MAIN_NAME);
-            log_info("avs-game", "loaded successfully ({})", fmt::ptr(DLL_INSTANCE));
+            log_info("avs-game", "loaded {} successfully ({})", DLL_NAME, fmt::ptr(DLL_INSTANCE));
         }
 
         bool entry_init(char *sid_code, void *app_param) {

@@ -50,6 +50,15 @@ namespace games::ddr {
         return SendMessage_real(hWnd, Msg, wParam, lParam);
     }
 
+    bool contains_only_ascii(const std::string& str) {
+        for (auto c: str) {
+            if (static_cast<unsigned char>(c) > 127) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     DDRGame::DDRGame() : Game("Dance Dance Revolution") {
     }
 
@@ -82,7 +91,7 @@ namespace games::ddr {
                 continue;
             }
 
-            log_info("ddr", "found DLL: {}", filename.string());
+            log_info("ddr", "found DLL: {}, size: {} bytes", filename.string(), file.file_size());
             if (filename == "k-clvsd.dll" || filename.string().find("xactengine") == 0) {
                 const std::wstring wcmd = L"regsvr32.exe /s \"" + file.path().wstring() + L"\"";
                 const std::string cmd = "regsvr32.exe /s \"" + file.path().string() + "\"";
@@ -92,7 +101,23 @@ namespace games::ddr {
                     result = _wsystem(wcmd.c_str());
                 });
                 t.join();
-                log_info("ddr", "`{}` returned {}", cmd, result);
+
+                if (result == 0) {
+                    log_info("ddr", "`{}` returned {}", cmd, result);
+                } else {
+                    log_warning("ddr", "`{}` failed, returned {}", cmd, result);
+                }
+
+                if (!contains_only_ascii(file.path().string())) {
+                    log_warning(
+                        "ddr",
+                        "BAD PATH ERROR\n\n\n"
+                        "!!!                                                          !!!\n"
+                        "!!! filesystem path to codec contains non-ASCII characters!  !!!\n"
+                        "!!! this may cause the game to crash!                        !!!\n"
+                        "!!!                                                          !!!\n"
+                        );
+                }
             }
         }
     }
@@ -134,8 +159,15 @@ namespace games::ddr {
                 );
         }
 
-        if (!cfg::CONFIGURATOR_STANDALONE && !NO_CODEC_REGISTRATION) {
-            this->register_codecs();
+        if (!cfg::CONFIGURATOR_STANDALONE) {
+            if (!NO_CODEC_REGISTRATION) {
+                this->register_codecs();
+            } else {
+                log_warning(
+                    "ddr",
+                    "skipping codec registration (-ddrnocodec), "
+                    "game may crash if you didn't register codecs before launching the game");
+            }
         }
     }
 
