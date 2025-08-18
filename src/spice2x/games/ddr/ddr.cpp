@@ -91,7 +91,7 @@ namespace games::ddr {
                 continue;
             }
 
-            log_info("ddr", "found DLL: {}", filename.string());
+            log_info("ddr", "found DLL: {}, size: {} bytes", filename.string(), file.file_size());
             if (filename == "k-clvsd.dll" || filename.string().find("xactengine") == 0) {
                 const std::wstring wcmd = L"regsvr32.exe /s \"" + file.path().wstring() + L"\"";
                 const std::string cmd = "regsvr32.exe /s \"" + file.path().string() + "\"";
@@ -101,7 +101,12 @@ namespace games::ddr {
                     result = _wsystem(wcmd.c_str());
                 });
                 t.join();
-                log_info("ddr", "`{}` returned {}", cmd, result);
+
+                if (result == 0) {
+                    log_info("ddr", "`{}` returned {}", cmd, result);
+                } else {
+                    log_warning("ddr", "`{}` failed, returned {}", cmd, result);
+                }
 
                 if (!contains_only_ascii(file.path().string())) {
                     log_warning(
