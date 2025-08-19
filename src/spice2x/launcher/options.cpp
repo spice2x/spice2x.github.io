@@ -17,7 +17,6 @@ static const std::vector<std::string> CATEGORY_ORDER_BASIC = {
     "Game Options",
     "Common",
     "Network",
-    "Overlay",
     "Graphics (Common)",
     "Graphics (Full Screen)",
     "Graphics (Windowed)",
@@ -26,18 +25,21 @@ static const std::vector<std::string> CATEGORY_ORDER_BASIC = {
 
 static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
     "Game Options (Advanced)",
+    "Overlay",
     "Network (Advanced)",
     "Performance",
     "Miscellaneous",
-    "Paths",
     "Touch Parameters",
     "I/O Options",
     "NFC Card Readers",
 };
 static const std::vector<std::string> CATEGORY_ORDER_DEV = {
-    "Network Adapters",
+    "Paths",
+    "Network (Development)",
+    "Audio (Hacks)",
     "I/O Modules",
     "Development",
+    "Debug Log",
 };
 static const std::vector<std::string> CATEGORY_ORDER_NONE = {
     ""
@@ -268,7 +270,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "nolegacy",
         .desc = "Disables legacy key activation in-game.",
         .type = OptionType::Bool,
-        .category = "Miscellaneous",
+        .category = "I/O Options",
     },
     {
         .title = "Discord Rich Presence",
@@ -310,7 +312,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "This is NOT the EA service URL; use -url for that. "
             "Force the use of an adapter with the specified network. Must also provide -subnet",
         .type = OptionType::Text,
-        .category = "Network Adapters",
+        .category = "Network (Development)",
         .sensitive = true,
     },
     {
@@ -318,21 +320,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "subnet",
         .desc = "Force the use of an adapter with the specified subnet. Must also provide -network",
         .type = OptionType::Text,
-        .category = "Network Adapters",
+        .category = "Network (Development)",
     },
     {
         .title = "Disable Network Fixes",
         .name = "netfixdisable",
         .desc = "Force disables network fixes",
         .type = OptionType::Bool,
-        .category = "Network Adapters",
+        .category = "Network (Development)",
     },
     {
         .title = "HTTP/1.1",
         .name = "http11",
         .desc = "Sets EA3 http11 value",
         .type = OptionType::Enum,
-        .category = "Network (Advanced)",
+        .category = "Network (Development)",
         .elements = {{"0", "Off"}, {"1", "On"}},
     },
     {
@@ -340,7 +342,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "ssldisable",
         .desc = "Prevents the SSL protocol from being registered",
         .type = OptionType::Bool,
-        .category = "Network (Advanced)",
+        .category = "Network (Development)",
     },
     {
         .title = "URL Slash",
@@ -355,7 +357,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "r",
         .desc = "Set custom SOFTID override",
         .type = OptionType::Text,
-        .category = "Network (Advanced)",
+        .category = "Network (Development)",
         .sensitive = true,
     },
     {
@@ -1412,7 +1414,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sextet",
         .desc = "Use a SextetStream device on a given COM port",
         .type = OptionType::Text,
-        .category = "Miscellaneous",
+        .category = "I/O Options",
     },
     {
         .title = "Enable BemaniTools 5 API",
@@ -1513,7 +1515,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "you use a different backend instead of exclusive WASAPI).\n\n"
             "Check this if you want games to natively access your audio device",
         .type = OptionType::Bool,
-        .category = "Audio",
+        .category = "Audio (Hacks)",
     },
     {
         // spice2x_DisableVolumeHook
@@ -1525,7 +1527,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Default: off (prevent games from changing audio volume by hooking IAudioEndpointVolume).\n\n"
             "Check this if you want games to freely change your volume",
         .type = OptionType::Bool,
-        .category = "Audio",
+        .category = "Audio (Hacks)",
     },
     {
         .title = "Spice Audio Hook Backend",
@@ -1550,7 +1552,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "This is automatically enabled when required and not normally needed",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Audio",
+        .category = "Audio (Hacks)",
     },
     {
         // DelayBy5Seconds
@@ -1607,7 +1609,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "loglevel",
         .desc = "Set the level of detail for AVS log messages written to the log. Does not affect logging from spice",
         .type = OptionType::Enum,
-        .category = "Performance",
+        .category = "Debug Log",
         .elements = {{"fatal", ""}, {"warning", ""}, {"info", ""}, {"misc", ""}, {"all", ""}, {"disable", ""}},
     },
     {
@@ -1615,14 +1617,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "automap",
         .desc = "Enable automap in patch configuration",
         .type = OptionType::Bool,
-        .category = "Development",
+        .category = "Network (Development)",
     },
     {
         .title = "EA Netdump",
         .name = "netdump",
         .desc = "Enable automap in network dumping configuration",
         .type = OptionType::Bool,
-        .category = "Development",
+        .category = "Network (Development)",
     },
     {
         .title = "Discord RPC AppID Override",
@@ -1636,35 +1638,35 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "logblock",
         .desc = "Slower but safer logging used for debugging",
         .type = OptionType::Bool,
-        .category = "Development",
+        .category = "Debug Log",
     },
     {
         .title = "Debug CreateFile",
         .name = "createfiledebug",
         .desc = "Outputs CreateFile debug prints",
         .type = OptionType::Bool,
-        .category = "Development",
+        .category = "Debug Log",
     },
     {
         .title = "Verbose Graphics Logging",
         .name = "graphicsverbose",
         .desc = "Enable the verbose logging of graphics hook code",
         .type = OptionType::Bool,
-        .category = "Development",
+        .category = "Debug Log",
     },
     {
         .title = "Verbose AVS Logging",
         .name = "avsverbose",
         .desc = "Enable the verbose logging of AVS filesystem functions",
         .type = OptionType::Bool,
-        .category = "Development",
+        .category = "Debug Log",
     },
     {
         .title = "Disable Colored Output",
         .name = "nocolor",
         .desc = "Disable terminal colors for log outputs to console",
         .type = OptionType::Bool,
-        .category = "Development",
+        .category = "Debug Log",
     },
     {
         .title = "Disable ACP Hook",
@@ -1699,7 +1701,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "pebprint",
         .desc = "Prints PEB on startup to console",
         .type = OptionType::Bool,
-        .category = "Development",
+        .category = "Debug Log",
     },
     {
         // DumpSystemInfo
@@ -1707,7 +1709,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sysdump",
         .desc = "Print system information to the log on startup. Default: basic",
         .type = OptionType::Enum,
-        .category = "Development",
+        .category = "Debug Log",
         .elements = {
             {"none", "Nothing"},
             {"basic", "OS, CPU, SMBIOS, GPU"},
@@ -1937,7 +1939,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For certain buggy ASIO drivers, force unload of ASIO driver when audio stream stops. "
             "Used for working around ASIO drivers that lock up after force quitting games",
         .type = OptionType::Bool,
-        .category = "Audio",
+        .category = "Audio (Hacks)",
     },
     {
         // spice2x_IIDXNoESpec
