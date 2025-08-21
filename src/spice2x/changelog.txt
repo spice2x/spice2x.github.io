@@ -1,3 +1,8 @@
+08/21/2025 [spice2x]
+    DDR: check for common DLL errors
+    Supply default PCBID if absent
+    Rearrange options
+
 08/17/2025 [spice2x]
     DDR: fix codec registration failure when path contains spaces
 
