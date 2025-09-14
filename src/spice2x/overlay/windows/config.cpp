@@ -3024,9 +3024,13 @@ namespace overlay::windows {
             }
 
             // game selector
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.34f, 0.14f, 0.14f, 0.54f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.34f, 0.14f, 0.14f, 0.54f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.34f, 0.14f, 0.14f, 0.64f));
             ImGui::PushItemWidth(MIN(700, MAX(100, ImGui::GetWindowSize().x - 400)));
             ImGui::Combo("##game_selector", game_selected, games_names.data(), (int)games_list.size());
             ImGui::PopItemWidth();
+            ImGui::PopStyleColor(3);
 
             ImGui::BeginDisabled();
             if (!avs::game::is_model("000")) {

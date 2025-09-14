@@ -45,7 +45,7 @@ namespace overlay {
         ImVec2 init_size = ImVec2(0, 0);
         ImVec2 size_min = ImVec2(0, 0);
         ImVec2 size_max = ImVec2(-1, -1);
-        float bg_alpha = 0.8f;
+        float bg_alpha = 0.96f;
 
         Window(SpiceOverlay *overlay);
     };
