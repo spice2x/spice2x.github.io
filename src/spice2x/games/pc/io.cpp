@@ -11,24 +11,23 @@ std::vector<Button> &games::pc::get_buttons() {
                 "Service",
                 "Test",
                 "Coin Mech",
-                "Lane 1",
-                "Lane 2",
-                "Lane 3",
-                "Lane 4",
-                "Lane 5",
-                "Lane 6",
-                "Lane 7",
-                "Lane 8",
-                "Lane 9",
-                "Lane 10",
-                "Lane 11",
-                "Lane 12",
-                "Fader L Left",
-                "Fader L Right",
-                "Fader R Left",
-                "Fader R Right",
-                "Headphone",
-                "Recorder"
+                "Button 1",
+                "Button 2",
+                "Button 3",
+                "Button 4",
+                "Button 5",
+                "Button 6",
+                "Button 7",
+                "Button 8",
+                "Button 9",
+                "Button 10",
+                "Button 11",
+                "Button 12",
+                "Fader-L Left",
+                "Fader-L Right",
+                "Fader-R Left",
+                "Fader-R Right",
+                "Headphone"
         );
     }
 
@@ -47,8 +46,8 @@ std::vector<Analog> &games::pc::get_analogs() {
 
         GameAPI::Analogs::sortAnalogs(
                 &analogs,
-                "Fader L",
-                "Fader R"
+                "Fader-L",
+                "Fader-R"
         );
     }
 

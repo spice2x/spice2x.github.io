@@ -250,20 +250,20 @@ namespace games::pc {
         o_DevStatus->Input.CN8_9 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Service]);
         o_DevStatus->Input.CN8_10 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::CoinMech]);
         o_DevStatus->Input.CN15_10 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]);
-        o_DevStatus->Input.CN15_12 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Recorder]);
+        o_DevStatus->Input.CN15_12 = 1; // Recorder off
 
-        o_DevStatus->Input.CN12_11 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane1]);
-        o_DevStatus->Input.CN12_12 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane2]);
-        o_DevStatus->Input.CN12_13 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane3]);
-        o_DevStatus->Input.CN12_14 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane4]);
-        o_DevStatus->Input.CN12_15 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane5]);
-        o_DevStatus->Input.CN12_16 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane6]);
-        o_DevStatus->Input.CN12_17 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane7]);
-        o_DevStatus->Input.CN12_18 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane8]);
-        o_DevStatus->Input.CN12_19 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane9]);
-        o_DevStatus->Input.CN12_20 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane10]);
-        o_DevStatus->Input.CN12_21 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane11]);
-        o_DevStatus->Input.CN12_22 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Lane12]);
+        o_DevStatus->Input.CN12_11 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button1]);
+        o_DevStatus->Input.CN12_12 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button2]);
+        o_DevStatus->Input.CN12_13 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button3]);
+        o_DevStatus->Input.CN12_14 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button4]);
+        o_DevStatus->Input.CN12_15 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button5]);
+        o_DevStatus->Input.CN12_16 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button6]);
+        o_DevStatus->Input.CN12_17 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button7]);
+        o_DevStatus->Input.CN12_18 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button8]);
+        o_DevStatus->Input.CN12_19 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button9]);
+        o_DevStatus->Input.CN12_20 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button10]);
+        o_DevStatus->Input.CN12_21 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button11]);
+        o_DevStatus->Input.CN12_22 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button12]);
 
         auto &analogs = get_analogs();
         if (analogs[Analogs::FaderL].isSet()) {
