@@ -1073,6 +1073,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // LoadXIFModule
+        .title = "Force Load Polaris Chord",
+        .name = "xif",
+        .desc = "manually enable Polaris Chord module",
+        .type = OptionType::Bool,
+        .game_name = "Polaris Chord",
+        .category = "Game Options (Advanced)",
+    },
+    {
         // LoadMusecaModule
         .title = "Force Load Museca",
         .name = "museca",

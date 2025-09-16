@@ -62,6 +62,7 @@
 #include "games/qks/qks.h"
 #include "games/mfg/mfg.h"
 #include "games/museca/museca.h"
+#include "games/xif/xif.h"
 #include "hooks/avshook.h"
 #include "hooks/audio/audio.h"
 #include "hooks/debughook.h"
@@ -222,6 +223,7 @@ int main_implementation(int argc, char *argv[]) {
     bool attach_ccj = false;
     bool attach_qks = false;
     bool attach_mfg = false;
+    bool attach_xif = false;
     bool attach_museca = false;
     bool show_cursor_if_no_touch = false;
 
@@ -622,6 +624,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::LoadMFGModule].value_bool()) {
         attach_mfg = true;
+    }
+    if(options[launcher::Options::LoadXIFModule].value_bool()) {
+        attach_xif = true;
     }
     if (options[launcher::Options::LoadMusecaModule].value_bool()) {
         attach_museca = true;
@@ -1731,6 +1736,16 @@ int main_implementation(int argc, char *argv[]) {
                 break;
             }
 
+            // Polaris Chord
+            if (check_dll("kamunity.dll") && fileutils::dir_exists("game/svm.exe"))
+            {
+                avs::game::DLL_NAME = "kamunity.dll";
+                attach_io = true;
+                attach_xif = true;
+                show_cursor_if_no_touch = true;
+                break;
+            }
+
             // try module path
             if (!module_path_tried) {
                 module_path_tried = true;
@@ -1873,6 +1888,10 @@ int main_implementation(int argc, char *argv[]) {
     if (attach_mfg) {
         avs::core::set_default_heap_size("kamunity.dll");
         games.push_back(new games::mfg::MFGGame());
+    }
+    if (attach_xif) {
+        avs::core::set_default_heap_size("kamunity.dll");
+        games.push_back(new games::xif::XIFGame());
     }
 
     // apply user heap size, if defined

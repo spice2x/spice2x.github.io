@@ -19,3 +19,8 @@ dist/*
 external/cv2pdb/*
 
 .ccache/*
+
+# Visual Studio
+.vs
+out
+CMakeSettings.json

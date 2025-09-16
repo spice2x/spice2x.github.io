@@ -118,6 +118,7 @@ namespace launcher {
             LoadCCJModule,
             LoadQKSModule,
             LoadMFGModule,
+            LoadXIFModule,
             LoadMusecaModule,
             PathToModules,
             ScreenshotFolder,

@@ -14,7 +14,7 @@ bool acioemu::ACIOHandle::open(LPCWSTR lpFileName) {
         return false;
     }
 
-    log_info("acioemu", "Opened {} (ACIO)", ws2s(com_port));
+     log_info("acioemu", "Opened {} (ACIO)", ws2s(com_port));
 
     // ACIO device
     acio_emu.add_device(new acioemu::ICCADevice(false, true, icca_node_count));

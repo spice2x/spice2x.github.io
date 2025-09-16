@@ -230,7 +230,7 @@ namespace overlay::windows {
             auto const register_fn = reinterpret_cast<decltype(&LdrRegisterDllNotification)>
                 (GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "LdrRegisterDllNotification"));
 
-            auto callback = [] CALLBACK (ULONG reason, PCLDR_DLL_NOTIFICATION_DATA data, PVOID ctx) {
+            auto callback = static_cast<PLDR_DLL_NOTIFICATION_FUNCTION>([](ULONG reason, PCLDR_DLL_NOTIFICATION_DATA data, PVOID ctx) {
                 if (reason == LDR_DLL_NOTIFICATION_REASON_LOADED) {
                     auto const dll = strtolower(std::filesystem::path({
                         data->Loaded.FullDllName->Buffer,
@@ -241,7 +241,7 @@ namespace overlay::windows {
                         static_cast<PatchManager*>(ctx)->reload_local_patches(true);
                     }
                 }
-            };
+            });
 
             if (register_fn && NT_SUCCESS(register_fn(0, callback, this, &ldr_notify_cookie))) {
                 log_info("patchmanager", "registered for DLL load notifications");

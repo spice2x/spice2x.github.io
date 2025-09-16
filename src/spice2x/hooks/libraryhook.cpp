@@ -9,6 +9,7 @@ static bool LHOOK_ENABLED = false;
 static robin_hood::unordered_map<std::string, HMODULE> LIBRARIES_A;
 static robin_hood::unordered_map<std::wstring, HMODULE> LIBRARIES_W;
 static robin_hood::unordered_map<std::string, FARPROC> PROCS;
+static std::vector<std::function<void(const std::string& dll)>> LOAD_CALLBACKS;
 
 static decltype(LoadLibraryA) *LoadLibraryA_orig = nullptr;
 static decltype(LoadLibraryW) *LoadLibraryW_orig = nullptr;
@@ -24,6 +25,10 @@ static HMODULE WINAPI LoadLibraryA_hook(LPCTSTR lpFileName) {
         if (module != LIBRARIES_A.end()) {
             return module->second;
         }
+
+        for (const auto& cb : LOAD_CALLBACKS) {
+            cb(lpFileName);
+        }
     }
 
     // fallback
@@ -37,6 +42,10 @@ static HMODULE WINAPI LoadLibraryW_hook(LPCWSTR lpFileName) {
         auto module = LIBRARIES_W.find(lpFileName);
         if (module != LIBRARIES_W.end()) {
             return module->second;
+        }
+
+        for (const auto& cb : LOAD_CALLBACKS) {
+            cb(ws2s(lpFileName));
         }
     }
 
@@ -122,4 +131,8 @@ void libraryhook_hook_proc(std::string proc_name, FARPROC proc_address) {
 
     // add proc to list
     PROCS.insert_or_assign(std::move(proc_name), proc_address);
+}
+
+void libraryhook_load_callback(const std::function<void(const std::string&)> cb) {
+    LOAD_CALLBACKS.push_back(cb);
 }

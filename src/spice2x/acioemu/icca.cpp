@@ -102,7 +102,7 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
             // send version data
             auto msg = this->create_msg(msg_in, MSG_VERSION_SIZE);
             if (
-                avs::game::is_model({"LDJ", "TBS", "UJK"}) ||
+                avs::game::is_model({"LDJ", "TBS", "UJK", "XIF"}) ||
                 // SDVX Valkyrie cabinet mode
                 (avs::game::is_model("KFC") && (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H'))
             ) {

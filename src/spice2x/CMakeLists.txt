@@ -443,6 +443,9 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/mfg/mfg.cpp
         games/mfg/io.cpp
         games/mfg/bi2a_hook.cpp
+        games/xif/xif.cpp
+        games/xif/io.cpp
+        games/xif/bi2x_hook.cpp
 
         # hooks
         hooks/audio/audio.cpp

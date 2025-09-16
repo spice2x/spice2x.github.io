@@ -36,6 +36,7 @@
 #include "ccj/io.h"
 #include "qks/io.h"
 #include "mfg/io.h"
+#include "xif/io.h"
 
 namespace games {
 
@@ -313,6 +314,13 @@ namespace games {
         buttons.insert({ mfg, mfg::get_buttons() });
         buttons_help.insert({ mfg, mfg::get_buttons_help() });
         file_hints[mfg].emplace_back("game/MFGClient_Data");
+
+        // Polaris Chord
+        const std::string xif("Polaris Chord");
+        games.push_back(xif);
+        buttons.insert({ xif, xif::get_buttons() });
+        buttons_help.insert({ xif, xif::get_buttons_help() });
+        file_hints[xif].emplace_back("game/svm.exe");
     }
 
     const std::vector<std::string> &get_games() {
