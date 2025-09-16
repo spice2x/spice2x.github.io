@@ -1,3 +1,7 @@
+09/16/2025 [spice2x]
+    Add Polaris Chord support
+    Tweak ImGUI theme
+
 08/21/2025 [spice2x]
     DDR: check for common DLL errors
     Supply default PCBID if absent
