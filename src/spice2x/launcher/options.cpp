@@ -1073,6 +1073,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // LoadPCModule
+        .title = "Force Load Polaris Chord",
+        .name = "pc",
+        .desc = "manually enable Polaris Chord module",
+        .type = OptionType::Bool,
+        .game_name = "Polaris Chord",
+        .category = "Game Options (Advanced)",
+    },
+    {
         // LoadMusecaModule
         .title = "Force Load Museca",
         .name = "museca",
@@ -1792,6 +1801,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .setting_name = "",
         .game_name = "Mahjong Fight Girl",
+        .category = "Game Options (Advanced)"
+    },
+    {
+        .title = "PC Arguments Override",
+        .name = "pcargs",
+        .desc = "Command line arguments passed to the game.",
+        .type = OptionType::Text,
+        .setting_name = "",
+        .game_name = "Polaris Chord",
+        .category = "Game Options (Advanced)",
+    },
+    {
+        .title = "PC Disable IO Emulation",
+        .name = "pcnoio",
+        .desc = "Disables BI2X hooks for PC",
+        .type = OptionType::Bool,
+        .setting_name = "",
+        .game_name = "Polaris Chord",
         .category = "Game Options (Advanced)"
     },
     {

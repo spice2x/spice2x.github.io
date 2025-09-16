@@ -14,11 +14,13 @@ namespace execexe {
     static decltype(&CreateFileA) execexe_CreateFileA = nullptr;
     static decltype(&CreateFileW) execexe_CreateFileW = nullptr;
     static decltype(&CloseHandle) execexe_CloseHandle = nullptr;
+    static uint64_t (*execexe_PreLoadLibraries)(const char *) = nullptr;
 
     static std::wstring plugins_dir;
     static acioemu::ACIOHandle *acio = nullptr;
     static std::wstring port_name;
     static bool port_opened = false;
+    static std::function<void()> deferred_function = nullptr;
 
     static HANDLE WINAPI execexe_CreateFileA_hook(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
                                                   LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
@@ -62,6 +64,24 @@ namespace execexe {
         return execexe_CloseHandle(hObject);
     }
 
+    static uint64_t execexe_PreLoadLibraries_hook(const char *libs) {
+        static bool init = false;
+
+        uint64_t result = execexe_PreLoadLibraries(libs);
+        if (init) {
+            return result;
+        }
+
+        init = true;
+        log_info("execexe", "execexe_PreLoadLibraries hook hit");
+
+        if (deferred_function) {
+            deferred_function();
+        }
+
+        return result;
+    }
+
     HMODULE init() {
         execexe_module = libutils::load_library("execexe.dll");
         execexe_LoadLibraryW = libutils::get_proc<decltype(&LoadLibraryW)>(execexe_module, MAKEINTRESOURCE(34));
@@ -70,6 +90,7 @@ namespace execexe {
         execexe_CloseHandle = libutils::get_proc<decltype(&CloseHandle)>(execexe_module, MAKEINTRESOURCE(7));
         execexe_CreateFileA = libutils::get_proc<decltype(&CreateFileA)>(execexe_module, MAKEINTRESOURCE(9));
         execexe_CreateFileW = libutils::get_proc<decltype(&CreateFileW)>(execexe_module, MAKEINTRESOURCE(11));
+        execexe_PreLoadLibraries = libutils::get_proc<decltype(execexe_PreLoadLibraries)>(execexe_module, MAKEINTRESOURCE(48));
 
         auto module_path = libutils::module_file_name(nullptr);
         module_path = module_path.replace_extension("");
@@ -77,6 +98,15 @@ namespace execexe {
         plugins_dir = (module_path / L"Plugins" / L"x86_64").wstring() + L"\\";
 
         return execexe_module;
+    }
+
+    void init_deferred(std::function<void()> init_func) {
+        if (deferred_function) {
+            log_fatal("execexe", "deferred init function is already set");
+        }
+        deferred_function = std::move(init_func);
+        detour::trampoline("execexe.dll", MAKEINTRESOURCE(48),
+                           execexe_PreLoadLibraries_hook, &execexe_PreLoadLibraries);
     }
 
     void init_port_hook(const std::wstring &portName, acioemu::ACIOHandle *acioHandle) {

@@ -1,11 +1,13 @@
 #pragma once
 
 #include <string>
+#include <functional>
 #include <windows.h>
 #include "acioemu/handle.h"
 
 namespace execexe {
     HMODULE init();
+    void init_deferred(std::function<void()> init_func);
     void init_port_hook(const std::wstring &portName, acioemu::ACIOHandle *acioHandle);
     HMODULE load_library(const char *module_name, bool fatal = true);
     FARPROC get_proc(HMODULE module, const char *proc_name, bool fatal = true);

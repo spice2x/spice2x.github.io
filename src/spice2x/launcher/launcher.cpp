@@ -61,6 +61,7 @@
 #include "games/ccj/trackball.h"
 #include "games/qks/qks.h"
 #include "games/mfg/mfg.h"
+#include "games/pc/pc.h"
 #include "games/museca/museca.h"
 #include "hooks/avshook.h"
 #include "hooks/audio/audio.h"
@@ -222,6 +223,7 @@ int main_implementation(int argc, char *argv[]) {
     bool attach_ccj = false;
     bool attach_qks = false;
     bool attach_mfg = false;
+    bool attach_pc = false;
     bool attach_museca = false;
     bool show_cursor_if_no_touch = false;
 
@@ -622,6 +624,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::LoadMFGModule].value_bool()) {
         attach_mfg = true;
+    }
+    if (options[launcher::Options::LoadPCModule].value_bool()) {
+        attach_pc = true;
     }
     if (options[launcher::Options::LoadMusecaModule].value_bool()) {
         attach_museca = true;
@@ -1100,6 +1105,12 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::MFGNoIO].is_active()) {
         games::mfg::MFG_NO_IO = options[launcher::Options::MFGNoIO].value_bool();
+    }
+    if (options[launcher::Options::PCArgs].is_active()) {
+        games::pc::PC_INJECT_ARGS = options[launcher::Options::PCArgs].value_text();
+    }
+    if (options[launcher::Options::PCNoIO].is_active()) {
+        games::pc::PC_NO_IO = options[launcher::Options::PCNoIO].value_bool();
     }
     if (options[launcher::Options::spice2x_EnableSMXStage].value_bool()) {
         rawinput::ENABLE_SMX_STAGE = true;
@@ -1722,6 +1733,16 @@ int main_implementation(int argc, char *argv[]) {
                 break;
             }
 
+            // Polaris Chord
+            if (check_dll("kamunity.dll") && fileutils::dir_exists("game/svm_Data")) {
+                avs::game::DLL_NAME = "kamunity.dll";
+                attach_io = true;
+                attach_pc = true;
+                launcher::signal::USE_VEH_WORKAROUND = true;
+                show_cursor_if_no_touch = true;
+                break;
+            }
+
             // Busou Shinki: Armored Princess Battle Conductor
             if (check_dll("kamunity.dll") && fileutils::file_exists("game/bsac_app.exe")) {
                 avs::game::DLL_NAME = "kamunity.dll";
@@ -1873,6 +1894,10 @@ int main_implementation(int argc, char *argv[]) {
     if (attach_mfg) {
         avs::core::set_default_heap_size("kamunity.dll");
         games.push_back(new games::mfg::MFGGame());
+    }
+    if (attach_pc) {
+        avs::core::HEAP_SIZE = 536870912; // 512MB
+        games.push_back(new games::pc::PCGame());
     }
 
     // apply user heap size, if defined
