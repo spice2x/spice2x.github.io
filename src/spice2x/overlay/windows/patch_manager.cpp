@@ -249,8 +249,9 @@ namespace overlay::windows {
                 }
             }
 #ifdef _MSC_VER
-            );
+            )
 #endif
+            ;
 
             if (register_fn && NT_SUCCESS(register_fn(0, callback, this, &ldr_notify_cookie))) {
                 log_info("patchmanager", "registered for DLL load notifications");
