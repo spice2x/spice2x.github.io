@@ -250,7 +250,7 @@ namespace games::pc {
         o_DevStatus->Input.CN8_9 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Service]);
         o_DevStatus->Input.CN8_10 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::CoinMech]);
         o_DevStatus->Input.CN15_10 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]);
-        o_DevStatus->Input.CN15_12 = 1; // Recorder off
+        o_DevStatus->Input.CN15_12 = 0xFF; // Recorder off
 
         o_DevStatus->Input.CN12_11 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button1]);
         o_DevStatus->Input.CN12_12 = !GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button2]);
