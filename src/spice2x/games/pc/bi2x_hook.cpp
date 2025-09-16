@@ -268,11 +268,11 @@ namespace games::pc {
         auto &analogs = get_analogs();
         if (analogs[Analogs::FaderL].isSet()) {
             float val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderL]) - 0.5f) * 2;
-            o_DevStatus->Input.CN15_7 = val < 0.0005f;
-            o_DevStatus->Input.CN15_6 = val > -0.75f && val < 0.25f;
-            o_DevStatus->Input.CN15_5 = val > -0.5f && val < 0.5f;
-            o_DevStatus->Input.CN15_4 = val > -0.25f && val < 0.75f;
-            o_DevStatus->Input.CN15_3 = val > -0.0005f;
+            o_DevStatus->Input.CN15_7 = val < 0.2f;
+            o_DevStatus->Input.CN15_6 = val > -0.85f && val < 0.35f;
+            o_DevStatus->Input.CN15_5 = val > -0.6f && val < 0.6f;
+            o_DevStatus->Input.CN15_4 = val > -0.35f && val < 0.85f;
+            o_DevStatus->Input.CN15_3 = val > -0.2f;
         } else {
             o_DevStatus->Input.CN15_7 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Left]);
             o_DevStatus->Input.CN15_3 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Right]);
@@ -281,11 +281,11 @@ namespace games::pc {
 
         if (analogs[Analogs::FaderR].isSet()) {
             float val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderR]) - 0.5f) * 2;
-            o_DevStatus->Input.CN11_20 = val < 0.0005f;
-            o_DevStatus->Input.CN11_19 = val > -0.75f && val < 0.25f;
-            o_DevStatus->Input.CN9_10 = val > -0.5f && val < 0.5f;
-            o_DevStatus->Input.CN9_9 = val > -0.25f && val < 0.75f;
-            o_DevStatus->Input.CN9_8 = val > -0.0005f;
+            o_DevStatus->Input.CN11_20 = val < 0.2f;
+            o_DevStatus->Input.CN11_19 = val > -0.85f && val < 0.35f;
+            o_DevStatus->Input.CN9_10 = val > -0.6f && val < 0.6f;
+            o_DevStatus->Input.CN9_9 = val > -0.35f && val < 0.85f;
+            o_DevStatus->Input.CN9_8 = val > -0.2f;
         } else {
             o_DevStatus->Input.CN11_20 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Left]);
             o_DevStatus->Input.CN9_8 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Right]);
