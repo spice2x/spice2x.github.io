@@ -36,6 +36,7 @@
 #include "ccj/io.h"
 #include "qks/io.h"
 #include "mfg/io.h"
+#include "pc/io.h"
 
 namespace games {
 
@@ -313,6 +314,15 @@ namespace games {
         buttons.insert({ mfg, mfg::get_buttons() });
         buttons_help.insert({ mfg, mfg::get_buttons_help() });
         file_hints[mfg].emplace_back("game/MFGClient_Data");
+
+        // Polaris Chord
+        const std::string pc("Polaris Chord");
+        games.push_back(pc);
+        buttons.insert({ pc, pc::get_buttons() });
+        buttons_help.insert({ pc, pc::get_buttons_help() });
+        analogs.insert({ pc, pc::get_analogs() });
+        lights.insert({ pc, pc::get_lights() });
+        file_hints[pc].emplace_back("game/svm_Data");
     }
 
     const std::vector<std::string> &get_games() {
