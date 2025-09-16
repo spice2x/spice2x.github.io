@@ -625,7 +625,7 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::LoadMFGModule].value_bool()) {
         attach_mfg = true;
     }
-    if(options[launcher::Options::LoadXIFModule].value_bool()) {
+    if (options[launcher::Options::LoadXIFModule].value_bool()) {
         attach_xif = true;
     }
     if (options[launcher::Options::LoadMusecaModule].value_bool()) {
@@ -1737,7 +1737,7 @@ int main_implementation(int argc, char *argv[]) {
             }
 
             // Polaris Chord
-            if (check_dll("kamunity.dll") && fileutils::dir_exists("game/svm.exe"))
+            if (check_dll("kamunity.dll") && fileutils::file_exists("game/svm.exe"))
             {
                 avs::game::DLL_NAME = "kamunity.dll";
                 attach_io = true;

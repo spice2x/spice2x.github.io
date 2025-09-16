@@ -29,7 +29,7 @@ namespace games::xif {
             R_FaderRight,
 
             Headphone,
-            Recorder
+            // Recorder
         };
     }
 
@@ -45,5 +45,4 @@ namespace games::xif {
     std::vector<Button> &get_buttons();
     std::vector<Analog> &get_analogs();
     std::string get_buttons_help();
-    std::string get_analogs_help();
 }

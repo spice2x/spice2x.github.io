@@ -13,27 +13,27 @@ std::vector<Button>& games::xif::get_buttons() {
 			"Service",
 			"Coin",
 
-			"Lane Button 1",
-			"Lane Button 2",
-			"Lane Button 3",
-			"Lane Button 4",
-			"Lane Button 5",
-			"Lane Button 6",
-			"Lane Button 7",
-			"Lane Button 8",
-			"Lane Button 9",
-			"Lane Button 10",
-			"Lane Button 11",
-			"Lane Button 12",
+			"Button 1",
+			"Button 2",
+			"Button 3",
+			"Button 4",
+			"Button 5",
+			"Button 6",
+			"Button 7",
+			"Button 8",
+			"Button 9",
+			"Button 10",
+			"Button 11",
+			"Button 12",
 
-			"L-Fader Left",
-			"L-Fader Right",
-			"R-Fader Left",
-			"R-Fader Right",
+			"Fader-L Left",
+			"Fader-L Right",
+			"Fader-R Left",
+			"Fader-R Right",
 
 
-			"Headphones",
-			"Recorder"
+			"Headphones"
+			// "Recorder"
 		);
 	}
 
@@ -49,8 +49,8 @@ std::vector<Analog>& games::xif::get_analogs() {
 
 		GameAPI::Analogs::sortAnalogs(
 			&analogs,
-			"L-Fader",
-			"R-Fader"
+			"Fader-L",
+			"Fader-R"
 		);
 	}
 
@@ -58,11 +58,6 @@ std::vector<Analog>& games::xif::get_analogs() {
 }
 
 std::string games::xif::get_buttons_help() {
-	// keep to max 100 characters wide
-	return "";
-}
-
-std::string games::xif::get_analogs_help() {
 	// keep to max 100 characters wide
 	return "";
 }

@@ -320,6 +320,7 @@ namespace games {
         games.push_back(xif);
         buttons.insert({ xif, xif::get_buttons() });
         buttons_help.insert({ xif, xif::get_buttons_help() });
+        analogs.insert({ xif, xif::get_analogs() });
         file_hints[xif].emplace_back("game/svm.exe");
     }
 
