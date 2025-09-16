@@ -40,6 +40,8 @@ namespace richpresence {
                 {"Busou Shinki: Armored Princess Battle Conductor", "1226739666741366916"},
                 {"Chase Chase Jokers", "1226739863915593770"},
                 {"QuizKnock STADIUM", "1226739930328334478"},
+                {"Mahjong Fight Girl", "1417371188342030468"},
+                {"Polaris Chord", "1417371592224407552"},
         };
 
         // state
