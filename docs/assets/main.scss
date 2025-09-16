@@ -109,18 +109,18 @@ ul.downloads.highlight-latest li:first-child a.download-link {
     color: #CE534D;
 }
 
-ul.downloads.highlight-latest li:first-child a.download-link::after {
-    content: " (click here to download latest version)";
-}
+// ul.downloads.highlight-latest li:first-child a.download-link::after {
+//     content: " (click here to download latest version)";
+// }
 
 ul.downloads-beta.highlight-latest li:first-child a.download-link {
     font-weight: bold;
     color: #CE534D;
 }
 
-ul.downloads-beta.highlight-latest li:first-child a.download-link::after {
-    content: " (click here to download latest beta version)";
-}
+// ul.downloads-beta.highlight-latest li:first-child a.download-link::after {
+//     content: " (click here to download latest beta version)";
+// }
 
 /*** author ***/
 .author-container h1 {
