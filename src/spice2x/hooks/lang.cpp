@@ -18,6 +18,7 @@ constexpr UINT CODEPAGE_SHIFT_JIS = 932;
 static decltype(GetACP) *GetACP_orig = nullptr;
 static decltype(GetOEMCP) *GetOEMCP_orig = nullptr;
 static decltype(MultiByteToWideChar) *MultiByteToWideChar_orig = nullptr;
+static decltype(GetLocaleInfoEx) *GetLocaleInfoEx_orig = nullptr;
 
 #ifdef SPICE64
 static decltype(GetSystemDefaultLCID) *GetSystemDefaultLCID_orig = nullptr;
@@ -119,6 +120,48 @@ static int WINAPI MultiByteToWideChar_hook(
             cchWideChar);
 }
 
+static int WINAPI GetLocaleInfoEx_hook (
+        LPCWSTR lpLocaleName,
+        LCTYPE LCType,
+        LPWSTR lpLCData,
+        int cchData)
+{
+
+#if 0
+    if (lpLocaleName == LOCALE_NAME_INVARIANT) {
+        log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_INVARIANT), {}, {}", LCType, cchData);
+    } else if (lpLocaleName == LOCALE_NAME_SYSTEM_DEFAULT) {
+        log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_SYSTEM_DEFAULT), {}, {}", LCType, cchData);
+    } else if (lpLocaleName == LOCALE_NAME_USER_DEFAULT) {
+        log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_USER_DEFAULT), {}, {}", LCType, cchData);
+    } else {
+        log_misc("hooks::lang", "GetLocaleInfoEx_hook hit ({}), {}, {}", ws2s(lpLocaleName), LCType, cchData);
+    }
+#endif
+
+    if (lpLocaleName == LOCALE_NAME_USER_DEFAULT &&
+        LCType == LOCALE_SISO639LANGNAME &&
+        lpLCData != NULL &&
+        cchData >= 3) {
+        log_misc("hooks::lang",
+                 "GetLocaleInfoEx_hook hit (LOCALE_NAME_USER_DEFAULT / LOCALE_SISO639LANGNAME), return `ja`");
+        wcscpy(lpLCData, L"ja");
+        return 3;
+    }
+
+    if (lpLocaleName == LOCALE_NAME_USER_DEFAULT &&
+        LCType == LOCALE_SISO3166CTRYNAME &&
+        lpLCData != NULL &&
+        cchData >= 3) {
+        log_misc("hooks::lang",
+                 "GetLocaleInfoEx_hook hit (LOCALE_NAME_USER_DEFAULT / LOCALE_SISO3166CTRYNAME), return `JP`");
+        wcscpy(lpLCData, L"JP");
+        return 3;
+    }
+
+    return GetLocaleInfoEx_orig(lpLocaleName, LCType, lpLCData, cchData);
+}
+
 void hooks::lang::early_init() {
     log_info("hooks::lang", "early initialization");
 
@@ -138,6 +181,14 @@ void hooks::lang::early_init() {
     }
 #endif
 
+    if (avs::game::is_model("XIF")) {
+        log_info("hooks::lang", "hooking GetLocaleInfoEx");
+        detour::trampoline_try(
+            "kernel32.dll",
+            "GetLocaleInfoEx",
+            GetLocaleInfoEx_hook,
+            &GetLocaleInfoEx_orig);
+    }
 }
 
 void hooks::lang::init() {
