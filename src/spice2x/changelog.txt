@@ -1,3 +1,6 @@
+09/17/2025 [spice2x]
+    Polaris Chord I/O fixes, language shim
+
 09/16/2025 [spice2x]
     Add Polaris Chord support
     Tweak ImGUI theme
