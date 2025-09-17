@@ -250,7 +250,7 @@ namespace games::pc {
         o_DevStatus->Input.CN8_9 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Service]) ? 0 : 0xFF;
         o_DevStatus->Input.CN8_10 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::CoinMech]) ? 0 : 0xFF;
         o_DevStatus->Input.CN15_10 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]) ? 0 : 0xFF;
-        o_DevStatus->Input.CN15_12 = 0xFF; // Recorder off
+        o_DevStatus->Input.CN15_12 = 0xFF; // Recorder off; present in I/O test menu but unused in game
 
         o_DevStatus->Input.CN12_11 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button1]) ? 0 : 0xFF;
         o_DevStatus->Input.CN12_12 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button2]) ? 0 : 0xFF;
@@ -266,32 +266,46 @@ namespace games::pc {
         o_DevStatus->Input.CN12_22 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button12]) ? 0 : 0xFF;
 
         auto &analogs = get_analogs();
+
+        // FADER-L
+        float val = 0.f;
         if (analogs[Analogs::FaderL].isSet()) {
-            float val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderL]) - 0.5f) * 2;
-            o_DevStatus->Input.CN15_7 = (val < 0.2f) ? 0xFF : 0;
-            o_DevStatus->Input.CN15_6 = (val > -0.85f && val < 0.35f) ? 0xFF : 0;
-            o_DevStatus->Input.CN15_5 = (val > -0.6f && val < 0.6f) ? 0xFF : 0;
-            o_DevStatus->Input.CN15_4 = (val > -0.35f && val < 0.85f) ? 0xFF : 0;
-            o_DevStatus->Input.CN15_3 = (val > -0.2f) ? 0xFF : 0;
-        } else {
-            o_DevStatus->Input.CN15_7 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Left]) ? 0xFF : 0;
-            o_DevStatus->Input.CN15_3 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Right]) ? 0xFF : 0;
-            o_DevStatus->Input.CN15_5 = (!o_DevStatus->Input.CN15_7 && !o_DevStatus->Input.CN15_3) ? 0xFF : 0;
+            val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderL]) - 0.5f) * 2;
         }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Left]) &&
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Right])) {
+            val = 0.f;
+        } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Left])) {
+            val = -1.0f;
+        } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Right])) {
+            val = +1.0f;
+        }
+        o_DevStatus->Input.CN15_7 = (val < 0.2f) ? 0xFF : 0;
+        o_DevStatus->Input.CN15_6 = (val > -0.85f && val < 0.35f) ? 0xFF : 0;
+        o_DevStatus->Input.CN15_5 = (val > -0.6f && val < 0.6f) ? 0xFF : 0;
+        o_DevStatus->Input.CN15_4 = (val > -0.35f && val < 0.85f) ? 0xFF : 0;
+        o_DevStatus->Input.CN15_3 = (val > -0.2f) ? 0xFF : 0;
 
+        // FADER-R
+        val = 0.f;
         if (analogs[Analogs::FaderR].isSet()) {
-            float val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderR]) - 0.5f) * 2;
-            o_DevStatus->Input.CN11_20 = (val < 0.2f) ? 0xFF : 0;
-            o_DevStatus->Input.CN11_19 = (val > -0.85f && val < 0.35f) ? 0xFF : 0;
-            o_DevStatus->Input.CN9_10 = (val > -0.6f && val < 0.6f) ? 0xFF : 0;
-            o_DevStatus->Input.CN9_9 = (val > -0.35f && val < 0.85f) ? 0xFF : 0;
-            o_DevStatus->Input.CN9_8 = (val > -0.2f) ? 0xFF : 0;
-        } else {
-            o_DevStatus->Input.CN11_20 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Left]) ? 0xFF : 0;
-            o_DevStatus->Input.CN9_8 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Right]) ? 0xFF : 0;
-            o_DevStatus->Input.CN9_10 = (!o_DevStatus->Input.CN11_20 && !o_DevStatus->Input.CN9_8) ? 0xFF : 0;
+            val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderR]) - 0.5f) * 2;
         }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Left]) &&
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Right])) {
+            val = 0.f;
+        } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Left])) {
+            val = -1.0f;
+        } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Right])) {
+            val = +1.0f;
+        }
+        o_DevStatus->Input.CN11_20 = (val < 0.2f) ? 0xFF : 0;
+        o_DevStatus->Input.CN11_19 = (val > -0.85f && val < 0.35f) ? 0xFF : 0;
+        o_DevStatus->Input.CN9_10 = (val > -0.6f && val < 0.6f) ? 0xFF : 0;
+        o_DevStatus->Input.CN9_9 = (val > -0.35f && val < 0.85f) ? 0xFF : 0;
+        o_DevStatus->Input.CN9_8 = (val > -0.2f) ? 0xFF : 0;
 
+        // coin
         o_DevStatus->Input.Coin1Count = eamuse_coin_get_stock();
     }
 
