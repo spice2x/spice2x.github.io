@@ -126,16 +126,19 @@ static int WINAPI GetLocaleInfoEx_hook (
         LPWSTR lpLCData,
         int cchData)
 {
-    // if (lpLocaleName == LOCALE_NAME_INVARIANT) {
-    //     log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_INVARIANT), {}, {}", LCType, cchData);
-    // } else if (lpLocaleName == LOCALE_NAME_SYSTEM_DEFAULT) {
-    //     log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_SYSTEM_DEFAULT), {}", LCType, cchData);
-    // } else if (lpLocaleName == LOCALE_NAME_USER_DEFAULT) {
-    //     log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_USER_DEFAULT), {}", LCType, cchData);
-    // } else {
-    //     log_misc("hooks::lang", "GetLocaleInfoEx_hook hit ({}), {}, {}", ws2s(lpLocaleName), LCType, cchData);
-    // }
-    
+
+#if 0
+    if (lpLocaleName == LOCALE_NAME_INVARIANT) {
+        log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_INVARIANT), {}, {}", LCType, cchData);
+    } else if (lpLocaleName == LOCALE_NAME_SYSTEM_DEFAULT) {
+        log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_SYSTEM_DEFAULT), {}, {}", LCType, cchData);
+    } else if (lpLocaleName == LOCALE_NAME_USER_DEFAULT) {
+        log_misc("hooks::lang", "GetLocaleInfoEx_hook hit (LOCALE_NAME_USER_DEFAULT), {}, {}", LCType, cchData);
+    } else {
+        log_misc("hooks::lang", "GetLocaleInfoEx_hook hit ({}), {}, {}", ws2s(lpLocaleName), LCType, cchData);
+    }
+#endif
+
     if (lpLocaleName == LOCALE_NAME_USER_DEFAULT &&
         LCType == LOCALE_SISO639LANGNAME &&
         lpLCData != NULL &&
