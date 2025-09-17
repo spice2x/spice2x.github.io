@@ -3,12 +3,15 @@
 #include <format>
 
 #include "bi2x_hook.h"
+#include "util/detour.h"
+#include "util/logging.h"
 #include "util/fileutils.h"
 #include "util/unity_player.h"
 #include "util/execexe.h"
 #include "acioemu/handle.h"
 #include "misc/wintouchemu.h"
 #include "hooks/graphics/graphics.h"
+#include "rawinput/rawinput.h"
 
 namespace games::pc {
     std::string PC_INJECT_ARGS = "";
@@ -16,6 +19,24 @@ namespace games::pc {
 
     static acioemu::ACIOHandle *acioHandle = nullptr;
     static std::wstring portName = L"COM1";
+
+    static decltype(RegisterRawInputDevices) *RegisterRawInputDevices_orig = nullptr;
+
+    static BOOL WINAPI RegisterRawInputDevices_hook(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize) {
+
+        // if the caller is spice itself, then pass through.
+        if (pRawInputDevices &&
+            (uiNumDevices > 0) &&
+            (pRawInputDevices[0].hwndTarget == RI_MGR->input_hwnd)) {
+            
+            return RegisterRawInputDevices_orig(pRawInputDevices, uiNumDevices, cbSize);
+        }
+        
+        // otherwise, it must be the game; prevent the game from registering for raw input
+        // and hijacking WM_INPUT messages.
+        SetLastError(0xDEADBEEF);
+        return FALSE;
+    }
 
     void PCGame::attach() {
         Game::attach();
@@ -38,6 +59,10 @@ namespace games::pc {
                 bi2x_hook_init();
             }
         });
+
+        const auto user32Dll = "user32.dll";
+        detour::trampoline_try(user32Dll, "RegisterRawInputDevices",
+                               RegisterRawInputDevices_hook, &RegisterRawInputDevices_orig);
 
 
         if (GRAPHICS_SHOW_CURSOR) {

@@ -54,7 +54,6 @@ namespace rawinput {
 
         HotplugManager *hotplug;
         std::vector<Device> devices;
-        HWND input_hwnd = nullptr;
         WNDCLASSEX input_hwnd_class {};
         std::thread *input_thread = nullptr;
         std::thread *flush_thread = nullptr;
@@ -90,6 +89,8 @@ namespace rawinput {
         static DeviceInfo get_device_info(const std::string &device_name);
 
     public:
+
+        HWND input_hwnd = nullptr;
 
         RawInputManager();
         ~RawInputManager();
