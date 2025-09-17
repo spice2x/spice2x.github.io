@@ -28,7 +28,7 @@ namespace games::mfg {
         SetEnvironmentVariableA("VFG_CABINET_TYPE", MFG_CABINET_TYPE.c_str());
 
         // add card reader
-        portName = MFG_CABINET_TYPE == "UKS" ? L"\\\\.\\COM1" : L"\\\\.\\COM3";
+        portName = (MFG_CABINET_TYPE == "UKS") ? std::wstring(L"\\\\.\\COM1") : std::wstring(L"\\\\.\\COM3");
         acioHandle = new acioemu::ACIOHandle(portName.c_str(), 1);
         devicehook_init_trampoline();
         devicehook_add(acioHandle);
