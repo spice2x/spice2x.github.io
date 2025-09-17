@@ -3,6 +3,8 @@
 #include <format>
 
 #include "bi2x_hook.h"
+#include "util/detour.h"
+#include "util/logging.h"
 #include "util/fileutils.h"
 #include "util/unity_player.h"
 #include "util/execexe.h"
@@ -16,6 +18,12 @@ namespace games::pc {
 
     static acioemu::ACIOHandle *acioHandle = nullptr;
     static std::wstring portName = L"COM1";
+
+    static decltype(RegisterRawInputDevices) *RegisterRawInputDevices_orig = nullptr;
+
+    static BOOL WINAPI RegisterRawInputDevices_hook(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize) {
+        return FALSE;
+    }
 
     void PCGame::attach() {
         Game::attach();
@@ -38,6 +46,10 @@ namespace games::pc {
                 bi2x_hook_init();
             }
         });
+
+        const auto user32Dll = "user32.dll";
+        detour::trampoline_try(user32Dll, "RegisterRawInputDevices",
+                               RegisterRawInputDevices_hook, &RegisterRawInputDevices_orig);
 
 
         if (GRAPHICS_SHOW_CURSOR) {
