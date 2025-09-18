@@ -77,7 +77,7 @@ std::string peb::entry_name(const LDR_DATA_TABLE_ENTRY* entry) {
 }
 
 const PEB* peb::peb_get() {
-#ifdef SPICE64
+#ifdef _WIN64
     return reinterpret_cast<const PEB *>(__readgsqword(0x60));
 #else
     return reinterpret_cast<const PEB *>(__readfsdword(0x30));
