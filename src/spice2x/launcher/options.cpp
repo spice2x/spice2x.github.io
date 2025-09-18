@@ -1049,7 +1049,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // LoadCCJModule
-        .title = "Force Load Chase Chase Jokers",
+        .title = "Force Load Chase Chase Jokers Module",
         .name = "ccj",
         .desc = "manually enable Chase Chase Jokers module",
         .type = OptionType::Bool,
@@ -1058,7 +1058,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // LoadQKSModule
-        .title = "Force Load QuizKnock STADIUM",
+        .title = "Force Load QuizKnock STADIUM Module",
         .name = "qks",
         .desc = "manually enable QuizKnock STADIUM module",
         .type = OptionType::Bool,
@@ -1067,7 +1067,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // LoadMFGModule
-        .title = "Force Load Mahjong Fight Girl",
+        .title = "Force Load Mahjong Fight Girl Module",
         .name = "mfg",
         .desc = "manually enable Mahjong Fight Girl module",
         .type = OptionType::Bool,
@@ -1076,7 +1076,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // LoadPCModule
-        .title = "Force Load Polaris Chord",
+        .title = "Force Load Polaris Chord Module",
         .name = "pc",
         .desc = "manually enable Polaris Chord module",
         .type = OptionType::Bool,
@@ -1085,7 +1085,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // LoadMusecaModule
-        .title = "Force Load Museca",
+        .title = "Force Load Museca Module",
         .name = "museca",
         .desc = "manually enable Museca module",
         .type = OptionType::Bool,
