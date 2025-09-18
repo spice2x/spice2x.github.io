@@ -1135,7 +1135,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Path Overrides",
     },
     {
-        .title = "Intel SDE Folder Override",
+        .title = "Intel SDE Folder",
         .name = "sde",
         .desc = "Path to Intel SDE kit path for automatic attaching",
         .type = OptionType::Text,
