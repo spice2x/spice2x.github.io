@@ -77,7 +77,6 @@ namespace games::pc {
             execexe::load_library("libaio-iob_video.dll");
             execexe::load_library("libaio-iob2_video.dll");
             execexe::load_library("win10actlog.dll");
-            auto *unityplayer = execexe::load_library("unityplayer.dll");
 
             if (!PC_NO_IO) {
                 bi2x_hook_init();
