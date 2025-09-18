@@ -34,7 +34,7 @@ static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
     "NFC Card Readers",
 };
 static const std::vector<std::string> CATEGORY_ORDER_DEV = {
-    "Paths",
+    "Path Overrides",
     "Network (Development)",
     "Audio (Hacks)",
     "I/O Modules",
@@ -53,12 +53,14 @@ bool launcher::USE_CMD_OVERRIDE = false;
  */
 static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
-        .title = "Game Executable",
+        .title = "Override Game Executable & Disable Hooks",
         .name = "exec",
-        .desc = "Path to the game DLL file",
+        .desc = "Path to the game DLL file.\n\n"
+            "This option is typically not needed; leave it empty to allow spice to auto-detect your game.\n\n"
+            "WARNING: this option also disables all game-specific hooks and turns off most I/O modules!",
         .type = OptionType::Text,
         .setting_name = "*.dll",
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
         .title = "Open Configurator",
@@ -1091,88 +1093,88 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
-        .title = "Modules Folder Path",
+        .title = "Modules Folder Override",
         .name = "modules",
         .desc = "Sets a custom path to the modules folder",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
-        .title = "Screenshot Folder Path",
+        .title = "Screenshot Folder Override",
         .name = "screenshotpath",
         .desc = "Sets a custom path to the screenshots folder",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
-        .title = "Configuration Path",
+        .title = "Configuration Path Override",
         .name = "cfgpath",
         .desc = "Sets a custom file path for config file. Must be passed via the command line. "
             "If left empty, %appdata%\\spicetools.xml will be used",
         .type = OptionType::Text,
         .setting_name = "(default)",
-        .category = "Paths",
+        .category = "Path Overrides",
         .disabled = true,
     },
     {
         // ScreenResizeConfigPath
-        .title = "Screen Resize Config Path",
+        .title = "Screen Resize Config Path Override",
         .name = "resizecfgpath",
         .desc = "Sets a custom file path for screen resize config file. "
             "If left empty, %appdata%\\spice2x\\spicetools_screen_resize.json will be used",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
         // PatchManagerConfigPath
-        .title = "Patch Manager Config Path",
+        .title = "Patch Manager Config Path Override",
         .name = "patchcfgpath",
         .desc = "Sets a custom file path for patch manager config file. Can be used to manage 'profiles' for auto-patches. "
             "If left empty, %appdata%\\spice2x\\spicetools_patch_manager.json will be used",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
-        .title = "Intel SDE Folder Path",
+        .title = "Intel SDE Folder Override",
         .name = "sde",
         .desc = "Path to Intel SDE kit path for automatic attaching",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
-        .title = "Path to ea3-config.xml",
+        .title = "ea3-config.xml Override",
         .name = "e",
         .desc = "Sets a custom path to ea3-config.xml",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
-        .title = "Path to app-config.xml",
+        .title = "app-config.xml Override",
         .name = "a",
         .desc = "Sets a custom path to app-config.xml",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
-        .title = "Path to avs-config.xml",
+        .title = "avs-config.xml Override",
         .name = "v",
         .desc = "Sets a custom path to avs-config.xml",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
-        .title = "Path to bootstrap.xml",
+        .title = "bootstrap.xml Override",
         .name = "b",
         .desc = "Sets a custom path to bootstrap.xml",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
-        .title = "Path to log.txt",
+        .title = "log.txt Override",
         .name = "y",
         .desc = "Sets a custom path to log.txt",
         .type = OptionType::Text,
-        .category = "Paths",
+        .category = "Path Overrides",
     },
     {
         .title = "API TCP Port",

@@ -35,7 +35,14 @@ std::vector<Button> &games::pc::get_buttons() {
 }
 
 std::string games::pc::get_buttons_help() {
-    return "";
+    // keep to max 100 characters wide
+    return
+        "    FADER-L   FADER-R  \n"
+        "\n"
+        " B1 B2 B3  ...  B11 B12\n"
+        "\n"
+        " Most menu interactions are on the touch screen; you can use your mouse.\n"
+        ;
 }
 
 std::vector<Analog> &games::pc::get_analogs() {

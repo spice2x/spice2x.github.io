@@ -1780,7 +1780,14 @@ int main_implementation(int argc, char *argv[]) {
             // usage error
             if (!cfg::CONFIGURATOR_STANDALONE
             && (!CHECK_DLL_IGNORE_ARCH)) {
-                log_fatal("launcher", "module auto detection failed.");
+                log_fatal(
+                    "launcher",
+                    "module auto detection failed!\n\n"
+                    "This usually means one of the following:\n\n"
+                    "  1. You put spice executables in the wrong place, or\n"
+                    "  2. XML files in prop directory are malformed or missing, or\n"
+                    "  3. You passed in invalid options (usually, path overrides like -exec)\n\n"
+                );
             }
             break;
 
