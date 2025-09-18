@@ -1272,6 +1272,19 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
 
+    if (options[launcher::Options::GameExecutable].is_active() && !cfg::CONFIGURATOR_STANDALONE) {
+        log_warning(
+            "launcher",
+            "WARNING - user specified -exec option\n\n\n"
+            "!!!                                                             !!!\n"
+            "!!! Using -exec option disables all game-specific hooks!        !!!\n"
+            "!!! Unless you know exactly what you are doing, clear -exec     !!!\n"
+            "!!!   and try again. Using -exec by itself will result in weird !!!\n"
+            "!!!   errors and loss of functionality.                         !!!\n"
+            "!!!                                                             !!!\n"
+            );
+    }
+
     if (options[launcher::Options::FullscreenResolution].is_active()) {
         std::pair<uint32_t, uint32_t> result;
         if (parse_width_height(options[launcher::Options::FullscreenResolution].value_text(), result)) {
