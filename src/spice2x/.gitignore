@@ -24,3 +24,5 @@ external/cv2pdb/*
 .vs
 out
 CMakeSettings.json
+
+RCa22448
