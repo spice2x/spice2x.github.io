@@ -14,7 +14,7 @@ namespace games::ccj {
     bool MOUSE_TRACKBALL_USE_TOGGLE = false;
     uint8_t TRACKBALL_SENSITIVITY = 10;
 
-    static HANDLE fakeHandle = (HANDLE)0xDEADBEEF;
+    static HANDLE fakeHandle = (HANDLE)0xDEADBEEFull;
     static HWND hWnd = nullptr;
     static WNDPROC wndProc = nullptr;
     static std::thread *tbThread = nullptr;

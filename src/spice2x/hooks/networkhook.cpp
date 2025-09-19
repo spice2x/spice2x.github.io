@@ -141,13 +141,17 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
 
 static int WINAPI bind_hook(SOCKET s, const struct sockaddr *name, int namelen) {
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
+#endif
 
     // cast to sockaddr_in
     struct sockaddr_in *in_name = (struct sockaddr_in *) name;
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
     // override bind to allow all hosts
     in_name->sin_addr.s_addr = inet_addr("0.0.0.0");
