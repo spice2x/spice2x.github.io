@@ -373,7 +373,7 @@ void ICCADevice::update_card(int unit) {
     bool kb_insert_press = false;
 
     // eamio keypress
-    kb_insert_press |= eamuse_get_keypad_state((size_t) unit) & (1 << EAM_IO_INSERT);
+    kb_insert_press |= static_cast<bool>(eamuse_get_keypad_state((size_t) unit) & (1 << EAM_IO_INSERT));
 
     // check for card
     if (this->cards[unit] == nullptr && (eamuse_card_insert_consume(this->node_count, unit) || kb_insert_press)) {

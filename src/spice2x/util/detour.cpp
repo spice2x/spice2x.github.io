@@ -106,8 +106,10 @@ bool detour::inline_restore(void *address, char *data) {
 #endif
 }
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
+#endif
 
 static void *pe_offset(void *ptr, size_t offset) {
     if (offset == 0) {
@@ -282,7 +284,9 @@ void **detour::iat_find_proc(const char *iid_name, void *proc, HMODULE module) {
     return nullptr;
 }
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 void *detour::iat_try(const char *function, void *new_func, HMODULE module, const char *iid_name) {
 

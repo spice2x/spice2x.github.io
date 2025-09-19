@@ -2445,7 +2445,7 @@ std::unique_ptr<std::vector<Option>> launcher::parse_options(int argc, char *arg
                             } else {
                                 // validate it is an integer
                                 try {
-                                    std::stoull(argv[i], nullptr, 16);
+                                    auto _ = std::stoull(argv[i], nullptr, 16);
                                 } catch (const std::exception &ex) {
                                     log_fatal("options", "parameter for -{} is not a hex number: {}", alias, argv[i]);
                                 }

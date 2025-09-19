@@ -80,6 +80,25 @@ if(MSVC)
 
     # enable COMDAT folding for even smaller release builds
     add_link_options("$<$<CONFIG:RELEASE,MINSIZEREL>:/OPT:ICF>")
+
+    # always use UTF-8 (fix 4819)
+    add_compile_options("/utf-8")
+
+    # spectre mitigation warning
+    add_compile_options("/wd5045")
+
+    # implicit type convert warnings
+    add_compile_options("/wd4244")
+    add_compile_options("/wd4267")
+    add_compile_options("/wd4305")
+
+    # unreferenced local variable
+    add_compile_options("/wd4101")
+
+    # warning in winbase.h??
+    add_compile_options("/wd5039")
+
+
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # disable warnings about using non _s variants like strncpy
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)

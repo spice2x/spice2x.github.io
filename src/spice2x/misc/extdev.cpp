@@ -162,7 +162,7 @@ static void __cdecl cardunit_update() {
         bool kb_insert_press = false;
 
         // eamio keypress
-        kb_insert_press |= eamuse_get_keypad_state(unit) & (1 << EAM_IO_INSERT);
+        kb_insert_press |= static_cast<bool>(eamuse_get_keypad_state(unit) & (1 << EAM_IO_INSERT));
 
         // update card inserts
         if (eamuse_card_insert_consume((int) EXTDEV_CARDUNIT_COUNT, unit) ||

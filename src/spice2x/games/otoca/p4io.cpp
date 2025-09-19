@@ -94,7 +94,7 @@ namespace games::otoca {
         bool kb_insert_press = false;
 
         // eamio keypress
-        kb_insert_press |= eamuse_get_keypad_state(0) & (1 << EAM_IO_INSERT);
+        kb_insert_press |= static_cast<bool>(eamuse_get_keypad_state(0) & (1 << EAM_IO_INSERT));
 
         // check for card
         if (CARD_DATA == nullptr && (eamuse_card_insert_consume(1, 0) || kb_insert_press)) {

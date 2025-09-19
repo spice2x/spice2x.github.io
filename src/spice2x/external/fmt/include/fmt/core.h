@@ -1527,8 +1527,10 @@ FMT_CONSTEXPR auto make_arg(const T& value) -> basic_format_arg<Context> {
   return arg;
 }
 
+#ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdangling-reference"
+#endif
 
 // The type template parameter is there to avoid an ODR violation when using
 // a fallback formatter in one translation unit and an implicit conversion in
@@ -1544,7 +1546,9 @@ FMT_CONSTEXPR FMT_INLINE auto make_arg(const T& val) -> value<Context> {
   return arg;
 }
 
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
+#endif
 
 template <bool IS_PACKED, typename Context, type, typename T,
           FMT_ENABLE_IF(!IS_PACKED)>
