@@ -29,6 +29,9 @@ namespace launcher::signal {
     // settings
     bool DISABLE = false;
     bool USE_VEH_WORKAROUND = false;
+
+    // states
+    bool SUPERSTEP_SOUND_ERROR = false;
 }
 
 #define V(variant) case variant: return #variant
@@ -109,6 +112,13 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
             log_warning(
                 "signal",
                 "    RivaTuner Statistics Server (RTSS), MSI Afterburner, kernel mode anti-cheat");
+        }
+
+        if (launcher::signal::SUPERSTEP_SOUND_ERROR) {
+            log_warning("signal", "audio initialization error was previously detected during boot!");
+            log_warning("signal", "    (W:SuperstepSound: Audio device is not available!!!)");
+            log_warning("signal", "    this crash is most likely related to audio init failure");
+            log_warning("signal", "    fix your audio device, double check your audio options/patches, and try again");
         }
 
         // walk the exception chain
