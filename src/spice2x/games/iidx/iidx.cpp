@@ -781,7 +781,7 @@ namespace games::iidx {
         if (SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() && SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi") {
             intptr_t result = replace_pattern(
                 avs::game::DLL_INSTANCE,
-                "FF5008E8????ECFF83780803740D",
+                "FF5008E8??????FF83780803740D",
                 "??????BB00000000EB169090????",
                 0, 0);
 
