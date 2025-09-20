@@ -7,8 +7,68 @@
 #include "games/io.h"
 #include "io.h"
 #include "util/tapeled.h"
+#include "pc.h"
+#include "util/utils.h"
 
 namespace games::pc {
+    bool PC_KNOB_MODE = false;
+
+    constexpr float RELATIVE_DECAY = 0.02f;
+    struct FADER_RELATIVE {
+        // ranges from 0.f to 1.f
+        float previous_raw = 0.5f;
+
+        // ranges from -1.f to +1.f
+        float effective_value = 0.f;
+    };
+
+    FADER_RELATIVE fader_l_relative;
+    FADER_RELATIVE fader_r_relative;
+
+    float calculate_analog_raw_delta(float old_value, float new_value) {
+        // assumed that values are between 0.f and 1.f
+
+        float delta = 0.f;
+        if ((old_value < 0.25f) && (0.75f < new_value)) {
+            // wrapped around: going left
+            delta = -((1.f - new_value) + old_value);
+            
+        } else if ((new_value < 0.25f) && (0.75f < old_value)) {
+            // wrapped around: going right
+            delta = (1.f - old_value) + new_value;
+
+        } else {
+            delta = new_value - old_value;
+        }
+        return delta;
+    }
+
+    float apply_decay(float val) {
+        // return to center over time
+        if (RELATIVE_DECAY < val) {
+            return val - RELATIVE_DECAY;
+        } else if (val < -RELATIVE_DECAY) {
+            return val + RELATIVE_DECAY;
+        } else {
+            return 0.f;
+        }
+    }
+
+    float get_fader_knob_mode_value(float raw_analog, FADER_RELATIVE &fader) {
+        // add new value...
+        const float delta = calculate_analog_raw_delta(fader.previous_raw, raw_analog);
+        fader.effective_value += (delta * 20.f);
+        fader.previous_raw = raw_analog;
+
+        // capture the result after adding new input value
+        fader.effective_value = CLAMP(fader.effective_value, -1.f, 1.f);
+        const float result = fader.effective_value;
+
+        // post-process for next iteration: apply decay (return to center over time)
+        fader.effective_value = apply_decay(fader.effective_value);
+
+        return result;
+    }
 
     /*
      * class definitions
@@ -270,7 +330,13 @@ namespace games::pc {
         // FADER-L
         float val = 0.f;
         if (analogs[Analogs::FaderL].isSet()) {
-            val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderL]) - 0.5f) * 2;
+            if (PC_KNOB_MODE) {
+                val = get_fader_knob_mode_value(
+                    GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderL]),
+                    fader_l_relative);
+            } else {
+                val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderL]) - 0.5f) * 2;
+            }
         }
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Left]) &&
             GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Right])) {
@@ -289,7 +355,13 @@ namespace games::pc {
         // FADER-R
         val = 0.f;
         if (analogs[Analogs::FaderR].isSet()) {
-            val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderR]) - 0.5f) * 2;
+            if (PC_KNOB_MODE) {
+                val = get_fader_knob_mode_value(
+                    GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderR]),
+                    fader_r_relative);
+            } else {
+                val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderR]) - 0.5f) * 2;
+            }
         }
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Left]) &&
             GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Right])) {

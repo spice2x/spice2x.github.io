@@ -5,6 +5,7 @@
 namespace games::pc {
     extern std::string PC_INJECT_ARGS;
     extern bool PC_NO_IO;
+    extern bool PC_KNOB_MODE;
 
     class PCGame : public games::Game {
     public:

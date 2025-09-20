@@ -1806,6 +1806,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)"
     },
     {
+        // PCArgs
         .title = "PC Arguments Override",
         .name = "pcargs",
         .desc = "Command line arguments passed to the game.",
@@ -1815,6 +1816,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // PCNoIO
         .title = "PC Disable IO Emulation",
         .name = "pcnoio",
         .desc = "Disables BI2X hooks for PC",
@@ -1822,6 +1824,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "",
         .game_name = "Polaris Chord",
         .category = "Game Options (Advanced)"
+    },
+    {
+        // PCKnobMode
+        .title = "PC Fader Knobs Mode",
+        .name = "pcknobs",
+        .desc = "Allows SDVX knobs and IIDX turntables to be bound as Polaris Chord faders",
+        .type = OptionType::Bool,
+        .game_name = "Polaris Chord",
+        .category = "Game Options",
     },
     {
         // spice2x_LightsOverallBrightness

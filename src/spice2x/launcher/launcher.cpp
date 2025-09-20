@@ -1112,6 +1112,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::PCNoIO].is_active()) {
         games::pc::PC_NO_IO = options[launcher::Options::PCNoIO].value_bool();
     }
+    if (options[launcher::Options::PCKnobMode].value_bool()) {
+        games::pc::PC_KNOB_MODE = true;
+    }
     if (options[launcher::Options::spice2x_EnableSMXStage].value_bool()) {
         rawinput::ENABLE_SMX_STAGE = true;
     }
