@@ -205,6 +205,7 @@ namespace launcher {
             MFGNoIO,
             PCArgs,
             PCNoIO,
+            PCKnobMode,
             spice2x_LightsOverallBrightness,
             spice2x_WindowBorder,
             spice2x_WindowSize,
