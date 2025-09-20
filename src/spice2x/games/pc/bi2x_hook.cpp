@@ -506,7 +506,7 @@ namespace games::pc {
             {(31 * 3) + 2, games::pc::Lights::pc_lights_t::Button12_B},
         };
 
-        if (i_TapeLedCh == 0 && i_cntTapeLed == 108) {
+        if (i_TapeLedCh == 0 && i_Offset == 0 && i_cntTapeLed == 108) {
             for (const auto &map : button_lights_mapping) {
                 set_led_value(map.light, i_pData[map.data_index]);
             }
