@@ -41,6 +41,55 @@ namespace games::pc {
             IC_READER_R,
             IC_READER_G,
             IC_READER_B,
+
+            Button1_R,
+            Button1_G,
+            Button1_B,
+
+            Button2_R,
+            Button2_G,
+            Button2_B,
+
+            Button3_R,
+            Button3_G,
+            Button3_B,
+
+            Button4_R,
+            Button4_G,
+            Button4_B,
+
+            Button5_R,
+            Button5_G,
+            Button5_B,
+
+            Button6_R,
+            Button6_G,
+            Button6_B,
+           
+            Button7_R,
+            Button7_G,
+            Button7_B,
+
+            Button8_R,
+            Button8_G,
+            Button8_B,
+
+            Button9_R,
+            Button9_G,
+            Button9_B,
+
+            Button10_R,
+            Button10_G,
+            Button10_B,
+
+            Button11_R,
+            Button11_G,
+            Button11_B,
+
+            Button12_R,
+            Button12_G,
+            Button12_B
+            
         } pc_lights_t;
     }
 

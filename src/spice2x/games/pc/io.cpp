@@ -71,7 +71,55 @@ std::vector<Light> &games::pc::get_lights() {
                 &lights,
                 "IC Reader R",
                 "IC Reader G",
-                "IC Reader B"
+                "IC Reader B",
+
+                "Button 1 R",
+                "Button 1 G",
+                "Button 1 B",
+
+                "Button 2 R",
+                "Button 2 G",
+                "Button 2 B",
+
+                "Button 3 R",
+                "Button 3 G",
+                "Button 3 B",
+
+                "Button 4 R",
+                "Button 4 G",
+                "Button 4 B",
+
+                "Button 5 R",
+                "Button 5 G",
+                "Button 5 B",
+
+                "Button 6 R",
+                "Button 6 G",
+                "Button 6 B",
+
+                "Button 7 R",
+                "Button 7 G",
+                "Button 7 B",
+
+                "Button 8 R",
+                "Button 8 G",
+                "Button 8 B",
+
+                "Button 9 R",
+                "Button 9 G",
+                "Button 9 B",
+
+                "Button 10 R",
+                "Button 10 G",
+                "Button 10 B",
+
+                "Button 11 R",
+                "Button 11 G",
+                "Button 11 B",
+
+                "Button 12 R",
+                "Button 12 G",
+                "Button 12 B"
         );
     }
 
