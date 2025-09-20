@@ -27,6 +27,7 @@
 #include "util/memutils.h"
 #include "util/sigscan.h"
 #include "util/utils.h"
+#include "launcher/signal.h"
 
 #include "external/robin_hood.h"
 
@@ -232,6 +233,9 @@ namespace games::iidx {
         } else if (data.find(" W:touch: missing trigger:") != std::string::npos) {
             out.clear();
             return true;
+        } else if (data.find("SuperstepSound: Audio device is not available") != std::string::npos) {
+            launcher::signal::SUPERSTEP_SOUND_ERROR = TRUE;
+            return false;
         } else {
             return false;
         }

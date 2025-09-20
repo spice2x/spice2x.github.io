@@ -24,6 +24,7 @@
 #include "io.h"
 #include "acioemu/handle.h"
 #include "cfg/configurator.h"
+#include "launcher/signal.h"
 
 static decltype(RegCloseKey) *RegCloseKey_orig = nullptr;
 static decltype(RegEnumKeyA) *RegEnumKeyA_orig = nullptr;
@@ -208,6 +209,10 @@ namespace games::sdvx {
         if (data.find("M:AppConfig: [env/") != std::string::npos) {
             out = "";
             return true;
+        }
+        if (data.find("SuperstepSound: Audio device is not available") != std::string::npos) {
+            launcher::signal::SUPERSTEP_SOUND_ERROR = TRUE;
+            return false;
         }
         return false;
     }
