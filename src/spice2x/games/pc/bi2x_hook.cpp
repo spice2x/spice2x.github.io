@@ -10,9 +10,6 @@
 #include "pc.h"
 #include "util/utils.h"
 
-#undef min
-#undef max
-
 namespace games::pc {
     bool PC_KNOB_MODE = false;
 
@@ -43,9 +40,7 @@ namespace games::pc {
         } else {
             delta = new_value - old_value;
         }
-
-        // return with multiplier
-        return delta * 20.f;
+        return delta;
     }
 
     float apply_decay(float val) {
@@ -62,7 +57,7 @@ namespace games::pc {
     float get_fader_knob_mode_value(float raw_analog, FADER_RELATIVE &fader) {
         // add new value...
         const float delta = calculate_analog_raw_delta(fader.previous_raw, raw_analog);
-        fader.effective_value += delta;
+        fader.effective_value += (delta * 20.f);
         fader.previous_raw = raw_analog;
 
         // capture the result after adding new input value
