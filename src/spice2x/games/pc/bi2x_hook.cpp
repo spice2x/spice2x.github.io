@@ -415,6 +415,19 @@ namespace games::pc {
         }
     }
 
+    struct PolarisChordLight {
+        int data_index;
+        games::pc::Lights::pc_lights_t light;
+        PolarisChordLight(
+            int data_index, games::pc::Lights::pc_lights_t light) :
+                data_index(data_index), light(light) {}
+    };
+
+    static void set_led_value(games::pc::Lights::pc_lights_t light, uint8_t value) {
+        auto &lights = games::pc::get_lights();
+        GameAPI::Lights::writeLight(RI_MGR, lights.at(light), value / 255.f);
+    }
+
     void __fastcall aioIob2Bi2xAC1_SetTapeLedDataPart(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_TapeLedCh,
                                                       uint32_t i_Offset, uint8_t *i_pData,
                                                       uint32_t i_cntTapeLed, bool i_bReverse) {
@@ -422,8 +435,82 @@ namespace games::pc {
             return aioIob2Bi2xAC1_SetTapeLedDataPart_orig(i_pNodeCtl, i_TapeLedCh, i_Offset, i_pData, i_cntTapeLed, i_bReverse);
         }
 
-        // TODO implement tape led
-        //  there are >200 lights in total, adding each one separately probably isn't the best idea...
+        // log_info(
+        //     "pc",
+        //     "lamp [{}] [{}] = {},{},{}, cnt={}",
+        //     i_TapeLedCh,
+        //     i_Offset,
+        //     i_pData[0], i_pData[1], i_pData[2],
+        //     i_cntTapeLed);
+
+        // [channel 0]
+        // these are button lamps; there are 12 buttons (columns) with this layout:
+        //
+        // 0  5   8  11  14  16  |  18  20  22  25  28  31
+        // 1  6   9  12  15  17  |  19  21  23  26  29  32
+        // 2  7  10  13          |          24  27  30  33
+        // 3                     |                      34
+        // 4                     |                      35 
+        //
+        // 36 RGB lamps * 3 = 108 LEDs
+        // each value ranges from [0, 255]
+        // (we only care about the top row)
+
+        static PolarisChordLight button_lights_mapping[] = {
+            {(0 * 3) + 0, games::pc::Lights::pc_lights_t::Button1_R},
+            {(0 * 3) + 1, games::pc::Lights::pc_lights_t::Button1_G},
+            {(0 * 3) + 2, games::pc::Lights::pc_lights_t::Button1_B},
+
+            {(5 * 3) + 0, games::pc::Lights::pc_lights_t::Button2_R},
+            {(5 * 3) + 1, games::pc::Lights::pc_lights_t::Button2_G},
+            {(5 * 3) + 2, games::pc::Lights::pc_lights_t::Button2_B},
+
+            {(8 * 3) + 0, games::pc::Lights::pc_lights_t::Button3_R},
+            {(8 * 3) + 1, games::pc::Lights::pc_lights_t::Button3_G},
+            {(8 * 3) + 2, games::pc::Lights::pc_lights_t::Button3_B},
+
+            {(11 * 3) + 0, games::pc::Lights::pc_lights_t::Button4_R},
+            {(11 * 3) + 1, games::pc::Lights::pc_lights_t::Button4_G},
+            {(11 * 3) + 2, games::pc::Lights::pc_lights_t::Button4_B},
+
+            {(14 * 3) + 0, games::pc::Lights::pc_lights_t::Button5_R},
+            {(14 * 3) + 1, games::pc::Lights::pc_lights_t::Button5_G},
+            {(14 * 3) + 2, games::pc::Lights::pc_lights_t::Button5_B},
+
+            {(16 * 3) + 0, games::pc::Lights::pc_lights_t::Button6_R},
+            {(16 * 3) + 1, games::pc::Lights::pc_lights_t::Button6_G},
+            {(16 * 3) + 2, games::pc::Lights::pc_lights_t::Button6_B},
+
+            {(18 * 3) + 0, games::pc::Lights::pc_lights_t::Button7_R},
+            {(18 * 3) + 1, games::pc::Lights::pc_lights_t::Button7_G},
+            {(18 * 3) + 2, games::pc::Lights::pc_lights_t::Button7_B},
+
+            {(20 * 3) + 0, games::pc::Lights::pc_lights_t::Button8_R},
+            {(20 * 3) + 1, games::pc::Lights::pc_lights_t::Button8_G},
+            {(20 * 3) + 2, games::pc::Lights::pc_lights_t::Button8_B},
+
+            {(22 * 3) + 0, games::pc::Lights::pc_lights_t::Button9_R},
+            {(22 * 3) + 1, games::pc::Lights::pc_lights_t::Button9_G},
+            {(22 * 3) + 2, games::pc::Lights::pc_lights_t::Button9_B},
+
+            {(25 * 3) + 0, games::pc::Lights::pc_lights_t::Button10_R},
+            {(25 * 3) + 1, games::pc::Lights::pc_lights_t::Button10_G},
+            {(25 * 3) + 2, games::pc::Lights::pc_lights_t::Button10_B},
+
+            {(28 * 3) + 0, games::pc::Lights::pc_lights_t::Button11_R},
+            {(28 * 3) + 1, games::pc::Lights::pc_lights_t::Button11_G},
+            {(28 * 3) + 2, games::pc::Lights::pc_lights_t::Button11_B},
+
+            {(31 * 3) + 0, games::pc::Lights::pc_lights_t::Button12_R},
+            {(31 * 3) + 1, games::pc::Lights::pc_lights_t::Button12_G},
+            {(31 * 3) + 2, games::pc::Lights::pc_lights_t::Button12_B},
+        };
+
+        if (i_TapeLedCh == 0 && i_cntTapeLed == 108) {
+            for (const auto &map : button_lights_mapping) {
+                set_led_value(map.light, i_pData[map.data_index]);
+            }
+        }
     }
 
     void __fastcall aioIob2Bi2x_SetTapeLedDataGroup(AIO_IOB2_BI2X_AC1* i_pNodeCtl, uint32_t i_bfGroup) {
