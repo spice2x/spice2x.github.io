@@ -4,6 +4,7 @@
 
 #include <fmt/format.h>
 
+#include "avs/game.h"
 #include "games/io.h"
 #include "cfg/screen_resize.h"
 #include "hooks/graphics/backends/d3d9/d3d9_backend.h"
@@ -88,12 +89,31 @@ namespace overlay::windows {
     void GenericSubScreen::touch_transform(const ImVec2 xy_in, LONG *x_out, LONG *y_out) {}
 
     void GenericSubScreen::build_content() {
+        this->flags |= ImGuiWindowFlags_NoBackground;
+        
         if (this->disabled_message.has_value()) {
             this->flags &= ~ImGuiWindowFlags_NoBackground;
             ImGui::TextColored(YELLOW, "%s", this->disabled_message.value().c_str());
             return;
         }
+
         this->draw_texture();
+
+        if (!this->texture) {
+            this->flags &= ~ImGuiWindowFlags_NoBackground;
+            ImGui::TextColored(YELLOW, "Failed to acquire surface texture for subscreen.");
+            if (avs::game::is_model("LDJ")) {
+                ImGui::TextColored(
+                    YELLOW,
+                    "Ensure that you are using the correct DLL type, \n"
+                    "or patch the DLL to properly enable TDJ mode.");
+            } else if (avs::game::is_model("KFC")) {
+                ImGui::TextColored(
+                    YELLOW,
+                    "Ensure that you did not accidentally enable a patch \n"
+                    "that turns off subscreen rendering.");
+            }
+        }
 
 #if OVERLAYDBG
         if (this->status_message.has_value()) {
