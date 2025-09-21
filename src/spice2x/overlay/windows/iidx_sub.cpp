@@ -14,7 +14,7 @@ namespace overlay::windows {
         if (GRAPHICS_IIDX_WSUB) {
             this->disabled_message =
                 "Close this overlay and use the second window.\n"
-                "Or, turn on -iidxnosub to use the overlay instead.";
+                "If you don't see the window, double check your DLL type and apply TDJ I/O patches as needed.";
             this->draws_window = false;
         }
 
