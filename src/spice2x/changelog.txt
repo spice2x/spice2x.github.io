@@ -1,3 +1,8 @@
+09/22/2025 [spice2x]
+    Add Polaris Chord lights
+    Add boot.dll to Gitadora patches target
+    Misc fixes
+
 09/20/2025 [spice2x]
     Polaris Chord support for knobs/turntables/mouse as fader input
     Misc fixes
