@@ -9,22 +9,32 @@
 <strong>Force refresh (ctrl+F5) to get the latest contents for this page.
 </strong></p>
 
-<h2>notice - March 2025</h2>
+<h2>notice - September 2025</h2>
 
 <p style="font-size: x-large">
-  If IIDX suddenly stopped working on your Windows 11 PC, please
-  <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases">
-    download the latest version
-  </a>
-  of spice2x for a fix. Make sure you do NOT check <span style="white-space: nowrap;">-audiohookdisable</span>.
-  <a href="https://github.com/spice2x/spice2x.github.io/issues/260">Click for details.</a>
-</p>
-
-<p style="font-size: x-large">
-  If SDVX fails to launch with <strong>touch_effect</strong> error, it means you have bad data. This is not a tools issue.
+  <ul>
+    <li>
+      If you got the latest IIDX update, please ensure you updated spice2x to the latest beta, as it contains fixes to better support iidx32.
+    </li>
+  <li>
+    If you use <span style="white-space: nowrap;">-iidxasio</span> option to use ASIO devices with IIDX, it may stop working after you update your game to 2025041500 or newer.
+    There are no fixes at the moment, other than to try updating your ASIO drivers, or just stop using <span style="white-space: nowrap;">-iidxasio</span> and instead use <span style="white-space: nowrap;">-audiobackend asio</span>.
+  </li>
+  <li>
+    If IIDX suddenly stopped working on your Windows 11 PC, please
+    <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases">
+      download the latest version
+    </a>
+    of spice2x for a fix. Make sure you do NOT check <span style="white-space: nowrap;">-audiohookdisable</span>.
+    <a href="https://github.com/spice2x/spice2x.github.io/issues/260">Click for details.</a>
+  </li>
+  <li>
+    If SDVX fails to launch with <strong>touch_effect</strong> error, it means you have bad data. This is not a tools issue.
   <a href="https://github.com/spice2x/spice2x.github.io/wiki/Known-issues#:~:text=%E6%8C%87%E5%AE%9A%E3%81%97%E3%81%9F%E3%83%AC%E3%82%A4%E3%83%A4%E3%83%BC%E3%81%AF%E5%AD%98%E5%9C%A8%E3%81%97%E3%81%BE%E3%81%9B%E3%82%93%20touch_effect">
     Click for details.
   </a>
+  </li>
+  </ul>
 </p>
 
 <h2>latest stable downloads</h2>
@@ -65,6 +75,7 @@
     </a>
     <ul>
       <li>Polaris Chord support for knobs/turntables/mouse as fader input</li>
+      <li>iidx32 audio mode patch update</li>
       <li>Misc fixes</li>
     </ul>
   </li>
