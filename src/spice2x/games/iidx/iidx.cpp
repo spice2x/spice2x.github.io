@@ -8,6 +8,7 @@
 
 #include "games/iidx/legacy_camera.h"
 
+#include "hooks/audio/audio.h"
 #include "hooks/avshook.h"
 #include "hooks/cfgmgr32hook.h"
 #include "hooks/devicehook.h"
@@ -376,7 +377,11 @@ namespace games::iidx {
             }
         }
 
-        apply_audio_hacks();
+        if (hooks::audio::ENABLED) {
+            apply_audio_hacks();
+        } else {
+            log_warning("iidx", "skipping audio hooks; disabled by user");
+        }
 
         // ASIO device hook
         RegCloseKey_orig = detour::iat_try(
@@ -766,22 +771,26 @@ namespace games::iidx {
                 0);
 
         // attempt to detect ASIO support
+        // <=24 : 32-bit only
         // 25-26: has neither (no patch needed - WASAPI Exclusive by default)
         // 27-30: has both (envvar will be respected, ASIO or WASAPI)
         // 31+: only has XONAR (ASIO by default, signature patch can be used to force WASAPI - for now)
 
         if (!has_SOUND_OUTPUT_DEVICE && !has_XONAR_SOUND_CARD) {
+            // iidx 25-26
             log_info("iidx", "This game only uses WASAPI audio engine");
             return;
         }
 
         if (has_SOUND_OUTPUT_DEVICE && has_XONAR_SOUND_CARD) {
+            // iidx 27-30
             log_info("iidx", "This game accepts SOUND_OUTPUT_DEVICE environment variable");
             return;
         }
 
         log_info("iidx", "This game supports ASIO but does not accept SOUND_OUTPUT_DEVICE environment variable");
 
+        // patch game to force wasapi
         if (SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() && SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi") {
             intptr_t result = replace_pattern(
                 avs::game::DLL_INSTANCE,
@@ -798,6 +807,41 @@ namespace games::iidx {
                 log_info(
                     "iidx",
                     "Successfully forced WASAPI as audio engine using signature matching @ 0x{:x}.",
+                    result);
+            }
+        } else {
+            log_info("iidx", "Not applying force wasapi patch; game will use ASIO");
+        }
+
+        // patch iidx32+ for asio compatibility
+        // only do this if NOT wasapi (as opposed to checking if it's asio)
+        // the patch is only really needed for (some) non-XONAR devices but since people sometimes disguise 
+        // other devices as a XONAR, don't check for the exact string (common ASIO workaround for INF)
+        if (avs::game::is_ext(2024090100, MAXINT) &&
+            !(SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() && SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi")) {
+                
+            // in iidx32 final:
+            // ff 50 08      call   QWORD PTR [rax+0x8]     ; ASIO instance AddRef
+            // 48 8b 4b 08   mov    rcx,QWORD PTR [rbx+0x8]
+            // 48 8b 01      mov    rax,QWORD PTR [rcx]
+            // ff 50 08      call   QWORD PTR [rax+0x8]     ; ASIO instance AddRef
+
+            intptr_t result = replace_pattern(
+                avs::game::DLL_INSTANCE,
+                "FF50????????????????FF50??4533C94533C0418D51",
+                "????????????????????909090??????????????????",
+                0, 0);
+
+            if (result == 0) {
+                log_warning(
+                    "iidx",
+                    "Failed to apply ASIO compatibility fix for iidx32+. "
+                    "Unless patches are applied, your ASIO device ({}) may hang or fail to work",
+                    ASIO_DRIVER->c_str());
+            } else {
+                log_info(
+                    "iidx",
+                    "Successfully applied ASIO compatibility fix for iidx32+ using signature matching @ 0x{:x}.",
                     result);
             }
         }
