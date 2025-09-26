@@ -6,12 +6,14 @@
 #include <vector>
 
 #include <winsock2.h>
+#include <ws2tcpip.h>
 
 #include "util/rc4.h"
 
 #include "module.h"
 #include "websocket.h"
 #include "serial.h"
+#include "udp.h"
 
 namespace api {
 
@@ -42,6 +44,7 @@ namespace api {
 
         // server
         WebSocketController *websocket;
+        UdpController *udp;
         std::vector<SerialController *> serial;
         std::vector<std::thread> server_workers;
         std::vector<std::thread> server_handlers;

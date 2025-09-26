@@ -117,12 +117,18 @@ Controller::Controller(unsigned short port, std::string password, bool pretty)
 
     // start websocket on next port
     this->websocket = new WebSocketController(this, port + 1);
+    
+    // start udp
+    this->udp = new UdpController(this, port);
 }
 
 Controller::~Controller() {
 
     // stop websocket
     delete this->websocket;
+
+    // stop udp
+    delete this->udp;
 
     // stop serial controllers
     for (auto &s : this->serial) {
