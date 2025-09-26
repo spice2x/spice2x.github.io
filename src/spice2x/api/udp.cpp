@@ -2,7 +2,6 @@
 #include "util/logging.h"
 #include "util/rc4.h"
 #include "util/utils.h"
-#include <games/onpara/touchpanel.h>
 
 namespace api {
     UdpController::UdpController(Controller *controller, uint16_t port) {
