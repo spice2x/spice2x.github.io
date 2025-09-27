@@ -1,11 +1,11 @@
 #include "signal.h"
 
 #include <exception>
-#include <string>
 
 #include <windows.h>
 #include <dbghelp.h>
 
+#include "avs/core.h"
 #include "acio/acio.h"
 #include "external/stackwalker/stackwalker.h"
 #include "hooks/libraryhook.h"
@@ -32,6 +32,8 @@ namespace launcher::signal {
 
     // states
     bool SUPERSTEP_SOUND_ERROR = false;
+    bool AVS_DIR_CREATION_FAILURE = false;
+    std::string AVS_SRC_PATH;
 }
 
 #define V(variant) case variant: return #variant
@@ -119,6 +121,17 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
             log_warning("signal", "    (W:SuperstepSound: Audio device is not available!!!)");
             log_warning("signal", "    this crash is most likely related to audio init failure");
             log_warning("signal", "    fix your audio device, double check your audio options/patches, and try again");
+        }
+
+        if (launcher::signal::AVS_DIR_CREATION_FAILURE) {
+            log_warning("signal",
+                "AVS filesystem initialization failure was previously detected during boot!");
+            log_warning("signal",
+                "    this crash is most likely caused by bad <mounttable> contents in {}",
+                avs::core::CFG_PATH.c_str());
+            log_warning("signal",
+                "    ERROR: directory could not be created: {}",
+                launcher::signal::AVS_SRC_PATH.c_str());
         }
 
         // walk the exception chain

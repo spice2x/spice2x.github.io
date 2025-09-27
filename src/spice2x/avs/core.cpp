@@ -8,6 +8,7 @@
 
 #include "external/robin_hood.h"
 #include "launcher/logger.h"
+#include "launcher/signal.h"
 #include "util/detour.h"
 #include "util/fileutils.h"
 #include "util/libutils.h"
@@ -1736,7 +1737,13 @@ namespace avs {
             return;
         }
 
-        static void create_dir(
+        static void avs_dir_err(const std::filesystem::path &src_path)
+        {
+            launcher::signal::AVS_DIR_CREATION_FAILURE = TRUE;
+            launcher::signal::AVS_SRC_PATH = src_path.string();
+        }
+
+        static void create_avs_dir(
                 const std::string_view &avs_path,
                 const std::string_view &src_path)
         {
@@ -1745,6 +1752,7 @@ namespace avs {
             auto real_path = std::filesystem::absolute(src_path, err);
 
             if (err) {
+                avs_dir_err(real_path);
                 log_warning("avs-core", "failed to resolve '{}' path: {}", avs_path, err.message());
                 return;
             }
@@ -1754,7 +1762,9 @@ namespace avs {
             if (created) {
                 log_info("avs-core", "created '{}' at '{}'", avs_path, real_path.string());
             }
+
             if (err) {
+                avs_dir_err(real_path);
                 log_warning("avs-core", "failed to create '{}' folder at '{}': {}",
                         avs_path,
                         real_path.string(),
@@ -1815,7 +1825,7 @@ namespace avs {
                 return;
             }
 
-            create_dir(avs_path, device_path);
+            create_avs_dir(avs_path, device_path);
         }
 
         static void create_avs_config_fs_table(
@@ -1870,7 +1880,7 @@ namespace avs {
                     continue;
                 }
 
-                create_dir(dst_path, src_path);
+                create_avs_dir(dst_path, src_path);
             } while ((vfs_node = property_node_traversal(vfs_node, TRAVERSE_NEXT_SEARCH_RESULT)));
         }
 
