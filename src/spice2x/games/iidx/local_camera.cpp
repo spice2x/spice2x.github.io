@@ -85,12 +85,19 @@ namespace games::iidx {
             &m_pwszSymbolicLink,
             &m_cchSymbolicLink
         );
-        if (FAILED(hr)) { goto done; }
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] GetAllocatedString failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
+
         log_misc("iidx:camhook", "[{}] Symlink: {}", m_name, GetSymLink());
 
         // Create the media source object.
         hr = pActivate->ActivateObject(IID_PPV_ARGS(&m_pSource));
-        if (FAILED(hr)) { goto done; }
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] ActivateObject failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
 
         // Retain reference to the camera
         m_pSource->AddRef();
@@ -98,13 +105,22 @@ namespace games::iidx {
 
         // Create an attribute store to hold initialization settings.
         hr = WrappedMFCreateAttributes(&pAttributes, 2);
-        if (FAILED(hr)) { goto done; }
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] MFCreateAttributes failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
 
         hr = pAttributes->SetUnknown(MF_SOURCE_READER_D3D_MANAGER, pD3DManager);
-        if (FAILED(hr)) { goto done; }
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] SetUnknown(MF_SOURCE_READER_D3D_MANAGER) failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
 
         hr = pAttributes->SetUINT32(MF_SOURCE_READER_DISABLE_DXVA, FALSE);
-        if (FAILED(hr)) { goto done; }
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] SetUINT32(MF_SOURCE_READER_DISABLE_DXVA) failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
 
         // TODO: Color space conversion
         // if (SUCCEEDED(hr)) {
@@ -120,11 +136,18 @@ namespace games::iidx {
             pAttributes,
             &m_pSourceReader
         );
-        if (FAILED(hr)) { goto done; }
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] MFCreateSourceReaderFromMediaSource failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
+
         log_misc("iidx:camhook", "[{}] Created source reader", m_name);
 
         hr = InitTargetTexture();
-        if (FAILED(hr)) { goto done; }
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] InitTargetTexture failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
 
         // Camera should be still usable even if camera control is not supported
         InitCameraControl();
@@ -134,7 +157,7 @@ namespace games::iidx {
             m_initialized = true;
             log_misc("iidx:camhook", "[{}] Initialized", m_name);
         } else {
-            log_warning("iidx:camhook", "[{}] Failed to create camera: {}", m_name, hr);
+            log_warning("iidx:camhook", "[{}] Failed to create camera: {:#x}", m_name, (ULONG)hr);
         }
         SafeRelease(&pAttributes);
         LeaveCriticalSection(&m_critsec);
@@ -165,7 +188,7 @@ namespace games::iidx {
 
             if (FAILED(hr)) { 
                 if (hr != MF_E_NO_MORE_TYPES) {
-                    log_warning("iidx:camhook", "[{}] Cannot get media type {} {}", m_name, i, hr);
+                    log_warning("iidx:camhook", "[{}] Cannot get media type {} {:#x}", m_name, i, (ULONG)hr);
                 }
                 break; 
             }
@@ -584,7 +607,7 @@ namespace games::iidx {
      * Return values:
      *   S_OK:      this is a "better" media type than the existing one
      *   S_FALSE:   valid media type, but not "better"
-     *   E_*:       invalid meia type
+     *   E_*:       invalid media type
      */
     HRESULT IIDXLocalCamera::TryMediaType(IMFMediaType *pType, UINT32 *pBestWidth, double *pBestFrameRate) {
         HRESULT hr = S_OK;
@@ -595,13 +618,13 @@ namespace games::iidx {
         hr = pType->GetGUID(MF_MT_SUBTYPE, &subtype);
 
         if (FAILED(hr))  { 
-            log_warning("iidx:camhook", "[{}] Failed to get subtype: {}", m_name, hr);
+            log_warning("iidx:camhook", "[{}] Failed to get subtype: {:#x}", m_name, (ULONG)hr);
             return hr;    
         }
 
         hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &width, &height);
         if (FAILED(hr))  { 
-            log_warning("iidx:camhook", "[{}] Failed to get frame size: {}", m_name, hr);
+            log_warning("iidx:camhook", "[{}] Failed to get frame size: {:#x}", m_name, (ULONG)hr);
             return hr;
         }
         
@@ -619,7 +642,7 @@ namespace games::iidx {
             (UINT32*)&frameRate.Denominator
         );
         if (FAILED(hr))  { 
-            log_warning("iidx:camhook", "[{}] Failed to get frame rate: {}", m_name, hr);
+            log_warning("iidx:camhook", "[{}] Failed to get frame rate: {:#x}", m_name, (ULONG)hr);
             return hr;
         }
         double frameRateValue = frameRate.Numerator / frameRate.Denominator;
@@ -696,7 +719,7 @@ namespace games::iidx {
         if (SUCCEEDED(hr)) {
             log_misc("iidx:camhook", "[{}] Created texture", m_name);
         } else {
-            log_warning("iidx:camhook", "[{}] Failed to create texture: {}", m_name, hr);
+            log_warning("iidx:camhook", "[{}] Failed to create texture: {:#x}", m_name, (ULONG)hr);
         }
         return hr;
     }
@@ -785,7 +808,7 @@ namespace games::iidx {
         FlushDrawCommands();
 
         if (FAILED(hr)) {
-            log_warning("iidx:camhook", "Error in DrawSample {}", hr);
+            log_warning("iidx:camhook", "Error in DrawSample {:#x}", (ULONG)hr);
         }
         SafeRelease(&pCameraSurf);
         LeaveCriticalSection(&m_critsec);

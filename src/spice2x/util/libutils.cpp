@@ -37,7 +37,7 @@ static inline void load_library_fail(const std::string &file_name, bool fatal) {
         "     a. Avoid manually specifying DLL path (-exec) and module directory (-modules); let spice2x auto-detect unless you have a good reason not to\n"
         "     b. Ensure you do NOT have multiple copies of the game DLLs (e.g., in contents and in contents\\modules)\n"
         "     c. Certain games require specific NVIDIA DLLs when running with AMD/Intel GPUs (hint: look inside stub directory for DLLs)\n"
-        "* 4. (For advanced users) if none of the above helps, find the missing dependency using:\n"
+        " 4. (For advanced users) if none of the above helps, find the missing dependency using:\n"
         "     a. https://github.com/lucasg/Dependencies (recommended for most) \n"
         "     b. http://www.dependencywalker.com/ (for old OS) \n"
     , file_name) };
