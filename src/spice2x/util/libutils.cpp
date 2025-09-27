@@ -29,19 +29,17 @@ std::filesystem::path libutils::module_file_name(HMODULE module) {
 
 static inline void load_library_fail(const std::string &file_name, bool fatal) {
     std::string info_str { fmt::format(
-        "\n\nPlease check if {} exists and the permissions are fine.\n"
-        "\n"
-        "* If the problem still persists, try installing things on this list:\n"
-        "    https://github.com/spice2x/spice2x.github.io/wiki/DLL-Dependencies \n"
-        "\n"
-        "* Still have problems after installing from above and rebooting PC?\n"
-        "    Avoid manually specifying DLL path (-exec) and module directory (-modules); let spice2x auto-detect unless you have a good reason not to\n"
-        "    Ensure you do NOT have multiple copies of the game DLLs (e.g., in contents and in contents\\modules)\n"
-        "    Certain games require specific NVIDIA DLLs when running with AMD/Intel GPUs (hint: look inside stub directory for DLLs)\n"
-        "\n"
-        "* (For advanced users) if none of the above helps, find the missing dependency using:\n"
-        "    https://github.com/lucasg/Dependencies (recommended for most) \n"
-        "    http://www.dependencywalker.com/ (for old OS) \n"
+        "DLL failed to load - this is a common error. Please carefully read ALL of the following steps for a fix:\n"
+        " 1. Confirm if the file ({}) exists on the disk and check the file permissions.\n"
+        " 2. Follow this link and install DLL prerequisites on this list:\n"
+        "        https://github.com/spice2x/spice2x.github.io/wiki/DLL-Dependencies \n"
+        " 3. Still have problems after installing from above and rebooting PC?\n"
+        "     a. Avoid manually specifying DLL path (-exec) and module directory (-modules); let spice2x auto-detect unless you have a good reason not to\n"
+        "     b. Ensure you do NOT have multiple copies of the game DLLs (e.g., in contents and in contents\\modules)\n"
+        "     c. Certain games require specific NVIDIA DLLs when running with AMD/Intel GPUs (hint: look inside stub directory for DLLs)\n"
+        "* 4. (For advanced users) if none of the above helps, find the missing dependency using:\n"
+        "     a. https://github.com/lucasg/Dependencies (recommended for most) \n"
+        "     b. http://www.dependencywalker.com/ (for old OS) \n"
     , file_name) };
     if (fatal) {
         log_fatal("libutils", "{}", info_str);
