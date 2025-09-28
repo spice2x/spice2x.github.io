@@ -127,11 +127,12 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
             log_warning("signal",
                 "AVS filesystem initialization failure was previously detected during boot!");
             log_warning("signal",
-                "    this crash is most likely caused by bad <mounttable> contents in {}",
-                avs::core::CFG_PATH.c_str());
-            log_warning("signal",
                 "    ERROR: directory could not be created: {}",
                 launcher::signal::AVS_SRC_PATH.c_str());
+            log_warning("signal",
+                "    this crash may have been caused by bad <mounttable> contents in {}",
+                avs::core::CFG_PATH.c_str());
+            log_warning("signal", "    fix the XML file and try again");
         }
 
         // walk the exception chain
