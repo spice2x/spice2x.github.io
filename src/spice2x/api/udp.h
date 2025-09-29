@@ -5,7 +5,7 @@
 
 namespace api {
     constexpr uint32_t SPICEAPI_KCP_CONV_ID = 573;
-    constexpr size_t SPICEAPI_UDP_RECV_BUFFER_SIZE = 64 * 1024;
+    constexpr size_t SPICEAPI_UDP_BUFFER_SIZE = 64 * 1024;
 
     struct KcpClientState : ClientState {
         ikcpcb *kcp;
@@ -13,18 +13,19 @@ namespace api {
         std::chrono::time_point<std::chrono::steady_clock> last_active;
         UdpController *controller;
 
-        char recv_buf[SPICEAPI_UDP_RECV_BUFFER_SIZE];
+        char recv_buf[SPICEAPI_UDP_BUFFER_SIZE];
+        std::vector<char> message_buffer;
     };
 
     class UdpController {
     public:
         UdpController(Controller *controller, uint16_t port);
         ~UdpController();
-
-        void recv_thread();
-        void kcp_recv(std::vector<KcpClientState>::iterator iter);
-
     private:
+        void recv_thread();
+        void update_state_thread();
+        void kcp_recv(KcpClientState *state);
+
         static int kcp_send_cb(const char *buf, int len, ikcpcb *kcp, void *user);
         static void kcp_log_cb(const char *log, ikcpcb *kcp, void *user);
 
@@ -33,9 +34,10 @@ namespace api {
         uint16_t port_;
 
         std::thread recv_thread_;
+        std::thread update_thread_;
         std::atomic<bool> stop_signal_;
 
-        std::vector<KcpClientState> states_;
+        std::vector<KcpClientState *> states_;
     };
 
 } // namespace api
