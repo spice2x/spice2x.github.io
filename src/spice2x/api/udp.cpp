@@ -9,6 +9,8 @@
 #include <ws2tcpip.h>
 // WTF!!!
 
+#define KCP_LOGGING 0
+
 using namespace std::chrono_literals;
 
 namespace api {
@@ -160,9 +162,11 @@ namespace api {
     }
 
     void UdpController::on_rawdata_recv(const sockaddr_in &sender, const char *data, size_t len) {
+#if KCP_LOGGING
         if (LOGGING) {
             log_info("api::udp", "recv raw buf {}", bin2hex(data, len));
         }
+#endif
 
         auto iter = std::find_if(states_.begin(), states_.end(),
                                  [&sender](const KcpClientState *state) {
@@ -190,10 +194,12 @@ namespace api {
             // fast mode
             ikcp_nodelay(state->kcp, 1, 4, 2, 1);
 
+#if KCP_LOGGING
             if (LOGGING) {
                 state->kcp->writelog = UdpController::kcp_log_cb;
                 state->kcp->logmask = -1;
             }
+#endif
 
             log_info("api::udp", "new connection from {}", state->address_str);
 
@@ -231,6 +237,7 @@ namespace api {
             }
 
             update_states();
+            Sleep(1);
         }
     }
 
