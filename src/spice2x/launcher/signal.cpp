@@ -6,6 +6,7 @@
 #include <dbghelp.h>
 
 #include "avs/core.h"
+#include "avs/game.h"
 #include "acio/acio.h"
 #include "external/stackwalker/stackwalker.h"
 #include "hooks/libraryhook.h"
@@ -102,6 +103,22 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
 
         // print signal
         log_warning("signal", "exception raised: {}", exception_code(ExceptionRecord));
+
+        std::string err;
+        switch (ExceptionRecord->ExceptionCode) {
+            case EXCEPTION_ILLEGAL_INSTRUCTION:
+                err = "Illegal instruction: either your CPU is too old (e.g., does not support "
+                    "SSE4.2 or AVX2 but perhaps the game requires it); or, a bad patch was applied.";
+                break;
+            default:
+                break;
+        }
+        if (!err.empty()) {
+            log_warning(
+                "signal",
+                "likely cause for your error based on the exception code:\n    {}",
+                err.c_str());
+        }
 
         // check ACIO init failures
         if (acio::IO_INIT_IN_PROGRESS) {
