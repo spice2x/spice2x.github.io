@@ -66,7 +66,7 @@ namespace api {
 
         void listen_serial(std::string port, DWORD baud);
 
-        bool process_request(ClientState *state, const std::span<char> &in, std::vector<char> *out);
+        bool process_request(ClientState *state, std::vector<char> *in, std::vector<char> *out);
         bool process_request(ClientState *state, const char *in, size_t in_size, std::vector<char> *out);
         static void process_password_change(ClientState *state);
 

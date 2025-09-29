@@ -13,7 +13,7 @@ namespace api {
         std::chrono::time_point<std::chrono::steady_clock> last_active;
         UdpController *controller;
 
-        char recv_buf[SPICEAPI_UDP_BUFFER_SIZE];
+        std::string recv_buf;
         std::vector<char> message_buffer;
     };
 
@@ -22,8 +22,9 @@ namespace api {
         UdpController(Controller *controller, uint16_t port);
         ~UdpController();
     private:
-        void recv_thread();
-        void update_state_thread();
+        void update_thread();
+        void on_rawdata_recv(const sockaddr_in &sender, const char *data, size_t len);
+        void update_states();
         void kcp_recv(KcpClientState *state);
 
         static int kcp_send_cb(const char *buf, int len, ikcpcb *kcp, void *user);
@@ -33,7 +34,6 @@ namespace api {
         SOCKET socket_;
         uint16_t port_;
 
-        std::thread recv_thread_;
         std::thread update_thread_;
         std::atomic<bool> stop_signal_;
 

@@ -22,7 +22,17 @@ namespace api {
             return;
         }
 
-        sockaddr_in recv_addr;
+        u_long nbio = 1;
+        if (ioctlsocket(socket_, FIONBIO, &nbio) == SOCKET_ERROR) {
+            log_warning("api::udp", "could not set socket to non-blocking mode: {}", get_last_error_string());
+
+            closesocket(socket_);
+            socket_ = INVALID_SOCKET;
+
+            return;
+        }
+
+        sockaddr_in recv_addr{};
         recv_addr.sin_family = AF_INET;
         recv_addr.sin_port = htons(port_);
         recv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -39,12 +49,8 @@ namespace api {
 
         stop_signal_ = false;
 
-        recv_thread_ = std::thread([this] {
-            recv_thread();
-        });
-
         update_thread_ = std::thread([this] {
-            update_state_thread();
+            update_thread();
         });
 
         log_info("api::udp", "UDP API server is listening on port: {}", this->port_);
@@ -52,7 +58,6 @@ namespace api {
 
     UdpController::~UdpController() {
         stop_signal_.store(true);
-        recv_thread_.join();
         update_thread_.join();
 
         if (socket_ != INVALID_SOCKET) {
@@ -71,7 +76,7 @@ namespace api {
 
     void UdpController::kcp_recv(KcpClientState *state) {
         // receive data
-        auto recv_len = ikcp_recv(state->kcp, state->recv_buf, SPICEAPI_UDP_BUFFER_SIZE);
+        auto recv_len = ikcp_recv(state->kcp, state->recv_buf.data(), state->recv_buf.size());
         if (recv_len <= 0) {
             return;
         }
@@ -80,7 +85,7 @@ namespace api {
 
         // cipher
         if (state->cipher) {
-            state->cipher->crypt(reinterpret_cast<uint8_t *>(state->recv_buf), recv_len);
+            state->cipher->crypt(reinterpret_cast<uint8_t *>(state->recv_buf.data()), recv_len);
         }
 
         // put into buffer
@@ -91,7 +96,7 @@ namespace api {
 
                 // get response
                 std::vector<char> send_buffer;
-                controller_->process_request(state, message_buffer, &send_buffer);
+                controller_->process_request(state, &message_buffer, &send_buffer);
 
                 // clear message buffer
                 message_buffer.clear();
@@ -129,112 +134,103 @@ namespace api {
             std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count() & 0xfffffffful);
     }
 
-    void UdpController::update_state_thread() {
-        while (!stop_signal_.load()) {
-            const auto time = std::chrono::steady_clock::now();
-            const auto time_ms = get_clock_ms(time);
+    void UdpController::update_states() {
+        const auto time = std::chrono::steady_clock::now();
+        const auto time_ms = get_clock_ms(time);
 
-            // update kcp stuffs
-            for (auto i = states_.size() - 1; i >= 0; i--) {
-                auto *state = states_[i];
+        // update kcp stuffs
+        for (auto iter = states_.begin(); iter != states_.end();) {
+            auto *state = *iter;
 
-                if (time - state->last_active > 60s || ikcp_waitsnd(state->kcp) > 1000) {
-                    log_info("api::udp", "client {} inactive, released", state->address_str);
-                    ikcp_release(state->kcp);
-                    controller_->free_state(state);
-                    states_.erase(states_.begin() + i);
-                    continue;
-                }
+            if (time - state->last_active > 2s || ikcp_waitsnd(state->kcp) > 10) {
+                log_info("api::udp", "client {} inactive, released", state->address_str);
+                ikcp_release(state->kcp);
+                controller_->free_state(state);
+                iter = states_.erase(iter);
+                continue;
+            }
 
-                if (ikcp_check(state->kcp, time_ms) >= time_ms)
-                    ikcp_update(state->kcp, time_ms);
-
+            if (ikcp_check(state->kcp, time_ms) >= time_ms) {
+                ikcp_update(state->kcp, time_ms);
                 kcp_recv(state);
             }
+
+            iter++;
         }
     }
 
-    void UdpController::recv_thread() {
-        auto recv_buf = std::make_unique<char>(SPICEAPI_UDP_BUFFER_SIZE);
+    void UdpController::on_rawdata_recv(const sockaddr_in &sender, const char *data, size_t len) {
+        if (LOGGING) {
+            log_info("api::udp", "recv raw buf {}", bin2hex(data, len));
+        }
+
+        auto iter = std::find_if(states_.begin(), states_.end(),
+                                 [&sender](const KcpClientState *state) {
+                                     return state->address.sin_addr.s_addr == sender.sin_addr.s_addr &&
+                                            state->address.sin_port == sender.sin_port;
+                                 });
+
+        KcpClientState *state = nullptr;
+
+        if (iter == states_.end()) {
+            char client_address_str_data[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &sender.sin_addr, client_address_str_data, INET_ADDRSTRLEN);
+
+            state = new KcpClientState{};
+            controller_->init_state(state);
+
+            state->address = sender;
+            state->address_str = fmt::format("{}:{}", client_address_str_data, ntohs(sender.sin_port));
+            state->controller = this;
+            state->recv_buf.resize(SPICEAPI_UDP_BUFFER_SIZE);
+
+            state->kcp = ikcp_create(SPICEAPI_KCP_CONV_ID, state);
+            state->kcp->output = UdpController::kcp_send_cb;
+
+            // fast mode
+            ikcp_nodelay(state->kcp, 1, 4, 2, 1);
+
+            if (LOGGING) {
+                state->kcp->writelog = UdpController::kcp_log_cb;
+                state->kcp->logmask = -1;
+            }
+
+            log_info("api::udp", "new connection from {}", state->address_str);
+
+            states_.push_back(state);
+        } else {
+            state = *iter;
+        }
+
+        state->last_active = std::chrono::steady_clock::now();
+        ikcp_input(state->kcp, data, len);
+    }
+
+    void UdpController::update_thread() {
+        std::string recv_buf{};
+        recv_buf.resize(SPICEAPI_UDP_BUFFER_SIZE);
 
         while (!stop_signal_.load()) {
-            fd_set readfds{
-                .fd_count = 1,
-                .fd_array = {socket_},
-            };
+            sockaddr_in sender_addr;
+            int sender_size = sizeof(sender_addr);
 
-            timeval timeout{
-                .tv_sec = 0,
-                .tv_usec = 10000,
-            };
+            auto recv_len = recvfrom(
+                socket_,
+                recv_buf.data(),
+                recv_buf.size(),
+                0, reinterpret_cast<sockaddr *>(&sender_addr), &sender_size);
 
-            auto select_ret = select(0, &readfds, nullptr, nullptr, &timeout);
-            if (select_ret < 0) {
-                log_warning("api::udp", "select error: {}", WSAGetLastError());
-            }
+            if (recv_len < 0) {
+                int error = WSAGetLastError();
 
-            if (select_ret && FD_ISSET(socket_, &readfds)) {
-                sockaddr_in sender_addr;
-                int sender_size = sizeof(sender_addr);
-
-                auto recv_len = recvfrom(
-                    socket_,
-                    recv_buf.get(),
-                    SPICEAPI_UDP_BUFFER_SIZE,
-                    0, reinterpret_cast<sockaddr *>(&sender_addr), &sender_size);
-
-                if (recv_len < 0) {
+                if (error != WSAEWOULDBLOCK) {
                     log_warning("api::udp", "receive error: {}", WSAGetLastError());
-                    continue;
                 }
-
-                if (LOGGING) {
-                    log_info("api::udp", "recv raw buf {}", bin2hex(recv_buf.get(), recv_len));
-                }
-
-                auto iter = std::find_if(states_.begin(), states_.end(),
-                                         [&sender_addr](const KcpClientState *state) {
-                                             return state->address.sin_addr.s_addr == sender_addr.sin_addr.s_addr &&
-                                                    state->address.sin_port == sender_addr.sin_port;
-                                         });
-
-                KcpClientState *state = nullptr;
-                auto now = std::chrono::steady_clock::now();
-
-                if (iter == states_.end()) {
-                    char client_address_str_data[INET_ADDRSTRLEN];
-                    inet_ntop(AF_INET, &sender_addr.sin_addr, client_address_str_data, INET_ADDRSTRLEN);
-
-                    auto sender_addr_str = fmt::format("{}:{}", client_address_str_data, ntohs(sender_addr.sin_port));
-
-                    state = new KcpClientState{};
-                    controller_->init_state(state);
-
-                    state->last_active = now;
-                    state->address_str = sender_addr_str;
-                    state->address = sender_addr;
-                    state->kcp = ikcp_create(SPICEAPI_KCP_CONV_ID, state);
-                    state->kcp->output = UdpController::kcp_send_cb;
-                    state->controller = this;
-
-                    if (LOGGING) {
-                        state->kcp->writelog = UdpController::kcp_log_cb;
-                        state->kcp->logmask = -1;
-                    }
-
-                    // fast mode
-                    ikcp_nodelay(state->kcp, 1, 4, 2, 1);
-
-                    log_info("api::udp", "new connection from {}", sender_addr_str);
-
-                    states_.push_back(state);
-                } else {
-                    state = *iter;
-                    state->last_active = now;
-                }
-
-                ikcp_input(state->kcp, recv_buf.get(), recv_len);
+            } else {
+                on_rawdata_recv(sender_addr, recv_buf.data(), recv_len);
             }
+
+            update_states();
         }
     }
 
@@ -245,6 +241,6 @@ namespace api {
 
     void UdpController::kcp_log_cb(const char *log, ikcpcb *kcp, void *user) {
         auto *state = reinterpret_cast<KcpClientState *>(user);
-        log_info("api::udp::kcp_log", "{}: {}", state->address_str, log);
+        log_info("api::udp::kcp_log", "{}, {}", state->address_str, log);
     }
 } // namespace api
