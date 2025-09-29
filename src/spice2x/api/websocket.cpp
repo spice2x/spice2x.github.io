@@ -143,7 +143,7 @@ namespace api {
                 }
 
                 // process request
-                srv->websocket->controller->process_request(state, &in, &out);
+                srv->websocket->controller->process_request(state, in, &out);
 
                 // crypt out-data
                 if (state->cipher) {

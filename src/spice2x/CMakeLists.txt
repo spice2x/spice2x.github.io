@@ -364,6 +364,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         external/http-parser/http_parser.c
         external/usbhidusage/usb-hid-usage.c
         external/toojpeg/toojpeg.cpp
+        external/kcp/ikcp.c
 
         # games
         games/game.cpp

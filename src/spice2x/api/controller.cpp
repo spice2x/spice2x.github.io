@@ -244,7 +244,7 @@ void Controller::connection_handler(api::ClientState client_state) {
 
                 // get response
                 std::vector<char> send_buffer;
-                this->process_request(&client_state, &message_buffer, &send_buffer);
+                this->process_request(&client_state, message_buffer, &send_buffer);
 
                 // clear message buffer
                 message_buffer.clear();
@@ -294,8 +294,8 @@ void Controller::connection_handler(api::ClientState client_state) {
     free_state(&client_state);
 }
 
-bool Controller::process_request(ClientState *state, std::vector<char> *in, std::vector<char> *out) {
-    return this->process_request(state, &(*in)[0], in->size(), out);
+bool Controller::process_request(ClientState *state, const std::span<char> &in, std::vector<char> *out) {
+    return this->process_request(state, in.data(), in.size(), out);
 }
 
 bool Controller::process_request(ClientState *state, const char *in, size_t in_size, std::vector<char> *out) {
