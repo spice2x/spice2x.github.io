@@ -365,6 +365,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::VerboseAVSLogging].value_bool()) {
         hooks::avs::config::LOG = true;
     }
+    if (options[launcher::Options::AllowEA3Verbose].value_bool()) {
+        avs::ea3::EA3_DEBUG_VERBOSE = true;
+    }
     if (options[launcher::Options::spice2x_AutoOrientation].is_active()) {
         GRAPHICS_ADJUST_ORIENTATION =
             (graphics_orientation)options[launcher::Options::spice2x_AutoOrientation].value_uint32();

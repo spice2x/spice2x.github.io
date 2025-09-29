@@ -188,6 +188,7 @@ namespace launcher {
             DebugCreateFile,
             VerboseGraphicsLogging,
             VerboseAVSLogging,
+            AllowEA3Verbose,
             DisableColoredOutput,
             DisableACPHook,
             DisableSignalHandling,

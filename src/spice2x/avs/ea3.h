@@ -28,6 +28,7 @@ namespace avs {
         extern int HTTP11;
         extern int URL_SLASH;
         extern int PCB_TYPE;
+        extern bool EA3_DEBUG_VERBOSE;
 
         // handle
         extern std::string VERSION_STR;

@@ -41,6 +41,7 @@ namespace avs {
         int HTTP11 = -1;
         int URL_SLASH = -1;
         int PCB_TYPE = -1;
+        bool EA3_DEBUG_VERBOSE = false;
 
         // handle
         std::string VERSION_STR = "unknown";
@@ -410,6 +411,11 @@ namespace avs {
                 log_fatal("avs-ea3", "node not found: /ea3/id/pcbid (try using -p to specify PCBID)");
             } else if (strlen(EA3_PCBID) == 0) {
                 log_fatal("avs-ea3", "no PCBID set (try using -p to specify PCBID)");
+            }
+
+            // remove <debug> since it can expose pcbid in logged requests
+            if (!EA3_DEBUG_VERBOSE) {
+                avs::core::property_search_remove_safe(ea3_config, nullptr, "/ea3/debug/verbose");
             }
 
             // remember IDs

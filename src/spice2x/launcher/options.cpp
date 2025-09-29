@@ -1673,6 +1673,16 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Debug Log",
     },
     {
+        // AllowEA3Verbose
+        .title = "Allow EA3 Verbose Debug Logging",
+        .name = "ea3verbose",
+        .desc = "This option is only useful for network developers; leave this OFF.\n\n"
+            "By default, ea3/debug/verbose node is removed by spice to prevent exposing PCBID in the logs. "
+            "When this is enabled, ea3/debug/verbose node in the XML will be kept and exposed to the game",
+        .type = OptionType::Bool,
+        .category = "Debug Log",
+    },
+    {
         .title = "Disable Colored Output",
         .name = "nocolor",
         .desc = "Disable terminal colors for log outputs to console",
@@ -2375,7 +2385,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .category = "Development",
         .disabled = true,
-    },
+    }
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {
