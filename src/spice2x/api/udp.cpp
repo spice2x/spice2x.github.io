@@ -95,7 +95,7 @@ namespace api {
     }
 
     void UdpController::recv_thread() {
-        auto recv_buf = std::make_unique<char>(65535);
+        auto recv_buf = std::make_unique<char>(SPICEAPI_UDP_RECV_BUFFER_SIZE);
 
         while (!stop_signal_.load()) {
             auto clock = std::chrono::steady_clock::now();
