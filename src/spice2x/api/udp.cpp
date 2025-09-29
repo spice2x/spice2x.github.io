@@ -144,7 +144,7 @@ namespace api {
         for (auto iter = states_.begin(); iter != states_.end();) {
             auto *state = *iter;
 
-            if (time - state->last_active > 2s || ikcp_waitsnd(state->kcp) > 10) {
+            if (time - state->last_active > 2s || ikcp_waitsnd(state->kcp) > 100) {
                 log_info("api::udp", "client {} inactive, released", state->address_str);
                 ikcp_release(state->kcp);
                 controller_->free_state(state);
