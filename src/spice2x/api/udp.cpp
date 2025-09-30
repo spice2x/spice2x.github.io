@@ -83,6 +83,12 @@ namespace api {
             return;
         }
 
+#if KCP_LOGGING
+        if (LOGGING) {
+            log_info("api::udp", "recv buf {}", bin2hex(state->recv_buf.data(), recv_len));
+        }
+#endif
+
         std::vector<char> message_buffer;
 
         // cipher
@@ -192,7 +198,7 @@ namespace api {
             state->kcp->output = UdpController::kcp_send_cb;
 
             // fast mode
-            ikcp_nodelay(state->kcp, 1, 4, 2, 1);
+            ikcp_nodelay(state->kcp, 1, 0, 2, 1);
 
 #if KCP_LOGGING
             if (LOGGING) {
@@ -232,12 +238,13 @@ namespace api {
                 if (error != WSAEWOULDBLOCK) {
                     log_warning("api::udp", "receive error: {}", WSAGetLastError());
                 }
+
+                Sleep(1);
             } else {
                 on_rawdata_recv(sender_addr, recv_buf.data(), recv_len);
             }
 
             update_states();
-            Sleep(1);
         }
     }
 
