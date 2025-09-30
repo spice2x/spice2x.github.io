@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "peb.h"
 #include "util/fileutils.h"
+#include "util/dependencies.h"
 
 std::filesystem::path libutils::module_file_name(HMODULE module) {
     std::wstring buf;
@@ -65,6 +66,7 @@ HMODULE libutils::load_library(const std::filesystem::path &path, bool fatal) {
 
     if (!module) {
         log_warning("libutils", "'{}' couldn't be loaded: {}", path.string(), get_last_error_string());
+        dependencies::walk(path);
         load_library_fail(path.filename().string(), fatal);
     }
 
