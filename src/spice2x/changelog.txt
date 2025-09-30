@@ -1,3 +1,7 @@
+09/30/2025 [spice2x]
+    Prevent verbose debug EA3 logging by default
+    Options UI tweaks
+
 09/28/2025 [spice2x]
     IIDX: auto apply ASIO compatibility fix for IIDX32+
     Misc diagnosability updates
