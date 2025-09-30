@@ -558,6 +558,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name =  "iidxbio2fw",
         .desc = "Enables BIO2 firmware updates",
         .type = OptionType::Bool,
+        .hidden = true,
         .game_name = "Beatmania IIDX",
         .category = "Game Options (Advanced)",
     },
