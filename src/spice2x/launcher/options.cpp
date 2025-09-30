@@ -359,7 +359,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "r",
         .desc = "Set custom SOFTID override",
         .type = OptionType::Text,
-        .category = "Network (Development)",
+        .category = "Development",
         .sensitive = true,
     },
     {
@@ -554,9 +554,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
-        .title = "IIDX BIO2 Firmware",
+        .title = "IIDX BIO2 Firmware Update",
         .name =  "iidxbio2fw",
-        .desc = "Enables BIO2 firmware updates",
+        .desc = "Enables BIO2 firmware updates. WARNING - can cause semi-permanent change to your I/O board",
         .type = OptionType::Bool,
         .hidden = true,
         .game_name = "Beatmania IIDX",
@@ -1136,11 +1136,11 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Path Overrides",
     },
     {
-        .title = "Intel SDE Folder",
+        .title = "Intel SDE",
         .name = "sde",
         .desc = "Path to Intel SDE kit path for automatic attaching",
         .type = OptionType::Text,
-        .category = "Path Overrides",
+        .category = "Development",
     },
     {
         .title = "ea3-config.xml Override",
@@ -1545,10 +1545,13 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Spice Audio Hook Backend",
         .name = "audiobackend",
         .desc = "Selects the audio backend to use when spice audio hook is enabled, overriding exclusive WASAPI. "
-            " Does nothing for games that do not output to exclusive WASAPI",
+            "Does nothing for games that do not output to exclusive WASAPI",
         .type = OptionType::Enum,
         .category = "Audio",
-        .elements = {{"asio", "ASIO"}, {"waveout", "waveOut"}},
+        .elements = {
+            {"asio", "ASIO"},
+            {"waveout", "broken, do not use"}
+        },
     },
     {
         .title = "Spice Audio Hook ASIO Driver ID",

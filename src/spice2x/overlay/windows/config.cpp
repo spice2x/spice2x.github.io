@@ -2633,17 +2633,16 @@ namespace overlay::windows {
                 
                 // check hidden option
                 if (!this->options_show_hidden && option.value.empty()) {
-                    
                     // skip hidden entries
                     if (definition.hidden) {
                         continue;
                     }
-                    
-                    // check for game exclusivity
-                    if (!definition.game_name.empty()) {
-                        if (definition.game_name != this->games_selected_name) {
-                            continue;
-                        }
+                }
+
+                // check for game exclusivity
+                if (!definition.game_name.empty()) {
+                    if (definition.game_name != this->games_selected_name) {
+                        continue;
                     }
                 }
                 
