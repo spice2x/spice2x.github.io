@@ -139,7 +139,8 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
             log_warning("signal", "audio initialization error was previously detected during boot!");
             log_warning("signal", "    (W:SuperstepSound: Audio device is not available!!!)");
             log_warning("signal", "    this crash is most likely related to audio init failure");
-            log_warning("signal", "    fix your audio device, double check your audio options/patches, and try again");
+            log_warning("signal", "    see if the default audio device changed, fix your audio configuration (e.g., sample rate)");
+            log_warning("signal", "    double check your spice audio options/patches, and try again");
         }
 
         if (launcher::signal::AVS_DIR_CREATION_FAILURE) {
