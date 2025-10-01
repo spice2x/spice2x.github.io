@@ -17,7 +17,7 @@ namespace {
         {
             "d3dx9_43.dll",
             "DirectX End-User Runtimes",
-            "Download and install from https://www.microsoft.com/en-gb/download/details.aspx?id=8109"
+            "Download and install from https://www.microsoft.com/en-us/download/details.aspx?id=35"
         },
         {
             "nvEncodeAPI64.dll",
