@@ -34,6 +34,11 @@ namespace {
             "NVIDIA Graphics Driver",
             "For non-NVIDIA GPUs, copy the stub file from the spice2x release .zip.",
         },
+        {
+            "cpusbxpkm.dll",
+            "LovePlus Printer DLL",
+            "Copy the stub file from the spice2x release .zip.",
+        },
     };
 
     std::set<std::wstring> failed = {};
