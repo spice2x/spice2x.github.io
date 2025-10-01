@@ -35,6 +35,8 @@ namespace launcher::signal {
     bool SUPERSTEP_SOUND_ERROR = false;
     bool AVS_DIR_CREATION_FAILURE = false;
     std::string AVS_SRC_PATH;
+    bool D3D9_CREATE_DEVICE_FAILED = false;
+    uint32_t D3D9_CREATE_DEVICE_FAILED_HRESULT;
 }
 
 #define V(variant) case variant: return #variant
@@ -150,6 +152,25 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
                 "    this crash may have been caused by bad <mounttable> contents in {}",
                 avs::core::CFG_PATH.c_str());
             log_warning("signal", "    fix the XML file and try again");
+        }
+
+        if (launcher::signal::D3D9_CREATE_DEVICE_FAILED) {
+            log_warning("signal",
+                "D3D9 CreateDevice/CreateDeviceEx failed with {:#x}!",
+                launcher::signal::D3D9_CREATE_DEVICE_FAILED_HRESULT);
+
+            log_warning("signal",
+                "    this is a common graphics / monitor issue");
+            log_warning("signal",
+                "    double check any graphics options you configured in spicecfg");
+            log_warning("signal",
+                "    double check that your monitor supports the resolution + refresh rate that the game needs");
+            log_warning("signal",
+                "    enable GPU-side resolution scaling in your GPU options as needed");
+            log_warning("signal",
+                "    if you have three or more monitors, try unplugging them down to one or two, or enable -graphics-force-single-adapter option");
+            log_warning("signal",
+                "    failing all that, see if enabling windowed mode helps");
         }
 
         // walk the exception chain
