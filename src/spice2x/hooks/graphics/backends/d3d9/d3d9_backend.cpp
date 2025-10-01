@@ -19,6 +19,7 @@
 #include "hooks/graphics/graphics.h"
 #include "launcher/launcher.h"
 #include "launcher/options.h"
+#include "launcher/signal.h"
 #include "launcher/shutdown.h"
 #include "misc/clipboard.h"
 #include "misc/eamuse.h"
@@ -775,6 +776,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
 
         // log error
         log_info("graphics::d3d9", "IDirect3D9::CreateDevice failed, hr={}", FMT_HRESULT(ret));
+        launcher::signal::D3D9_CREATE_DEVICE_FAILED = true;
+        launcher::signal::D3D9_CREATE_DEVICE_FAILED_HRESULT = ret;
     } else if (!D3D9_DEVICE_HOOK_DISABLE) {
         graphics_hook_window(hFocusWindow, pPresentationParameters);
 
@@ -994,6 +997,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
         // log error
         log_warning("graphics::d3d9", "CreateDeviceEx failed, hr={}", FMT_HRESULT(result));
+        launcher::signal::D3D9_CREATE_DEVICE_FAILED = true;
+        launcher::signal::D3D9_CREATE_DEVICE_FAILED_HRESULT = result;
+
     } else if (!D3D9_DEVICE_HOOK_DISABLE) {
         graphics_hook_window(hFocusWindow, pPresentationParameters);
 
