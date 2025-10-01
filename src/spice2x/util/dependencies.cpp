@@ -12,7 +12,7 @@ namespace {
         {
             "msvcr100.dll",
             "Visual Studio 2010 (VC++ 10.0) SP1 Redistributable",
-            "Download and install from https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist",
+            "Download and install VisualCppRedist_AIO_x86_x64.exe from https://github.com/abbodi1406/vcredist/releases/latest",
         },
         {
             "d3dx9_43.dll",
