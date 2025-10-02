@@ -148,5 +148,13 @@ namespace games::pcm {
                 system, "?GetEscrowBillKind@GsBillVali@@SAHXZ"));
         detour::inline_hook(BillVali_SetAcceptBill, libutils::try_proc(
                 system, "?SetAcceptBill@GsBillVali@@SA_NH@Z"));
+
+        // NOTE: for 2024091200 or newer
+        detour::inline_hook(BillVali_ReceiveBill, libutils::try_proc(
+                system, "?ReceiveBill@GsBillVali@@SA_NXZ"));
+        detour::inline_hook(BillVali_GetEscrowBillKind, libutils::try_proc(
+                system, "?GetEscrowBillKind@GsBillVali@@SA?AW4E_BILLKIND@@XZ"));
+        detour::inline_hook(BillVali_SetAcceptBill, libutils::try_proc(
+                system, "?SetAcceptBill@GsBillVali@@SA_NW4E_BILLKIND@@@Z"));
     }
 }
