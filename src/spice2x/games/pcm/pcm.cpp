@@ -14,6 +14,7 @@ namespace games::pcm {
     static double BILL_DELAY = 2.0;
 
     static int bill_kind = 0;
+    static int accept_bill_kind = 0;
 
     static int __cdecl BillVali_GetEscrowBillKind() {
         return bill_kind;
@@ -74,6 +75,12 @@ namespace games::pcm {
             BILL_IN_TIME = get_performance_seconds();
         } else if ((BILL_IN_TIME != 0) && ((BILL_IN_TIME + BILL_DELAY) <= get_performance_seconds())) {
             BILL_IN_TIME = 0;
+
+            if (accept_bill_kind != 0 && accept_bill_kind != bill_kind) {
+                bill_kind = 0;
+                return 0;
+            }
+
             switch (bill_kind) {
                 case 1:
                     return 1;
@@ -98,7 +105,8 @@ namespace games::pcm {
         return true;
     }
 
-    static bool __cdecl BillVali_SetAcceptBill(int) {
+    static bool __cdecl BillVali_SetAcceptBill(int a1) {
+        accept_bill_kind = a1;
         return true;
     }
 
