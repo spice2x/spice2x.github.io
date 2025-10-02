@@ -14,6 +14,7 @@ namespace games::pcm {
     static double BILL_DELAY = 2.0;
 
     static int bill_kind = 0;
+    static int accept_bill_kind = 0;
 
     static int __cdecl BillVali_GetEscrowBillKind() {
         return bill_kind;
@@ -74,6 +75,12 @@ namespace games::pcm {
             BILL_IN_TIME = get_performance_seconds();
         } else if ((BILL_IN_TIME != 0) && ((BILL_IN_TIME + BILL_DELAY) <= get_performance_seconds())) {
             BILL_IN_TIME = 0;
+
+            if (accept_bill_kind != 0 && accept_bill_kind != bill_kind) {
+                bill_kind = 0;
+                return 0;
+            }
+
             switch (bill_kind) {
                 case 1:
                     return 1;
@@ -98,7 +105,8 @@ namespace games::pcm {
         return true;
     }
 
-    static bool __cdecl BillVali_SetAcceptBill(int) {
+    static bool __cdecl BillVali_SetAcceptBill(int a1) {
+        accept_bill_kind = a1;
         return true;
     }
 
@@ -148,5 +156,13 @@ namespace games::pcm {
                 system, "?GetEscrowBillKind@GsBillVali@@SAHXZ"));
         detour::inline_hook(BillVali_SetAcceptBill, libutils::try_proc(
                 system, "?SetAcceptBill@GsBillVali@@SA_NH@Z"));
+
+        // NOTE: for 2024091200 or newer
+        detour::inline_hook(BillVali_ReceiveBill, libutils::try_proc(
+                system, "?ReceiveBill@GsBillVali@@SA_NXZ"));
+        detour::inline_hook(BillVali_GetEscrowBillKind, libutils::try_proc(
+                system, "?GetEscrowBillKind@GsBillVali@@SA?AW4E_BILLKIND@@XZ"));
+        detour::inline_hook(BillVali_SetAcceptBill, libutils::try_proc(
+                system, "?SetAcceptBill@GsBillVali@@SA_NW4E_BILLKIND@@@Z"));
     }
 }
