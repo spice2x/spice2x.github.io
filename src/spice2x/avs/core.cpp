@@ -1939,6 +1939,7 @@ namespace avs {
             static const char *LOG_LEVELS[] = { "disable", "fatal", "warning", "info", "misc", "all" };
             char current_log_level_buffer[32] { 0 };
             uint32_t current_log_level = 0;
+            std::string log_level_as_str;
 
             if (VERSION == AVSLEGACY || VERSION == AVS21360) {
                 auto level_node = property_search(config, config_node, "/log/level");
@@ -1954,6 +1955,7 @@ namespace avs {
                 {
                     if (current_log_level < std::size(LOG_LEVELS)) {
                         log_info("avs-core", "log level: {}", LOG_LEVELS[current_log_level]);
+                        log_level_as_str = LOG_LEVELS[current_log_level];
                     } else {
                         log_fatal("avs-core", "log level ({}) is invalid!", current_log_level);
                     }
@@ -1973,7 +1975,7 @@ namespace avs {
                         level_node = property_node_create(config, config_node, NODE_TYPE_str, "/log/level",
                                 LOG_LEVELS[current_log_level]);
                     } else {
-                        log_fatal("avs-core", "log level ({}) is invalid!", current_log_level);
+                        log_fatal("avs-core", "log level ({}) is invalid! *", current_log_level);
                     }
                 }
 
@@ -1986,10 +1988,24 @@ namespace avs {
                 if (property_node_refer(config, config_node, "/log/level",
                         NODE_TYPE_str, current_log_level_buffer, sizeof(current_log_level_buffer)) > 0)
                 {
-                    log_info("avs-core", "log level: {}", current_log_level_buffer);
+                    log_info("avs-core", "log level: {} *", current_log_level_buffer);
+                    log_level_as_str = current_log_level_buffer;
                 } else {
-                    log_warning("avs-core", "log level: unknown");
+                    log_warning("avs-core", "log level: unknown *");
                 }
+            }
+
+            if (log_level_as_str == "disable" ||
+                log_level_as_str == "fatal" ||
+                log_level_as_str == "warning" ||
+                log_level_as_str == "info") {
+
+                deferredlogs::defer_error_messages({
+                    fmt::format(
+                        "log level is set to `{}` (either in avs-config.xml or using -loglevel)", log_level_as_str),
+                        "    if you are troubleshooting crashes or failures, it is recommended that you set ",
+                        "    AVS Log Level (-loglevel) option to `all`",
+                        });
             }
 
             // fix time offset
