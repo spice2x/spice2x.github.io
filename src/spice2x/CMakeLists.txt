@@ -611,6 +611,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         util/tapeled.cpp
         util/execexe.cpp
         util/dependencies.cpp
+        util/deferlog.cpp
 )
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${SOURCE_FILES})

@@ -23,6 +23,7 @@
 #include "misc/wintouchemu.h"
 #include "misc/eamuse.h"
 #include "util/detour.h"
+#include "util/deferlog.h"
 #include "util/fileutils.h"
 #include "util/libutils.h"
 #include "util/memutils.h"
@@ -235,7 +236,7 @@ namespace games::iidx {
             out.clear();
             return true;
         } else if (data.find("SuperstepSound: Audio device is not available") != std::string::npos) {
-            launcher::signal::SUPERSTEP_SOUND_ERROR = TRUE;
+            deferredlogs::defer_error_messages(deferredlogs::SUPERSTEP_SOUND_ERROR_MESSAGE);
             return false;
         } else {
             return false;
