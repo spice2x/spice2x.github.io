@@ -7,6 +7,7 @@
 #include "easrv/easrv.h"
 #include "rawinput/rawinput.h"
 #include "hooks/audio/audio.h"
+#include "util/deferlog.h"
 #include "util/logging.h"
 
 #include "launcher.h"
@@ -20,6 +21,9 @@ namespace launcher {
         // (e.g., crashing, and then closing the window)
         // therefore, subsystems need to be guarded against multiple unload attempts
         log_info("launcher", "stopping subsystems");
+
+        // before shutting down logger, dump any deferred log messages
+        deferredlogs::dump_to_logger();
 
         // flush/stop logger
         logger::stop();

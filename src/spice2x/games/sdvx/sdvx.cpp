@@ -13,6 +13,7 @@
 #include "hooks/sleephook.h"
 #include "hooks/winuser.h"
 #include "touch/touch.h"
+#include "util/deferlog.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/sigscan.h"
@@ -211,7 +212,7 @@ namespace games::sdvx {
             return true;
         }
         if (data.find("SuperstepSound: Audio device is not available") != std::string::npos) {
-            launcher::signal::SUPERSTEP_SOUND_ERROR = TRUE;
+            deferredlogs::defer_error_messages(deferredlogs::SUPERSTEP_SOUND_ERROR_MESSAGE);
             return false;
         }
         return false;

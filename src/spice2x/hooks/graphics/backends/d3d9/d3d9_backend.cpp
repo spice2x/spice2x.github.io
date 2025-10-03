@@ -26,6 +26,7 @@
 #include "misc/wintouchemu.h"
 #include "overlay/overlay.h"
 #include "util/detour.h"
+#include "util/deferlog.h"
 #include "util/flags_helper.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -203,6 +204,18 @@ static std::string presentation_interval2s(UINT presentation_interval) {
 }
 
 static void update_backbuffer_dimensions(D3DPRESENT_PARAMETERS *params);
+
+static void log_create_device_failure(HRESULT hresult) {
+    deferredlogs::defer_error_messages({
+        fmt::format("D3D9 CreateDevice/CreateDeviceEx failed with {:#x}!", (UINT)hresult),
+        "    this is a common graphics / monitor issue",
+        "    double check any graphics options you configured in spicecfg",
+        "    double check that your monitor supports the resolution + refresh rate that the game needs",
+        "    enable GPU-side resolution scaling in your GPU options as needed",
+        "    if you have three or more monitors, try unplugging them down to one or two, or enable -graphics-force-single-adapter option",
+        "    failing all that, see if enabling windowed mode helps"
+    });
+}
 
 static bool is_dx9_on_12_enabled() {
     switch (GRAPHICS_9_ON_12_STATE) {
@@ -776,8 +789,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
 
         // log error
         log_info("graphics::d3d9", "IDirect3D9::CreateDevice failed, hr={}", FMT_HRESULT(ret));
-        launcher::signal::D3D9_CREATE_DEVICE_FAILED = true;
-        launcher::signal::D3D9_CREATE_DEVICE_FAILED_HRESULT = ret;
+        log_create_device_failure(ret);
     } else if (!D3D9_DEVICE_HOOK_DISABLE) {
         graphics_hook_window(hFocusWindow, pPresentationParameters);
 
@@ -997,8 +1009,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
         // log error
         log_warning("graphics::d3d9", "CreateDeviceEx failed, hr={}", FMT_HRESULT(result));
-        launcher::signal::D3D9_CREATE_DEVICE_FAILED = true;
-        launcher::signal::D3D9_CREATE_DEVICE_FAILED_HRESULT = result;
+        log_create_device_failure(result);
 
     } else if (!D3D9_DEVICE_HOOK_DISABLE) {
         graphics_hook_window(hFocusWindow, pPresentationParameters);

@@ -5,12 +5,11 @@
 #include <windows.h>
 #include <dbghelp.h>
 
-#include "avs/core.h"
-#include "avs/game.h"
 #include "acio/acio.h"
 #include "external/stackwalker/stackwalker.h"
 #include "hooks/libraryhook.h"
 #include "launcher/shutdown.h"
+#include "util/deferlog.h"
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -30,13 +29,6 @@ namespace launcher::signal {
     // settings
     bool DISABLE = false;
     bool USE_VEH_WORKAROUND = false;
-
-    // states
-    bool SUPERSTEP_SOUND_ERROR = false;
-    bool AVS_DIR_CREATION_FAILURE = false;
-    std::string AVS_SRC_PATH;
-    bool D3D9_CREATE_DEVICE_FAILED = false;
-    uint32_t D3D9_CREATE_DEVICE_FAILED_HRESULT;
 }
 
 #define V(variant) case variant: return #variant
@@ -124,55 +116,14 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
 
         // check ACIO init failures
         if (acio::IO_INIT_IN_PROGRESS) {
-            log_warning(
-                "signal",
-                "exception raised during ACIO init, this usually happens when a third party application interferes with hooks");
-            log_warning(
-                "signal",
-                "    please check for the following, disable them, and try launching the game again:");
-            log_warning(
-                "signal",
-                "    RivaTuner Statistics Server (RTSS), MSI Afterburner, kernel mode anti-cheat");
+            deferredlogs::defer_error_messages({
+                "exception raised during ACIO init, this usually happens when a third party application interferes with hooks",
+                "    please check for the following, disable them, and try launching the game again:",
+                "    RivaTuner Statistics Server (RTSS), MSI Afterburner, kernel mode anti-cheat"
+            });
         }
 
-        if (launcher::signal::SUPERSTEP_SOUND_ERROR) {
-            log_warning("signal", "audio initialization error was previously detected during boot!");
-            log_warning("signal", "    (W:SuperstepSound: Audio device is not available!!!)");
-            log_warning("signal", "    this crash is most likely related to audio init failure");
-            log_warning("signal", "    see if the default audio device changed, fix your audio configuration (e.g., sample rate)");
-            log_warning("signal", "    double check your spice audio options/patches, and try again");
-        }
-
-        if (launcher::signal::AVS_DIR_CREATION_FAILURE) {
-            log_warning("signal",
-                "AVS filesystem initialization failure was previously detected during boot!");
-            log_warning("signal",
-                "    ERROR: directory could not be created: {}",
-                launcher::signal::AVS_SRC_PATH.c_str());
-            log_warning("signal",
-                "    this crash may have been caused by bad <mounttable> contents in {}",
-                avs::core::CFG_PATH.c_str());
-            log_warning("signal", "    fix the XML file and try again");
-        }
-
-        if (launcher::signal::D3D9_CREATE_DEVICE_FAILED) {
-            log_warning("signal",
-                "D3D9 CreateDevice/CreateDeviceEx failed with {:#x}!",
-                launcher::signal::D3D9_CREATE_DEVICE_FAILED_HRESULT);
-
-            log_warning("signal",
-                "    this is a common graphics / monitor issue");
-            log_warning("signal",
-                "    double check any graphics options you configured in spicecfg");
-            log_warning("signal",
-                "    double check that your monitor supports the resolution + refresh rate that the game needs");
-            log_warning("signal",
-                "    enable GPU-side resolution scaling in your GPU options as needed");
-            log_warning("signal",
-                "    if you have three or more monitors, try unplugging them down to one or two, or enable -graphics-force-single-adapter option");
-            log_warning("signal",
-                "    failing all that, see if enabling windowed mode helps");
-        }
+        deferredlogs::dump_to_logger();
 
         // walk the exception chain
         struct _EXCEPTION_RECORD *record_cause = ExceptionRecord->ExceptionRecord;

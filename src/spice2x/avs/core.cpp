@@ -9,6 +9,7 @@
 #include "external/robin_hood.h"
 #include "launcher/logger.h"
 #include "launcher/signal.h"
+#include "util/deferlog.h"
 #include "util/detour.h"
 #include "util/fileutils.h"
 #include "util/libutils.h"
@@ -1739,8 +1740,12 @@ namespace avs {
 
         static void avs_dir_err(const std::filesystem::path &src_path)
         {
-            launcher::signal::AVS_DIR_CREATION_FAILURE = TRUE;
-            launcher::signal::AVS_SRC_PATH = src_path.string();
+            deferredlogs::defer_error_messages({
+                "AVS filesystem initialization failure was previously detected during boot!",
+                fmt::format("    ERROR: directory could not be created: {}", src_path.string().c_str()),
+                fmt::format("    this crash may have been caused by bad <mounttable> contents in {}", avs::core::CFG_PATH.c_str()),
+                "    fix the XML file and try again"  
+            });
         }
 
         static void create_avs_dir(
