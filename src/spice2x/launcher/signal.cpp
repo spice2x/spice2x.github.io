@@ -123,8 +123,6 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
             });
         }
 
-        deferredlogs::dump_to_logger();
-
         // walk the exception chain
         struct _EXCEPTION_RECORD *record_cause = ExceptionRecord->ExceptionRecord;
         while (record_cause != nullptr) {
@@ -138,6 +136,8 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
         if (!sw.ShowCallstack(GetCurrentThread(), ExceptionInfo->ContextRecord)) {
             log_warning("signal", "failed to print callstack");
         }
+
+        deferredlogs::dump_to_logger();
 
         if (MiniDumpWriteDump_local != nullptr) {
             HANDLE minidump_file = CreateFileA(
