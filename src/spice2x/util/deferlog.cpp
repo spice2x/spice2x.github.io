@@ -13,15 +13,18 @@ namespace deferredlogs {
         "    double check your spice audio options/patches, and try again"
     };
 
+    std::mutex deferred_errors_mutex;
     std::vector<std::vector<std::string>> deferred_errors;
 
     void defer_error_messages(std::initializer_list<std::string> messages) {
+        std::unique_lock<std::mutex> lock(deferred_errors_mutex);
         deferred_errors.emplace_back(messages);
     }
 
     void dump_to_logger() {
         static std::once_flag printed;
         std::call_once(printed, []() {
+            std::unique_lock<std::mutex> lock(deferred_errors_mutex);
             if (!deferred_errors.empty()) {
                 log_warning("deferred_error",
                     "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
