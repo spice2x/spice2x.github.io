@@ -1743,7 +1743,7 @@ namespace avs {
             deferredlogs::defer_error_messages({
                 "AVS filesystem initialization failure was previously detected during boot!",
                 fmt::format("    ERROR: directory could not be created: {}", src_path.string().c_str()),
-                fmt::format("    this crash may have been caused by bad <mounttable> contents in {}", avs::core::CFG_PATH.c_str()),
+                fmt::format("    if you see a crash, it may have been caused by bad <mounttable> contents in {}", avs::core::CFG_PATH.c_str()),
                 "    fix the XML file and try again"  
             });
         }
