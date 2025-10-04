@@ -101,7 +101,7 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
         switch (ExceptionRecord->ExceptionCode) {
             case EXCEPTION_ILLEGAL_INSTRUCTION:
                 deferredlogs::defer_error_messages({
-                    "Illegal instruction exception:",
+                    "illegal instruction exception:",
                     "    either your CPU is too old (e.g., does not support SSE4.2 or AVX2 ",
                     "    but perhaps the game requires it); or, a bad patch was applied."
                     });
@@ -124,7 +124,7 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
 
         // dump deferred logs BEFORE stack trace since some errors cause stack trace logic to hang
         // (e.g., ACIO init hang due to RTSS)
-        deferredlogs::dump_to_logger();
+        deferredlogs::dump_to_logger(true);
 
         // walk the exception chain
         struct _EXCEPTION_RECORD *record_cause = ExceptionRecord->ExceptionRecord;

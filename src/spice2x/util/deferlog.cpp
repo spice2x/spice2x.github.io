@@ -22,9 +22,9 @@ namespace deferredlogs {
         deferred_errors.emplace_back(messages);
     }
 
-    void dump_to_logger() {
+    void dump_to_logger(bool is_crash) {
         static std::once_flag printed;
-        std::call_once(printed, []() {
+        std::call_once(printed, [is_crash]() {
 
             // move to a local vector under lock first
             // this is to avoid holding a lock while emitting to the logger, which may deadlock
@@ -33,7 +33,7 @@ namespace deferredlogs {
             std::vector<std::vector<std::string>> errors;
             {
                 std::lock_guard<std::mutex> lock(deferred_errors_mutex);
-                if (deferred_errors.empty()) {
+                if (deferred_errors.empty() && !is_crash) {
                     return;
                 }
                 errors = std::move(deferred_errors);
@@ -41,6 +41,13 @@ namespace deferredlogs {
 
             log_warning("troubleshooter", "/------------------------ spice2x auto-troubleshooter ------------------------\\");
             log_warning("troubleshooter", "");
+            
+            if (is_crash) {
+                log_warning("troubleshooter", "  the game has crashed");
+                log_warning("troubleshooter", "      share this entire log file with someone for troubleshooting");
+                log_warning("troubleshooter", "      spice will also attempt to create a minidump (minidump.dmp)");
+                log_warning("troubleshooter", "");
+            }
 
             for (auto messages : errors) {
                 for (auto message : messages) {
@@ -49,7 +56,7 @@ namespace deferredlogs {
                 log_warning("troubleshooter", "");
             }
 
-            log_warning("troubleshooter", "  Still unsure? Check the FAQ:");
+            log_warning("troubleshooter", "  unsure what to do next? check the FAQ:");
             log_warning("troubleshooter", "      https://github.com/spice2x/spice2x.github.io/wiki/Known-issues");
             log_warning("troubleshooter", "");
             log_warning("troubleshooter", "\\------------------------ spice2x auto-troubleshooter -----------------------/");
