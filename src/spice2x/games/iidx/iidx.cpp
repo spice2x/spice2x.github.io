@@ -405,6 +405,14 @@ namespace games::iidx {
 
         // init cfgmgr32 hooks
         cfgmgr32hook_init(avs::game::DLL_INSTANCE);
+
+        // report common errors on iidx31 and above
+        if (avs::game::is_ext(2023091500, MAXINT) && GRAPHICS_9_ON_12_STATE == DX9ON12_FORCE_ON) {
+            deferredlogs::defer_error_messages({
+                "common incompatibility with DX 9on12 + IIDX 31 and above",
+                "    IIDX31+ is known to be incompatible with DX 9on12, leading to blank screen or crashes"
+            });
+        }
     }
 
     void IIDXGame::pre_attach() {
