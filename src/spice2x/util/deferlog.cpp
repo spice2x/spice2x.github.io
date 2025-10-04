@@ -33,10 +33,12 @@ namespace deferredlogs {
         static std::once_flag printed;
         std::call_once(printed, []() {
             too_late = true;
-            if (!deferred_errors.empty()) {
-                log_warning("troubleshooter", "/------------------------ spice2x auto-troubleshooter ------------------------\\");
-                log_warning("troubleshooter", "");
+            if (deferred_errors.empty()) {
+                return;
             }
+
+            log_warning("troubleshooter", "/------------------------ spice2x auto-troubleshooter ------------------------\\");
+            log_warning("troubleshooter", "");
 
             for (auto messages : deferred_errors) {
                 for (auto message : messages) {
@@ -45,12 +47,10 @@ namespace deferredlogs {
                 log_warning("troubleshooter", "");
             }
 
-            if (!deferred_errors.empty()) {
-                log_warning("troubleshooter", "  Still unsure? Check the FAQ:");
-                log_warning("troubleshooter", "      https://github.com/spice2x/spice2x.github.io/wiki/Known-issues");
-                log_warning("troubleshooter", "");
-                log_warning("troubleshooter", "\\------------------------ spice2x auto-troubleshooter -----------------------/");
-            }
+            log_warning("troubleshooter", "  Still unsure? Check the FAQ:");
+            log_warning("troubleshooter", "      https://github.com/spice2x/spice2x.github.io/wiki/Known-issues");
+            log_warning("troubleshooter", "");
+            log_warning("troubleshooter", "\\------------------------ spice2x auto-troubleshooter -----------------------/");
         });
     }
 }
