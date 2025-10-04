@@ -206,16 +206,34 @@ static std::string presentation_interval2s(UINT presentation_interval) {
 static void update_backbuffer_dimensions(D3DPRESENT_PARAMETERS *params);
 
 static void log_create_device_failure(HRESULT hresult) {
-    deferredlogs::defer_error_messages({
-        fmt::format("D3D9 CreateDevice/CreateDeviceEx failed with {:#x}!", (UINT)hresult),
-        "    this is a common graphics / monitor issue",
-        "    * double check any graphics options you configured in spicecfg",
-        "    * double check that your monitor supports the resolution + refresh rate",
-        "          combination that the game requires",
-        "    * enable GPU-side resolution scaling in your GPU options as needed",
-        "    * if you have three or more monitors, try unplugging them down to one or two,",
-        "          or enable -graphics-force-single-adapter option",
-        "    * failing all that, see if enabling windowed mode helps"
+    // only print once since some games will try CreateDevice multiple times on failure
+    static std::once_flag printed;
+    std::call_once(printed, [hresult]() {
+        // special case for popn
+        if (avs::game::is_model("M39")) {
+            deferredlogs::defer_error_messages({
+                fmt::format("D3D9 CreateDevice/CreateDeviceEx failed with {:#x}!", (UINT)hresult),
+                "    possible popn music HD mode resolution issue",
+                "    popn HD mode launches at 1360x768 (and NOT 1366x768) which is often",
+                "    unsupported by many monitors; here are some possible workarounds:",
+                "      * enable GPU resolution scaling in your GPU settings",
+                "      * use Force Full Screen Resolution option, combined with image scaling (F11)",
+                "      * run in windowed mode",
+                "      * run in SD mode"
+            });
+        } else {
+            deferredlogs::defer_error_messages({
+                fmt::format("D3D9 CreateDevice/CreateDeviceEx failed with {:#x}!", (UINT)hresult),
+                "    this is a common graphics / monitor issue",
+                "    * double check any graphics options you configured in spicecfg",
+                "    * double check that your monitor supports the resolution + refresh rate",
+                "          combination that the game requires",
+                "    * enable GPU-side resolution scaling in your GPU options as needed",
+                "    * if you have three or more monitors, try unplugging them down to one or two,",
+                "          or enable -graphics-force-single-adapter option",
+                "    * failing all that, see if enabling windowed mode helps"
+            });
+        }
     });
 }
 
