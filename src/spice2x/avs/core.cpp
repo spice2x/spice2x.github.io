@@ -2003,8 +2003,9 @@ namespace avs {
                 deferredlogs::defer_error_messages({
                     fmt::format(
                         "log level is set to `{}` (either in avs-config.xml or using -loglevel)", log_level_as_str),
-                        "    if you are troubleshooting crashes or failures, it is recommended that you set ",
-                        "    AVS Log Level (-loglevel) option to `all`",
+                        "    this log file may have omitted important error messages from the game",
+                        "    if you are troubleshooting crashes or failures, it is recommended that you",
+                        "    set AVS Log Level (-loglevel) option to `all`",
                         });
             }
 

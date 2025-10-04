@@ -98,30 +98,33 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
         // print signal
         log_warning("signal", "exception raised: {}", exception_code(ExceptionRecord));
 
-        std::string err;
         switch (ExceptionRecord->ExceptionCode) {
             case EXCEPTION_ILLEGAL_INSTRUCTION:
-                err = "Illegal instruction: either your CPU is too old (e.g., does not support "
-                    "SSE4.2 or AVX2 but perhaps the game requires it); or, a bad patch was applied.";
+                deferredlogs::defer_error_messages({
+                    "Illegal instruction exception:",
+                    "    either your CPU is too old (e.g., does not support SSE4.2 or AVX2 ",
+                    "    but perhaps the game requires it); or, a bad patch was applied."
+                    });
                 break;
             default:
                 break;
-        }
-        if (!err.empty()) {
-            log_warning(
-                "signal",
-                "likely cause for your error based on the exception code:\n    {}",
-                err.c_str());
         }
 
         // check ACIO init failures
         if (acio::IO_INIT_IN_PROGRESS) {
             deferredlogs::defer_error_messages({
-                "exception raised during ACIO init, this usually happens when a third party application interferes with hooks",
+                "exception raised during ACIO init, this usually happens when ",
+                "    a third party application interferes with hooks",
                 "    please check for the following, disable them, and try launching the game again:",
-                "    RivaTuner Statistics Server (RTSS), MSI Afterburner, kernel mode anti-cheat"
+                "      * RivaTuner Statistics Server (RTSS)",
+                "      * MSI Afterburner",
+                "      * kernel mode anti-cheat"
             });
         }
+
+        // dump deferred logs BEFORE stack trace since some errors cause stack trace logic to hang
+        // (e.g., ACIO init hang due to RTSS)
+        deferredlogs::dump_to_logger();
 
         // walk the exception chain
         struct _EXCEPTION_RECORD *record_cause = ExceptionRecord->ExceptionRecord;
@@ -136,8 +139,6 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
         if (!sw.ShowCallstack(GetCurrentThread(), ExceptionInfo->ContextRecord)) {
             log_warning("signal", "failed to print callstack");
         }
-
-        deferredlogs::dump_to_logger();
 
         if (MiniDumpWriteDump_local != nullptr) {
             HANDLE minidump_file = CreateFileA(
