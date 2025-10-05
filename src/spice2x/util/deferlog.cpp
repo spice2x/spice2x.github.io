@@ -1,6 +1,7 @@
 #include <mutex>
 #include <atomic>
 
+#include "build/defs.h"
 #include "deferlog.h"
 #include "util/logging.h"
 
@@ -41,10 +42,12 @@ namespace deferredlogs {
 
             log_warning("troubleshooter", "/------------------------ spice2x auto-troubleshooter ------------------------\\");
             log_warning("troubleshooter", "");
+            log_warning("troubleshooter", "  spice2x version: {}", VERSION_STRING_CFG);
+            log_warning("troubleshooter", "");
             
             if (is_crash) {
                 log_warning("troubleshooter", "  the game has crashed");
-                log_warning("troubleshooter", "      share this entire log file with someone for troubleshooting");
+                log_warning("troubleshooter", "      share this entire log file (log.txt) with someone for troubleshooting");
                 log_warning("troubleshooter", "      spice will also attempt to create a minidump (minidump.dmp)");
                 log_warning("troubleshooter", "");
             }
