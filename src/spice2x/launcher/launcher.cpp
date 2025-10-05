@@ -97,6 +97,7 @@
 #include "touch/touch.h"
 #include "util/cpuutils.h"
 #include "util/crypt.h"
+#include "util/deferlog.h"
 #include "util/fileutils.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -1375,7 +1376,11 @@ int main_implementation(int argc, char *argv[]) {
         log_info("launcher", "loading early hook DLL {}", hook);
         HMODULE module;
         if (!(module = libutils::try_library(hook))) {
-            log_warning("launcher", "failed to load early hook {}", hook);
+            log_warning("launcher", "failed to load early hook {}: {}", hook, get_last_error_string());
+            deferredlogs::defer_error_messages({
+                fmt::format("failed to load early hook {}:", hook),
+                fmt::format("    {}", get_last_error_string())
+                });
         }
     }
 
@@ -2155,7 +2160,11 @@ int main_implementation(int argc, char *argv[]) {
         log_info("launcher", "loading hook DLL {}", hook);
         HMODULE module;
         if (!(module = libutils::try_library(hook))) {
-            log_warning("launcher", "failed to load hook {}", hook);
+            log_warning("launcher", "failed to load hook {}: {}", hook, get_last_error_string());
+            deferredlogs::defer_error_messages({
+                fmt::format("failed to load hook {}:", hook),
+                fmt::format("    {}", get_last_error_string())
+                });
         } else {
             bt5api_hook(module);
         }

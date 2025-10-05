@@ -283,7 +283,8 @@ static inline std::string get_last_error_string() {
     LPSTR messageBuffer = nullptr;
     size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
                                  FORMAT_MESSAGE_FROM_SYSTEM |
-                                 FORMAT_MESSAGE_IGNORE_INSERTS,
+                                 FORMAT_MESSAGE_IGNORE_INSERTS |
+                                 FORMAT_MESSAGE_MAX_WIDTH_MASK,
                                  nullptr,
                                  error,
                                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
