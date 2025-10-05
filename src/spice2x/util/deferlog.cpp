@@ -56,8 +56,11 @@ namespace deferredlogs {
                 log_warning("troubleshooter", "");
             }
 
-            log_warning("troubleshooter", "  unsure what to do next? check the FAQ:");
-            log_warning("troubleshooter", "      https://github.com/spice2x/spice2x.github.io/wiki/Known-issues");
+            log_warning("troubleshooter", "  unsure what to do next?");
+            log_warning("troubleshooter", "    * update to the latest version:");
+            log_warning("troubleshooter", "        https://github.com/spice2x/spice2x.github.io/releases/latest");
+            log_warning("troubleshooter", "    * check the FAQ:");
+            log_warning("troubleshooter", "        https://github.com/spice2x/spice2x.github.io/wiki/Known-issues");
             log_warning("troubleshooter", "");
             log_warning("troubleshooter", "\\------------------------ spice2x auto-troubleshooter -----------------------/");
         });
