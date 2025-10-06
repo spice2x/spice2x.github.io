@@ -97,6 +97,7 @@
 #include "touch/touch.h"
 #include "util/cpuutils.h"
 #include "util/crypt.h"
+#include "util/deferlog.h"
 #include "util/fileutils.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -1375,7 +1376,11 @@ int main_implementation(int argc, char *argv[]) {
         log_info("launcher", "loading early hook DLL {}", hook);
         HMODULE module;
         if (!(module = libutils::try_library(hook))) {
-            log_warning("launcher", "failed to load early hook {}", hook);
+            log_warning("launcher", "failed to load early hook {}: {}", hook, get_last_error_string());
+            deferredlogs::defer_error_messages({
+                fmt::format("failed to load early hook {}:", hook),
+                fmt::format("    {}", get_last_error_string())
+                });
         }
     }
 
@@ -2155,7 +2160,11 @@ int main_implementation(int argc, char *argv[]) {
         log_info("launcher", "loading hook DLL {}", hook);
         HMODULE module;
         if (!(module = libutils::try_library(hook))) {
-            log_warning("launcher", "failed to load hook {}", hook);
+            log_warning("launcher", "failed to load hook {}: {}", hook, get_last_error_string());
+            deferredlogs::defer_error_messages({
+                fmt::format("failed to load hook {}:", hook),
+                fmt::format("    {}", get_last_error_string())
+                });
         } else {
             bt5api_hook(module);
         }
@@ -2164,9 +2173,13 @@ int main_implementation(int argc, char *argv[]) {
     // layeredfs
     if (fileutils::dir_exists("data_mods") &&
         GetModuleHandleA("ifs_hook.dll") == nullptr) {
-        log_warning("launcher", "data_mods directory was found, but ifs_hook.dll is not present; your mods will not load");
-        log_warning("launcher", "to fix this, download ifs_layeredfs and add it as a DLL hook (-k)");
-        log_warning("launcher", "https://github.com/mon/ifs_layeredfs");
+        log_warning("launcher", "data_mods directory found, but ifs_hook.dll is not present; mods will not load");
+        deferredlogs::defer_error_messages({
+            "data_mods directory was found, but ifs_hook.dll is not present",
+            "    your mods will not load",
+            "    to fix this, download ifs_layeredfs and add it as a DLL hook (-k)",
+            "    https://github.com/mon/ifs_layeredfs"
+            });
     }
 
     // apply patches

@@ -1,6 +1,7 @@
 #include <mutex>
 #include <atomic>
 
+#include "build/defs.h"
 #include "deferlog.h"
 #include "util/logging.h"
 
@@ -39,27 +40,36 @@ namespace deferredlogs {
                 errors = std::move(deferred_errors);
             }
 
-            log_warning("troubleshooter", "/------------------------ spice2x auto-troubleshooter ------------------------\\");
-            log_warning("troubleshooter", "");
+            std::string msg;
+            msg += "\n\n";
+            msg += "/-------------------------- spice2x auto-troubleshooter -----------------------\\\n";
+            msg += "\n";
+            msg += "  spice2x version: " + to_string(VERSION_STRING_CFG) + "\n";
+            msg += "\n";
             
             if (is_crash) {
-                log_warning("troubleshooter", "  the game has crashed");
-                log_warning("troubleshooter", "      share this entire log file with someone for troubleshooting");
-                log_warning("troubleshooter", "      spice will also attempt to create a minidump (minidump.dmp)");
-                log_warning("troubleshooter", "");
+                msg += "  the game has crashed\n";
+                msg += "      share this entire log file with someone for troubleshooting (log.txt)\n";
+                msg += "      spice will also attempt to create a minidump (minidump.dmp)\n";
+                msg += "\n";
             }
 
             for (auto messages : errors) {
                 for (auto message : messages) {
-                    log_warning("troubleshooter", "  {}", message);
+                    msg += "  " + message + "\n";
                 }
-                log_warning("troubleshooter", "");
+                msg += "\n";
             }
 
-            log_warning("troubleshooter", "  unsure what to do next? check the FAQ:");
-            log_warning("troubleshooter", "      https://github.com/spice2x/spice2x.github.io/wiki/Known-issues");
-            log_warning("troubleshooter", "");
-            log_warning("troubleshooter", "\\------------------------ spice2x auto-troubleshooter -----------------------/");
+            msg += "  unsure what to do next?\n";
+            msg += "    * update to the latest version:\n";
+            msg += "        https://github.com/spice2x/spice2x.github.io/releases/latest\n";
+            msg += "    * check the FAQ:\n";
+            msg += "        https://github.com/spice2x/spice2x.github.io/wiki/Known-issues\n";
+            msg += "\n";
+            msg += "\\------------------------- spice2x auto-troubleshooter ------------------------/\n";
+
+            log_warning("troubleshooter", "{}", msg);
         });
     }
 }

@@ -283,7 +283,8 @@ static inline std::string get_last_error_string() {
     LPSTR messageBuffer = nullptr;
     size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
                                  FORMAT_MESSAGE_FROM_SYSTEM |
-                                 FORMAT_MESSAGE_IGNORE_INSERTS,
+                                 FORMAT_MESSAGE_IGNORE_INSERTS |
+                                 FORMAT_MESSAGE_MAX_WIDTH_MASK,
                                  nullptr,
                                  error,
                                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
@@ -292,7 +293,12 @@ static inline std::string get_last_error_string() {
                                  nullptr);
 
     // return as string
-    std::string message(messageBuffer, size);
+    std::string message;
+    if (size == 0) {
+        message = fmt::format("(Win32 error {})", error);
+    } else {
+        message = fmt::format("{}(Win32 error {})", messageBuffer, error);
+    }
     LocalFree(messageBuffer);
 
     return message;
