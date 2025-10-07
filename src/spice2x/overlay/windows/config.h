@@ -93,7 +93,6 @@ namespace overlay::windows {
         void build_options(
             std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr);
         void build_about();
-        void build_licenses();
         void build_launcher();
         void launch_shell(LPCSTR app, LPCSTR file=nullptr);
 

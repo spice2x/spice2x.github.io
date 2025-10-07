@@ -9,7 +9,6 @@
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
-IDR_CHANGELOG RCDATA "../changelog.txt"
 IDR_LICENSES RCDATA "../licenses.txt"
 IDR_PATCHES RCDATA "../build/patches.json"
 IDR_README RCDATA "../readme.txt"

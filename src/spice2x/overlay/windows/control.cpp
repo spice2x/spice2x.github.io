@@ -70,7 +70,6 @@ namespace overlay::windows {
         raw_input_view();
         touch_view();
         lcd_view();
-        about_view();
         ddr_timing_view();
         iidx_effectors_view();
     }
@@ -785,27 +784,6 @@ namespace overlay::windows {
             ImGui::Text("GREEN: %i", games::shared::LCD_GREEN);
             ImGui::Text("BLUE: %i", games::shared::LCD_BLUE);
             ImGui::Text("BL: %i", games::shared::LCD_BL);
-        }
-    }
-
-    void Control::about_view() {
-        if (ImGui::CollapsingHeader("About")) {
-            if (ImGui::TreeNode("Changelog")) {
-                ImGui::Separator();
-                if (ImGui::BeginChild("changelog", ImVec2(400, 400))) {
-                    ImGui::TextUnformatted(resutil::load_file_string(IDR_CHANGELOG).c_str());
-                }
-                ImGui::EndChild();
-            }
-            if (ImGui::TreeNode("Licenses")) {
-                ImGui::Separator();
-                if (ImGui::BeginChild("changelog", ImVec2(400, 400), false,
-                        ImGuiWindowFlags_HorizontalScrollbar
-                        | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
-                    ImGui::TextUnformatted(resutil::load_file_string(IDR_LICENSES).c_str());
-                }
-                ImGui::EndChild();
-            }
         }
     }
 

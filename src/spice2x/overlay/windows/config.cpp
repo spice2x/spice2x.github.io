@@ -2910,20 +2910,15 @@ namespace overlay::windows {
             to_string(VERSION_STRING)).c_str());
 
         ImGui::TextUnformatted("");
-
         if (ImGui::Button(PROJECT_URL)) {
             launch_shell(PROJECT_URL);
         }
-
+        
         ImGui::TextUnformatted("");
-        ImGui::TextUnformatted(std::string(
-                resutil::load_file_string_crlf(IDR_README) +
-                "\r\n" +
-                "Changelog (Highlights):\r\n" +
-                resutil::load_file_string_crlf(IDR_CHANGELOG)).c_str());
-    }
-
-    void Config::build_licenses() {
+        ImGui::TextUnformatted(resutil::load_file_string_crlf(IDR_README).c_str());
+        ImGui::TextUnformatted("");
+        ImGui::TextUnformatted("");
+        ImGui::TextUnformatted("Licenses:");
         ImGui::TextUnformatted(resutil::load_file_string_crlf(IDR_LICENSES).c_str());
     }
 
@@ -2976,7 +2971,6 @@ namespace overlay::windows {
 
     void Config::build_menu(int *game_selected) {
         bool about_popup = false;
-        bool licenses_popup = false;
         if (ImGui::BeginMenuBar()) {
 
             // [spice2x]
@@ -2985,9 +2979,6 @@ namespace overlay::windows {
                 ImGui::PopStyleColor();
                 if (ImGui::MenuItem("spice2x.github.io")) {
                     launch_shell(PROJECT_URL);
-                }
-                if (ImGui::MenuItem("Licenses")) {
-                    licenses_popup = true;
                 }
                 if (ImGui::MenuItem("About")) {
                     about_popup = true;
@@ -3044,9 +3035,6 @@ namespace overlay::windows {
         if (about_popup) {
             ImGui::OpenPopup("About##topbarpopup");
         }
-        if (licenses_popup) {
-            ImGui::OpenPopup("Licenses##topbarpopup");
-        }
 
         // draw popups
         {
@@ -3063,13 +3051,6 @@ namespace overlay::windows {
             bool unused_open2 = true;
             if (ImGui::BeginPopupModal("About##topbarpopup", &unused_open2)) {
                 this->build_about();
-                ImGui::EndPopup();
-            }
-            ImGui::SetNextWindowSize(popup_size, ImGuiCond_Appearing);
-            ImGui::SetNextWindowPos(popup_pos, ImGuiCond_Appearing);
-            bool unused_open3 = true;
-            if (ImGui::BeginPopupModal("Licenses##topbarpopup", &unused_open3)) {
-                this->build_licenses();
                 ImGui::EndPopup();
             }
         }
