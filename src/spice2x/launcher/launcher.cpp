@@ -263,7 +263,8 @@ int main_implementation(int argc, char *argv[]) {
 
     // detect model used to load option overrides
     auto options_version = launcher::detect_gameversion(
-            LAUNCHER_OPTIONS->at(launcher::Options::PathToEa3Config).value
+            LAUNCHER_OPTIONS->at(launcher::Options::PathToEa3Config).value,
+            LAUNCHER_OPTIONS->at(launcher::Options::PathToBootstrap).value
     );
     if (!options_version.model.empty() && options_version.model.size() < 4) {
         if (options_version.dest.size() == 1) {

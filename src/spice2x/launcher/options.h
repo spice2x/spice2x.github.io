@@ -279,6 +279,6 @@ namespace launcher {
         std::string ext;
     };
 
-    std::string detect_bootstrap_release_code();
-    GameVersion detect_gameversion(const std::string& ea3_user);
+    std::string detect_bootstrap_release_code(const std::string& bootstrap_user);
+    GameVersion detect_gameversion(const std::string& ea3_user, const std::string& bootstrap_user);
 }
