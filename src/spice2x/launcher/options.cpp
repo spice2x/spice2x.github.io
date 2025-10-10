@@ -2626,41 +2626,7 @@ std::string launcher::detect_bootstrap_release_code(const std::string& bootstrap
     tinyxml2::XMLDocument bootstrap;
     if (bootstrap.LoadFileA(bootstrap_path.c_str()) != tinyxml2::XML_SUCCESS) {
         log_warning("options", "unable to parse {}", bootstrap_path);
-        log_warning("options", "trying again with improper XML header removed...");
-
-        // below: dirty hack to deal with bad ea3 xml file with comments in the beginning
-        // https://stackoverflow.com/questions/19100408/tinyxml-any-way-to-skip-problematic-doctype-tag
-
-        // Open the file and read it into a vector
-        std::ifstream ifs(bootstrap_path.c_str(), std::ios::in | std::ios::binary | std::ios::ate);
-        std::ifstream::pos_type fsize = ifs.tellg();
-        ifs.seekg(0, std::ios::beg);
-        std::vector<char> bytes(fsize);
-        ifs.read(&bytes[0], fsize);
-
-        // Create string from vector
-        std::string xml_str(&bytes[0], fsize);
-
-        // Skip unsupported statements
-        size_t pos = 0;
-        while (true) {
-            pos = xml_str.find_first_of("<", pos);
-            if (xml_str[pos + 1] == '?' || // <?xml...
-                xml_str[pos + 1] == '!') { // <!DOCTYPE... or [<!ENTITY...
-                // Skip this line
-                pos = xml_str.find_first_of("\n", pos);
-            } else
-                break;
-        }
-        xml_str = xml_str.substr(pos);
-
-        // replace with fixed one
-        bootstrap.Clear();
-        if (bootstrap.Parse(xml_str.c_str()) != tinyxml2::XML_SUCCESS) {
-            // if we still failed, give up
-            log_warning("options", "unable to parse fixed xml");
-            return "";
-        }
+        return "";
     }
 
     // find release_code
