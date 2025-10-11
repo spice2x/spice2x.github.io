@@ -3,6 +3,11 @@ cmake_policy(SET CMP0069 NEW)
 project(spicetools)
 include(CheckIPOSupported)
 
+option(WITH_SCARD "Build spice2x with SCard support" ON)
+if(WITH_SCARD)
+	add_definitions(-DWITH_SCARD)
+endif()
+
 # set language level
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -357,7 +362,6 @@ set(SOURCE_FILES ${SOURCE_FILES}
         external/cardio/cardio_runner.cpp
 
         # external misc
-        external/scard/scard.cpp
         external/stackwalker/stackwalker.cpp
         external/tinyxml2/tinyxml2.cpp
         external/http-parser/http_parser.c
@@ -613,6 +617,9 @@ set(SOURCE_FILES ${SOURCE_FILES}
         util/dependencies.cpp
         util/deferlog.cpp
 )
+if(WITH_SCARD)
+	list(APPEND SOURCE_FILES external/scard/scard.cpp)
+endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${SOURCE_FILES})
 
@@ -622,8 +629,11 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${SOUR
 set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/Win32D.rc)
 add_executable(spicetools_spice ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice
-        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winscard winhttp
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
         PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+if(WITH_SCARD)
+	target_link_libraries(spicetools_spice PUBLIC winscard)
+endif()
 set_target_properties(spicetools_spice PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice PROPERTIES OUTPUT_NAME "spice")
 
@@ -637,8 +647,11 @@ endif()
 set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/Win32D.rc)
 add_executable(spicetools_spice_laa ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice_laa
-        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winscard winhttp
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
         PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+if(WITH_SCARD)
+	target_link_libraries(spicetools_spice_laa PUBLIC winscard)
+endif()
 set_target_properties(spicetools_spice_laa PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice_laa PROPERTIES OUTPUT_NAME "spice_laa")
 target_compile_definitions(spicetools_spice_laa PRIVATE SPICE32_LARGE_ADDRESS_AWARE=1)
@@ -655,9 +668,11 @@ add_executable(spicetools_spice64 ${SOURCE_FILES} ${RESOURCE_FILES})
 
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64
-        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winscard winhttp mfuuid strmiids dxva2
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
         PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
-
+if(WITH_SCARD)
+	target_link_libraries(spicetools_spice64 PUBLIC winscard)
+endif()
 set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64 PROPERTIES OUTPUT_NAME "spice64")
 target_compile_definitions(spicetools_spice64 PRIVATE SPICE64=1)
@@ -673,8 +688,11 @@ set(SOURCE_FILES ${SOURCE_FILES} launcher/options.h launcher/options.cpp)
 set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.rc)
 add_executable(spicetools_cfg WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg
-        PUBLIC ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winscard winhttp strmiids
+        PUBLIC ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
         PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+if(WITH_SCARD)
+	target_link_libraries(spicetools_cfg PUBLIC winscard)
+endif()
 set_target_properties(spicetools_cfg PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg PROPERTIES OUTPUT_NAME "spicecfg")
 target_compile_definitions(spicetools_cfg PRIVATE SPICETOOLS_SPICECFG_STANDALONE=1)

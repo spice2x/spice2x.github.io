@@ -20,7 +20,9 @@
 #include "cfg/screen_resize.h"
 #include "easrv/easrv.h"
 #include "external/cardio/cardio_runner.h"
+#ifdef WITH_SCARD
 #include "external/scard/scard.h"
+#endif
 #include "games/game.h"
 #include "games/io.h"
 #include "games/bbc/bbc.h"
@@ -817,6 +819,7 @@ int main_implementation(int argc, char *argv[]) {
     for (auto &sextet : options[launcher::Options::SextetStreamPort].values_text()) {
         sextet_devices.emplace_back(sextet);
     }
+#ifdef WITH_SCARD
     if (options[launcher::Options::HIDSmartCard].value_bool()) {
         WINSCARD_CONFIG.cardinfo_callback = eamuse_scard_callback;
         scard_threadstart();
@@ -836,6 +839,7 @@ int main_implementation(int argc, char *argv[]) {
             WINSCARD_CONFIG.add_padding_to_felica = true;
         }
     }
+#endif
     if (options[launcher::Options::CardIOHIDReaderOrderFlip].value_bool()) {
         CARDIO_RUNNER_FLIP = true;
     }
@@ -2315,8 +2319,10 @@ int main_implementation(int argc, char *argv[]) {
     // debug hook
     debughook::detach();
 
+#ifdef WITH_SCARD
     // scard
     scard_fini();
+#endif
 
     // stop reader thread in case it was running
     stop_reader_thread();
