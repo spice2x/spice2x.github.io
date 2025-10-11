@@ -2608,8 +2608,19 @@ std::vector<Option> launcher::merge_options(
     return merged;
 }
 
-std::string launcher::detect_bootstrap_release_code() {
-    std::string bootstrap_path = "prop/bootstrap.xml";
+std::string launcher::detect_bootstrap_release_code(const std::string& bootstrap_user) {
+    std::string bootstrap_path;
+
+    if (!bootstrap_user.empty()) {
+        bootstrap_path = bootstrap_user;
+    } else if (fileutils::file_exists("prop/bootstrap.xml")) {
+        bootstrap_path = "prop/bootstrap.xml";
+    }
+
+    if (bootstrap_path.empty()) {
+        log_warning("options", "unable to detect bootstrap.xml file");
+        return "";
+    }
 
     // load XML
     tinyxml2::XMLDocument bootstrap;
@@ -2632,7 +2643,7 @@ std::string launcher::detect_bootstrap_release_code() {
     return "";
 }
 
-static launcher::GameVersion detect_gameversion_ident() {
+static launcher::GameVersion detect_gameversion_ident(const std::string& bootstrap_user) {
 
     // detect ea3-ident path
     std::string ident_path;
@@ -2678,7 +2689,7 @@ static launcher::GameVersion detect_gameversion_ident() {
             auto node_ext = node_soft->FirstChildElement("ext");
             if (node_ext) {
                 version.ext = node_ext->GetText();
-                auto bootstrap_ext = launcher::detect_bootstrap_release_code();
+                auto bootstrap_ext = launcher::detect_bootstrap_release_code(bootstrap_user);
                 if (version.ext.size() != 10 && bootstrap_ext.size() == 10) {
                     version.ext = bootstrap_ext;
                 } else if (bootstrap_ext.size() == 10) {
@@ -2714,8 +2725,7 @@ static launcher::GameVersion detect_gameversion_ident() {
     return launcher::GameVersion();
 }
 
-launcher::GameVersion launcher::detect_gameversion(const std::string &ea3_user) {
-
+launcher::GameVersion launcher::detect_gameversion(const std::string &ea3_user, const std::string& bootstrap_user) {
     // detect ea3-config path
     std::string ea3_path;
     if (!ea3_user.empty()) {
@@ -2729,7 +2739,7 @@ launcher::GameVersion launcher::detect_gameversion(const std::string &ea3_user) 
     }
     if (ea3_path.empty()) {
         log_warning("options", "unable to detect EA3 configuration file");
-        return detect_gameversion_ident();
+        return detect_gameversion_ident(bootstrap_user);
     }
 
     // load XML
@@ -2769,7 +2779,7 @@ launcher::GameVersion launcher::detect_gameversion(const std::string &ea3_user) 
         if (ea3_config.Parse(xml_str.c_str()) != tinyxml2::XML_SUCCESS) {
             // if we still failed, give up
             log_warning("options", "unable to parse fixed xml");
-            return detect_gameversion_ident();
+            return detect_gameversion_ident(bootstrap_user);
         }
     }
 
@@ -2800,7 +2810,7 @@ launcher::GameVersion launcher::detect_gameversion(const std::string &ea3_user) 
             auto node_ext = node_soft->FirstChildElement("ext");
             if (node_ext) {
                 version.ext = node_ext->GetText();
-                auto bootstrap_ext = launcher::detect_bootstrap_release_code();
+                auto bootstrap_ext = launcher::detect_bootstrap_release_code(bootstrap_user);
                 if (version.ext.size() != 10 && bootstrap_ext.size() == 10) {
                     version.ext = bootstrap_ext;
                 } else if (bootstrap_ext.size() == 10) {
@@ -2833,5 +2843,5 @@ launcher::GameVersion launcher::detect_gameversion(const std::string &ea3_user) 
 
     // error
     log_warning("options", "unable to find /ea3/soft/model in {}", ea3_path);
-    return detect_gameversion_ident();
+    return detect_gameversion_ident(bootstrap_user);
 }
