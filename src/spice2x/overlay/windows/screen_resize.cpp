@@ -149,6 +149,12 @@ namespace overlay::windows {
             ImGui::HelpMarker("Hint: ctrl + click on the slider to type in a numeric value.");
         }
 
+        static const char* dupe_items[] = { "None", "Copy Left", "Copy Right" };
+        static int dupe_selected = 0;
+        if (ImGui::Combo("Duplicate", &dupe_selected, dupe_items, ARRAYSIZE(dupe_items))) {
+            scene.duplicate = static_cast<cfg::ScreenDuplicateMode>(dupe_selected);
+        }
+
         ImGui::EndDisabled();
     }
 

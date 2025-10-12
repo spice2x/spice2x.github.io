@@ -87,6 +87,10 @@ namespace cfg {
             load_float_value(doc, root + prefix + "scale_x", scene.scale_x);
             load_float_value(doc, root + prefix + "scale_y", scene.scale_y);
             load_bool_value(doc, root + prefix + "keep_aspect_ratio", scene.keep_aspect_ratio);
+
+            int duplicate = 0;
+            load_int_value(doc, root + prefix + "duplicate", duplicate);
+            scene.duplicate = static_cast<cfg::ScreenDuplicateMode>(duplicate);
         }
 
         // windowed settings are always under game settings
@@ -201,6 +205,7 @@ namespace cfg {
             rapidjson::Pointer(root + prefix + "scale_x").Set(doc, scene.scale_x);
             rapidjson::Pointer(root + prefix + "scale_y").Set(doc, scene.scale_y);
             rapidjson::Pointer(root + prefix + "keep_aspect_ratio").Set(doc, scene.keep_aspect_ratio);
+            rapidjson::Pointer(root + prefix + "duplicate").Set(doc, scene.duplicate);
         }
 
         // windowed mode settings
