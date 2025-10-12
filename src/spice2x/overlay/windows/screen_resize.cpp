@@ -55,6 +55,7 @@ namespace overlay::windows {
             scene.offset_y = 0;
             scene.scale_x = 1.f;
             scene.scale_y = 1.f;
+            scene.duplicate = cfg::ScreenDuplicateMode::None;
         }
 
         cfg::SCREENRESIZE->enable_window_resize = false;
@@ -150,10 +151,11 @@ namespace overlay::windows {
         }
 
         static const char* dupe_items[] = { "None", "Copy Left", "Copy Right" };
-        static int dupe_selected = 0;
-        if (ImGui::Combo("Duplicate", &dupe_selected, dupe_items, ARRAYSIZE(dupe_items))) {
-            scene.duplicate = static_cast<cfg::ScreenDuplicateMode>(dupe_selected);
-        }
+        ImGui::Combo(
+            "Duplicate",
+            reinterpret_cast<int *>(&scene.duplicate),
+            dupe_items,
+            ARRAYSIZE(dupe_items));
 
         ImGui::EndDisabled();
     }

@@ -17,7 +17,7 @@ namespace cfg {
     enum ScreenDuplicateMode {
         None = 0,
         CopyLeft = 1,
-        CopyRight = 2
+        CopyRight = 2,
     };
 
     struct fullscreen_setting {

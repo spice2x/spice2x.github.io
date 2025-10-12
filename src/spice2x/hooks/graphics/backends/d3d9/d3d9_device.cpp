@@ -696,6 +696,7 @@ static IDirect3DTexture9* tex;
 static UINT topSurface_width = 0;
 static UINT topSurface_height = 0;
 static float topSurface_aspect_ratio = 1.f;
+static cfg::ScreenDuplicateMode last_duplicate_mode = cfg::ScreenDuplicateMode::None;
 
 void SurfaceHook(IDirect3DDevice9 *pReal) {
     D3DPRESENT_PARAMETERS param {};
@@ -759,6 +760,7 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     }
 
     bool duplicate = false;
+    bool clear_surface = false;
     RECT originRect2 = originRect;
     if (cfg::SCREENRESIZE->enable_screen_resize) {
         auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
@@ -771,7 +773,17 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
             originRect2.left = originRect.right;
             originRect2.right = (LONG)(originRect2.left + (originRect.right - originRect.left));
         }
-     }
+
+        if (last_duplicate_mode != scene.duplicate) {
+            clear_surface = true;
+            last_duplicate_mode = scene.duplicate;
+        }
+    } else {
+        if (last_duplicate_mode != cfg::ScreenDuplicateMode::None) {
+            clear_surface = true;
+            last_duplicate_mode = cfg::ScreenDuplicateMode::None;
+        }
+    }
 
     // log_misc(
     //     "graphics::d3d9", "originRect: {} {} {} {}",
@@ -889,6 +901,10 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
             "graphics::d3d9",
             "SurfaceHook - StretchRect targetRect failed, you must reset image scaling to default values! rect: {} {} {} {}",
             targetRect.left, targetRect.top, targetRect.right, targetRect.bottom);
+    }
+
+    if (clear_surface) {
+        pReal->ColorFill(topSurface, &targetRect, D3DCOLOR_XRGB(0, 0, 0));
     }
 }
 
