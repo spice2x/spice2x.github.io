@@ -55,6 +55,7 @@ namespace overlay::windows {
             scene.offset_y = 0;
             scene.scale_x = 1.f;
             scene.scale_y = 1.f;
+            scene.duplicate = cfg::ScreenDuplicateMode::None;
         }
 
         cfg::SCREENRESIZE->enable_window_resize = false;
@@ -148,6 +149,17 @@ namespace overlay::windows {
             ImGui::SameLine();
             ImGui::HelpMarker("Hint: ctrl + click on the slider to type in a numeric value.");
         }
+
+        static const char* dupe_items[] = { "None", "Copy Left", "Copy Right" };
+        ImGui::Combo(
+            "Duplicate",
+            reinterpret_cast<int *>(&scene.duplicate),
+            dupe_items,
+            ARRAYSIZE(dupe_items));
+        ImGui::SameLine();
+        ImGui::HelpMarker(
+            "Show an identical copy of the image on the left or right, allowing you to achieve "
+            "wrap-around effect when an offset is set.");
 
         ImGui::EndDisabled();
     }

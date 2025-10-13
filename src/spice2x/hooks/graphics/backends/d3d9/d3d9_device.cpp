@@ -733,6 +733,16 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     const int rectTop = param.BackBufferHeight;
     const int w = param.BackBufferWidth;
     const int h = param.BackBufferHeight;
+
+    if (cfg::SCREENRESIZE->enable_screen_resize) {
+        RECT rect {
+            0,
+            0,
+            (LONG)topSurface_width,
+            (LONG)topSurface_height,
+        };
+        pReal->ColorFill(topSurface, &rect, D3DCOLOR_XRGB(0, 0, 0));
+    }
     
     D3DLOCKED_RECT rect;
     HRESULT hr;
@@ -750,11 +760,27 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
         (LONG)(rectLeft + w),
         (LONG)(rectTop + h),
     };
+
     if (GRAPHICS_FS_ORIENTATION_SWAP) {
         originRect.left = (topSurface_width / 2) - (GRAPHICS_FS_ORIGINAL_WIDTH / 2);
         originRect.top = (topSurface_height / 2) - (GRAPHICS_FS_ORIGINAL_HEIGHT / 2);
         originRect.right = originRect.left + GRAPHICS_FS_ORIGINAL_WIDTH;
         originRect.bottom = originRect.top + GRAPHICS_FS_ORIGINAL_HEIGHT;
+    }
+
+    bool duplicate = false;
+    RECT originRect2 = originRect;
+    if (cfg::SCREENRESIZE->enable_screen_resize) {
+        auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
+        if (scene.duplicate == cfg::ScreenDuplicateMode::CopyLeft) {
+            duplicate = true;
+            originRect2.right = originRect.left;
+            originRect2.left = (LONG)(originRect2.left - (originRect.right - originRect.left));
+        } else if (scene.duplicate == cfg::ScreenDuplicateMode::CopyRight) {
+            duplicate = true;
+            originRect2.left = originRect.right;
+            originRect2.right = (LONG)(originRect2.left + (originRect.right - originRect.left));
+        }
     }
 
     // log_misc(
@@ -768,8 +794,20 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     if (hr != D3D_OK) {
         log_warning(
             "graphics::d3d9",
-            "SurfaceHook - StretchRect backbuffer failed, rect: {} {} {} {}",
+            "SurfaceHook - StretchRect backbuffer failed for main image, rect: {} {} {} {}",
             originRect.left, originRect.top, originRect.right, originRect.bottom);
+    }
+    if (duplicate) {
+        hr = pReal->StretchRect(
+                backbuffer, nullptr,
+                topSurface, &originRect2,
+                D3DTEXF_LINEAR);
+        if (hr != D3D_OK) {
+            log_warning(
+                "graphics::d3d9",
+                "SurfaceHook - StretchRect backbuffer failed for the duplicate, rect: {} {} {} {}",
+                originRect2.left, originRect2.top, originRect2.right, originRect2.bottom);
+        }
     }
     topSurface->UnlockRect();
 
