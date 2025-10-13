@@ -6,6 +6,10 @@
 
 #include <fstream>
 
+#ifndef WITH_SCARD
+#define WITH_SCARD 0
+#endif
+
 static const std::vector<std::string> CATEGORY_ORDER_API = {
     "SpiceCompanion and API",
     "API (Serial)",
@@ -1385,21 +1389,27 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "scard",
         .desc = "Detects and uses HID smart card readers for card input. Developed for ACR122U reader",
         .type = OptionType::Bool,
+        .hidden = !WITH_SCARD,
         .category = "NFC Card Readers",
+        .disabled = !WITH_SCARD,
     },
     {
         .title = "HID SmartCard Order Flip",
         .name = "scardflip",
         .desc = "Flips the order of detection for P1/P2",
         .type = OptionType::Bool,
+        .hidden = !WITH_SCARD,
         .category = "NFC Card Readers",
+        .disabled = !WITH_SCARD,
     },
     {
         .title = "HID SmartCard Order Toggle",
         .name = "scardtoggle",
         .desc = "Toggles reader between P1/P2 using the NumLock key state",
         .type = OptionType::Bool,
+        .hidden = !WITH_SCARD,
         .category = "NFC Card Readers",
+        .disabled = !WITH_SCARD,
     },
     {
         // HIDSmartCardIdConvert
@@ -1413,12 +1423,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "For example, abcd56780123 is converted to e00401abcd567801 on card in. This results in different card numbers so "
             "be careful when connecting to servers!",
         .type = OptionType::Enum,
+        .hidden = !WITH_SCARD,
         .category = "NFC Card Readers",
         .elements = {
             {"legacy", "Use cards as-is"},
             {"fix", "Fix bad cards only"},
             {"all", "Force all cards"},
         },
+        .disabled = !WITH_SCARD,
     },
     {
         // SextetStreamPort
