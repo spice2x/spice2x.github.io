@@ -769,7 +769,6 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     }
 
     bool duplicate = false;
-    bool clear_surface = false;
     RECT originRect2 = originRect;
     if (cfg::SCREENRESIZE->enable_screen_resize) {
         auto& scene = cfg::SCREENRESIZE->scene_settings[cfg::SCREENRESIZE->screen_resize_current_scene];
