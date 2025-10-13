@@ -156,6 +156,10 @@ namespace overlay::windows {
             reinterpret_cast<int *>(&scene.duplicate),
             dupe_items,
             ARRAYSIZE(dupe_items));
+        ImGui::SameLine();
+        ImGui::HelpMarker(
+            "Show an identical copy of the image on the left or right, allowing you to achieve "
+            "wrap-around effect when an offset is set.");
 
         ImGui::EndDisabled();
     }
