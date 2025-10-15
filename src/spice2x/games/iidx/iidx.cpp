@@ -420,10 +420,6 @@ namespace games::iidx {
 
         // environment variables must be set before the DLL is loaded as the VC++ runtime copies all
         // environment variables at startup
-        if (DISABLE_CAMS) {
-            SetEnvironmentVariable("CONNECT_CAMERA", "0");
-        }
-
         if (SCREEN_MODE.has_value()) {
             SetEnvironmentVariable("SCREEN_MODE", SCREEN_MODE.value().c_str());
         }
