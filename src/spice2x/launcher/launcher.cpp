@@ -482,6 +482,9 @@ int main_implementation(int argc, char *argv[]) {
         // Disable legacy behaviour to avoid conflict
         games::iidx::DISABLE_CAMS = true;
     }
+    if (games::iidx::DISABLE_CAMS) {
+        SetEnvironmentVariable("CONNECT_CAMERA", "0");
+    }
     if (options[launcher::Options::IIDXCamHookOverride].is_active()) {
         games::iidx::TDJ_CAMERA_OVERRIDE = options[launcher::Options::IIDXCamHookOverride].value_text();
     }
