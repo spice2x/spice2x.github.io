@@ -1212,19 +1212,19 @@ int main_implementation(int argc, char *argv[]) {
     #ifdef SPICE64
         log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x)");
     #elif SPICE32_LARGE_ADDRESS_AWARE
-        log_info("launcher", "SpiceTools Bootstrap (x32) (Large Address Aware) (spice2x)");
+        log_info("launcher", "SpiceTools Bootstrap (x32 - Large Address Aware) (spice2x)");
     #else
         log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x)");
     #endif
-        log_info("launcher", "{}", VERSION_STRING);
 #else
     #ifdef SPICE64
         log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x) for Linux");
     #else
         log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x) for Linux");
     #endif
-        log_info("launcher", "{}", VERSION_STRING);
 #endif
+
+    log_info("launcher", "{}", VERSION_STRING);
 
     // log command line arguments
     std::ostringstream arguments;
