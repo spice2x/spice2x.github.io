@@ -23,6 +23,7 @@
  * Modified version.
  */
 
+#ifndef NO_SCARD
 
 #include "scard.h"
 #include <windows.h>
@@ -409,3 +410,5 @@ void scard_threadstart() {
 void scard_fini() {
     should_exit = true;
 }
+
+#endif

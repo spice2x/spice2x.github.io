@@ -6,8 +6,10 @@
 
 #include <fstream>
 
-#ifndef WITH_SCARD
+#ifdef NO_SCARD
 #define WITH_SCARD 0
+#else
+#define WITH_SCARD 1
 #endif
 
 static const std::vector<std::string> CATEGORY_ORDER_API = {
