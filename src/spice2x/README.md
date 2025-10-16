@@ -85,6 +85,15 @@ The protocol is the very same as for the normal API, but instead of
 directly sending the data over TCP you need to send binary datapackets.
 The included dart spiceapi library also has a WebSocket implementation.
 
+### UDP (wrapped with KCP)
+This opens a UDP port on the same port number as TCP one for lower latency, 
+Good for something like a controller over the Ethernet.
+The packets are wrapped with [KCP](https://github.com/skywind3000/kcp) with conv id `573` (decimal).
+You can connect it with a KCP library and it should works as the TCP API.
+
+An example for this:
+[Polaris Touch Godot](https://github.com/GEEKiDoS/polaris-touch-godot/blob/master/scripts/UdpSpiceAPI.cs)
+
 ### Example Call
 This example inserts the a card into P1's reader slot.
 If you need more examples, you can check the example code.

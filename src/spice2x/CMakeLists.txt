@@ -325,6 +325,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         api/modules/lcd.cpp
         api/modules/ddr.cpp
         api/modules/resize.cpp
+        api/udp.cpp
 
         # avs
         avs/core.cpp
@@ -367,6 +368,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         external/http-parser/http_parser.c
         external/usbhidusage/usb-hid-usage.c
         external/toojpeg/toojpeg.cpp
+        external/kcp/ikcp.c
 
         # games
         games/game.cpp

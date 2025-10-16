@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <span>
 
 #include <winsock2.h>
 
@@ -14,6 +15,7 @@
 #include "serial.h"
 
 namespace api {
+    class UdpController;
 
     struct ClientState {
         SOCKADDR_IN address;
@@ -42,6 +44,7 @@ namespace api {
 
         // server
         WebSocketController *websocket;
+        UdpController *udp;
         std::vector<SerialController *> serial;
         std::vector<std::thread> server_workers;
         std::vector<std::thread> server_handlers;
@@ -80,3 +83,6 @@ namespace api {
         }
     };
 }
+
+// for client state
+#include "udp.h"

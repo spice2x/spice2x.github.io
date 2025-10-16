@@ -108,7 +108,7 @@ namespace api {
                                 std::vector<char> out;
                                 if (!this->controller->process_request(
                                         state,
-                                        (const char*) &read_buffer[0], read_buffer_len, &out)) {
+                                        reinterpret_cast<char *>(read_buffer), read_buffer_len, &out)) {
 
                                     // open new connection
                                     log_warning("api::serial", "process error on {} (length {})",

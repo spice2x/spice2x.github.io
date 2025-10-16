@@ -117,12 +117,18 @@ Controller::Controller(unsigned short port, std::string password, bool pretty)
 
     // start websocket on next port
     this->websocket = new WebSocketController(this, port + 1);
+    
+    // start udp
+    this->udp = new UdpController(this, port);
 }
 
 Controller::~Controller() {
 
     // stop websocket
     delete this->websocket;
+
+    // stop udp
+    delete this->udp;
 
     // stop serial controllers
     for (auto &s : this->serial) {
@@ -289,7 +295,7 @@ void Controller::connection_handler(api::ClientState client_state) {
 }
 
 bool Controller::process_request(ClientState *state, std::vector<char> *in, std::vector<char> *out) {
-    return this->process_request(state, &(*in)[0], in->size(), out);
+    return this->process_request(state, in->data(), in->size(), out);
 }
 
 bool Controller::process_request(ClientState *state, const char *in, size_t in_size, std::vector<char> *out) {
