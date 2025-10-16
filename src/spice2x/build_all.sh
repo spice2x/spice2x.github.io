@@ -49,6 +49,7 @@ BUILDDIR_64_RELEASE="./cmake-build-release-64"
 BUILDDIR_64_DEBUG="./cmake-build-debug-64"
 DEBUG=0
 OUTDIR="./bin/spice2x"
+OUTDIR_EXTRAS="./bin/spice2x_extras"
 
 # disabled UPX since it tends to falsely trigger malware detection
 UPX_ENABLE=0
@@ -60,8 +61,9 @@ DIST_ENABLE=1
 DIST_FOLDER="./dist"
 DIST_NAME="spice2x-$(date +%y)-$(date +%m)-$(date +%d).zip"
 DIST_COMMENT=${DIST_NAME}$'\n'"$GIT_BRANCH - $GIT_HEAD"$'\nThank you for playing.'
-TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_spice spicetools_spice_laa spicetools_stubs_cpusbxpkm"
-TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEncodeAPI64 spicetools_stubs_nvcuvid spicetools_stubs_nvcuda spicetools_spice64"
+DIST_NAME_EXTRAS="spice2x-$(date +%y)-$(date +%m)-$(date +%d)-extras.zip"
+TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_cfg_linux spicetools_spice spicetools_spice_laa spicetools_spice_linux spicetools_stubs_cpusbxpkm"
+TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEncodeAPI64 spicetools_stubs_nvcuvid spicetools_stubs_nvcuda spicetools_spice64 spicetools_spice64_linux"
 
 # determine build type
 BUILD_TYPE="Release"
@@ -179,11 +181,17 @@ fi
 
 # copy to output directory
 echo "Copy files to output directory..."
+
 rm -rf ${OUTDIR}
 mkdir -p ${OUTDIR}
 mkdir -p ${OUTDIR}/stubs/32
 mkdir -p ${OUTDIR}/stubs/64
-mkdir -p ${OUTDIR}/extras/largeaddressaware
+
+rm -rf ${OUTDIR_EXTRAS}
+mkdir -p ${OUTDIR_EXTRAS}
+mkdir -p ${OUTDIR_EXTRAS}/largeaddressaware
+mkdir -p ${OUTDIR_EXTRAS}/linux
+
 if false # ((DEBUG > 0))
 then
     # debug files
@@ -204,11 +212,14 @@ then
 else
     # release files
     cp ${BUILDDIR_32}/spicetools/spicecfg.exe ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/spicecfg_linux.exe ${OUTDIR_EXTRAS}/linux/spicecfg.exe 2>/dev/null
     cp ${BUILDDIR_32}/spicetools/32/spice.exe ${OUTDIR} 2>/dev/null
-    cp ${BUILDDIR_32}/spicetools/32/spice_laa.exe ${OUTDIR}/extras/largeaddressaware/spice.exe 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/spice_laa.exe ${OUTDIR_EXTRAS}/largeaddressaware/spice.exe 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/spice_linux.exe ${OUTDIR_EXTRAS}/linux/spice.exe 2>/dev/null
     #cp ${BUILDDIR_32}/spicetools/32/kbt.dll ${OUTDIR}/stubs/32 2>/dev/null
     #cp ${BUILDDIR_32}/spicetools/32/kld.dll ${OUTDIR}/stubs/32 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/spice64.exe ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_64}/spicetools/64/spice64_linux.exe ${OUTDIR_EXTRAS}/linux/spice64.exe 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/kbt.dll ${OUTDIR}/stubs/64 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/kld.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/nvEncodeAPI64.dll ${OUTDIR}/stubs/64 2>/dev/null
@@ -220,18 +231,21 @@ fi
 # pack source files to output directory
 rm -rf ${OUTDIR}/src
 mkdir -p ${OUTDIR}/src
+rm -rf ${OUTDIR_EXTRAS}/src
+mkdir -p ${OUTDIR_EXTRAS}/src
 if ((INCLUDE_SRC > 0))
 then
 	echo "Generating source file archive..."
 	git archive --format tar.gz --prefix=spice2x/ HEAD ./ > ${OUTDIR}/src/spice2x-${GIT_BRANCH}.tar.gz 2>/dev/null || \
 		echo "WARNING: Couldn't get git to create the archive. Is this a git repository?"
+	cp -r ${OUTDIR}/src/* ${OUTDIR_EXTRAS}/src
 fi
 
 # copy resources
-rm -rf ${OUTDIR}/api
-mkdir ${OUTDIR}/api
+rm -rf ${OUTDIR_EXTRAS}/api
+mkdir ${OUTDIR_EXTRAS}/api
 find ./api/resources/python -name "__pycache__" -exec rm -rf {} +
-cp -r ./api/resources/* ${OUTDIR}/api
+cp -r ./api/resources/* ${OUTDIR_EXTRAS}/api
 
 # build distribution archive
 if ((DIST_ENABLE > 0))
@@ -240,7 +254,11 @@ then
 	mkdir -p ${DIST_FOLDER}
 	rm -rf ${DIST_FOLDER}/${DIST_NAME}
 	pushd ${OUTDIR}/.. > /dev/null
-	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME} . -z <<< "$DIST_COMMENT"
+	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME} spice2x -z <<< "$DIST_COMMENT"
+	popd > /dev/null
+	echo "Building extras..."
+	pushd ${OUTDIR_EXTRAS}/.. > /dev/null
+	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME_EXTRAS} spice2x_extras -z <<< "$DIST_COMMENT"
 	popd > /dev/null
 fi
 

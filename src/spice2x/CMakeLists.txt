@@ -3,11 +3,6 @@ cmake_policy(SET CMP0069 NEW)
 project(spicetools)
 include(CheckIPOSupported)
 
-option(WITH_SCARD "Build spice2x with SCard support" ON)
-if(WITH_SCARD)
-	add_definitions(-DWITH_SCARD)
-endif()
-
 # set language level
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
@@ -367,6 +362,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         external/http-parser/http_parser.c
         external/usbhidusage/usb-hid-usage.c
         external/toojpeg/toojpeg.cpp
+        external/scard/scard.cpp
 
         # games
         games/game.cpp
@@ -617,9 +613,6 @@ set(SOURCE_FILES ${SOURCE_FILES}
         util/dependencies.cpp
         util/deferlog.cpp
 )
-if(WITH_SCARD)
-	list(APPEND SOURCE_FILES external/scard/scard.cpp)
-endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${SOURCE_FILES})
 
@@ -631,9 +624,7 @@ add_executable(spicetools_spice ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
         PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
-if(WITH_SCARD)
-	target_link_libraries(spicetools_spice PUBLIC winscard)
-endif()
+target_link_libraries(spicetools_spice PUBLIC winscard)
 set_target_properties(spicetools_spice PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice PROPERTIES OUTPUT_NAME "spice")
 
@@ -649,15 +640,29 @@ add_executable(spicetools_spice_laa ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice_laa
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
         PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
-if(WITH_SCARD)
-	target_link_libraries(spicetools_spice_laa PUBLIC winscard)
-endif()
+target_link_libraries(spicetools_spice_laa PUBLIC winscard)
 set_target_properties(spicetools_spice_laa PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice_laa PROPERTIES OUTPUT_NAME "spice_laa")
 target_compile_definitions(spicetools_spice_laa PRIVATE SPICE32_LARGE_ADDRESS_AWARE=1)
 
 IF(NOT MSVC)
     set_target_properties(spicetools_spice_laa PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32 -Wl,--large-address-aware")
+endif()
+
+# spice_linux.exe
+###########
+
+set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/Win32D.rc)
+add_executable(spicetools_spice_linux ${SOURCE_FILES} ${RESOURCE_FILES})
+target_link_libraries(spicetools_spice_linux
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
+        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+set_target_properties(spicetools_spice_linux PROPERTIES PREFIX "")
+set_target_properties(spicetools_spice_linux PROPERTIES OUTPUT_NAME "spice_linux")
+target_compile_definitions(spicetools_spice_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
+
+IF(NOT MSVC)
+    set_target_properties(spicetools_spice_linux PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
 endif()
 
 # spice64.exe
@@ -670,15 +675,32 @@ add_executable(spicetools_spice64 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice64
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
         PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
-if(WITH_SCARD)
-	target_link_libraries(spicetools_spice64 PUBLIC winscard)
-endif()
+target_link_libraries(spicetools_spice64 PUBLIC winscard)
 set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64 PROPERTIES OUTPUT_NAME "spice64")
 target_compile_definitions(spicetools_spice64 PRIVATE SPICE64=1)
 
 IF(NOT MSVC)
     set_target_properties(spicetools_spice64 PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
+endif()
+
+# spice64_linux.exe
+#############
+
+set(RESOURCE_FILES build/manifest.manifest build/manifest64.rc build/icon.rc cfg/Win32D.rc)
+add_executable(spicetools_spice64_linux ${SOURCE_FILES} ${RESOURCE_FILES})
+
+# do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
+target_link_libraries(spicetools_spice64_linux
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
+        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+set_target_properties(spicetools_spice64_linux PROPERTIES PREFIX "")
+set_target_properties(spicetools_spice64_linux PROPERTIES OUTPUT_NAME "spice64_linux")
+target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE64=1)
+target_compile_definitions(spicetools_spice64_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
+
+IF(NOT MSVC)
+    set_target_properties(spicetools_spice64_linux PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
 endif()
 
 # spicecfg.exe
@@ -690,15 +712,31 @@ add_executable(spicetools_cfg WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg
         PUBLIC ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
         PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
-if(WITH_SCARD)
-	target_link_libraries(spicetools_cfg PUBLIC winscard)
-endif()
+target_link_libraries(spicetools_cfg PUBLIC winscard)
 set_target_properties(spicetools_cfg PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg PROPERTIES OUTPUT_NAME "spicecfg")
 target_compile_definitions(spicetools_cfg PRIVATE SPICETOOLS_SPICECFG_STANDALONE=1)
 
 if(NOT MSVC)
     set_target_properties(spicetools_cfg PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+endif()
+
+# spicecfg_linux.exe
+##############
+
+set(SOURCE_FILES ${SOURCE_FILES} launcher/options.h launcher/options.cpp)
+set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.rc)
+add_executable(spicetools_cfg_linux WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
+target_link_libraries(spicetools_cfg_linux
+        PUBLIC ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
+        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+set_target_properties(spicetools_cfg_linux PROPERTIES PREFIX "")
+set_target_properties(spicetools_cfg_linux PROPERTIES OUTPUT_NAME "spicecfg_linux")
+target_compile_definitions(spicetools_cfg_linux PRIVATE SPICETOOLS_SPICECFG_STANDALONE=1)
+target_compile_definitions(spicetools_cfg_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
+
+if(NOT MSVC)
+    set_target_properties(spicetools_cfg_linux PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
 endif()
 
 # stubs
@@ -794,19 +832,19 @@ endif()
 ####################
 
 # output config
-set_target_properties(spicetools_cfg
+set_target_properties(spicetools_cfg spicetools_cfg_linux
         PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools")
 
 # output 32bit
-set_target_properties(spicetools_spice spicetools_spice_laa spicetools_stubs_kbt spicetools_stubs_kld spicetools_stubs_cpusbxpkm
+set_target_properties(spicetools_spice spicetools_spice_laa spicetools_spice_linux spicetools_stubs_kbt spicetools_stubs_kld spicetools_stubs_cpusbxpkm
         PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/archive32"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/32"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/32")
 
 # output 64bit
-set_target_properties(spicetools_spice64 spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvcuda spicetools_stubs_nvcuvid spicetools_stubs_nvEncodeAPI64
+set_target_properties(spicetools_spice64 spicetools_spice64_linux spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvcuda spicetools_stubs_nvcuvid spicetools_stubs_nvEncodeAPI64
         PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/archive64"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/64"

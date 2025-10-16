@@ -2904,10 +2904,17 @@ namespace overlay::windows {
     }
 
     void Config::build_about() {
+#ifndef SPICE_LINUX
         ImGui::TextUnformatted(std::string(
             "spice2x (a fork of SpiceTools)\r\n"
             "=========================\r\n" +
             to_string(VERSION_STRING)).c_str());
+#else
+        ImGui::TextUnformatted(std::string(
+            "spice2x (a fork of SpiceTools) for Linux\r\n"
+            "=========================\r\n" +
+            to_string(VERSION_STRING)).c_str());
+#endif
 
         ImGui::TextUnformatted("");
         if (ImGui::Button(PROJECT_URL)) {

@@ -20,7 +20,7 @@
 #include "cfg/screen_resize.h"
 #include "easrv/easrv.h"
 #include "external/cardio/cardio_runner.h"
-#ifdef WITH_SCARD
+#ifndef NO_SCARD
 #include "external/scard/scard.h"
 #endif
 #include "games/game.h"
@@ -822,7 +822,7 @@ int main_implementation(int argc, char *argv[]) {
     for (auto &sextet : options[launcher::Options::SextetStreamPort].values_text()) {
         sextet_devices.emplace_back(sextet);
     }
-#ifdef WITH_SCARD
+#ifndef NO_SCARD
     if (options[launcher::Options::HIDSmartCard].value_bool()) {
         WINSCARD_CONFIG.cardinfo_callback = eamuse_scard_callback;
         scard_threadstart();
@@ -1208,13 +1208,22 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // log
-#ifdef SPICE64
-    log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x)");
-#elif SPICE32_LARGE_ADDRESS_AWARE
-    log_info("launcher", "SpiceTools Bootstrap (x32) (Large Address Aware) (spice2x)");
+#ifndef SPICE_LINUX
+    #ifdef SPICE64
+        log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x)");
+    #elif SPICE32_LARGE_ADDRESS_AWARE
+        log_info("launcher", "SpiceTools Bootstrap (x32 - Large Address Aware) (spice2x)");
+    #else
+        log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x)");
+    #endif
 #else
-    log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x)");
+    #ifdef SPICE64
+        log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x) for Linux");
+    #else
+        log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x) for Linux");
+    #endif
 #endif
+
     log_info("launcher", "{}", VERSION_STRING);
 
     // log command line arguments
@@ -2322,7 +2331,7 @@ int main_implementation(int argc, char *argv[]) {
     // debug hook
     debughook::detach();
 
-#ifdef WITH_SCARD
+#ifndef NO_SCARD
     // scard
     scard_fini();
 #endif
