@@ -270,13 +270,14 @@ void overlay::SpiceOverlay::init() {
     ImFontConfig config {};
     config.MergeMode = true;
 
+    log_misc("overlay", "loading fonts, failures are not fatal");
     add_font("simsun.ttc", &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-    add_font("arial.ttc", &config, io.Fonts->GetGlyphRangesCyrillic());
+    add_font("arial.ttf", &config, io.Fonts->GetGlyphRangesCyrillic());
     add_font("meiryu.ttc", &config, io.Fonts->GetGlyphRangesJapanese());
     add_font("meiryo.ttc", &config, io.Fonts->GetGlyphRangesJapanese());
     add_font("gulim.ttc", &config, io.Fonts->GetGlyphRangesKorean());
-    add_font("cordia.ttc", &config, io.Fonts->GetGlyphRangesThai());
-    add_font("arial.ttc", &config, io.Fonts->GetGlyphRangesVietnamese());
+    add_font("cordia.ttf", &config, io.Fonts->GetGlyphRangesThai());
+    add_font("arial.ttf", &config, io.Fonts->GetGlyphRangesVietnamese());
 
     // add special font
     if (avs::game::is_model("LDJ")) {
