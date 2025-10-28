@@ -1226,6 +1226,10 @@ int main_implementation(int argc, char *argv[]) {
 
     log_info("launcher", "{}", VERSION_STRING);
 
+    // note: distribution of modified version of this software without providing source is GPLv3 license violation.
+    log_info("launcher", "spice2x is free & open source; if you paid money for it, you got scammed");
+    log_info("launcher", "visit https://spice2x.github.io to download the latest version for free");
+
     // log command line arguments
     std::ostringstream arguments;
     for (auto &root_option : options) {

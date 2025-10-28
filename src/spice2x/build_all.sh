@@ -49,7 +49,7 @@ BUILDDIR_64_RELEASE="./cmake-build-release-64"
 BUILDDIR_64_DEBUG="./cmake-build-debug-64"
 DEBUG=0
 OUTDIR="./bin/spice2x"
-OUTDIR_EXTRAS="./bin/spice2x_extras"
+OUTDIR_EXTRAS="./bin/spice2x/extras"
 
 # disabled UPX since it tends to falsely trigger malware detection
 UPX_ENABLE=0
@@ -60,8 +60,8 @@ INCLUDE_SRC=1
 DIST_ENABLE=1
 DIST_FOLDER="./dist"
 DIST_NAME="spice2x-$(date +%y)-$(date +%m)-$(date +%d).zip"
+DIST_NAME_EXTRAS="spice2x-$(date +%y)-$(date +%m)-$(date +%d)-full.zip"
 DIST_COMMENT=${DIST_NAME}$'\n'"$GIT_BRANCH - $GIT_HEAD"$'\nThank you for playing.'
-DIST_NAME_EXTRAS="spice2x-$(date +%y)-$(date +%m)-$(date +%d)-extras.zip"
 TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_cfg_linux spicetools_spice spicetools_spice_laa spicetools_spice_linux spicetools_stubs_cpusbxpkm"
 TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEncodeAPI64 spicetools_stubs_nvcuvid spicetools_stubs_nvcuda spicetools_spice64 spicetools_spice64_linux"
 
@@ -231,14 +231,11 @@ fi
 # pack source files to output directory
 rm -rf ${OUTDIR}/src
 mkdir -p ${OUTDIR}/src
-rm -rf ${OUTDIR_EXTRAS}/src
-mkdir -p ${OUTDIR_EXTRAS}/src
 if ((INCLUDE_SRC > 0))
 then
 	echo "Generating source file archive..."
 	git archive --format tar.gz --prefix=spice2x/ HEAD ./ > ${OUTDIR}/src/spice2x-${GIT_BRANCH}.tar.gz 2>/dev/null || \
 		echo "WARNING: Couldn't get git to create the archive. Is this a git repository?"
-	cp -r ${OUTDIR}/src/* ${OUTDIR_EXTRAS}/src
 fi
 
 # copy resources
@@ -254,11 +251,9 @@ then
 	mkdir -p ${DIST_FOLDER}
 	rm -rf ${DIST_FOLDER}/${DIST_NAME}
 	pushd ${OUTDIR}/.. > /dev/null
-	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME} spice2x -z <<< "$DIST_COMMENT"
-	popd > /dev/null
+	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME} spice2x -x "spice2x/extras/*" -z <<< "$DIST_COMMENT"
 	echo "Building extras..."
-	pushd ${OUTDIR_EXTRAS}/.. > /dev/null
-	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME_EXTRAS} spice2x_extras -z <<< "$DIST_COMMENT"
+	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME_EXTRAS} spice2x -z <<< "$DIST_COMMENT"
 	popd > /dev/null
 fi
 

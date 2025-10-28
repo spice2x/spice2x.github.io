@@ -556,9 +556,10 @@ namespace overlay::windows {
         }
 
         // disclaimer
+        // note: distribution of modified version of this software without providing source is GPLv3 license violation.
         ImGui::TextColored(
                 ImVec4(1, 0.5f, 0.5f, 1.f),
-                "Do NOT stream or upload game data anywhere public! Support arcades when you can. Thanks.");
+                "spice2x is free & open source; if you paid money for it, you got scammed.");
     }
 
     void Config::build_buttons(const std::string &name, std::vector<Button> *buttons, int min, int max) {
@@ -2978,6 +2979,7 @@ namespace overlay::windows {
 
     void Config::build_menu(int *game_selected) {
         bool about_popup = false;
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 1.0f));
         if (ImGui::BeginMenuBar()) {
 
             // [spice2x]
@@ -3037,6 +3039,8 @@ namespace overlay::windows {
 
             ImGui::EndMenuBar();
         }
+
+        ImGui::PopStyleColor(); // ImGuiCol_PopupBg
 
         // workaround for popups triggered by menu, see https://github.com/ocornut/imgui/issues/331
         if (about_popup) {
