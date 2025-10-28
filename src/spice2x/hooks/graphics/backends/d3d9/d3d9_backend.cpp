@@ -238,14 +238,17 @@ static void log_create_device_failure(HRESULT hresult) {
 }
 
 static bool is_dx9_on_12_enabled() {
+    bool result = false;
     switch (GRAPHICS_9_ON_12_STATE) {
         case DX9ON12_FORCE_OFF:
             log_info("graphics::d3d9", "DirectX 9on12: forced OFF by user (-dx9on12)");
-            return false;
+            result = false;
+            break;
 
         case DX9ON12_FORCE_ON:
             log_info("graphics::d3d9", "DirectX 9on12: forced ON by user (-9on12 or -dx9on12)");
-            return true;
+            result = true;
+            break;
 
         case DX9ON12_AUTO:
         default:
@@ -253,14 +256,33 @@ static bool is_dx9_on_12_enabled() {
                 log_info(
                     "graphics::d3d9",
                     "DirectX 9on12: enabled automatically for current game (tip: use -dx9on12 to force on or off)");
-                return true;
+                result = true;
             } else {
                 log_info(
                     "graphics::d3d9",
                     "DirectX 9on12: disabled by default, using DX9 (tip: use -dx9on12 to force on or off)");
-                return false;
+                result = false;
             }
+            break;
     }
+
+    if (GRAPHICS_9_ON_12_STATE == DX9ON12_FORCE_ON) {
+        if (avs::game::is_model("LDJ") && avs::game::is_ext(2023091500, MAXINT)) {
+            deferredlogs::defer_error_messages({
+                "dx9on12 was force enabled by user (-dx9on12)",
+                "    IIDX31+ is known to be incompatible with DX 9on12, leading to blank screen or crashes"
+                "    try again with -dx9on12 option set to default value"
+            });
+        } else {
+            deferredlogs::defer_error_messages({
+                "dx9on12 was force enabled by user (-dx9on12)",
+                "    not very game is compatible with this, and can lead to crashes,"
+                "    try without force enabling this if you are seeing issues"
+            });
+        }
+    }
+
+    return result;
 }
 
 static IDirect3D9 *WINAPI Direct3DCreate9_hook(UINT SDKVersion) {
