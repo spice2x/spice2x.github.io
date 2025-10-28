@@ -560,6 +560,12 @@ namespace overlay::windows {
         ImGui::TextColored(
                 ImVec4(1, 0.5f, 0.5f, 1.f),
                 "spice2x is free & open source; if you paid money for it, you got scammed.");
+        if (cfg::CONFIGURATOR_STANDALONE) {
+            ImGui::SameLine();
+            if (ImGui::TextLink(PROJECT_URL)) {
+                launch_shell(PROJECT_URL);
+            }
+        }
     }
 
     void Config::build_buttons(const std::string &name, std::vector<Button> *buttons, int min, int max) {
@@ -2918,7 +2924,7 @@ namespace overlay::windows {
 #endif
 
         ImGui::TextUnformatted("");
-        if (ImGui::Button(PROJECT_URL)) {
+        if (ImGui::TextLink(PROJECT_URL)) {
             launch_shell(PROJECT_URL);
         }
         
