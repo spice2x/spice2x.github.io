@@ -270,13 +270,13 @@ static bool is_dx9_on_12_enabled() {
         if (avs::game::is_model("LDJ") && avs::game::is_ext(2023091500, MAXINT)) {
             deferredlogs::defer_error_messages({
                 "dx9on12 was force enabled by user (-dx9on12)",
-                "    IIDX31+ is known to be incompatible with DX 9on12, leading to blank screen or crashes"
+                "    IIDX31+ is known to be incompatible with DX 9on12, leading to blank screen or crashes",
                 "    try again with -dx9on12 option set to default value"
             });
         } else {
             deferredlogs::defer_error_messages({
                 "dx9on12 was force enabled by user (-dx9on12)",
-                "    not very game is compatible with this, and can lead to crashes,"
+                "    not very game is compatible with this, and can lead to crashes",
                 "    try without force enabling this if you are seeing issues"
             });
         }
