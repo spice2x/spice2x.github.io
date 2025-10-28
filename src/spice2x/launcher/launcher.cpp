@@ -946,6 +946,11 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::DisableAudioHooks].value_bool()) {
         hooks::audio::ENABLED = false;
+        deferredlogs::defer_error_messages({
+            "audio hooks are forcibly disabled by user (-audiohookdisable)",
+            "    having hooks disabled means some required audio fixes are not being applied",
+            "    if you have audio-related crashes, you should try again after clearing this option"
+            });
     }
     if (options[launcher::Options::spice2x_DisableVolumeHook].value_bool()) {
         hooks::audio::VOLUME_HOOK_ENABLED = false;
