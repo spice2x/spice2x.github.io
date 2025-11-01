@@ -2,6 +2,7 @@
 #include <atomic>
 
 #include "build/defs.h"
+#include "hooks/graphics/graphics.h"
 #include "deferlog.h"
 #include "util/logging.h"
 
@@ -76,6 +77,13 @@ namespace deferredlogs {
     void show_popup_for_crash() {
         static std::once_flag shown;
         std::call_once(shown, []() {
+
+            // minimize all windows
+            // only needed because in multi-monitor full screen games, MessageBox fails to show above the game
+            for (auto &hwnd : GRAPHICS_WINDOWS) {
+                ShowWindow(hwnd, SW_FORCEMINIMIZE); 
+            }
+
             const std::string title = "spice2x (" + to_string(VERSION_STRING_CFG) + ") - crash handler";
             std::string text;
             text += "Game has crashed.\n\n";
