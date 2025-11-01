@@ -2,7 +2,6 @@
 #include <atomic>
 
 #include "build/defs.h"
-#include "hooks/graphics/graphics.h"
 #include "deferlog.h"
 #include "util/logging.h"
 
@@ -71,34 +70,6 @@ namespace deferredlogs {
             msg += "\\------------------------- spice2x auto-troubleshooter ------------------------/\n";
 
             log_warning("troubleshooter", "{}", msg);
-        });
-    }
-
-    void show_popup_for_crash() {
-        static std::once_flag shown;
-        std::call_once(shown, []() {
-
-            // minimize all windows
-            // only needed because in multi-monitor full screen games, MessageBox fails to show above the game
-            for (auto &hwnd : GRAPHICS_WINDOWS) {
-                ShowWindow(hwnd, SW_FORCEMINIMIZE); 
-            }
-
-            const std::string title = "spice2x (" + to_string(VERSION_STRING_CFG) + ") - crash handler";
-            std::string text;
-            text += "Game has crashed.\n\n";
-            text += "Check log.txt and look for error messages near the end of file.\n\n";
-            text += "Unsure what to do next?\n";
-            text += "  * update spice2x to the latest version\n";
-            text += "  * check the FAQ on spice2x wiki on github\n";
-            text += "  * do NOT screenshot this, instead, share log.txt with someone and ask for help\n\n";
-            text += "Press Enter, Esc, Alt+F4, or click OK to exit. Otherwise, game will close in 30 seconds.";
-
-            MessageBox(
-                nullptr,
-                text.c_str(),
-                title.c_str(),
-                MB_OK | MB_ICONERROR | MB_TASKMODAL | MB_SETFOREGROUND | MB_TOPMOST);
         });
     }
 }

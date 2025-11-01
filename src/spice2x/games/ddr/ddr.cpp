@@ -125,7 +125,7 @@ namespace games::ddr {
 
     void DDRGame::pre_attach() {
         if (!cfg::CONFIGURATOR_STANDALONE && avs::game::is_model("TDX")) {
-            log_fatal(
+            log_warning(
                 "ddr",
                 "BAD MODEL NAME ERROR\n\n\n"
                 "!!! model name set to TDX, this is WRONG and will break your game !!!\n"
@@ -136,6 +136,8 @@ namespace games::ddr {
                 "!!!                                                               !!!\n"
                 "!!! model name set to TDX, this is WRONG and will break your game !!!\n\n\n"
                 );
+
+            log_fatal("ddr", "BAD MODEL NAME ERROR - TDX specified, should be MDX instead");
         }
 
         if (!cfg::CONFIGURATOR_STANDALONE && avs::game::DEST[0] == 'U') {

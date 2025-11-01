@@ -268,7 +268,7 @@ namespace games::sdvx {
         AUTO_INSERT_CARD_COOLDOWN = 15.f;
         // check bad model name
         if (!cfg::CONFIGURATOR_STANDALONE && avs::game::is_model("UFC")) {
-            log_fatal(
+            log_warning(
                 "sdvx",
                 "BAD MODEL NAME ERROR\n\n\n"
                 "!!! model name set to UFC, this is WRONG and will break your game !!!\n"
@@ -278,6 +278,9 @@ namespace games::sdvx {
                 "!!!                                                               !!!\n"
                 "!!! model name set to UFC, this is WRONG and will break your game !!!\n\n\n"
                 );
+            log_fatal(
+                "sdvx",
+                "BAD MODEL NAME ERROR - model name set to UFC, must be KFC instead");
         }   
     }
 

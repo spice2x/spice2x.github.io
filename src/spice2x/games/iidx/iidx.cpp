@@ -428,7 +428,7 @@ namespace games::iidx {
 
         // check bad model name
         if (!cfg::CONFIGURATOR_STANDALONE && avs::game::is_model("TDJ")) {
-            log_fatal(
+            log_warning(
                 "iidx",
                 "BAD MODEL NAME ERROR\n\n\n"
                 "!!! model name set to TDJ, this is WRONG and will break your game !!!\n"
@@ -446,6 +446,8 @@ namespace games::iidx {
                 "!!!                                                               !!!\n"
                 "!!! model name set to TDJ, this is WRONG and will break your game !!!\n\n\n"
                 );
+
+            log_fatal("iidx", "BAD MODEL NAME ERROR - TDJ specified, must be LDJ instead");
         }
     }
 

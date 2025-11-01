@@ -43,7 +43,8 @@ static inline void load_library_fail(const std::string &file_name, bool fatal) {
         "     b. http://www.dependencywalker.com/ (for old OS) \n"
     , file_name) };
     if (fatal) {
-        log_fatal("libutils", "{}", info_str);
+        log_warning("libutils", "{}", info_str);
+        log_fatal("libutils", "DLL failed to load: {}, see log.txt for troubleshooting", file_name);
     } else {
         log_warning("libutils", "{}", info_str);
     }

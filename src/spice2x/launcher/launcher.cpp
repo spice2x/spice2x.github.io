@@ -299,22 +299,6 @@ int main_implementation(int argc, char *argv[]) {
         cfg::CONFIGURATOR_TYPE = cfg::ConfigType::Config;
         cfg_run = true;
     }
-
-    if (options[launcher::Options::EAmusementEmulation].value_bool() &&
-        options[launcher::Options::ServiceURL].is_active() &&
-        !cfg::CONFIGURATOR_STANDALONE) {
-        log_fatal(
-            "launcher",
-            "BAD EAMUSE SETTINGS ERROR\n\n\n"
-            "-------------------------------------------------------------------\n"
-            "WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING\n"
-            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
-            "A service URL is set **AND** E-Amusement emulation is enabled.\n"
-            "Either remove the service URL, or disable E-Amusement emulation.\n"
-            "Otherwise you may experience problems logging in.\n"
-            "-------------------------------------------------------------------\n\n\n"
-            );
-    }
     if (options[launcher::Options::EAmusementEmulation].value_bool()) {
         avs::ea3::URL_SLASH = 1;
         easrv_port = 8080;
@@ -1318,6 +1302,25 @@ int main_implementation(int argc, char *argv[]) {
             );
     }
 
+    if (options[launcher::Options::EAmusementEmulation].value_bool() &&
+        options[launcher::Options::ServiceURL].is_active() &&
+        !cfg::CONFIGURATOR_STANDALONE) {
+        log_warning(
+            "launcher",
+            "BAD EAMUSE SETTINGS ERROR\n\n\n"
+            "-------------------------------------------------------------------\n"
+            "WARNING - WARNING - WARNING - WARNING - WARNING - WARNING - WARNING\n"
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
+            "A service URL is set **AND** E-Amusement emulation is enabled.\n"
+            "Either remove the service URL, or disable E-Amusement emulation.\n"
+            "Otherwise you may experience problems logging in.\n"
+            "-------------------------------------------------------------------\n\n\n"
+            );
+        log_fatal(
+            "launcher",
+            "BAD EAMUSE SETTINGS ERROR: both -ea and -url are set");
+    }
+
     if (options[launcher::Options::FullscreenResolution].is_active()) {
         std::pair<uint32_t, uint32_t> result;
         if (parse_width_height(options[launcher::Options::FullscreenResolution].value_text(), result)) {
@@ -1817,7 +1820,7 @@ int main_implementation(int argc, char *argv[]) {
             // usage error
             if (!cfg::CONFIGURATOR_STANDALONE
             && (!CHECK_DLL_IGNORE_ARCH)) {
-                log_fatal(
+                log_warning(
                     "launcher",
                     "module auto detection failed!\n\n"
                     "This usually means one of the following:\n\n"
@@ -1825,6 +1828,8 @@ int main_implementation(int argc, char *argv[]) {
                     "  2. XML files in prop directory are malformed or missing, or\n"
                     "  3. You passed in invalid options (usually, path overrides like -exec)\n\n"
                 );
+
+                log_fatal("launcher", "module auto detection failed, see log.txt for troubleshooting");
             }
             break;
 
