@@ -11,4 +11,5 @@ namespace deferredlogs {
 
     void defer_error_messages(std::initializer_list<std::string> messages);
     void dump_to_logger(bool is_crash=false);
+    void show_popup_for_crash();
 }
