@@ -79,7 +79,7 @@ namespace deferredlogs {
             const std::string title = "spice2x (" + to_string(VERSION_STRING_CFG) + ") - crash handler";
             std::string text;
             text += "Game has crashed.\n\n";
-            text += "Check log.txt look for error messages near the end of file.\n\n";
+            text += "Check log.txt and look for error messages near the end of file.\n\n";
             text += "Unsure what to do next?\n";
             text += "  * update spice2x to the latest version\n";
             text += "  * check the FAQ on spice2x wiki on github\n";
