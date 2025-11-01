@@ -44,7 +44,7 @@ static inline void load_library_fail(const std::string &file_name, bool fatal) {
     , file_name) };
     if (fatal) {
         log_warning("libutils", "{}", info_str);
-        log_fatal("libutils", "DLL failed to load: {}", file_name);
+        log_fatal("libutils", "DLL failed to load: {}, see log.txt for troubleshooting", file_name);
     } else {
         log_warning("libutils", "{}", info_str);
     }

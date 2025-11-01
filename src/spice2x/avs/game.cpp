@@ -107,7 +107,7 @@ namespace avs {
                     "!!! remove -exec argument and try again.                       !!!\n"
                     "!!!                                                            !!!\n"
                     );
-                log_fatal("ddr", "BAD GAME DLL ERROR (-exec gamemdx.dll)");
+                log_fatal("ddr", "BAD GAME DLL ERROR (don't use -exec gamemdx.dll, that's the wrong DLL)");
             }
 
             // file not found on disk
