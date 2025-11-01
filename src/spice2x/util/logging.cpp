@@ -1,5 +1,7 @@
 #include "logging.h"
 
+DWORD LOG_FATAL_SLEEP = 10000;
+
 std::string_view log_get_datetime() {
     return log_get_datetime(time(nullptr));
 }

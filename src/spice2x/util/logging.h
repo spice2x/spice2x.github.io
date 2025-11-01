@@ -71,6 +71,8 @@ struct fmt::formatter<fmt_hresult> {
     }
 };
 
+extern DWORD LOG_FATAL_SLEEP;
+
 // misc log
 #define LOG_FORMAT(level, module, fmt_str, ...) fmt::format(FMT_COMPILE("{}" fmt_str "\n"), \
     fmt_log { std::time(nullptr), level, module }, ## __VA_ARGS__)
@@ -84,7 +86,7 @@ struct fmt::formatter<fmt_hresult> {
     logger::push(LOG_FORMAT("F", module, format_str, ## __VA_ARGS__), logger::Style::RED); \
     logger::push(LOG_FORMAT("F", "spice", "encountered a fatal error, you can close the window or press ctrl + c"), logger::Style::RED); \
     launcher::stop_subsystems(); \
-    Sleep(10000); \
+    Sleep(LOG_FATAL_SLEEP); \
     launcher::kill(); \
     std::terminate(); \
 } ((void) 0 )
