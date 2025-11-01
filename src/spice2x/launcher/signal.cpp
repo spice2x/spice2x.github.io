@@ -175,17 +175,8 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
             log_warning("signal", "minidump creation function not available, skipping");
         }
 
-        // reduce sleep time since we will wait for the user to acknowledge the popup
-        LOG_FATAL_SLEEP = 1;
-
-        // in 30 seconds, shut down (in case user can't dismiss popup)
-        const auto f = std::async(std::launch::async, [] {
-            std::this_thread::sleep_for(std::chrono::seconds(30));
-            log_fatal("signal", "end");
-        });
-
         // this will stall all UI threads for this process
-        deferredlogs::show_popup_for_crash();
+        show_popup_for_crash();
 
         log_fatal("signal", "end");
     }

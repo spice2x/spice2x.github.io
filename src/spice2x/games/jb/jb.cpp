@@ -169,7 +169,7 @@ namespace games::jb {
             const auto current_path = std::filesystem::current_path();
             log_misc("jubeat", "current working directory: {}", current_path.string());
             if (current_path.parent_path() == current_path.root_path()) {
-                log_fatal(
+                log_warning(
                     "jubeat",
                     "\n\nInvalid path error; jubeat cannot run from a directory in the drive root\n"
                     "The game will overflow the stack and silently fail to boot\n\n"
@@ -179,6 +179,10 @@ namespace games::jb {
                     "To fix this, create a new directory and move ALL game files there.\n\n"
                     "Your current working directory: {}\n",
                     current_path.string());
+
+                log_fatal(
+                    "jubeat",
+                    "Invalid path error; jubeat cannot run from a directory in the drive root");
             }
         }
     }

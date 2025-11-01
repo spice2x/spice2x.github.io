@@ -98,7 +98,7 @@ namespace avs {
 
             // ddr gamemdx.dll user error
             if (avs::game::is_model("MDX") && DLL_NAME == "gamemdx.dll") {
-                log_fatal(
+                log_warning(
                     "ddr",
                     "BAD GAME DLL ERROR\n\n"
                     "!!!                                                            !!!\n"
@@ -107,6 +107,7 @@ namespace avs {
                     "!!! remove -exec argument and try again.                       !!!\n"
                     "!!!                                                            !!!\n"
                     );
+                log_fatal("ddr", "BAD GAME DLL ERROR (-exec gamemdx.dll)");
             }
 
             // file not found on disk

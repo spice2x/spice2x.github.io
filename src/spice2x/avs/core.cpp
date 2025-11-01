@@ -1503,7 +1503,8 @@ namespace avs {
                         "    * Do NOT copy over random DLLs from another game installation; DLL must match game version\n"
                         "\n"
                     , DLL_NAME, MODULE_PATH.string()) };
-                    log_fatal("avs-ea3", "{}", info_str);
+                    log_warning("avs-ea3", "{}", info_str);
+                    log_fatal("avs-ea3", "Failed to find critical avs DLL on disk (avs2-core.dll OR {})", DLL_NAME);
                 }
             }
 

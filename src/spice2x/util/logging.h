@@ -71,22 +71,28 @@ struct fmt::formatter<fmt_hresult> {
     }
 };
 
-extern DWORD LOG_FATAL_SLEEP;
+void show_popup_for_crash();
+void show_popup_for_fatal_error(std::string message);
 
 // misc log
 #define LOG_FORMAT(level, module, fmt_str, ...) fmt::format(FMT_COMPILE("{}" fmt_str "\n"), \
     fmt_log { std::time(nullptr), level, module }, ## __VA_ARGS__)
+   
+#define LOG_FORMAT_POPUP(module, fmt_str, ...) fmt::format(FMT_COMPILE("{}: " fmt_str "\n"), module, ## __VA_ARGS__)
+
 #define log_misc(module, format_str, ...) logger::push( \
     LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+
 #define log_info(module, format_str, ...) logger::push( \
     LOG_FORMAT("I", module, format_str, ## __VA_ARGS__), logger::Style::DEFAULT)
+
 #define log_warning(module, format_str, ...) logger::push( \
     LOG_FORMAT("W", module, format_str, ## __VA_ARGS__), logger::Style::YELLOW)
+
 #define log_fatal(module, format_str, ...) { \
     logger::push(LOG_FORMAT("F", module, format_str, ## __VA_ARGS__), logger::Style::RED); \
-    logger::push(LOG_FORMAT("F", "spice", "encountered a fatal error, you can close the window or press ctrl + c"), logger::Style::RED); \
+    show_popup_for_fatal_error(LOG_FORMAT_POPUP(module, format_str, ## __VA_ARGS__)); \
     launcher::stop_subsystems(); \
-    Sleep(LOG_FATAL_SLEEP); \
     launcher::kill(); \
     std::terminate(); \
 } ((void) 0 )
