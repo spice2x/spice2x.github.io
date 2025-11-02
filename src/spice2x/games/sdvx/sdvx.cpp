@@ -215,6 +215,15 @@ namespace games::sdvx {
             deferredlogs::defer_error_messages(deferredlogs::SUPERSTEP_SOUND_ERROR_MESSAGE);
             return false;
         }
+        if (data.find("W:ea3-pos: ea3_report_posev: no such node:") != std::string::npos) {
+            deferredlogs::defer_error_messages({
+                "bad prop\\ea3-config.xml detected by game",
+                std::string("    ") +  data,
+                "    this will most likely cause Server Busy errors in certain conditions",
+                "    follow the FAQ to fix your ea3-config.xml and try again"
+            });
+            return false;
+        }
         return false;
     }
 
