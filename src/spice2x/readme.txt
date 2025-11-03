@@ -3,6 +3,7 @@ developers when you can. Sources should be included, have fun!
 
 spice2x fork maintainers:
 * sp2xdev team
+* the lab
 
 SpiceTools original contributors:
 * cube, felix, dinsfire, nolm, s2, crazyredmachine (jotaro44), mon, nibs
