@@ -1676,6 +1676,14 @@ int main_implementation(int argc, char *argv[]) {
                 attach_io = true;
                 attach_mfc = true;
                 break;
+
+            // Mahjong Fight Club - 2025?
+            // they removed allinone.dll and moved i/o into system.dll
+            } else if (check_dll("system.dll") && fileutils::file_exists("data/mfc.ini")) {
+                avs::game::DLL_NAME = "system.dll";
+                attach_io = true;
+                attach_mfc = true;
+                break;
             }
 
             // FutureTomTom
