@@ -308,6 +308,13 @@ namespace games::mfc {
         auto allinone_module = libutils::try_module("allinone.dll");
         auto system_module = libutils::try_module("system.dll");
 
+        // Mahjong Fight Club - 2025?
+        // they removed allinone.dll and moved i/o into system.dll
+        if (allinone_module == nullptr) {
+            log_misc("mfc", "using system.dll instead of allinone.dll for i/o hooks");
+            allinone_module = system_module;
+        }
+
         // network fix
         detour::iat_try("?nic_dhcp_maybe_exist@@YAEXZ", nic_dhcp_maybe_exist, system_module);
 
