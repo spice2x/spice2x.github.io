@@ -288,6 +288,21 @@ namespace games::mfc {
     MFCGame::MFCGame() : Game("Mahjong Fight Club") {
     }
 
+    static bool spam_remover(void *user, const std::string &data, logger::Style style, std::string &out) {
+        if (data.empty() || data[0] != '[') {
+            return false;
+        }
+        if (data.find("W:mutex: lock: mid 00000000 != AVS_DTYPE_MUTEX") != std::string::npos) {
+            out = "";
+            return true;
+        }
+        if (data.find("W:mutex: unlock: mid 00000000 != AVS_DTYPE_MUTEX") != std::string::npos) {
+            out = "";
+            return true;
+        }
+        return false;
+    }
+
     void MFCGame::attach() {
         Game::attach();
 
@@ -385,5 +400,7 @@ namespace games::mfc {
             detour::inline_hook((void *) mouse_utl_step, libutils::try_proc(
                     allinone_module, "?mouse_utl_step@@YAXXZ"));
         }
+
+        logger::hook_add(spam_remover, nullptr);
     }
 }
