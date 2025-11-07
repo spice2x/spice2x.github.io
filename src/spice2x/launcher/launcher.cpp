@@ -1262,18 +1262,19 @@ int main_implementation(int argc, char *argv[]) {
     for (const auto &option : options) {
         if (option.conflicting && option.get_definition().type != OptionType::Bool) {
             conflicts += 1;
+            const auto& value = option.get_definition().sensitive ? "*****" : option.value;
             if (launcher::USE_CMD_OVERRIDE) {
                 log_warning(
                     "launcher",
                     "multiple values for -{}, command line args take precedence: {}",
                     option.get_definition().name, 
-                    option.value);
+                    value);
             } else {
                 log_warning(
                     "launcher",
                     "multiple values for -{}, spicecfg values take precedence: {}",
                     option.get_definition().name,
-                    option.value);
+                    value);
             }
         }
     }
