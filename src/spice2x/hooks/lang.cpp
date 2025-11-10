@@ -8,6 +8,7 @@
 #include <ntstatus.h>
 
 #include "avs/game.h"
+#include "games/iidx/iidx.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -22,6 +23,7 @@ static decltype(GetLocaleInfoEx) *GetLocaleInfoEx_orig = nullptr;
 
 #ifdef SPICE64
 static decltype(GetSystemDefaultLCID) *GetSystemDefaultLCID_orig = nullptr;
+static decltype(IsDBCSLeadByte) *IsDBCSLeadByte_orig = nullptr;
 #endif
 
 static NTSTATUS NTAPI RtlMultiByteToUnicodeN_hook(
@@ -162,6 +164,17 @@ static int WINAPI GetLocaleInfoEx_hook (
     return GetLocaleInfoEx_orig(lpLocaleName, LCType, lpLCData, cchData);
 }
 
+#ifdef SPICE64
+
+static BOOL WINAPI IsDBCSLeadByte_hook (
+    BYTE TestChar
+    )
+{
+    return IsDBCSLeadByteEx(CODEPAGE_SHIFT_JIS, TestChar);
+}
+
+#endif
+
 void hooks::lang::early_init() {
     log_info("hooks::lang", "early initialization");
 
@@ -189,6 +202,19 @@ void hooks::lang::early_init() {
             GetLocaleInfoEx_hook,
             &GetLocaleInfoEx_orig);
     }
+
+#ifdef SPICE64
+    // for TDJ subscreen search keyboard
+    if (avs::game::is_model("LDJ") && games::iidx::TDJ_MODE) {
+        log_info("hooks::lang", "hooking IsDBCSLeadByte");
+        detour::trampoline_try(
+            "kernel32.dll",
+            "IsDBCSLeadByte",
+            IsDBCSLeadByte_hook,
+            &IsDBCSLeadByte_orig);
+    }
+#endif
+
 }
 
 void hooks::lang::init() {
