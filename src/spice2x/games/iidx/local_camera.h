@@ -66,6 +66,25 @@ extern std::string CAMERA_CONTROL_LABELS[];
 extern std::string DRAW_MODE_LABELS[];
 
 namespace games::iidx {
+    namespace Camera {
+        struct PlayVideoCamera {
+            IDirect3DTexture9** d3d9_texture(const uintptr_t offset) {
+                auto const afp_texture = *reinterpret_cast<uint8_t**>
+                    (reinterpret_cast<uint8_t*>(this) + offset);
+                return reinterpret_cast<IDirect3DTexture9**>(afp_texture + 0x8);
+            }
+        };
+
+        struct CCameraManager2 {
+            using camera_pointers = struct {
+                PlayVideoCamera* a;
+                PlayVideoCamera* b;
+            };
+            void* vftbl;
+            camera_pointers* cameras;
+        };
+    }
+
     class IIDXLocalCamera {
     protected:
         virtual ~IIDXLocalCamera() {};
@@ -98,8 +117,9 @@ namespace games::iidx {
         // DirectX9 DeviceEx
         LPDIRECT3DDEVICE9EX m_device;
 
-        // Address to hook camera texture onto the game
-        LPDIRECT3DTEXTURE9 *m_texture_target = nullptr;
+        // Address to hook camera textures onto the game
+        LPDIRECT3DTEXTURE9 *m_camera_texture_target = nullptr;
+        LPDIRECT3DTEXTURE9 *m_preview_texture_target = nullptr;
 
         // Target texture (to be shown in the game)
         LPDIRECT3DTEXTURE9 m_texture = nullptr;
@@ -117,8 +137,9 @@ namespace games::iidx {
         LPDIRECT3DTEXTURE9 m_transformResultTexture = nullptr;
         IDirect3DSurface9 *m_pTransformResultSurf = nullptr;
 
-        // Storing original texture for clean up
-        LPDIRECT3DTEXTURE9 m_texture_original = nullptr;
+        // Storing original textures for clean up
+        LPDIRECT3DTEXTURE9 m_camera_texture_original = nullptr;
+        LPDIRECT3DTEXTURE9 m_preview_texture_original = nullptr;
 
         IAMCameraControl *m_pCameraControl = nullptr;
 
@@ -154,7 +175,8 @@ namespace games::iidx {
             IMFActivate *pActivate,
             IDirect3DDeviceManager9 *pD3DManager,
             LPDIRECT3DDEVICE9EX device,
-            LPDIRECT3DTEXTURE9 *texture_target
+            LPDIRECT3DTEXTURE9 *camera_texture_target,
+            LPDIRECT3DTEXTURE9 *preview_texture_target
         );
         LPDIRECT3DTEXTURE9 GetTexture();
         ULONG Release();

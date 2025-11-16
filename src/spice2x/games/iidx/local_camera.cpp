@@ -46,14 +46,17 @@ namespace games::iidx {
         IMFActivate *pActivate,
         IDirect3DDeviceManager9 *pD3DManager,
         LPDIRECT3DDEVICE9EX device,
-        LPDIRECT3DTEXTURE9 *texture_target
+        LPDIRECT3DTEXTURE9 *camera_texture_target,
+        LPDIRECT3DTEXTURE9 *preview_texture_target
     ):
         m_nRefCount(1),
         m_name(name),
         m_prefer_16_by_9(prefer_16_by_9),
         m_device(device),
-        m_texture_target(texture_target),
-        m_texture_original(*texture_target)
+        m_camera_texture_target(camera_texture_target),
+        m_preview_texture_target(preview_texture_target),
+        m_camera_texture_original(*camera_texture_target),
+        m_preview_texture_original(*preview_texture_target)
     {
         InitializeCriticalSection(&m_critsec);
 
@@ -691,7 +694,8 @@ namespace games::iidx {
         if (FAILED(hr)) { goto done; }
 
         // Make the game use this new texture as camera stream source
-        *m_texture_target = m_texture;
+        *m_camera_texture_target = m_texture;
+        *m_preview_texture_target = m_texture;
         m_active = TRUE;
 
         // Create texture for colour conversion
@@ -860,7 +864,8 @@ namespace games::iidx {
 
         ULONG uCount = InterlockedDecrement(&m_nRefCount);
 
-        *m_texture_target = m_texture_original;
+        *m_camera_texture_target = m_camera_texture_original;
+        *m_preview_texture_target = m_preview_texture_original;
 
         for (size_t i = 0; i < m_mediaTypeInfos.size(); i++) {
             SafeRelease(&(m_mediaTypeInfos.at(i).p_mediaType));
