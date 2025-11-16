@@ -340,3 +340,13 @@ static inline bool parse_width_height(const std::string wh, std::pair<uint32_t, 
         return false;
     }
 }
+
+static inline std::string wchar_to_u8(const wchar_t* wstr) {
+    int size = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
+    if (size <= 1) {
+        return "";
+    }
+    std::string out(size - 1, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, out.data(), size - 1, nullptr, nullptr);
+    return out;
+}

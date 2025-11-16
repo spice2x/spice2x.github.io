@@ -347,40 +347,38 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
             if (hid_handle != INVALID_HANDLE_VALUE) {
 
                 // check manufacturer string
-                std::wstring man_ws;
+                std::string man_ws;
                 wchar_t man_str_buffer[256] {};
                 if (HidD_GetManufacturerString(hid_handle, man_str_buffer, sizeof(man_str_buffer))) {
-                    man_ws = std::wstring(man_str_buffer);
+                    man_ws = wchar_to_u8(man_str_buffer);
                 }
 
                 // get product string
-                std::wstring prod_ws;
+                std::string prod_ws;
                 wchar_t prod_str_buffer[256] {};
                 if (HidD_GetProductString(hid_handle, prod_str_buffer, sizeof(prod_str_buffer))) {
-                    prod_ws = std::wstring(prod_str_buffer);
+                    prod_ws = wchar_to_u8(prod_str_buffer);
                 }
 
                 // For Bluetooth LE HID devices (e.g., newer Xbox controllers) HidD_GetProductString
                 // and HidD_GetManufacturerString will return blank strings.
                 // https://docs.microsoft.com/en-us/answers/questions/401236/hidd-getproductstring-with-ble-hid-device.html
                 if (man_ws.empty() && prod_ws.empty()) {
-                    prod_ws = s2ws(device_description);
+                    prod_ws = device_description;
                 }
 
                 // build desc string
-                std::wstring desc_ws;
+                std::string desc_ws;
                 if (string_begins_with(prod_ws, man_ws)) {
                     desc_ws = prod_ws;
                 } else {
                     desc_ws = man_ws;
                     if (!man_ws.empty() && !prod_ws.empty()) {
-                        desc_ws += L" ";
+                        desc_ws += " ";
                     }
                     desc_ws += prod_ws;
                 }
-
-                // convert to normal string
-                new_device.desc = ws2s(desc_ws);
+                new_device.desc = desc_ws;
 
                 // get attributes
                 if (!HidD_GetAttributes(hid_handle, &hid_attributes)) {
@@ -1148,7 +1146,7 @@ std::string rawinput::RawInputManager::rawinput_get_device_description(const raw
 
                 // get property
                 DWORD desc_size = 0;
-                if (SetupDiGetDeviceRegistryProperty(
+                if (SetupDiGetDeviceRegistryPropertyW(
                         devinfo, &devinfo_data, SPDRP_DEVICEDESC, nullptr, nullptr, 0, &desc_size))
                 {
                     continue;
@@ -1160,14 +1158,14 @@ std::string rawinput::RawInputManager::rawinput_get_device_description(const raw
                 // allocate buffer
                 auto desc_data = std::make_unique<BYTE[]>(desc_size);
 
-                if (!SetupDiGetDeviceRegistryProperty(
+                if (!SetupDiGetDeviceRegistryPropertyW(
                         devinfo, &devinfo_data, SPDRP_DEVICEDESC, nullptr, desc_data.get(), desc_size, nullptr))
                 {
                     continue;
                 }
 
                 // kthxbye
-                device_description = std::string(reinterpret_cast<char *>(desc_data.get()));
+                device_description = wchar_to_u8(reinterpret_cast<PWCHAR>(desc_data.get()));
             }
         }
     }
