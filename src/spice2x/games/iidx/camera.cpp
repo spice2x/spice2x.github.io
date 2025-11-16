@@ -201,12 +201,13 @@ namespace games::iidx {
                 "488B89",
                 "XXX",
                 3, 0, search_from));
-        addr_device_offset = *addr_device_ptr;
 
-        if (addr_textures_ptr == nullptr) {
-            log_warning("iidx:camhook", "failed to find hook: addr_textures (part 3)");
+        if (addr_device_ptr == nullptr) {
+            log_warning("iidx:camhook", "failed to find hook: addr_device_ptr");
             return FALSE;
         }
+
+        addr_device_offset = *addr_device_ptr;
 
         return TRUE;
     }
