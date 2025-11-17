@@ -497,10 +497,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .display_name = "iidxcamhookoffset",
         .aliases = "iidxcamhookoffset",
         .desc = "Override DLL offsets for camera hook; "
-            "format: 4 hex values separated by commas "
-            "(offset_hook_a, offset_hook_b, offset_textures, offset_d3d_device)",
+            "format: 5 hex values separated by commas "
+            "(offset_hook_a, offset_textures, offset_camera_manager, offset_d3d_device, offset_afp_texture)",
         .type = OptionType::Text,
-        .setting_name = "0x5817a0,0x5ea3b0,0x6fffbd8,0xe0",
+        .setting_name = "0x5817a0,0x6fffbd8,0xbbae40,0xe0,0x30",
         .game_name = "Beatmania IIDX",
         .category = "Game Options (Advanced)",
     },

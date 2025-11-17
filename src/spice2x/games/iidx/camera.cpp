@@ -22,35 +22,31 @@
 static std::filesystem::path dll_path;
 static HMODULE iidx_module;
 static uintptr_t addr_hook_a = 0;
-static uintptr_t addr_hook_b = 0;
 static uintptr_t addr_textures = 0;
+static uintptr_t addr_camera_manager = 0;
 static uintptr_t addr_device_offset = 0;
+static uintptr_t addr_afp_texture_offset = 0;
 
 typedef void **(__fastcall *camera_hook_a_t)(PBYTE);
-typedef LPDIRECT3DTEXTURE9 (*camera_hook_b_t)(void*, int);
 static camera_hook_a_t camera_hook_a_orig = nullptr;
-static camera_hook_b_t camera_hook_b_orig = nullptr;
 auto static hook_a_init = std::once_flag {};
 
 static LPDIRECT3DDEVICE9EX device;
-static LPDIRECT3DTEXTURE9 *texture_a = nullptr;
-static LPDIRECT3DTEXTURE9 *texture_b = nullptr;
+static LPDIRECT3DTEXTURE9 *camera_texture_a = nullptr;
+static LPDIRECT3DTEXTURE9 *camera_texture_b = nullptr;
+static LPDIRECT3DTEXTURE9 *preview_texture_a = nullptr;
+static LPDIRECT3DTEXTURE9 *preview_texture_b = nullptr;
 
 struct PredefinedHook {
     std::string     pe_identifier;
     uintptr_t       hook_a;
-    uintptr_t       hook_b;
     uintptr_t       hook_textures;
+    uintptr_t       hook_camera_manager;
     uintptr_t       hook_device_offset;
+    uintptr_t       hook_afp_texture_offset;
 };
 
-PredefinedHook g_predefinedHooks[] =
-{
-    // 27 003
-    { "5f713b52_6d4090", 0x005971b0, 0x005fb2c0, 0x04e49898, 0x000000d0 },
-    // 27 010
-    { "5f713946_7f52b0", 0x006b89e0, 0x0071c950, 0x04fd08b8, 0x000000d0 },
-};
+PredefinedHook g_predefinedHooks[] = {};
 
 const DWORD   g_predefinedHooksLength = ARRAYSIZE(g_predefinedHooks);
 
@@ -75,8 +71,8 @@ namespace games::iidx {
 
         if (sscanf(
                 s.c_str(),
-                "%i,%i,%i,%i",
-                (int*)&addr_hook_a, (int*)&addr_hook_b, (int*)&addr_textures, (int*)&addr_device_offset) == 4) {
+                "%i,%i,%i,%i,%i",
+                (int*)&addr_hook_a, (int*)&addr_textures, (int*)&addr_camera_manager, (int*)&addr_device_offset, (int*)&addr_afp_texture_offset) == 5) {
 
             return true;
 
@@ -101,8 +97,8 @@ namespace games::iidx {
 
         // there are three different ways we try to hook the camera entry points
         // 1) user-provided override via cmd line
-        // 2) predefined offsets using PE header matching (needed for iidx27 and few others)
-        // 3) signature match (should work for most iidx28-31)
+        // 2) predefined offsets using PE header matching
+        // 3) signature match (should work for most iidx27-33)
 
         // method 1: user provided
         if (TDJ_CAMERA_OVERRIDE.has_value() && parse_cmd_params()) {
@@ -117,10 +113,11 @@ namespace games::iidx {
         for (DWORD i = 0; i < g_predefinedHooksLength; i++) {
             if (pe.compare(g_predefinedHooks[i].pe_identifier) == 0) {
                 log_misc("iidx:camhook", "Found predefined addresses");
-                addr_hook_a        = g_predefinedHooks[i].hook_a;
-                addr_hook_b        = g_predefinedHooks[i].hook_b;
-                addr_textures      = g_predefinedHooks[i].hook_textures;
-                addr_device_offset = g_predefinedHooks[i].hook_device_offset;
+                addr_hook_a             = g_predefinedHooks[i].hook_a;
+                addr_textures           = g_predefinedHooks[i].hook_textures;
+                addr_camera_manager     = g_predefinedHooks[i].hook_camera_manager;
+                addr_device_offset      = g_predefinedHooks[i].hook_device_offset;
+                addr_afp_texture_offset = g_predefinedHooks[i].hook_afp_texture_offset;
                 return TRUE;
             }
         }
@@ -131,8 +128,8 @@ namespace games::iidx {
         // --- addr_hook_a ---
         uint8_t *addr_hook_a_ptr = reinterpret_cast<uint8_t *>(find_pattern(
             iidx_module,
-            "488BC4565741564883EC5048C740D8FEFFFFFF",
-            "XXXXXXXXXXXXXXXXXXX",
+            "E800000000488B8F0000000048894D",
+            "X????XXX????XXX",
             0, 0));
 
         if (addr_hook_a_ptr == nullptr) {
@@ -141,24 +138,10 @@ namespace games::iidx {
             return FALSE;
         }
 
-        addr_hook_a = (uint64_t) (addr_hook_a_ptr - (uint8_t*) iidx_module);
-
-        // addr_hook_b
-        uint8_t* addr_hook_b_ptr = reinterpret_cast<uint8_t *>(find_pattern(
-            iidx_module,
-            "E8000000004885C07439E8",
-            "X????XXXXXX",
-            0, 0));
-
-        if (addr_hook_b_ptr == nullptr) {
-            log_warning("iidx:camhook", "failed to find hook: addr_hook_b");
-            return FALSE;
-        }
-
         // displace with the content of wildcard bytes
-        int32_t disp_b = *((int32_t *) (addr_hook_b_ptr + 1));
+        int32_t disp_a = *((int32_t *) (addr_hook_a_ptr + 1));
 
-        addr_hook_b = (addr_hook_b_ptr - (uint8_t*) iidx_module) + disp_b + 5;
+        addr_hook_a = (addr_hook_a_ptr - (uint8_t*) iidx_module) + disp_a + 5;
 
         // --- addr_textures ---
         uint8_t* addr_textures_ptr = reinterpret_cast<uint8_t *>(find_pattern(
@@ -194,6 +177,28 @@ namespace games::iidx {
 
         addr_textures = (addr_textures_ptr - (uint8_t*) iidx_module) + disp_textures + 7;
 
+        // --- addr_camera_manager ---
+        uint8_t *addr_camera_manager_ptr = reinterpret_cast<uint8_t *>(find_pattern(
+            iidx_module,
+            "E80000000033FF488B58",
+            "X????XXXXX",
+            0, 0));
+
+        if (addr_camera_manager_ptr == nullptr) {
+            log_warning("iidx:camhook", "failed to find hook: addr_get_camera_manager");
+            return FALSE;
+        }
+
+        // displace with the content of wildcard bytes
+        int32_t disp_camera_manager = *((int32_t *) (addr_camera_manager_ptr + 1));
+
+        addr_camera_manager_ptr = addr_camera_manager_ptr + disp_camera_manager + 5;
+
+        // once more to get the final address
+        disp_camera_manager = *((int32_t *) (addr_camera_manager_ptr + 3));
+
+        addr_camera_manager = (addr_camera_manager_ptr - (uint8_t*) iidx_module) + disp_camera_manager + 7;
+
         // addr_device_offset
         search_from = (addr_hook_a_ptr - (uint8_t*) iidx_module);
         uint8_t *addr_device_ptr = reinterpret_cast<uint8_t *>(find_pattern_from(
@@ -201,12 +206,27 @@ namespace games::iidx {
                 "488B89",
                 "XXX",
                 3, 0, search_from));
-        addr_device_offset = *addr_device_ptr;
 
-        if (addr_textures_ptr == nullptr) {
-            log_warning("iidx:camhook", "failed to find hook: addr_textures (part 3)");
+        if (addr_device_ptr == nullptr) {
+            log_warning("iidx:camhook", "failed to find hook: addr_device_ptr");
             return FALSE;
         }
+
+        addr_device_offset = *addr_device_ptr;
+
+        // --- addr_afp_texture_offset ---
+        uint8_t *addr_afp_texture_ptr = reinterpret_cast<uint8_t *>(find_pattern(
+            iidx_module,
+            "488B41004885C07400488D5424",
+            "XXX?XXXX?XXXX",
+            0, 0));
+
+        if (addr_afp_texture_ptr == nullptr) {
+            log_warning("iidx:camhook", "failed to find hook: addr_afp_texture_offset");
+            return FALSE;
+        }
+
+        addr_afp_texture_offset = *(addr_afp_texture_ptr + 3);
 
         return TRUE;
     }
@@ -214,24 +234,17 @@ namespace games::iidx {
     static void **__fastcall camera_hook_a(PBYTE a1) {
         std::call_once(hook_a_init, [&]{           
             device = *reinterpret_cast<LPDIRECT3DDEVICE9EX*>(a1 + addr_device_offset);
-            auto const textures = *reinterpret_cast<LPDIRECT3DTEXTURE9**>((uint8_t*)iidx_module + addr_textures);
+            auto const preview = *reinterpret_cast<LPDIRECT3DTEXTURE9**>((uint8_t*)iidx_module + addr_textures);
+            auto const manager = reinterpret_cast<Camera::CCameraManager2*>((uint8_t*)iidx_module + addr_camera_manager);
 
-            texture_a = textures;
-            texture_b = textures + 2;
+            camera_texture_a = manager->cameras->a->d3d9_texture(addr_afp_texture_offset);
+            camera_texture_b = manager->cameras->b->d3d9_texture(addr_afp_texture_offset);
+            preview_texture_a = preview;
+            preview_texture_b = preview + 2;
 
             init_local_camera();
         });
         return camera_hook_a_orig(a1);
-    }
-
-    static LPDIRECT3DTEXTURE9 camera_hook_b(void* a1, int idx) {
-        if (idx == 0 && top_camera) {
-            return top_camera->GetTexture();
-        }
-        if (idx == 1 && front_camera) {
-            return front_camera->GetTexture();
-        }
-        return camera_hook_b_orig(a1, idx);
     }
 
     bool create_hooks() {
@@ -243,17 +256,6 @@ namespace games::iidx {
                     camera_hook_a,
                     &camera_hook_a_orig)) {
             log_warning("iidx:camhook", "failed to trampoline hook_a");
-            return FALSE;
-        }
-
-        auto *hook_b_ptr = reinterpret_cast<uint16_t *>(
-                reinterpret_cast<intptr_t>(iidx_module) + addr_hook_b);
-
-        if (!detour::trampoline(
-                    reinterpret_cast<camera_hook_b_t>(hook_b_ptr),
-                    camera_hook_b,
-                    &camera_hook_b_orig)) {
-            log_warning("iidx:camhook", "failed to trampoline hook_b");
             return FALSE;
         }
 
@@ -443,7 +445,7 @@ namespace games::iidx {
     }
 
     IIDXLocalCamera* add_top_camera(IMFActivate* pActivate) {
-        auto top_camera = new IIDXLocalCamera("top", TDJ_CAMERA_PREFER_16_9, pActivate, s_pD3DManager, device, texture_a);
+        auto top_camera = new IIDXLocalCamera("top", TDJ_CAMERA_PREFER_16_9, pActivate, s_pD3DManager, device, camera_texture_a, preview_texture_a);
         if (top_camera->m_initialized) {
             LOCAL_CAMERA_LIST.push_back(top_camera);
         } else {
@@ -454,7 +456,7 @@ namespace games::iidx {
     }
 
     IIDXLocalCamera* add_front_camera(IMFActivate* pActivate) {
-        auto front_camera = new IIDXLocalCamera("front", TDJ_CAMERA_PREFER_16_9, pActivate, s_pD3DManager, device, texture_b);
+        auto front_camera = new IIDXLocalCamera("front", TDJ_CAMERA_PREFER_16_9, pActivate, s_pD3DManager, device, camera_texture_b, preview_texture_b);
         if (front_camera->m_initialized) {
             LOCAL_CAMERA_LIST.push_back(front_camera);
         } else {
@@ -469,8 +471,8 @@ namespace games::iidx {
         if (result) {
             log_misc(
                 "iidx:camhook",
-                "found hooks:\n    hook_a        0x{:x}\n    hook_b        0x{:x}\n    textures      0x{:x}\n    device_offset 0x{:x}",
-                addr_hook_a, addr_hook_b, addr_textures, addr_device_offset);
+                "found hooks:\n    hook_a             0x{:x}\n    textures           0x{:x}\n    camera_manager     0x{:x}\n    device_offset      0x{:x}\n    afp_texture_offset 0x{:x}",
+                addr_hook_a, addr_textures, addr_camera_manager, addr_device_offset, addr_afp_texture_offset);
             result = create_hooks();
             if (result) {
                 init_mf_library();
