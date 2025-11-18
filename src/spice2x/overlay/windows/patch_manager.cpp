@@ -288,6 +288,12 @@ namespace overlay::windows {
             this->reload_local_patches();
         }
 
+        if (avs::game::DLL_NAME == "kamunity.dll") {
+            ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Patches are not supported for Unity-based games.");
+            ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Instead, look for downloads of pre-patched DLLs.");
+            return;
+        }
+
         // game code info
         std::string identifiers;
         identifiers += avs::game::get_identifier() + "\n\n";
