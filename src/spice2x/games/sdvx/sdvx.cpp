@@ -106,8 +106,8 @@ namespace games::sdvx {
         if (ENABLE_COM_PORT_SCAN_HOOK &&
             lpSubKey != nullptr && phkResult != nullptr &&
 	        _stricmp(lpSubKey, "HARDWARE\\DEVICEMAP\\SERIALCOMM") == 0) {
-            log_info("sdvx::io", "failing HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM to force COM1 ICCA");
-            return 2; //ERROR_FILE_NOT_FOUND
+            log_info("sdvx::io", "hook access to HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM to force COM1 ICCA");
+            return 2; // ERROR_FILE_NOT_FOUND
         }
 
         return RegOpenKeyExA_orig(hKey, lpSubKey, ulOptions, samDesired, phkResult);
