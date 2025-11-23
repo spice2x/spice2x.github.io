@@ -1333,7 +1333,7 @@ int main_implementation(int argc, char *argv[]) {
 
     // SDVXFullscreenLandscape disabled due to it messing with in-game camera angle
     // FullscreenOrientationFlip continues to live on, however.
-    if (options[launcher::Options::SDVXFullscreenLandscape].value_bool()) {
+    if (options[launcher::Options::SDVXFullscreenLandscape].value_bool() && !cfg::CONFIGURATOR_STANDALONE) {
         log_fatal("launcher", "-sdvxlandscape removed due to a camera bug in SDVX!");
     }
 //  if (options[launcher::Options::SDVXFullscreenLandscape].value_bool() && !GRAPHICS_WINDOWED) {
@@ -1349,7 +1349,7 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // deleted options
-    if (options[launcher::Options::OpenKFControl].value_bool()) {
+    if (options[launcher::Options::OpenKFControl].value_bool() && !cfg::CONFIGURATOR_STANDALONE) {
         log_fatal("launcher", "KFControl has been removed from spice2x; please use an older version.");
     }
     if (options[launcher::Options::VREnable].value_bool()) {
