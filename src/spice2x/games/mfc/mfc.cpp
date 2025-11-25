@@ -4,6 +4,7 @@
 #include "avs/game.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/eamuse.h"
+#include "misc/wintouchemu.h"
 #include "touch/touch.h"
 #include "util/detour.h"
 #include "util/libutils.h"
@@ -32,6 +33,8 @@ namespace games::mfc {
     static uint8_t CARD_TYPE = 0;
     static uint8_t CARD_UID[8];
 
+    bool HG_MODE = false;
+
     typedef int (__cdecl *inifile_param_num_t)(const char *, int *);
     static inifile_param_num_t inifile_param_num_real;
 
@@ -50,8 +53,10 @@ namespace games::mfc {
     static void __cdecl touch_init(int width, int height) {
         log_info("mfc", "call touch_init(width: {}, height: {})", width, height);
 
-        // attach touch module
-        if (!TOUCH_ATTACHED) {
+        if (HG_MODE) {
+            wintouchemu::ADD_TOUCH_FLAG_PRIMARY = true;
+            wintouchemu::hook("MFC9", avs::game::DLL_INSTANCE);
+        } else if (!TOUCH_ATTACHED) { // attach touch module
 
             // store touch size specification
             TOUCH_MAX_X = width;
@@ -328,6 +333,10 @@ namespace games::mfc {
         if (allinone_module == nullptr) {
             log_misc("mfc", "using system.dll instead of allinone.dll for i/o hooks");
             allinone_module = system_module;
+
+            if (avs::game::SPEC[0] == 'F') {
+                HG_MODE = true;
+            }
         }
 
         // network fix

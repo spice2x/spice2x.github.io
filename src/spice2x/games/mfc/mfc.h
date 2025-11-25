@@ -4,6 +4,8 @@
 
 namespace games::mfc {
 
+    extern bool HG_MODE;
+
     struct joystick_state {
         bool up = false;
         bool down = false;
