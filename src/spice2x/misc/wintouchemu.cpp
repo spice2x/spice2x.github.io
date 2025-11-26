@@ -34,6 +34,7 @@ namespace wintouchemu {
     bool FORCE = false;
     bool INJECT_MOUSE_AS_WM_TOUCH = false;
     bool LOG_FPS = false;
+    bool ADD_TOUCH_FLAG_PRIMARY = false;
 
     static inline bool is_emu_enabled() {
         return FORCE || !is_touch_available("wintouchemu::is_emu_enabled") || GRAPHICS_SHOW_CURSOR;
@@ -187,16 +188,28 @@ namespace wintouchemu {
                 switch (touch_event->type) {
                     case TOUCH_DOWN:
                         if (valid) {
+                            if (ADD_TOUCH_FLAG_PRIMARY) {
+                                touch_input->dwFlags |= TOUCHEVENTF_PRIMARY;
+                            }
+
                             touch_input->dwFlags |= TOUCHEVENTF_DOWN;
                         }
                         break;
                     case TOUCH_MOVE:
                         if (valid) {
+                            if (ADD_TOUCH_FLAG_PRIMARY) {
+                                touch_input->dwFlags |= TOUCHEVENTF_PRIMARY;
+                            }
+
                             touch_input->dwFlags |= TOUCHEVENTF_MOVE;
                         }
                         break;
                     case TOUCH_UP:
                         // don't check valid so that this touch ID can be released
+                        if (ADD_TOUCH_FLAG_PRIMARY) {
+                            touch_input->dwFlags |= TOUCHEVENTF_PRIMARY;
+                        }
+
                         touch_input->dwFlags |= TOUCHEVENTF_UP;
                         break;
                 }
@@ -238,16 +251,28 @@ namespace wintouchemu {
                     switch (mouse_state.touch_event) {
                         case TOUCHEVENTF_DOWN:
                             if (valid) {
+                                if (ADD_TOUCH_FLAG_PRIMARY) {
+                                    touch_input->dwFlags |= TOUCHEVENTF_PRIMARY;
+                                }
+
                                 touch_input->dwFlags |= TOUCHEVENTF_DOWN;
                             }
                             break;
                         case TOUCHEVENTF_MOVE:
                             if (valid) {
+                                if (ADD_TOUCH_FLAG_PRIMARY) {
+                                    touch_input->dwFlags |= TOUCHEVENTF_PRIMARY;
+                                }
+
                                 touch_input->dwFlags |= TOUCHEVENTF_MOVE;
                             }
                             break;
                         case TOUCHEVENTF_UP:
                             // don't check valid so that this touch ID can be released
+                            if (ADD_TOUCH_FLAG_PRIMARY) {
+                                touch_input->dwFlags |= TOUCHEVENTF_PRIMARY;
+                            }
+
                             touch_input->dwFlags |= TOUCHEVENTF_UP;
                             break;
                     }

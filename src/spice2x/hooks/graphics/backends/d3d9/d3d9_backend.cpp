@@ -15,6 +15,7 @@
 #include "cfg/screen_resize.h"
 #include "games/iidx/iidx.h"
 #include "games/sdvx/sdvx.h"
+#include "games/mfc/mfc.h"
 #include "games/io.h"
 #include "hooks/graphics/graphics.h"
 #include "launcher/launcher.h"
@@ -1358,6 +1359,11 @@ void graphics_d3d9_on_present(
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
     if (is_vm || is_tdj) {
         graphics_d3d9_ldj_on_present(wrapped_device);
+    }
+
+    const bool is_mfc = avs::game::is_model("KK9") && games::mfc::HG_MODE;
+    if (is_mfc) {
+        wintouchemu::update();
     }
 
     // check screenshot key
