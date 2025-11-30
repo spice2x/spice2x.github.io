@@ -2828,10 +2828,7 @@ namespace overlay::windows {
                         std::string current_item = option.value_text();
                         for (auto &element : definition.elements) {
                             if (element.first == current_item) {
-                                if (!element.second.empty()) {
-                                    current_item += fmt::format(" ({})", element.second);
-                                }
-                                break;
+                                current_item += fmt::format(" ({})", element.second);
                             }
                         }
                         if (current_item.empty()) {
@@ -2839,13 +2836,11 @@ namespace overlay::windows {
                         }
                         if (ImGui::BeginCombo("##combo", current_item.c_str(), 0)) {
                             for (auto &element : definition.elements) {
+                                bool selected = current_item == element.first;
                                 std::string label = element.first;
                                 if (!element.second.empty()) {
                                     label += fmt::format(" ({})", element.second);
                                 }
-
-                                bool selected = current_item == label;
-
                                 if (ImGui::Selectable(label.c_str(), selected)) {
                                     this->options_dirty = true;
                                     option.value = element.first;
