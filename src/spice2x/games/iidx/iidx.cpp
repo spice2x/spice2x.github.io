@@ -409,15 +409,29 @@ namespace games::iidx {
 
     void IIDXGame::pre_attach() {
         Game::pre_attach();
+        auto options = games::get_options(eamuse_get_game());
 
         // environment variables must be set before the DLL is loaded as the VC++ runtime copies all
         // environment variables at startup
         if (SCREEN_MODE.has_value()) {
+            log_misc("iidx", "SCREEN_MODE env var set to {}", SCREEN_MODE.value().c_str());
             SetEnvironmentVariable("SCREEN_MODE", SCREEN_MODE.value().c_str());
         }
 
+        // check for cab camera access for the second time (first time was in launcher.cpp)
+        // this time, we are inside -iidx module hook, which means the user is likely NOT on a cab
+        // therefore, start with cams OFF by default, and allow user to forcibly override to ON
+        games::iidx::DISABLE_CAMS = true;
+        if (options->at(launcher::Options::IIDXCabCamAccess).is_active() &&
+            options->at(launcher::Options::IIDXCabCamAccess).value_text() == "on") {
+            games::iidx::DISABLE_CAMS = false;
+        }
+        if (games::iidx::DISABLE_CAMS) {
+            log_misc("iidx", "CONNECT_CAMERA env var set to 0");
+            SetEnvironmentVariable("CONNECT_CAMERA", "0");
+        }
+
         // windowed subscreen, enabled by default, unless turned off by user
-        auto options = games::get_options(eamuse_get_game());
         if (GRAPHICS_WINDOWED && !options->at(launcher::Options::spice2x_IIDXNoSub).value_bool()) {
             GRAPHICS_IIDX_WSUB = true;
         }

@@ -456,12 +456,28 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
-        .title = "IIDX Disable Cameras",
+        // IIDXDisableCameras
+        .title = "IIDX Disable Cameras (DEPRECATED - use -iidxcabcams)",
         .name = "iidxdisablecams",
         .desc = "Disables cameras",
         .type = OptionType::Bool,
+        .hidden = true,
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
+    },
+    {
+        // IIDXCabCamAccess
+        .title = "IIDX Allow Official Cabinet Camera Access",
+        .name = "iidxcabcams",
+        .desc = "For IIDX25+, allow direct access to official webcams from real arcade cabinets. "
+            "Only set this to on if you have official arcade camera parts. Default: off",
+        .type = OptionType::Enum,
+        .game_name = "Beatmania IIDX",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"off", "for home"},
+            {"on", "official AC cams"}
+        },
     },
     {
         // IIDXCamHook

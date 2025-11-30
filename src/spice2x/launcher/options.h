@@ -55,6 +55,7 @@ namespace launcher {
             LoadIIDXModule,
             IIDXCameraOrderFlip,
             IIDXDisableCameras,
+            IIDXCabCamAccess,
             IIDXCamHook,
             IIDXCamHookRatio,
             IIDXCamHookOverride,
