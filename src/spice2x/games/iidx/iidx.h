@@ -14,7 +14,7 @@ namespace games::iidx {
     // settings
 
     extern bool FLIP_CAMS;
-    extern bool DISABLE_CAMS;
+    extern std::optional<bool> DISABLE_CAMS;
     extern bool TDJ_CAMERA;
     extern bool TDJ_CAMERA_PREFER_16_9;
     extern std::optional<std::string> TDJ_CAMERA_OVERRIDE;

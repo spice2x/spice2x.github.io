@@ -213,6 +213,8 @@ namespace games::iidx {
     }
 
     void init_legacy_camera_hook(bool flip_cams) {
+        log_info("iidx::cam", "initializing legacy camera hook");
+
         should_flip_cams = flip_cams;
 
         // camera media framework hook
