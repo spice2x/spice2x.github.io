@@ -402,7 +402,7 @@ namespace games::iidx {
         if (!DISABLE_CAMS.has_value()) {
             log_fatal("iidx", "assertion failure - DISABLE_CAMS not set during attach");
         }
-        if (!DISABLE_CAMS) {
+        if (!DISABLE_CAMS.value()) {
             init_legacy_camera_hook(FLIP_CAMS);
         }
 
