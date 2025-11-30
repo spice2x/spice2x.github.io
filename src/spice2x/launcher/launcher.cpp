@@ -464,7 +464,7 @@ int main_implementation(int argc, char *argv[]) {
     // for now, we assume that user may be running on a cab
     // (games::iidx::DISABLE_CAMS starts out as false unless user overrides)
     // we will check again in IIDX module with a different default
-    assert(games::iidx::DISABLE_CAMS == false);
+    assert(!games::iidx::DISABLE_CAMS.has_value());
     if (options[launcher::Options::IIDXDisableCameras].value_bool()) {
         games::iidx::DISABLE_CAMS = true;
     }
@@ -1358,7 +1358,9 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_FS_ORIENTATION_SWAP = true;
     }
 
-    if (games::iidx::DISABLE_CAMS && !cfg::CONFIGURATOR_STANDALONE) {
+    if (games::iidx::DISABLE_CAMS.has_value() &&
+        games::iidx::DISABLE_CAMS.value() &&
+        !cfg::CONFIGURATOR_STANDALONE) {
         log_misc("launcher", "CONNECT_CAMERA env var set to 0");
         SetEnvironmentVariable("CONNECT_CAMERA", "0");
     }
