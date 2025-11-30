@@ -2844,7 +2844,7 @@ namespace overlay::windows {
                                     label += fmt::format(" ({})", element.second);
                                 }
                                 
-                                bool selected = current_item == element.first;
+                                bool selected = current_item == label;
                                 if (ImGui::Selectable(label.c_str(), selected)) {
                                     this->options_dirty = true;
                                     option.value = element.first;
