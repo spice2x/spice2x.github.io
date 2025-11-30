@@ -334,11 +334,6 @@ namespace games::iidx {
                     wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
                     wintouchemu::hook_title_ends("beatmania IIDX", "main", avs::game::DLL_INSTANCE);
                 }
-
-                // prevent crash on TDJ mode without correct DLL
-                if (!GetModuleHandle("nvcuda.dll")) {
-                    DISABLE_CAMS = true;
-                }
             }
 
             // insert BI2X hooks
