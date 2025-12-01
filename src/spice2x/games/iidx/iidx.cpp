@@ -53,7 +53,7 @@ namespace games::iidx {
 
     // settings
     bool FLIP_CAMS = false;
-    bool DISABLE_CAMS = false;
+    std::optional<bool> DISABLE_CAMS;
     bool TDJ_CAMERA = false;
     bool TDJ_CAMERA_PREFER_16_9 = true;
     bool TDJ_MODE = false;
@@ -334,11 +334,6 @@ namespace games::iidx {
                     wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
                     wintouchemu::hook_title_ends("beatmania IIDX", "main", avs::game::DLL_INSTANCE);
                 }
-
-                // prevent crash on TDJ mode without correct DLL
-                if (!GetModuleHandle("nvcuda.dll")) {
-                    DISABLE_CAMS = true;
-                }
             }
 
             // insert BI2X hooks
@@ -399,7 +394,10 @@ namespace games::iidx {
                 "RegQueryValueExA", RegQueryValueExA_hook, avs::game::DLL_INSTANCE);
 
         // check if cam hook should be enabled
-        if (!DISABLE_CAMS) {
+        if (!DISABLE_CAMS.has_value()) {
+            log_fatal("iidx", "assertion failure - DISABLE_CAMS not set during attach");
+        }
+        if (!DISABLE_CAMS.value()) {
             init_legacy_camera_hook(FLIP_CAMS);
         }
 
@@ -409,15 +407,31 @@ namespace games::iidx {
 
     void IIDXGame::pre_attach() {
         Game::pre_attach();
+        auto options = games::get_options(eamuse_get_game());
 
         // environment variables must be set before the DLL is loaded as the VC++ runtime copies all
         // environment variables at startup
         if (SCREEN_MODE.has_value()) {
+            log_misc("iidx", "SCREEN_MODE env var set to {}", SCREEN_MODE.value().c_str());
             SetEnvironmentVariable("SCREEN_MODE", SCREEN_MODE.value().c_str());
         }
 
+        // check for cab camera access for the second time (first time was in launcher.cpp)
+        // this time, we are inside -iidx module hook, which means the user is likely NOT on a cab
+        // therefore, start with cams OFF by default, and allow user to forcibly override to ON
+        if (!games::iidx::DISABLE_CAMS.has_value()) {
+            games::iidx::DISABLE_CAMS = true;
+            if (options->at(launcher::Options::IIDXCabCamAccess).is_active() &&
+                options->at(launcher::Options::IIDXCabCamAccess).value_text() == "on") {
+                games::iidx::DISABLE_CAMS = false;
+            }
+            if (games::iidx::DISABLE_CAMS.value()) {
+                log_misc("iidx", "CONNECT_CAMERA env var set to 0");
+                SetEnvironmentVariable("CONNECT_CAMERA", "0");
+            }
+        }
+
         // windowed subscreen, enabled by default, unless turned off by user
-        auto options = games::get_options(eamuse_get_game());
         if (GRAPHICS_WINDOWED && !options->at(launcher::Options::spice2x_IIDXNoSub).value_bool()) {
             GRAPHICS_IIDX_WSUB = true;
         }

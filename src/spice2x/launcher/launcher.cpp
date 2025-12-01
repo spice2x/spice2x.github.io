@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 
+#include <assert.h>
 #include <shlwapi.h>
 #include <cfg/configurator.h>
 
@@ -458,7 +459,17 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::IIDXCameraOrderFlip].value_bool()) {
         games::iidx::FLIP_CAMS = true;
     }
+
+    // IIDX CONNECT_CAMERA logic here for cases where user is running without -iidx module
+    // for now, we assume that user may be running on a cab
+    // (games::iidx::DISABLE_CAMS starts out as false unless user overrides)
+    // we will check again in IIDX module with a different default
+    assert(!games::iidx::DISABLE_CAMS.has_value());
     if (options[launcher::Options::IIDXDisableCameras].value_bool()) {
+        games::iidx::DISABLE_CAMS = true;
+    }
+    if (options[launcher::Options::IIDXCabCamAccess].is_active() &&
+        options[launcher::Options::IIDXCabCamAccess].value_text() == "off") {
         games::iidx::DISABLE_CAMS = true;
     }
     if (options[launcher::Options::IIDXCamHook].value_bool()) {
@@ -466,9 +477,8 @@ int main_implementation(int argc, char *argv[]) {
         // Disable legacy behaviour to avoid conflict
         games::iidx::DISABLE_CAMS = true;
     }
-    if (games::iidx::DISABLE_CAMS) {
-        SetEnvironmentVariable("CONNECT_CAMERA", "0");
-    }
+    // CONNECT_CAMERA env var will be set once logging is enabled
+
     if (options[launcher::Options::IIDXCamHookOverride].is_active()) {
         games::iidx::TDJ_CAMERA_OVERRIDE = options[launcher::Options::IIDXCamHookOverride].value_text();
     }
@@ -1346,6 +1356,13 @@ int main_implementation(int argc, char *argv[]) {
 
     if (options[launcher::Options::FullscreenOrientationFlip].value_bool() && !GRAPHICS_WINDOWED) {
         GRAPHICS_FS_ORIENTATION_SWAP = true;
+    }
+
+    if (games::iidx::DISABLE_CAMS.has_value() &&
+        games::iidx::DISABLE_CAMS.value() &&
+        !cfg::CONFIGURATOR_STANDALONE) {
+        log_misc("launcher", "CONNECT_CAMERA env var set to 0");
+        SetEnvironmentVariable("CONNECT_CAMERA", "0");
     }
 
     // deleted options
