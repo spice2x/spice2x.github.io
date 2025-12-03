@@ -789,22 +789,22 @@ namespace games::iidx {
         // 27-30: has both (envvar will be respected, ASIO or WASAPI)
         // 31+: only has XONAR (ASIO by default, signature patch can be used to force WASAPI - for now)
 
+        log_info(
+            "iidx",
+            "has_SOUND_OUTPUT_DEVICE: {}, has_XONAR_SOUND_CARD: {}",
+            (has_SOUND_OUTPUT_DEVICE != 0),
+            (has_XONAR_SOUND_CARD != 0));
+
         if (!has_SOUND_OUTPUT_DEVICE && !has_XONAR_SOUND_CARD) {
             // iidx 25-26
             log_info("iidx", "This game only uses WASAPI audio engine");
             return;
         }
 
-        if (has_SOUND_OUTPUT_DEVICE && has_XONAR_SOUND_CARD) {
-            // iidx 27-30
-            log_info("iidx", "This game accepts SOUND_OUTPUT_DEVICE environment variable");
-            return;
-        }
-
-        log_info("iidx", "This game supports ASIO but does not accept SOUND_OUTPUT_DEVICE environment variable");
-
-        // patch game to force wasapi
-        if (SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() && SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi") {
+        // if the game doesn't accept SOUND_OUTPUT_DEVICE, patch game to force wasapi
+        if (!has_SOUND_OUTPUT_DEVICE &&
+            SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() &&
+            SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi") {
             intptr_t result = replace_pattern(
                 avs::game::DLL_INSTANCE,
                 "FF5008E8??????FF83780803740D",
@@ -822,8 +822,6 @@ namespace games::iidx {
                     "Successfully forced WASAPI as audio engine using signature matching @ 0x{:x}.",
                     result);
             }
-        } else {
-            log_info("iidx", "Not applying force wasapi patch; game will use ASIO");
         }
 
         // patch iidx32+ for asio compatibility
@@ -831,7 +829,8 @@ namespace games::iidx {
         // the patch is only really needed for (some) non-XONAR devices but since people sometimes disguise 
         // other devices as a XONAR, don't check for the exact string (common ASIO workaround for INF)
         if (avs::game::is_ext(2024090100, MAXINT) &&
-            !(SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() && SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi")) {
+            !(SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() &&
+              SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi")) {
                 
             // in iidx32 final:
             // ff 50 08      call   QWORD PTR [rax+0x8]     ; ASIO instance AddRef
