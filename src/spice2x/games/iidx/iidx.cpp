@@ -451,7 +451,7 @@ namespace games::iidx {
                 "!!! please do the following instead:                              !!!\n"
                 "!!!                                                               !!!\n"
                 "!!! Revert your changes to XML file so it says                    !!!\n"
-                "!!!     <model __type=\"str\">LDJ</model>                           !!!\n" 
+                "!!!     <model __type=\"str\">LDJ</model>                         !!!\n" 
                 "!!!                                                               !!!\n"
                 "!!! In SpiceCfg, enable 'IIDX TDJ Mode' or provide -iidxtdj flag  !!!\n"
                 "!!! in command line                                               !!!\n"
@@ -462,6 +462,32 @@ namespace games::iidx {
                 );
 
             log_fatal("iidx", "BAD MODEL NAME ERROR - TDJ specified, must be LDJ instead");
+        }
+
+        // check -monitor + TDJ mode
+        if (!GRAPHICS_WINDOWED &&
+            options->at(launcher::Options::DisplayAdapter).is_active() &&
+            TDJ_MODE) {
+            log_warning(
+                "iidx",
+                "\n\n!!! using -monitor option with TDJ is NOT recommended due to known  !!!\n"
+                "!!! compatibility issues with the game                              !!!\n"
+                "!!!                                                                 !!!\n"
+                "!!!   * game may launch in wrong resolution or refresh rate         !!!\n"
+                "!!!   * touch / mouse input may stop working in subscreen / overlay !!!\n"
+                "!!!                                                                 !!!\n"
+                "!!! recommendation is to NOT use -monitor and instead set the       !!!\n"
+                "!!! primary monitor in Windows settings before launching the game   !!!\n\n"
+                );
+
+            deferredlogs::defer_error_messages({
+                "-monitor option is NOT recommended when running with TDJ mode",
+                "    due to known compatibility issues with the game:",
+                "      * game may launch in wrong resolution or refresh rate",
+                "      * touch / mouse input may stop working in subscreen / overlay",
+                "    recommended fix is to NOT use -monitor and instead set the primary",
+                "    monitor in Windows settings before launching the game"
+                });
         }
     }
 

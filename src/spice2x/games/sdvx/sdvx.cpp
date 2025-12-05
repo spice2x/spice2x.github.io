@@ -4,6 +4,7 @@
 
 #include "avs/game.h"
 #include "games/shared/lcdhandle.h"
+#include "games/io.h"
 #include "hooks/audio/audio.h"
 #include "hooks/graphics/graphics.h"
 #include "hooks/devicehook.h"
@@ -12,6 +13,7 @@
 #include "hooks/powrprof.h"
 #include "hooks/sleephook.h"
 #include "hooks/winuser.h"
+#include "launcher/options.h"
 #include "touch/touch.h"
 #include "util/deferlog.h"
 #include "util/detour.h"
@@ -290,7 +292,38 @@ namespace games::sdvx {
             log_fatal(
                 "sdvx",
                 "BAD MODEL NAME ERROR - model name set to UFC, must be KFC instead");
-        }   
+        }
+
+#ifdef SPICE64 // SDVX5+ specific code
+        bool isValkyrieCabinetMode = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
+        auto options = games::get_options(eamuse_get_game());
+        // check -monitor + UFC mode
+        if (!GRAPHICS_WINDOWED &&
+            options->at(launcher::Options::DisplayAdapter).is_active() &&
+            isValkyrieCabinetMode) {
+            log_warning(
+                "sdvx",
+                "\n\n!!! using -monitor option with VM mode is NOT recommended due to    !!!\n"
+                "!!! known compatibility issues with the game                        !!!\n"
+                "!!!                                                                 !!!\n"
+                "!!!   * game may launch in wrong resolution or refresh rate         !!!\n"
+                "!!!   * touch / mouse input may stop working in subscreen / overlay !!!\n"
+                "!!!                                                                 !!!\n"
+                "!!! recommendation is to NOT use -monitor and instead set the       !!!\n"
+                "!!! primary monitor in Windows settings before launching the game   !!!\n\n"
+                );
+
+            deferredlogs::defer_error_messages({
+                "-monitor option is NOT recommended when running with Valkyrie mode",
+                "    due to known compatibility issues with the game:",
+                "      * game may launch in wrong resolution or refresh rate",
+                "      * touch / mouse input may stop working in subscreen / overlay",
+                "    recommended fix is to NOT use -monitor and instead set the primary",
+                "    monitor in Windows settings before launching the game"
+                });
+        }
+#endif
+
     }
 
     void SDVXGame::attach() {
