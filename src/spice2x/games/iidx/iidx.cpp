@@ -787,7 +787,9 @@ namespace games::iidx {
         // <=24 : 32-bit only
         // 25-26: has neither (no patch needed - WASAPI Exclusive by default)
         // 27-30: has both (envvar will be respected, ASIO or WASAPI)
-        // 31+: only has XONAR (ASIO by default, signature patch can be used to force WASAPI - for now)
+        // 31-32: only has XONAR (ASIO by default, signature patch can be used to force WASAPI - for now)
+        // 33   : early versions only have XONAR, but later datecodes have both; SOUND_OUTPUT_DEVICE
+        //        returned and it works again when set as env var
 
         log_info(
             "iidx",
