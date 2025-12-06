@@ -82,16 +82,21 @@ public:
         return this->index != 0xFF;
     }
 
-    inline void clearBindings() {
-        device_identifier = "";
-        index = 0xFF;
+    inline void resetValues() {
         setSensitivity(1.f);
         setDeadzone(0.f);
         invert = false;
         smoothing = false;
+        deadzone_mirror = false;
         setMultiplier(1);
         setRelativeMode(false);
         setDelayBufferDepth(0);
+    }
+
+    inline void clearBindings() {
+        device_identifier = "";
+        index = 0xFF;
+        resetValues();
     }
 
     inline const std::string &getName() const {

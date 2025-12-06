@@ -1727,6 +1727,13 @@ namespace overlay::windows {
                         std::vector<int> analogs_midi_indices;
                         if (this->analogs_devices_selected >= 0) {
                             auto device = this->analogs_devices.at(this->analogs_devices_selected);
+
+                            // add a tooltip to devices selector
+                            if (!device->name.empty()) {
+                                ImGui::SameLine();
+                                ImGui::HelpMarker(device->name.c_str());
+                            }
+                            
                             switch (device->type) {
                                 case rawinput::MOUSE: {
 
@@ -2034,6 +2041,11 @@ namespace overlay::windows {
                         if (ImGui::Button("Save & Close")) {
                             ::Config::getInstance().updateBinding(games_list[games_selected], analog);
                             ImGui::CloseCurrentPopup();
+                        }
+
+                        ImGui::SameLine();
+                        if (ImGui::Button("Reset")) {
+                            analog.resetValues();
                         }
 
                         // clean up
