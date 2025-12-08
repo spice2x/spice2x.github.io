@@ -487,8 +487,7 @@ namespace avs {
             if (strcmp(EA3_MODEL, "MDX") == 0 && strcmp(EA3_SPEC, "I") == 0) {
                 init_code << "G";
                 init_code << "B";
-            }
-            else {
+            } else {
                 init_code << EA3_SPEC;
                 init_code << EA3_REV;
             }
