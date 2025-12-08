@@ -484,8 +484,14 @@ namespace avs {
             std::ostringstream init_code;
             init_code << EA3_MODEL;
             init_code << EA3_DEST;
-            init_code << EA3_SPEC;
-            init_code << EA3_REV;
+            if (strcmp(EA3_MODEL, "MDX") == 0 && strcmp(EA3_SPEC, "I") == 0) {
+                init_code << 'G';
+                init_code << 'B';
+            }
+            else {
+                init_code << EA3_SPEC;
+                init_code << EA3_EXT;
+            }
             init_code << EA3_EXT;
             std::string init_code_str = init_code.str();
 
