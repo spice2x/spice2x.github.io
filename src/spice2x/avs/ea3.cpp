@@ -452,15 +452,9 @@ namespace avs {
                 security_code << "*";
             }
             security_code << EA3_MODEL;
-            if (strcmp(EA3_MODEL, "MDX") == 0 && strcmp(EA3_SPEC, "I") == 0) {
-                security_code << "E";
-                security_code << "B";
-                security_code << "B";
-            } else {
-                security_code << EA3_DEST;
-                security_code << EA3_SPEC;
-                security_code << EA3_REV;
-            }
+            security_code << EA3_DEST;
+            security_code << EA3_SPEC;
+            security_code << EA3_REV;
             std::string security_code_str = security_code.str();
             log_info("avs-ea3", "security code: {}", security_code_str);
 
@@ -490,8 +484,14 @@ namespace avs {
             std::ostringstream init_code;
             init_code << EA3_MODEL;
             init_code << EA3_DEST;
-            init_code << EA3_SPEC;
-            init_code << EA3_REV;
+            if (strcmp(EA3_MODEL, "MDX") == 0 && strcmp(EA3_SPEC, "I") == 0) {
+                init_code << "G";
+                init_code << "B";
+            }
+            else {
+                init_code << EA3_SPEC;
+                init_code << EA3_REV;
+            }
             init_code << EA3_EXT;
             std::string init_code_str = init_code.str();
 
