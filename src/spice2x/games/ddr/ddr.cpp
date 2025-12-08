@@ -2,6 +2,8 @@
 
 #include "acioemu/handle.h"
 #include "avs/game.h"
+#include "hooks/avshook.h"
+#include "hooks/cfgmgr32hook.h"
 #include "hooks/devicehook.h"
 #include "hooks/setupapihook.h"
 #include "hooks/sleephook.h"
@@ -121,7 +123,7 @@ namespace games::ddr {
             }
         }
     }
-    
+
 
     void DDRGame::pre_attach() {
         if (!cfg::CONFIGURATOR_STANDALONE && avs::game::is_model("TDX")) {
@@ -183,10 +185,37 @@ namespace games::ddr {
         // init device hook
         devicehook_init();
 
+        // init SETUP API
+        setupapihook_init(avs::game::DLL_INSTANCE);
+
+        // DDR ACE actually uses another DLL for things
+        if (game_mdx != nullptr) {
+            setupapihook_init(game_mdx);
+        }
+
         // add fake devices
         if (avs::game::DLL_NAME == "arkmdxbio2.dll") {
             devicehook_add(new acioemu::ACIOHandle(L"COM1"));
-        } else if(avs::game::DLL_NAME == "arkmdxp4.dll") {
+
+            if (avs::game::SPEC[0] == 'I') {
+                // settings (bio2)
+                SETUPAPI_SETTINGS settingsbio2 {};
+                const char property2[] = "BIO2(VIDEO)";
+                settingsbio2.class_guid[0] = 0x4D36E978;
+                settingsbio2.class_guid[1] = 0x11CEE325;
+                settingsbio2.class_guid[2] = 0x8C1BF;
+                settingsbio2.class_guid[3] = 0x1803E12B;
+                memcpy(settingsbio2.property_devicedesc, property2, sizeof(property2));
+                setupapihook_add(settingsbio2);
+
+                // cfgmgr (bio2)
+                CFGMGR32_HOOK_SETTING settingbio2 {};
+                settingbio2.device_id = "USB\\VID_1CCF&PID_804C";
+                settingbio2.device_node_id = "USB\\VID_1CCF&PID_804C&MI_00\\?&????????&?&????";
+                cfgmgr32hook_init(avs::game::DLL_INSTANCE);
+                cfgmgr32hook_add(settingbio2);
+            }
+        } else if (avs::game::DLL_NAME == "arkmdxp4.dll") {
             devicehook_add(new DDRP4IOHandle());
         } else {
             devicehook_add(new DDRFOOTHandle());
@@ -227,14 +256,6 @@ namespace games::ddr {
         settingsp4io.class_guid[3] = 0x206A4706;
         memcpy(settingsp4io.property_devicedesc, settings_property, strlen(settings_property) + 1);
         memcpy(settingsp4io.interface_detail, settings_detail_p4io, sizeof(settings_detail_p4io));
-
-        // init SETUP API
-        setupapihook_init(avs::game::DLL_INSTANCE);
-
-        // DDR ACE actually uses another DLL for things
-        if (game_mdx != nullptr) {
-            setupapihook_init(game_mdx);
-        }
 
         // add settings
         setupapihook_add(settings1);
