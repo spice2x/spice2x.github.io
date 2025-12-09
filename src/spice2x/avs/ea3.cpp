@@ -570,7 +570,7 @@ namespace avs {
             soft_id_code << EA3_EXT;
             std::string soft_id_code_str = soft_id_code.str();
             log_info("avs-ea3", "soft id code: {}", soft_id_code_str);
-            deferredlogs::softid = soft_id_code_str;
+            deferredlogs::set_softid(soft_id_code_str);
 
             // set soft ID code
             avs::core::avs_std_setenv("/env/profile/soft_id_code", soft_id_code_str.c_str());
