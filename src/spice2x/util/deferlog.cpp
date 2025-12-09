@@ -18,6 +18,14 @@ namespace deferredlogs {
     std::mutex deferred_errors_mutex;
     std::vector<std::vector<std::string>> deferred_errors;
 
+    std::mutex softid_mutex;
+    std::string softid;
+
+    void set_softid(const std::string& softid_new) {
+        std::lock_guard<std::mutex> lock(softid_mutex);
+        softid = softid_new;
+    }
+
     void defer_error_messages(std::initializer_list<std::string> messages) {
         std::lock_guard<std::mutex> lock(deferred_errors_mutex);
         deferred_errors.emplace_back(messages);
@@ -45,6 +53,17 @@ namespace deferredlogs {
             msg += "/-------------------------- spice2x auto-troubleshooter -----------------------\\\n";
             msg += "\n";
             msg += "  spice2x version: " + to_string(VERSION_STRING_CFG) + "\n";
+
+            // soft ID
+            {
+                std::lock_guard<std::mutex> lock(softid_mutex);
+                if (!softid.empty()) {
+                    msg += "  game version: " + softid + "\n";
+                } else {
+                    msg += "  game version: unknown\n";
+                }
+            }
+
             msg += "\n";
             
             if (is_crash) {
