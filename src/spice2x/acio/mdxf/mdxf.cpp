@@ -11,7 +11,8 @@
 const size_t STATUS_BUFFER_SIZE = 32;
 
 // static stuff
-static uint8_t COUNTER = 0;
+static uint8_t COUNTER_P1 = 0;
+static uint8_t COUNTER_P2 = 0;
 
 // buffers
 #pragma pack(push, 1)
@@ -45,13 +46,14 @@ static bool __cdecl ac_io_mdxf_get_control_status_buffer(int node, void *buffer,
     // Dance Dance Revolution
     if (avs::game::is_model("MDX")) {
 
-        // get buffer index
-        auto i = (COUNTER + a3) % std::size(BUFFERS.STATUS_BUFFER_P1);
-
         // copy buffer
         if (node == 17 || node == 25) {
+			// get buffer index
+			auto i = (COUNTER_P1 + a3) % std::size(BUFFERS.STATUS_BUFFER_P1);
             memcpy(buffer, BUFFERS.STATUS_BUFFER_P1[i], STATUS_BUFFER_SIZE);
         } else if (node == 18 || node == 26) {
+			// get buffer index
+			auto i = (COUNTER_P2 + a3) % std::size(BUFFERS.STATUS_BUFFER_P2);
             memcpy(buffer, BUFFERS.STATUS_BUFFER_P2[i], STATUS_BUFFER_SIZE);
         } else {
 
@@ -106,9 +108,6 @@ static bool __cdecl ac_io_mdxf_set_output_level(unsigned int a1, unsigned int a2
 
 static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
 
-    // increase counter
-    COUNTER = (COUNTER + 1) % std::size(BUFFERS.STATUS_BUFFER_P1);
-
     // check freeze
     if (STATUS_BUFFER_FREEZE) {
         return true;
@@ -119,11 +118,15 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
     switch (node) {
         case 17:
         case 25:
-            buffer = BUFFERS.STATUS_BUFFER_P1[COUNTER];
+			// increase counter
+			COUNTER_P1 = (COUNTER_P1 + 1) % std::size(BUFFERS.STATUS_BUFFER_P1);
+            buffer = BUFFERS.STATUS_BUFFER_P1[COUNTER_P1];
             break;
         case 18:
         case 26:
-            buffer = BUFFERS.STATUS_BUFFER_P2[COUNTER];
+			// increase counter
+			COUNTER_P2 = (COUNTER_P2 + 1) % std::size(BUFFERS.STATUS_BUFFER_P2);
+            buffer = BUFFERS.STATUS_BUFFER_P2[COUNTER_P2];
             break;
         default:
 
