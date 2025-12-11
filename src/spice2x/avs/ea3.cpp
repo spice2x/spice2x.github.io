@@ -283,6 +283,7 @@ namespace avs {
 
             // read software nodes
             if (ea3_soft != nullptr) {
+                log_misc("avs-ea3", "reading soft id from {}...", ea3_config_name);
                 avs::core::property_node_refer(ea3_config, ea3_soft, "model",
                         avs::core::NODE_TYPE_str, EA3_MODEL, 4);
                 avs::core::property_node_refer(ea3_config, ea3_soft, "dest",
@@ -294,6 +295,7 @@ namespace avs {
                 avs::core::property_node_refer(ea3_config, ea3_soft, "ext",
                         avs::core::NODE_TYPE_str, EA3_EXT, 11);
             } else if (fileutils::file_exists("prop/ea3-ident.xml")) {
+                log_misc("avs-ea3", "reading soft id from prop/ea3-ident.xml...");
 
                 // read ident config
                 auto ea3_ident = avs::core::config_read("prop/ea3-ident.xml");
@@ -317,7 +319,14 @@ namespace avs {
                 // clean up
                 avs::core::config_destroy(ea3_ident);
             } else {
-                log_fatal("avs-ea3", "node not found in '{}': /ea3/soft", ea3_config_name);
+                // <ea3><soft> node missing error
+                log_warning("avs-ea3", "soft id (datecode) not found in prop XML files");
+                log_warning("avs-ea3", "get fixed prop files and try again - you have incomplete data");
+                log_warning("avs-ea3", "for experts only:");
+                log_warning("avs-ea3", "  * add the missing <soft>...</soft> node to {}", ea3_config_name);
+                log_warning("avs-ea3", "  * alternatively, provide ea3-ident.xml with <ea3_conf><soft>...");
+
+                log_fatal("avs-ea3", "datecode missing in '{}'; 'prop/ea3-ident.xml' also missing", ea3_config_name);
             }
 
             // set account id (`EA3_PCBID` is valid if and only if `/ea3/id` is present)
