@@ -44,7 +44,7 @@ static uint64_t arkGetTickTime64() {
 static uint64_t __cdecl ac_io_mdxf_get_control_status_buffer(int node, void *out, uint8_t index, uint8_t head_in) {
 
 	// Default error value (matches original mask behavior)
-    auto error_ret = (uint64_t)(node - 0x11) & 0xFFFFFFFFFFFFFF00;
+    auto error_ret = static_cast<uint64_t>(node - 0x11) & 0xFFFFFFFFFFFFFF00;
 	
     // Dance Dance Revolution
     if (avs::game::is_model("MDX")) {
@@ -54,14 +54,14 @@ static uint64_t __cdecl ac_io_mdxf_get_control_status_buffer(int node, void *out
 		uint8_t (*buffer)[STATUS_BUFFER_SIZE];
 		size_t size;
 		
-		 if (node == 17 || node == 25) {
-			head   = HEAD_P1;
+		if (node == 17 || node == 25) {
+			head = HEAD_P1;
 			buffer = BUFFERS.STATUS_BUFFER_P1;
-			size   = std::size(BUFFERS.STATUS_BUFFER_P1);
+			size = std::size(BUFFERS.STATUS_BUFFER_P1);
 		} else if (node == 18 || node == 26) {
-			head   = HEAD_P2;
+			head = HEAD_P2;
 			buffer = BUFFERS.STATUS_BUFFER_P2;
-			size   = std::size(BUFFERS.STATUS_BUFFER_P2);
+			size = std::size(BUFFERS.STATUS_BUFFER_P2);
 		} else {
 			memset(out, 0, STATUS_BUFFER_SIZE);
 			return error_ret;
@@ -73,9 +73,9 @@ static uint64_t __cdecl ac_io_mdxf_get_control_status_buffer(int node, void *out
 
 		// Compute ring index: walk backwards from head as index increases
 		// Assumes ring buffer size is a power of two
-		const size_t mask   = size - 1;
+		const size_t mask = size - 1;
 		const size_t offset = static_cast<size_t>(index) & mask;
-		const size_t i      = (static_cast<size_t>(head) - offset + size) & mask;
+		const size_t i = (static_cast<size_t>(head) - offset + size) & mask;
 
 		// Copy the chosen entry
 		memcpy(out, buffer[i], STATUS_BUFFER_SIZE);
