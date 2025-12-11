@@ -86,18 +86,29 @@ namespace nvenc_hook {
         } catch (const std::exception &ex) {}
 
     done:
-        return nvEncInitializeEncoder_orig(encoder, createEncodeParams);
+        const auto status = nvEncInitializeEncoder_orig(encoder, createEncodeParams);
+        log_misc(
+            "nvenc_hook",
+            "nvEncInitializeEncoder returned 0x{:x}",
+            static_cast<uint32_t>(status));
+
+        return status;
     }
 
     NVENCSTATUS NVENCAPI nvEncGetEncodePresetConfig_hook (
         void* encoder, GUID encodeGUID, GUID presetGUID, NV_ENC_PRESET_CONFIG* presetConfig) {
+
+        // IIDX32 calls this with
+        // presetGUID = {34DBA71D-A77B-4B8F-9C3E-B6D5DA24C012} (NV_ENC_PRESET_HQ_GUID) (for h264)
+        // this preset is deprecated according to NVIDIA
 
         const auto status = nvEncGetEncodePresetConfig_orig(
             encoder, encodeGUID, presetGUID, presetConfig);
 
         log_misc(
             "nvenc_hook",
-            "NvEncGetEncodePresetConfig called with presetGUID = {} and returned 0x{:x}",
+            "NvEncGetEncodePresetConfig called with encodeGUID = {}, presetGUID = {}. and returned 0x{:x}",
+            guid2s(encodeGUID),
             guid2s(presetGUID),
             static_cast<uint32_t>(status));
 
@@ -106,25 +117,25 @@ namespace nvenc_hook {
         }
 
         // in NVIDIA driver 591.44 released in December 2025,
-        // NvEncGetEncodePresetConfig started to fail and cause a crash
+        // NvEncGetEncodePresetConfig started to fail with NV_ENC_ERR_UNSUPPORTED_PARAM and
+        // eventually cause a crash
+        //
         // NVIDIA says:
         //   "NvEncGetEncodePresetConfig() only works with older presets. The fact that it worked in
         //    the older driver was a bug, and is fixed in newer driver. Please use
         //    NvEncGetEncodePresetConfigEx()"
-        //
-        // IIDX32 calls this with
-        //   presetGUID = {34DBA71D-A77B-4B8F-9C3E-B6D5DA24C012} (NV_ENC_PRESET_HQ_GUID)
         //
         // references:
         //   https://github.com/NVIDIA/video-sdk-samples/tree/aa3544dcea2fe63122e4feb83bf805ea40e58dbe/Samples/NvCodec/NvEncoder
         //   https://forums.developer.nvidia.com/t/drivers-591-44-broke-nvenc-getencodepresetconfig-no-longer-works/353613
         //   https://docs.nvidia.com/video-technologies/video-codec-sdk/11.1/nvenc-preset-migration-guide/index.html
 
+        // TODO: maybe allow the user to set the preset (p3/p4/p5)
         const auto status_ex =
             nvEncGetEncodePresetConfigEx_orig(
                 encoder,
                 encodeGUID,
-                presetGUID,
+                NV_ENC_PRESET_P4_GUID,
                 NV_ENC_TUNING_INFO_HIGH_QUALITY,
                 presetConfig);
 
