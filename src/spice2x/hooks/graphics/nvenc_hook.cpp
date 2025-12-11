@@ -55,6 +55,7 @@ namespace nvenc_hook {
         try {
             // check input params
             if (createEncodeParams == nullptr || createEncodeParams->encodeConfig == nullptr) {
+                log_warning("nvenc_hook", "nvEncInitializeEncoder called with invalid params");
                 goto done;
             }
 
