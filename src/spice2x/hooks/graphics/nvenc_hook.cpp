@@ -23,7 +23,6 @@ static PNVENCINITIALIZEENCODER nvEncInitializeEncoder_orig = nullptr;
 static PNVENCGETENCODEPRESETCONFIG nvEncGetEncodePresetConfig_orig = nullptr;
 static PNVENCGETENCODEPRESETCONFIGEX nvEncGetEncodePresetConfigEx_orig = nullptr;
 static BOOL initialized = false;
-static BOOL need_nvenc_compat_hacks = false;
 
 namespace nvenc_hook {
 
@@ -98,12 +97,6 @@ namespace nvenc_hook {
 
             log_misc("nvenc_hook", "nvEncInitializeEncoder hook hit with expected params");
 
-            if (need_nvenc_compat_hacks) {
-                log_misc("nvenc_hook", "applying hacks for newer NVENC SDK");
-                rc->version = NV_ENC_RC_PARAMS_VER;
-                createEncodeParams->tuningInfo = NV_ENC_TUNING_INFO_HIGH_QUALITY;
-            }
-
             // print out most relevant video quality settings
             // note: NvEncoder.cpp sample uses {28, 31, 25} (and that's what some hex edits modify)
             //       but bm2dx later adds 8 to each value, before calling this routine
@@ -144,41 +137,7 @@ namespace nvenc_hook {
             guid2s(presetGUID),
             static_cast<uint32_t>(status));
 
-        if (status == NV_ENC_SUCCESS) {
-            return status;
-        }
-
-        need_nvenc_compat_hacks = true;
-
-        // in NVIDIA driver 591.44 released in December 2025,
-        // NvEncGetEncodePresetConfig started to fail with NV_ENC_ERR_UNSUPPORTED_PARAM and
-        // eventually cause a crash
-        //
-        // IIDX32 calls this with
-        // presetGUID = {34DBA71D-A77B-4B8F-9C3E-B6D5DA24C012} (NV_ENC_PRESET_HQ_GUID) (for h264)
-        // this preset is deprecated according to NVIDIA
-        // https://docs.nvidia.com/video-technologies/video-codec-sdk/13.0/deprecation-notices/index.html
-        //
-        // references:
-        //   https://github.com/NVIDIA/video-sdk-samples/tree/aa3544dcea2fe63122e4feb83bf805ea40e58dbe/Samples/NvCodec/NvEncoder
-        //   https://forums.developer.nvidia.com/t/drivers-591-44-broke-nvenc-getencodepresetconfig-no-longer-works/353613
-        //   https://docs.nvidia.com/video-technologies/video-codec-sdk/11.1/nvenc-preset-migration-guide/index.html
-
-        // TODO: maybe allow the user to set the preset (p3/p4/p5)
-        const auto status_ex =
-            nvEncGetEncodePresetConfigEx_orig(
-                encoder,
-                encodeGUID,
-                NV_ENC_PRESET_P4_GUID,
-                NV_ENC_TUNING_INFO_HIGH_QUALITY,
-                presetConfig);
-
-        log_misc(
-            "nvenc_hook",
-            "called NvEncGetEncodePresetConfigEx instead; returned 0x{:x}",
-            static_cast<uint32_t>(status_ex));
-
-        return status_ex;
+        return status;
     }
 
     NVENCSTATUS NVENCAPI NvEncodeAPICreateInstance_hook(NV_ENCODE_API_FUNCTION_LIST *pFunctionList) {        
