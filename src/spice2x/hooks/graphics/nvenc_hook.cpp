@@ -9,6 +9,7 @@
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
+#include "util/utils.h"
 
 #include "nvenc_hook.h"
 
@@ -16,8 +17,11 @@
 
 typedef NVENCSTATUS(NVENCAPI *NvEncodeAPICreateInstance_Type)(NV_ENCODE_API_FUNCTION_LIST*);
 static NvEncodeAPICreateInstance_Type NvEncodeAPICreateInstance_orig = nullptr;
+
 static PNVENCOPENENCODESESSIONEX nvEncOpenEncodeSessionEx_orig = nullptr;
 static PNVENCINITIALIZEENCODER nvEncInitializeEncoder_orig = nullptr;
+static PNVENCGETENCODEPRESETCONFIG nvEncGetEncodePresetConfig_orig = nullptr;
+static PNVENCGETENCODEPRESETCONFIGEX nvEncGetEncodePresetConfigEx_orig = nullptr;
 static BOOL initialized = false;
 
 namespace nvenc_hook {
@@ -85,6 +89,53 @@ namespace nvenc_hook {
         return nvEncInitializeEncoder_orig(encoder, createEncodeParams);
     }
 
+    NVENCSTATUS NVENCAPI nvEncGetEncodePresetConfig_hook (
+        void* encoder, GUID encodeGUID, GUID presetGUID, NV_ENC_PRESET_CONFIG* presetConfig) {
+
+        const auto status = nvEncGetEncodePresetConfig_orig(
+            encoder, encodeGUID, presetGUID, presetConfig);
+
+        log_misc(
+            "nvenc_hook",
+            "NvEncGetEncodePresetConfig called with presetGUID = {} and returned 0x{:x}",
+            guid2s(presetGUID),
+            static_cast<uint32_t>(status));
+
+        if (status == NV_ENC_SUCCESS) {
+            return status;
+        }
+
+        // in NVIDIA driver 591.44 released in December 2025,
+        // NvEncGetEncodePresetConfig started to fail and cause a crash
+        // NVIDIA says:
+        //   "NvEncGetEncodePresetConfig() only works with older presets. The fact that it worked in
+        //    the older driver was a bug, and is fixed in newer driver. Please use
+        //    NvEncGetEncodePresetConfigEx()"
+        //
+        // IIDX32 calls this with
+        //   presetGUID = {34DBA71D-A77B-4B8F-9C3E-B6D5DA24C012} (NV_ENC_PRESET_HQ_GUID)
+        //
+        // references:
+        //   https://github.com/NVIDIA/video-sdk-samples/tree/aa3544dcea2fe63122e4feb83bf805ea40e58dbe/Samples/NvCodec/NvEncoder
+        //   https://forums.developer.nvidia.com/t/drivers-591-44-broke-nvenc-getencodepresetconfig-no-longer-works/353613
+        //   https://docs.nvidia.com/video-technologies/video-codec-sdk/11.1/nvenc-preset-migration-guide/index.html
+
+        const auto status_ex =
+            nvEncGetEncodePresetConfigEx_orig(
+                encoder,
+                encodeGUID,
+                presetGUID,
+                NV_ENC_TUNING_INFO_HIGH_QUALITY,
+                presetConfig);
+
+        log_misc(
+            "nvenc_hook",
+            "called NvEncGetEncodePresetConfigEx instead; returned 0x{:x}",
+            static_cast<uint32_t>(status_ex));
+
+        return status_ex;
+    }
+
     NVENCSTATUS NVENCAPI NvEncodeAPICreateInstance_hook(NV_ENCODE_API_FUNCTION_LIST *pFunctionList) {        
         // log_misc("nvenc_hook", "NvEncodeAPICreateInstance hook hit");
         auto status = NvEncodeAPICreateInstance_orig(pFunctionList);
@@ -101,6 +152,11 @@ namespace nvenc_hook {
                 pFunctionList->nvEncInitializeEncoder,
                 nvEncInitializeEncoder_hook,
                 &nvEncInitializeEncoder_orig);
+            detour::trampoline_try(
+                pFunctionList->nvEncGetEncodePresetConfig,
+                nvEncGetEncodePresetConfig_hook,
+                &nvEncGetEncodePresetConfig_orig);
+            nvEncGetEncodePresetConfigEx_orig = pFunctionList->nvEncGetEncodePresetConfigEx;
             log_misc("nvenc_hook", "NvEncodeAPICreateInstance_hook called and functions hooked");
             initialized = true;
         }
@@ -123,6 +179,7 @@ namespace nvenc_hook {
         } else {
             log_warning("nvenc_hook", "failed to hook NvEncodeAPICreateInstance");
         }
+
         parse_qcp_params();
     }
 
