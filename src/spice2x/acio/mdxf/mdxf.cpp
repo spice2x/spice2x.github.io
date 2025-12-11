@@ -11,14 +11,14 @@
 const size_t STATUS_BUFFER_SIZE = 32;
 
 // static stuff
-static uint8_t COUNTER_P1 = 0;
-static uint8_t COUNTER_P2 = 0;
+static uint8_t HEAD_P1 = 0;
+static uint8_t HEAD_P2 = 0;
 
 // buffers
 #pragma pack(push, 1)
 static struct {
-    uint8_t STATUS_BUFFER_P1[7][STATUS_BUFFER_SIZE] {};
-    uint8_t STATUS_BUFFER_P2[7][STATUS_BUFFER_SIZE] {};
+    uint8_t STATUS_BUFFER_P1[16][STATUS_BUFFER_SIZE] {};
+    uint8_t STATUS_BUFFER_P2[16][STATUS_BUFFER_SIZE] {};
 } BUFFERS {};
 #pragma pack(pop)
 
@@ -41,30 +41,50 @@ static uint64_t arkGetTickTime64() {
  * Implementations
  */
 
-static bool __cdecl ac_io_mdxf_get_control_status_buffer(int node, void *buffer, uint8_t a3, uint8_t a4) {
+static uint64_t __cdecl ac_io_mdxf_get_control_status_buffer(int node, void *out, uint8_t index, uint8_t head_in) {
 
+	// Default error value (matches original mask behavior)
+    auto error_ret = (uint64_t)(node - 0x11) & 0xFFFFFFFFFFFFFF00;
+	
     // Dance Dance Revolution
     if (avs::game::is_model("MDX")) {
 
-        // copy buffer
-        if (node == 17 || node == 25) {
-			// get buffer index
-			auto i = (COUNTER_P1 + a3) % std::size(BUFFERS.STATUS_BUFFER_P1);
-            memcpy(buffer, BUFFERS.STATUS_BUFFER_P1[i], STATUS_BUFFER_SIZE);
-        } else if (node == 18 || node == 26) {
-			// get buffer index
-			auto i = (COUNTER_P2 + a3) % std::size(BUFFERS.STATUS_BUFFER_P2);
-            memcpy(buffer, BUFFERS.STATUS_BUFFER_P2[i], STATUS_BUFFER_SIZE);
-        } else {
+        // Select player-specific state
+		uint8_t head;
+		uint8_t (*buffer)[STATUS_BUFFER_SIZE];
+		size_t size;
+		
+		 if (node == 17 || node == 25) {
+			head   = HEAD_P1;
+			buffer = BUFFERS.STATUS_BUFFER_P1;
+			size   = std::size(BUFFERS.STATUS_BUFFER_P1);
+		} else if (node == 18 || node == 26) {
+			head   = HEAD_P2;
+			buffer = BUFFERS.STATUS_BUFFER_P2;
+			size   = std::size(BUFFERS.STATUS_BUFFER_P2);
+		} else {
+			memset(out, 0, STATUS_BUFFER_SIZE);
+			return error_ret;
+		}
 
-            // fill with zeros on unknown node
-            memset(buffer, 0, STATUS_BUFFER_SIZE);
-            return false;
-        }
+		if (head_in != 0xFF) {
+			head = head_in;
+		}
+
+		// Compute ring index: walk backwards from head as index increases
+		// Assumes ring buffer size is a power of two
+		const size_t mask   = size - 1;
+		const size_t offset = static_cast<size_t>(index) & mask;
+		const size_t i      = (static_cast<size_t>(head) - offset + size) & mask;
+
+		// Copy the chosen entry
+		memcpy(out, buffer[i], STATUS_BUFFER_SIZE);
+
+		// Return the head value actually used
+		return static_cast<uint64_t>(head);
     }
 
-    // return success
-    return true;
+    return error_ret;
 }
 
 static bool __cdecl ac_io_mdxf_set_output_level(unsigned int a1, unsigned int a2, uint8_t value) {
@@ -119,14 +139,14 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
         case 17:
         case 25:
 			// increase counter
-			COUNTER_P1 = (COUNTER_P1 + 1) % std::size(BUFFERS.STATUS_BUFFER_P1);
-            buffer = BUFFERS.STATUS_BUFFER_P1[COUNTER_P1];
+			HEAD_P1 = (HEAD_P1 + 1) % std::size(BUFFERS.STATUS_BUFFER_P1);
+            buffer = BUFFERS.STATUS_BUFFER_P1[HEAD_P1];
             break;
         case 18:
         case 26:
 			// increase counter
-			COUNTER_P2 = (COUNTER_P2 + 1) % std::size(BUFFERS.STATUS_BUFFER_P2);
-            buffer = BUFFERS.STATUS_BUFFER_P2[COUNTER_P2];
+			HEAD_P2 = (HEAD_P2 + 1) % std::size(BUFFERS.STATUS_BUFFER_P2);
+            buffer = BUFFERS.STATUS_BUFFER_P2[HEAD_P2];
             break;
         default:
 
