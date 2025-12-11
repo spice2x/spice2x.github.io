@@ -9,6 +9,7 @@
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
+#include "util/utils.h"
 
 #include "nvenc_hook.h"
 
@@ -16,8 +17,11 @@
 
 typedef NVENCSTATUS(NVENCAPI *NvEncodeAPICreateInstance_Type)(NV_ENCODE_API_FUNCTION_LIST*);
 static NvEncodeAPICreateInstance_Type NvEncodeAPICreateInstance_orig = nullptr;
+
 static PNVENCOPENENCODESESSIONEX nvEncOpenEncodeSessionEx_orig = nullptr;
 static PNVENCINITIALIZEENCODER nvEncInitializeEncoder_orig = nullptr;
+static PNVENCGETENCODEPRESETCONFIG nvEncGetEncodePresetConfig_orig = nullptr;
+static PNVENCGETENCODEPRESETCONFIGEX nvEncGetEncodePresetConfigEx_orig = nullptr;
 static BOOL initialized = false;
 
 namespace nvenc_hook {
@@ -51,9 +55,39 @@ namespace nvenc_hook {
         try {
             // check input params
             if (createEncodeParams == nullptr || createEncodeParams->encodeConfig == nullptr) {
+                log_warning("nvenc_hook", "nvEncInitializeEncoder called with invalid params");
                 goto done;
             }
+
+            log_misc("nvenc_hook", "nvEncInitializeEncoder called with NV_ENC_INITIALIZE_PARAMS:");
+            log_misc("nvenc_hook", "  version: {:x}", createEncodeParams->version);
+            log_misc("nvenc_hook", "  encodeGUID: {}", guid2s(createEncodeParams->encodeGUID));
+            log_misc("nvenc_hook", "  presetGUID: {}", guid2s(createEncodeParams->presetGUID));
+            log_misc("nvenc_hook", "  encodeWidth: {}", createEncodeParams->encodeWidth);
+            log_misc("nvenc_hook", "  encodeHeight: {}", createEncodeParams->encodeHeight);
+            log_misc("nvenc_hook", "  darWidth: {}", createEncodeParams->darWidth);
+            log_misc("nvenc_hook", "  darHeight: {}", createEncodeParams->darHeight);
+            log_misc("nvenc_hook", "  frameRateNum: {}", createEncodeParams->frameRateNum);
+            log_misc("nvenc_hook", "  frameRateDen: {}", createEncodeParams->frameRateDen);
+            log_misc("nvenc_hook", "  enableEncodeAsync: {}", createEncodeParams->enableEncodeAsync);
+            log_misc("nvenc_hook", "  enablePTD: {}", createEncodeParams->enablePTD);
+            log_misc("nvenc_hook", "  maxEncodeWidth: {}", createEncodeParams->maxEncodeWidth);
+            log_misc("nvenc_hook", "  maxEncodeHeight: {}", createEncodeParams->maxEncodeHeight);
+            log_misc("nvenc_hook", "  tuningInfo: {}", static_cast<uint32_t>(createEncodeParams->tuningInfo));
+            log_misc("nvenc_hook", "  bufferFormat: {}", static_cast<uint32_t>(createEncodeParams->bufferFormat));
+            log_misc("nvenc_hook", "  encodeConfig.version: {:x}", createEncodeParams->encodeConfig->version);
+            log_misc("nvenc_hook", "  encodeConfig.profileGUID: {}", guid2s(createEncodeParams->encodeConfig->profileGUID));
+            log_misc("nvenc_hook", "  encodeConfig.gopLength: {}", createEncodeParams->encodeConfig->gopLength);
+            log_misc("nvenc_hook", "  encodeConfig.frameIntervalP: {}", createEncodeParams->encodeConfig->frameIntervalP);
+            log_misc("nvenc_hook", "  encodeConfig.monoChromeEncoding: {}", createEncodeParams->encodeConfig->monoChromeEncoding);
+
+            const auto h264 = &createEncodeParams->encodeConfig->encodeCodecConfig.h264Config;
+            log_misc("nvenc_hook", "  encodeConfig.encodeCodecConfig.h264Config.sliceMode: {}", h264->sliceMode);
+            log_misc("nvenc_hook", "  encodeConfig.encodeCodecConfig.h264Config.sliceModeData: {}", h264->sliceModeData);
+
             const auto rc = &createEncodeParams->encodeConfig->rcParams;
+            log_misc("nvenc_hook", "  encodeConfig.rcParams.version: {:x}", rc->version);
+            log_misc("nvenc_hook", "  encodeConfig.rcParams.rateControlMode: {}", static_cast<uint32_t>(rc->rateControlMode));
             if (rc->rateControlMode != NV_ENC_PARAMS_RC_CONSTQP) {
                 log_warning(
                     "nvenc_hook",
@@ -82,7 +116,29 @@ namespace nvenc_hook {
         } catch (const std::exception &ex) {}
 
     done:
-        return nvEncInitializeEncoder_orig(encoder, createEncodeParams);
+        const auto status = nvEncInitializeEncoder_orig(encoder, createEncodeParams);
+        log_misc(
+            "nvenc_hook",
+            "nvEncInitializeEncoder returned 0x{:x}",
+            static_cast<uint32_t>(status));
+
+        return status;
+    }
+
+    NVENCSTATUS NVENCAPI nvEncGetEncodePresetConfig_hook (
+        void* encoder, GUID encodeGUID, GUID presetGUID, NV_ENC_PRESET_CONFIG* presetConfig) {
+
+        const auto status = nvEncGetEncodePresetConfig_orig(
+            encoder, encodeGUID, presetGUID, presetConfig);
+
+        log_misc(
+            "nvenc_hook",
+            "NvEncGetEncodePresetConfig called with encodeGUID = {}, presetGUID = {}. and returned 0x{:x}",
+            guid2s(encodeGUID),
+            guid2s(presetGUID),
+            static_cast<uint32_t>(status));
+
+        return status;
     }
 
     NVENCSTATUS NVENCAPI NvEncodeAPICreateInstance_hook(NV_ENCODE_API_FUNCTION_LIST *pFunctionList) {        
@@ -101,6 +157,11 @@ namespace nvenc_hook {
                 pFunctionList->nvEncInitializeEncoder,
                 nvEncInitializeEncoder_hook,
                 &nvEncInitializeEncoder_orig);
+            detour::trampoline_try(
+                pFunctionList->nvEncGetEncodePresetConfig,
+                nvEncGetEncodePresetConfig_hook,
+                &nvEncGetEncodePresetConfig_orig);
+            nvEncGetEncodePresetConfigEx_orig = pFunctionList->nvEncGetEncodePresetConfigEx;
             log_misc("nvenc_hook", "NvEncodeAPICreateInstance_hook called and functions hooked");
             initialized = true;
         }
@@ -123,6 +184,7 @@ namespace nvenc_hook {
         } else {
             log_warning("nvenc_hook", "failed to hook NvEncodeAPICreateInstance");
         }
+
         parse_qcp_params();
     }
 
