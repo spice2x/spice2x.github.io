@@ -55,7 +55,7 @@ namespace nvenc_hook {
         log_misc("nvenc_hook", "  encodeConfig.frameIntervalP: {}", encode->encodeConfig->frameIntervalP);
         log_misc("nvenc_hook", "  encodeConfig.monoChromeEncoding: {}", encode->encodeConfig->monoChromeEncoding);
 
-        auto rc = &encode->encodeConfig->rcParams;
+        const auto rc = &encode->encodeConfig->rcParams;
         const auto h264 = &encode->encodeConfig->encodeCodecConfig.h264Config;
         log_misc("nvenc_hook", "  encodeConfig.encodeCodecConfig.h264Config.sliceMode: {}", h264->sliceMode);
         log_misc("nvenc_hook", "  encodeConfig.encodeCodecConfig.h264Config.sliceModeData: {}", h264->sliceModeData);
