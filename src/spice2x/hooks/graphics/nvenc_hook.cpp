@@ -23,6 +23,7 @@ static PNVENCINITIALIZEENCODER nvEncInitializeEncoder_orig = nullptr;
 static PNVENCGETENCODEPRESETCONFIG nvEncGetEncodePresetConfig_orig = nullptr;
 static PNVENCGETENCODEPRESETCONFIGEX nvEncGetEncodePresetConfigEx_orig = nullptr;
 static BOOL initialized = false;
+static BOOL new_preset_guids = false;
 
 namespace nvenc_hook {
 
@@ -30,6 +31,37 @@ namespace nvenc_hook {
     std::optional<NV_ENC_QP> VIDEO_CQP_OVERRIDE;
 
     void parse_qcp_params();
+
+    void dump_init_params(NV_ENC_INITIALIZE_PARAMS* encode) {
+        log_misc("nvenc_hook", "NV_ENC_INITIALIZE_PARAMS:");
+        log_misc("nvenc_hook", "  version: {:x}", encode->version);
+        log_misc("nvenc_hook", "  encodeGUID: {}", guid2s(encode->encodeGUID));
+        log_misc("nvenc_hook", "  presetGUID: {}", guid2s(encode->presetGUID));
+        log_misc("nvenc_hook", "  encodeWidth: {}", encode->encodeWidth);
+        log_misc("nvenc_hook", "  encodeHeight: {}", encode->encodeHeight);
+        log_misc("nvenc_hook", "  darWidth: {}", encode->darWidth);
+        log_misc("nvenc_hook", "  darHeight: {}", encode->darHeight);
+        log_misc("nvenc_hook", "  frameRateNum: {}", encode->frameRateNum);
+        log_misc("nvenc_hook", "  frameRateDen: {}", encode->frameRateDen);
+        log_misc("nvenc_hook", "  enableEncodeAsync: {}", encode->enableEncodeAsync);
+        log_misc("nvenc_hook", "  enablePTD: {}", encode->enablePTD);
+        log_misc("nvenc_hook", "  maxEncodeWidth: {}", encode->maxEncodeWidth);
+        log_misc("nvenc_hook", "  maxEncodeHeight: {}", encode->maxEncodeHeight);
+        log_misc("nvenc_hook", "  tuningInfo: {}", static_cast<uint32_t>(encode->tuningInfo));
+        log_misc("nvenc_hook", "  bufferFormat: {}", static_cast<uint32_t>(encode->bufferFormat));
+        log_misc("nvenc_hook", "  encodeConfig.version: {:x}", encode->encodeConfig->version);
+        log_misc("nvenc_hook", "  encodeConfig.profileGUID: {}", guid2s(encode->encodeConfig->profileGUID));
+        log_misc("nvenc_hook", "  encodeConfig.gopLength: {}", encode->encodeConfig->gopLength);
+        log_misc("nvenc_hook", "  encodeConfig.frameIntervalP: {}", encode->encodeConfig->frameIntervalP);
+        log_misc("nvenc_hook", "  encodeConfig.monoChromeEncoding: {}", encode->encodeConfig->monoChromeEncoding);
+
+        auto rc = &encode->encodeConfig->rcParams;
+        const auto h264 = &encode->encodeConfig->encodeCodecConfig.h264Config;
+        log_misc("nvenc_hook", "  encodeConfig.encodeCodecConfig.h264Config.sliceMode: {}", h264->sliceMode);
+        log_misc("nvenc_hook", "  encodeConfig.encodeCodecConfig.h264Config.sliceModeData: {}", h264->sliceModeData);
+        log_misc("nvenc_hook", "  encodeConfig.rcParams.version: {:x}", rc->version);
+        log_misc("nvenc_hook", "  encodeConfig.rcParams.rateControlMode: {}", static_cast<uint32_t>(rc->rateControlMode));
+    }
 
     NVENCSTATUS NVENCAPI nvEncOpenEncodeSessionEx_hook(
         NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS *openSessionExParams, 
@@ -59,58 +91,37 @@ namespace nvenc_hook {
                 goto done;
             }
 
-            log_misc("nvenc_hook", "nvEncInitializeEncoder called with NV_ENC_INITIALIZE_PARAMS:");
-            log_misc("nvenc_hook", "  version: {:x}", createEncodeParams->version);
-            log_misc("nvenc_hook", "  encodeGUID: {}", guid2s(createEncodeParams->encodeGUID));
-            log_misc("nvenc_hook", "  presetGUID: {}", guid2s(createEncodeParams->presetGUID));
-            log_misc("nvenc_hook", "  encodeWidth: {}", createEncodeParams->encodeWidth);
-            log_misc("nvenc_hook", "  encodeHeight: {}", createEncodeParams->encodeHeight);
-            log_misc("nvenc_hook", "  darWidth: {}", createEncodeParams->darWidth);
-            log_misc("nvenc_hook", "  darHeight: {}", createEncodeParams->darHeight);
-            log_misc("nvenc_hook", "  frameRateNum: {}", createEncodeParams->frameRateNum);
-            log_misc("nvenc_hook", "  frameRateDen: {}", createEncodeParams->frameRateDen);
-            log_misc("nvenc_hook", "  enableEncodeAsync: {}", createEncodeParams->enableEncodeAsync);
-            log_misc("nvenc_hook", "  enablePTD: {}", createEncodeParams->enablePTD);
-            log_misc("nvenc_hook", "  maxEncodeWidth: {}", createEncodeParams->maxEncodeWidth);
-            log_misc("nvenc_hook", "  maxEncodeHeight: {}", createEncodeParams->maxEncodeHeight);
-            log_misc("nvenc_hook", "  tuningInfo: {}", static_cast<uint32_t>(createEncodeParams->tuningInfo));
-            log_misc("nvenc_hook", "  bufferFormat: {}", static_cast<uint32_t>(createEncodeParams->bufferFormat));
-            log_misc("nvenc_hook", "  encodeConfig.version: {:x}", createEncodeParams->encodeConfig->version);
-            log_misc("nvenc_hook", "  encodeConfig.profileGUID: {}", guid2s(createEncodeParams->encodeConfig->profileGUID));
-            log_misc("nvenc_hook", "  encodeConfig.gopLength: {}", createEncodeParams->encodeConfig->gopLength);
-            log_misc("nvenc_hook", "  encodeConfig.frameIntervalP: {}", createEncodeParams->encodeConfig->frameIntervalP);
-            log_misc("nvenc_hook", "  encodeConfig.monoChromeEncoding: {}", createEncodeParams->encodeConfig->monoChromeEncoding);
-
-            const auto h264 = &createEncodeParams->encodeConfig->encodeCodecConfig.h264Config;
-            log_misc("nvenc_hook", "  encodeConfig.encodeCodecConfig.h264Config.sliceMode: {}", h264->sliceMode);
-            log_misc("nvenc_hook", "  encodeConfig.encodeCodecConfig.h264Config.sliceModeData: {}", h264->sliceModeData);
-
             const auto rc = &createEncodeParams->encodeConfig->rcParams;
-            log_misc("nvenc_hook", "  encodeConfig.rcParams.version: {:x}", rc->version);
-            log_misc("nvenc_hook", "  encodeConfig.rcParams.rateControlMode: {}", static_cast<uint32_t>(rc->rateControlMode));
-            if (rc->rateControlMode != NV_ENC_PARAMS_RC_CONSTQP) {
+
+            log_misc("nvenc_hook", "nvEncInitializeEncoder hook hit with expected params");
+            dump_init_params(createEncodeParams);
+            if (new_preset_guids) {
+                log_misc("nvenc_hook", "swapping out encoder preset for newer NVENC SDK");
+                memcpy(&createEncodeParams->presetGUID, &NV_ENC_PRESET_P4_GUID, sizeof(GUID));
+                createEncodeParams->tuningInfo = NV_ENC_TUNING_INFO_HIGH_QUALITY;
+            }
+
+            // cqp p/b/i override
+            if (rc->rateControlMode == NV_ENC_PARAMS_RC_CONSTQP) {
+                // print out most relevant video quality settings
+                // note: NvEncoder.cpp sample uses {28, 31, 25} (and that's what some hex edits modify)
+                //       but bm2dx later adds 8 to each value, before calling this routine
+                log_misc(
+                    "nvenc_hook", "nvEncInitializeEncoder: original constQP p={}, b={}, i={}",
+                    rc->constQP.qpInterP, rc->constQP.qpInterB, rc->constQP.qpIntra);
+
+                // video quality override
+                if (VIDEO_CQP_OVERRIDE.has_value()) {
+                    rc->constQP = VIDEO_CQP_OVERRIDE.value();
+                    log_misc(
+                        "nvenc_hook", "nvEncInitializeEncoder: user overriden constQP p={}, b={}, i={}",
+                        rc->constQP.qpInterP, rc->constQP.qpInterB, rc->constQP.qpIntra);
+                }
+            } else {
                 log_warning(
                     "nvenc_hook",
                     "nvEncInitializeEncoder: unexpected rateControlMode, expected: NV_ENC_PARAMS_RC_CONSTQP, actual: {}",
                     rc->rateControlMode);
-                goto done;
-            }
-
-            log_misc("nvenc_hook", "nvEncInitializeEncoder hook hit with expected params");
-
-            // print out most relevant video quality settings
-            // note: NvEncoder.cpp sample uses {28, 31, 25} (and that's what some hex edits modify)
-            //       but bm2dx later adds 8 to each value, before calling this routine
-            log_misc(
-                "nvenc_hook", "nvEncInitializeEncoder: original constQP p={}, b={}, i={}",
-                rc->constQP.qpInterP, rc->constQP.qpInterB, rc->constQP.qpIntra);
-
-            // video quality override
-            if (VIDEO_CQP_OVERRIDE.has_value()) {
-                rc->constQP = VIDEO_CQP_OVERRIDE.value();
-                log_misc(
-                    "nvenc_hook", "nvEncInitializeEncoder: user overriden constQP p={}, b={}, i={}",
-                    rc->constQP.qpInterP, rc->constQP.qpInterB, rc->constQP.qpIntra);
             }
 
         } catch (const std::exception &ex) {}
@@ -128,6 +139,10 @@ namespace nvenc_hook {
     NVENCSTATUS NVENCAPI nvEncGetEncodePresetConfig_hook (
         void* encoder, GUID encodeGUID, GUID presetGUID, NV_ENC_PRESET_CONFIG* presetConfig) {
 
+        // IIDX32 calls this with
+        // presetGUID = {34DBA71D-A77B-4B8F-9C3E-B6D5DA24C012} (NV_ENC_PRESET_HQ_GUID) (for h264)
+        // this preset is deprecated according to NVIDIA
+
         const auto status = nvEncGetEncodePresetConfig_orig(
             encoder, encodeGUID, presetGUID, presetConfig);
 
@@ -138,7 +153,39 @@ namespace nvenc_hook {
             guid2s(presetGUID),
             static_cast<uint32_t>(status));
 
-        return status;
+        if (status == NV_ENC_SUCCESS) {
+            return status;
+        }
+
+        // in NVIDIA driver 591.44 released in December 2025,
+        // NvEncGetEncodePresetConfig started to fail with NV_ENC_ERR_UNSUPPORTED_PARAM and
+        // eventually cause a crash
+        //
+        // IIDX32 calls this with
+        // presetGUID = {34DBA71D-A77B-4B8F-9C3E-B6D5DA24C012} (NV_ENC_PRESET_HQ_GUID) (for h264)
+        // this preset is deprecated according to NVIDIA
+        // https://docs.nvidia.com/video-technologies/video-codec-sdk/13.0/deprecation-notices/index.html
+        //
+        // references:
+        //   https://github.com/NVIDIA/video-sdk-samples/tree/aa3544dcea2fe63122e4feb83bf805ea40e58dbe/Samples/NvCodec/NvEncoder
+        //   https://forums.developer.nvidia.com/t/drivers-591-44-broke-nvenc-getencodepresetconfig-no-longer-works/353613
+        //   https://docs.nvidia.com/video-technologies/video-codec-sdk/11.1/nvenc-preset-migration-guide/index.html
+
+        new_preset_guids = true;
+        const auto status_ex =
+            nvEncGetEncodePresetConfigEx_orig(
+                encoder,
+                encodeGUID,
+                NV_ENC_PRESET_P4_GUID,
+                NV_ENC_TUNING_INFO_HIGH_QUALITY,
+                presetConfig);
+
+        log_misc(
+            "nvenc_hook",
+            "called NvEncGetEncodePresetConfigEx instead; returned 0x{:x}",
+            static_cast<uint32_t>(status_ex));
+
+        return status_ex;
     }
 
     NVENCSTATUS NVENCAPI NvEncodeAPICreateInstance_hook(NV_ENCODE_API_FUNCTION_LIST *pFunctionList) {        
