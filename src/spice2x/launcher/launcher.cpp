@@ -539,6 +539,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::IIDXRecQuality].is_active()) {
         nvenc_hook::VIDEO_CQP_STRING_OVERRIDE = options[launcher::Options::IIDXRecQuality].value_text();
     }
+    if (options[launcher::Options::IIDXRecDisable].value_bool()) {
+        nvenc_hook::FORCE_DISABLE = true;
+    }
 #endif
     if (options[launcher::Options::LoadJubeatModule].value_bool()) {
         attach_jb = true;
