@@ -2235,12 +2235,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // IIDXRecQuality
-        .title = "IIDX NVENC Quality",
+        .title = "IIDX Recording Quality",
         .name = "iidxreccqp",
         .desc = "WARNING: double check if your network allows this & your hardware supports it.\n\n"
             "For TDJ Play Record feature, specify ConstQP quality settings for NVENC. Lower is higher quality but bigger file.\n\n"
             "Two options: specify a single number (20) to set CQ Level, or specify comma-separated numbers (23,25,20) to set P, B, I levels",
         .type = OptionType::Text,
+        .game_name = "Beatmania IIDX",
+        .category = "Game Options (Advanced)",
+    },
+    {
+        // IIDXRecDisable
+        .title = "IIDX Recording Force Disable",
+        .name = "iidxnorec",
+        .desc = "When enabled, this prevents the play record feature from being used",
+        .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
         .category = "Game Options (Advanced)",
     },
