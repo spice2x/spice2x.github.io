@@ -238,6 +238,7 @@ namespace launcher {
             spice2x_EnableSMXStage,
             spice2x_EnableSMXDedicab,
             IIDXRecQuality,
+            IIDXRecDisable,
             MidiAlgoVer,
             MidiNoteSustain,
             InputRequiresFocus,

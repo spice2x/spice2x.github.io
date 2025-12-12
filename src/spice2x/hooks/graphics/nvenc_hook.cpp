@@ -27,6 +27,8 @@ static BOOL new_preset_guids = false;
 
 namespace nvenc_hook {
 
+    bool FORCE_DISABLE;
+
     std::optional<std::string> VIDEO_CQP_STRING_OVERRIDE;
     std::optional<NV_ENC_QP> VIDEO_CQP_OVERRIDE;
 
@@ -189,6 +191,11 @@ namespace nvenc_hook {
     }
 
     NVENCSTATUS NVENCAPI NvEncodeAPICreateInstance_hook(NV_ENCODE_API_FUNCTION_LIST *pFunctionList) {        
+
+        if (FORCE_DISABLE) {
+            return NV_ENC_ERR_NO_ENCODE_DEVICE;
+        }
+
         // log_misc("nvenc_hook", "NvEncodeAPICreateInstance hook hit");
         auto status = NvEncodeAPICreateInstance_orig(pFunctionList);
 
