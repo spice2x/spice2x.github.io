@@ -1,4 +1,5 @@
 #include "mdxf.h"
+#include "mdxf_poll.h"
 
 #include "avs/game.h"
 #include "games/ddr/io.h"
@@ -6,10 +7,8 @@
 #include "rawinput/rawinput.h"
 #include "util/logging.h"
 #include "util/utils.h"
+#include "launcher/logger.h"
 #include <mutex>
-#include <thread>
-#include <atomic>
-#include <chrono>
 
 // constants
 const size_t STATUS_BUFFER_SIZE = 32;
@@ -19,17 +18,11 @@ const size_t STATUS_BUFFER_NUM_ENTRIES = 16;
 static uint8_t HEAD_P1 = 0;
 static uint8_t HEAD_P2 = 0;
 
+static uint16_t PREV_STATE_P1 = 0;
+static uint16_t PREV_STATE_P2 = 0;
+
 static std::mutex MUTEX_P1;
 static std::mutex MUTEX_P2;
-
-// Fast-poll thread state
-static std::atomic<bool> MDXF_POLL_RUNNING{false};
-static std::thread MDXF_POLL_THREAD;
-
-static constexpr int MAX_POLLING_RATE = 2000;
-
-//The polling thread will use more CPU with the limit removed. This could probably be a spicecfg option.
-static const bool REMOVE_POLLING_RATE_LIMIT = false;
 
 // buffers
 #pragma pack(push, 1)
@@ -41,17 +34,25 @@ static struct {
 
 static bool STATUS_BUFFER_FREEZE = false;
 
+typedef enum {
+	ARKMDXP4_POLL = 0,
+	EXTERNAL_POLL = 1
+} MDXFPollSource;
+
 typedef uint64_t (__cdecl *ARK_GET_TICK_TIME64_T)();
 
 static uint64_t arkGetTickTime64() {
-    static ARK_GET_TICK_TIME64_T getTickTime64 =
-        (ARK_GET_TICK_TIME64_T)GetProcAddress(avs::game::DLL_INSTANCE, "arkGetTickTime64");
-    if (getTickTime64 == nullptr) {
-        // this works on 32-bit versions of avs, but not on 64.
-        // it's better than nothing though.
-        return timeGetTime();
+    static ARK_GET_TICK_TIME64_T getTickTime64 = nullptr;
+
+    if (!getTickTime64) {
+        HMODULE h = avs::game::DLL_INSTANCE;
+        if (h) {
+            getTickTime64 = (ARK_GET_TICK_TIME64_T)GetProcAddress(h, "arkGetTickTime64");
+        }
     }
-    return getTickTime64();
+    // this works on 32-bit versions of avs, but not on 64.
+    // it's better than nothing though.
+    return getTickTime64 ? getTickTime64() : timeGetTime();
 }
 
 /*
@@ -146,16 +147,16 @@ static bool __cdecl ac_io_mdxf_set_output_level(unsigned int a1, unsigned int a2
     return true;
 }
 
-static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
+static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFPollSource source) {
 
     // check freeze
     if (STATUS_BUFFER_FREEZE) {
         return true;
     }
-	
-	uint8_t *buffer_entry = nullptr;
+
 	uint8_t (*buffer)[STATUS_BUFFER_SIZE];
 	uint8_t *head = nullptr;
+	uint16_t *prev_state = nullptr;
 	std::mutex* mutex = nullptr;
 	
 	switch (node) {
@@ -163,36 +164,20 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
 		case 25:
 			mutex = &MUTEX_P1;
 			head = &HEAD_P1;
+			prev_state = &PREV_STATE_P1;
 			buffer = BUFFERS.STATUS_BUFFER_P1;
 			break;
 		case 18:
 		case 26:
 			mutex = &MUTEX_P2;
 			head = &HEAD_P2;
+			prev_state = &PREV_STATE_P2;
 			buffer = BUFFERS.STATUS_BUFFER_P2;
 			break;
 		default:
 			// return failure on unknown node
 			return false;
 	}
-	
-	std::lock_guard<std::mutex> lock(*mutex);
-	
-	buffer_entry = buffer[*head];
-	uint64_t current_time = *(uint64_t*)&buffer_entry[0x18];
-	uint64_t now = arkGetTickTime64();
-	
-	// If there's already an entry for this exact moment, then don't advance head pointer or write a new entry
-	if (current_time == now) {
-		return true;
-	}
-	
-	// Advance head pointer
-	*head = (*head + 1) % STATUS_BUFFER_NUM_ENTRIES;
-	buffer_entry = buffer[*head];
-	
-	// Clear buffer
-	memset(buffer_entry, 0, STATUS_BUFFER_SIZE);
 
     // Dance Dance Revolution
     if (avs::game::is_model("MDX")) {
@@ -227,91 +212,63 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
                 break;
         }
 
-		*(uint64_t*)&buffer_entry[0x18] = now;
-
         // get buttons
         auto &buttons = games::ddr::get_buttons();
+		uint8_t up_down = 0;
+		uint8_t left_right = 0;
 
         if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[0]))) {
-            buffer_entry[4] |= 0xF0;
+            up_down |= 0xF0;
         }
         if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[1]))) {
-            buffer_entry[4] |= 0x0F;
+            up_down |= 0x0F;
         }
         if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[2]))) {
-            buffer_entry[5] |= 0xF0;
+            left_right |= 0xF0;
         }
         if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[3]))) {
-            buffer_entry[5] |= 0x0F;
+            left_right |= 0x0F;
         }
-    }
+		
+		uint16_t current_state = (uint16_t(up_down) << 8) | left_right;
+		
+		std::lock_guard<std::mutex> lock(*mutex);
+		
+		// If state hasn't changed and the update was triggered outside arkmdxp4.dll, then don't advance head pointer or write a new entry
+		if (current_state == *prev_state && source != ARKMDXP4_POLL) {
+			return true;
+		}
+		
+		*prev_state = current_state;
+
+		// Advance head pointer
+		*head = (*head + 1) % STATUS_BUFFER_NUM_ENTRIES;
+		uint8_t* buffer_entry = buffer[*head];
+
+		// Clear buffer
+		memset(buffer_entry, 0, STATUS_BUFFER_SIZE);
+		
+		// Write button state
+		buffer_entry[4] = up_down;
+		buffer_entry[5] = left_right;
+		
+		//Write current game time
+		*(uint64_t*)&buffer_entry[0x18] = arkGetTickTime64();
+	}
 
     // return success
     return true;
 }
 
-static void mdxf_poll() {
-    // Dance Dance Revolution
-    if (avs::game::is_model("MDX")) {
-        // Update P1 + P2 MDXF nodes at faster cadence
-		ac_io_mdxf_update_control_status_buffer(17);
-		ac_io_mdxf_update_control_status_buffer(18);
-	} 
+static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
+	return ac_io_mdxf_update_control_status_buffer_impl(node, ARKMDXP4_POLL);
 }
 
-// Start the poll background thread (idempotent)
-static void mdxf_poll_thread_start() {
-    bool expected = false;
-    if (!MDXF_POLL_RUNNING.compare_exchange_strong(expected, true)) {
-        // Already running
-        return;
-    }
-	
-	// Request high-resolution timer (1 ms)
-    timeBeginPeriod(1);
-
-    MDXF_POLL_THREAD = std::thread([] {
-        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-		
-		using clock = std::chrono::steady_clock;
-        const auto period = std::chrono::microseconds(1'000'000 / MAX_POLLING_RATE);
-        auto next_wake = clock::now() + period;
-
-        while (MDXF_POLL_RUNNING.load(std::memory_order_acquire)) {
-			mdxf_poll();
-			if (!REMOVE_POLLING_RATE_LIMIT) {
-				next_wake += period;
-				auto now = clock::now();
-				// 1) Sleep most of the gap
-				auto sleep_until_time = next_wake - std::chrono::microseconds(200);
-				if (sleep_until_time > now) {
-					std::this_thread::sleep_until(sleep_until_time);
-				}
-				// 2) Spin for the last ~200 µs
-				while (clock::now() < next_wake) {
-					// low-impact spin
-					_mm_pause();
-				}
-			}
-		}
-    });
+// Used for triggering updates of the controller states from outside arkmdxp4.dll main refresh loop (i.e. within rawinput.cpp on controller events)
+void mdxf_poll() {
+	ac_io_mdxf_update_control_status_buffer_impl(17, EXTERNAL_POLL);
+	ac_io_mdxf_update_control_status_buffer_impl(18, EXTERNAL_POLL);
 }
-
-// Stop the poll thread (idempotent)
-static void mdxf_poll_thread_stop() {
-    bool was_running = MDXF_POLL_RUNNING.exchange(false);
-    if (!was_running) {
-        return;
-    }
-
-    if (MDXF_POLL_THREAD.joinable()) {
-        MDXF_POLL_THREAD.join();
-    }
-	
-	// Release the high-resolution timer request
-    timeEndPeriod(1);
-}
-
 
 /*
  * Module stuff
@@ -330,12 +287,4 @@ void acio::MDXFModule::attach() {
     ACIO_MODULE_HOOK(ac_io_mdxf_get_control_status_buffer);
     ACIO_MODULE_HOOK(ac_io_mdxf_set_output_level);
     ACIO_MODULE_HOOK(ac_io_mdxf_update_control_status_buffer);
-	
-	// Start background polling for DDR
-    mdxf_poll_thread_start();
-}
-
-acio::MDXFModule::~MDXFModule() {
-    // Make sure the polling thread is shut down cleanly
-    mdxf_poll_thread_stop();
 }
