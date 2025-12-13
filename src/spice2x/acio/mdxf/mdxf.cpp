@@ -7,7 +7,6 @@
 #include "rawinput/rawinput.h"
 #include "util/logging.h"
 #include "util/utils.h"
-#include "launcher/logger.h"
 #include <mutex>
 
 // constants
