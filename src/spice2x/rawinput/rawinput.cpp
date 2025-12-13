@@ -1826,9 +1826,9 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
                 // free device
                 device.mutex->unlock();
-				
-				// update controller state ring buffers (DDR/MDXF)
-				mdxf_poll();
+                
+                // update controller state ring buffers (DDR/MDXF)
+                mdxf_poll();
             }
 
             // call the default window handler for cleanup
