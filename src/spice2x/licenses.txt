@@ -318,10 +318,6 @@ stb_image_write (Public Domain)
 -------------------------------------------
 http://nothings.org/stb/stb_image_write.h
 
-linalg.h (Public Domain, Unlicense)
--------------------------------------------
-https://github.com/sgorsten/linalg
-
 fmt (2-clause BSD)
 -------------------------------------------
 Copyright (c) 2012 - 2016, Victor Zverovich
