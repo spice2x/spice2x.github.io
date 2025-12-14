@@ -36,6 +36,14 @@ constexpr bool CUSTOM_RESET = false;
 
 constexpr D3DFORMAT D3DFMT_DF24 = static_cast<D3DFORMAT>(MAKEFOURCC('D', 'F', '2', '4'));
 
+auto format_as(D3DPOOL f) {
+    return fmt::underlying(f);
+}
+
+auto format_as(D3DFORMAT f) {
+    return fmt::underlying(f);
+}
+
 std::string usage2s(DWORD dwUsage) {
     FLAGS_START(dwUsage);
     FLAG(dwUsage, D3DUSAGE_RENDERTARGET);

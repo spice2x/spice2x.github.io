@@ -51,6 +51,10 @@ static const std::vector<std::string> CATEGORY_ORDER_NONE = {
     ""
 };
 
+static auto format_as(OptionType f) {
+    return fmt::underlying(f);
+}
+
 bool launcher::USE_CMD_OVERRIDE = false;
 
 /*

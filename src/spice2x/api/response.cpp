@@ -22,7 +22,7 @@ Response::Response(uint64_t id) {
     // check for error
     auto error = document.GetParseError();
     if (error)
-        log_warning("api", "response template parse error: {}", error);
+        log_warning("api", "response template parse error: {}", static_cast<uint32_t>(error));
 
     // set ID
     document["id"].SetUint64(id);

@@ -81,7 +81,7 @@ namespace clipboard {
         Gdiplus::GpBitmap *bitmap = nullptr;
         auto status = imports::GdipCreateBitmapFromFile(path.c_str(), &bitmap);
         if (status != Gdiplus::Ok) {
-            log_warning("clipboard", "failed to create GDI+ bitmap: {}", status);
+            log_warning("clipboard", "failed to create GDI+ bitmap: {}", static_cast<uint32_t>(status));
 
             imports::GdiplusShutdown(token);
             CloseClipboard();
@@ -123,7 +123,7 @@ namespace clipboard {
                 log_warning("clipboard", "failed to save image to clipboard");
             }
         } else {
-            log_warning("clipboard", "failed to retrieve HBITMAP from image bitmap: {}", status);
+            log_warning("clipboard", "failed to retrieve HBITMAP from image bitmap: {}", static_cast<uint32_t>(status));
         }
 
         // Clean up after ourselves. hmem can't be deleted because it is owned by the clipboard now.
