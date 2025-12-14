@@ -125,8 +125,13 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
         free(pIpForwardTable);
         pIpForwardTable = (MIB_IPFORWARDTABLE *) malloc(dwSize);
     }
-    if (GetIpForwardTable(pIpForwardTable, &dwSize, 1) != NO_ERROR || pIpForwardTable->dwNumEntries == 0)
+    if (GetIpForwardTable(pIpForwardTable, &dwSize, 1) != NO_ERROR || pIpForwardTable->dwNumEntries == 0) {
+        defer_network_adapter_error();
+        if (GetAdaptersInfo_log) {
+            log_warning("network", "GetIpForwardTable failed");
+        }
         return ret;
+    }
 
     // determine best interface
     DWORD best = pIpForwardTable->table[0].dwForwardIfIndex;
