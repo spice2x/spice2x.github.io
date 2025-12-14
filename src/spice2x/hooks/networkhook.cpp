@@ -30,13 +30,16 @@ static struct in_addr prefix;
 static struct in_addr subnet;
 
 static void defer_network_adapter_error() {
-    deferredlogs::defer_error_messages({
-        "network adapter issue detected!",
-        "    ensure you have at least one network adapter with a valid IPv4 address",
-        "    the IPv4 address can be external or internal, it just needs to be valid",
-        "    the network adapter can be a wired or wireless connection",
-        "    you still need to do this even if you are connecting to a local server!",
-        });
+    static std::once_flag printed;
+    std::call_once(printed, []() {
+        deferredlogs::defer_error_messages({
+            "network adapter issue detected!",
+            "    ensure you have at least one network adapter with a valid IPv4 address",
+            "    the IPv4 address can be external or internal, it just needs to be valid",
+            "    the network adapter can be a wired or wireless connection",
+            "    you still need to do this even if you are connecting to a local server!",
+            });
+    });
 }
 
 static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG pOutBufLen) {
@@ -65,17 +68,14 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
             free(pAdapterInfo2);
         }
 
-        static std::once_flag printed;
-        std::call_once(printed, [ret]() {
-            if (ret != ERROR_SUCCESS) {
-                defer_network_adapter_error();
-                log_warning(
-                    "network",
-                    "GetAdaptersInfo failed with {}! "
-                    "check if you have at least one network adapter with a valid IPv4 address!",
-                    ret);
-            }
-        });
+        if (ret != ERROR_SUCCESS) {
+            defer_network_adapter_error();
+            log_warning(
+                "network",
+                "GetAdaptersInfo failed with {}; "
+                "check if you have at least one network adapter with a valid IPv4 address!",
+                ret);
+        }
 
         return ret;
     }
@@ -158,11 +158,10 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
         info = info->Next;
     }
 
-    static std::once_flag printed;
-    std::call_once(printed, [pAdapterInfo]() {
-        if (pAdapterInfo->IpAddressList.IpAddress.String[0] == 0 ||
-            pAdapterInfo->IpAddressList.IpAddress.String[0] == '0') {
-            defer_network_adapter_error();
+    if (pAdapterInfo->IpAddressList.IpAddress.String[0] == 0 ||
+        pAdapterInfo->IpAddressList.IpAddress.String[0] == '0') {
+        defer_network_adapter_error();
+        if (GetAdaptersInfo_log) {
             log_warning(
                 "network",
                 "invalid IPv4 address for adapter {}, {} = {}; "
@@ -171,7 +170,7 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
                 pAdapterInfo->Description,
                 pAdapterInfo->IpAddressList.IpAddress.String);
         }
-    });
+    }
 
     // return original value
     GetAdaptersInfo_log = false;
