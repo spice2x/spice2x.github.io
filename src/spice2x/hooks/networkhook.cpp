@@ -4,6 +4,7 @@
 #include <iphlpapi.h>
 #include <stdlib.h>
 #include <string>
+#include <mutex>
 
 #include "avs/core.h"
 #include "avs/ea3.h"
@@ -12,6 +13,7 @@
 #include "util/detour.h"
 #include "util/fileutils.h"
 #include "util/libutils.h"
+#include "util/deferlog.h"
 
 // hooking related stuff
 static decltype(GetAdaptersInfo) *GetAdaptersInfo_orig = nullptr;
@@ -26,6 +28,16 @@ static bool GetAdaptersInfo_log = true;
 static struct in_addr network;
 static struct in_addr prefix;
 static struct in_addr subnet;
+
+static void defer_network_adapter_error() {
+    deferredlogs::defer_error_messages({
+        "network adapter issue detected!",
+        "    ensure you have at least one network adapter with a valid IPv4 address",
+        "    the IPv4 address can be external or internal, it just needs to be valid",
+        "    the network adapter can be a wired or wireless connection",
+        "    you still need to do this even if you are connecting to a local server!",
+        });
+}
 
 static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG pOutBufLen) {
 
@@ -52,6 +64,18 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
             // free our allocated memory
             free(pAdapterInfo2);
         }
+
+        static std::once_flag printed;
+        std::call_once(printed, [ret]() {
+            if (ret != ERROR_SUCCESS) {
+                defer_network_adapter_error();
+                log_warning(
+                    "network",
+                    "GetAdaptersInfo failed with {}! "
+                    "check if you have at least one network adapter with a valid IPv4 address!",
+                    ret);
+            }
+        });
 
         return ret;
     }
@@ -133,6 +157,21 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
         // iterate
         info = info->Next;
     }
+
+    static std::once_flag printed;
+    std::call_once(printed, [pAdapterInfo]() {
+        if (pAdapterInfo->IpAddressList.IpAddress.String[0] == 0 ||
+            pAdapterInfo->IpAddressList.IpAddress.String[0] == '0') {
+            defer_network_adapter_error();
+            log_warning(
+                "network",
+                "invalid IPv4 address for adapter {}, {} = {}; "
+                "ensure you have at least one network adapter with valid IPv4 address!",
+                pAdapterInfo->AdapterName,
+                pAdapterInfo->Description,
+                pAdapterInfo->IpAddressList.IpAddress.String);
+        }
+    });
 
     // return original value
     GetAdaptersInfo_log = false;
