@@ -19,11 +19,19 @@ static uint8_t HEAD_P2 = 0;
 
 static uint16_t PREV_STATE_P1 = 0;
 static uint16_t PREV_STATE_P2 = 0;
+static uint64_t PREV_TIME_P1 = 0;
+static uint64_t PREV_TIME_P2 = 0;
 
 static std::mutex MUTEX_P1;
 static std::mutex MUTEX_P2;
 
 static bool MDXF_IS_ACTIVE = false;
+
+static std::atomic<bool> MDXF_THREAD_RUNNING{false};
+static std::thread MDXF_THREAD;
+
+static constexpr int REFRESH_RATE_HZ = 125;
+static constexpr auto THREAD_PERIOD = std::chrono::milliseconds(1000 / REFRESH_RATE_HZ);
 
 // buffers
 #pragma pack(push, 1)
@@ -37,7 +45,8 @@ static bool STATUS_BUFFER_FREEZE = false;
 
 typedef enum {
     ARKMDXP4_POLL = 0,
-    EXTERNAL_POLL = 1
+    INTERNAL_POLL = 1,
+    EXTERNAL_POLL = 2
 } MDXFPollSource;
 
 typedef uint64_t (__cdecl *ARK_GET_TICK_TIME64_T)();
@@ -54,6 +63,34 @@ static uint64_t arkGetTickTime64() {
     // this works on 32-bit versions of avs, but not on 64.
     // it's better than nothing though.
     return getTickTime64 ? getTickTime64() : timeGetTime();
+}
+
+// Used to keep the ring buffer populated with steady updates. 60Hz interval is too slow
+static void mdxf_thread_start() {
+    bool expected = false;
+    if (!MDXF_THREAD_RUNNING.compare_exchange_strong(expected, true)) {
+        return;
+    }
+
+    MDXF_THREAD = std::thread([] {
+        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
+
+        while (MDXF_THREAD_RUNNING.load(std::memory_order_acquire)) {
+            mdxf_poll(false);
+            std::this_thread::sleep_for(THREAD_PERIOD);
+        }
+    });
+}
+
+static void mdxf_thread_stop() {
+    if (!MDXF_THREAD_RUNNING.exchange(false)) {
+        return;
+    }
+
+    if (MDXF_THREAD.joinable()) {
+        MDXF_THREAD.join();
+    }
+
 }
 
 /*
@@ -159,11 +196,13 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
         // Marks this module as actively being used, allowing this function to be called from other sources
         if (!MDXF_IS_ACTIVE && source == ARKMDXP4_POLL) {
             MDXF_IS_ACTIVE = true;
+            mdxf_thread_start();
         }
         
         uint8_t (*buffer)[STATUS_BUFFER_SIZE];
         uint8_t *head = nullptr;
         uint16_t *prev_state = nullptr;
+        uint64_t *prev_time = nullptr;
         std::mutex* mutex = nullptr;
         
         switch (node) {
@@ -172,6 +211,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
                 mutex = &MUTEX_P1;
                 head = &HEAD_P1;
                 prev_state = &PREV_STATE_P1;
+                prev_time = &PREV_TIME_P1;
                 buffer = BUFFERS.STATUS_BUFFER_P1;
                 break;
             case 18:
@@ -179,6 +219,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
                 mutex = &MUTEX_P2;
                 head = &HEAD_P2;
                 prev_state = &PREV_STATE_P2;
+                prev_time = &PREV_TIME_P2;
                 buffer = BUFFERS.STATUS_BUFFER_P2;
                 break;
             default:
@@ -236,15 +277,22 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
         }
         
         uint16_t current_state = (uint16_t(up_down) << 8) | left_right;
+        uint64_t current_time = arkGetTickTime64();
         
         std::lock_guard<std::mutex> lock(*mutex);
         
-        // If state hasn't changed and the update was triggered outside arkmdxp4.dll, then don't advance head pointer or write a new entry
-        if (current_state == *prev_state && source != ARKMDXP4_POLL) {
+        // If state hasn't changed and the update was triggered externally, then don't advance head pointer or write a new entry
+        if (source == EXTERNAL_POLL && *prev_state == current_state) {
+            return true;
+        }
+        
+        // If there's already an entry for this exact time, then don't advance head pointer or write a new entry 
+        if (*prev_time == current_time) {
             return true;
         }
         
         *prev_state = current_state;
+        *prev_time = current_time;
 
         // Advance head pointer
         *head = (*head + 1) % STATUS_BUFFER_NUM_ENTRIES;
@@ -258,7 +306,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
         buffer_entry[5] = left_right;
         
         //Write current game time
-        *(uint64_t*)&buffer_entry[0x18] = arkGetTickTime64();
+        *(uint64_t*)&buffer_entry[0x18] = current_time;
     }
 
     // return success
@@ -270,10 +318,11 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
 }
 
 // Used for triggering updates of the controller states from outside arkmdxp4.dll main refresh loop (i.e. within rawinput.cpp on controller events)
-void mdxf_poll() {
+void mdxf_poll(bool isExternal) {
     if (MDXF_IS_ACTIVE) {
-        ac_io_mdxf_update_control_status_buffer_impl(17, EXTERNAL_POLL);
-        ac_io_mdxf_update_control_status_buffer_impl(18, EXTERNAL_POLL);
+        MDXFPollSource source = isExternal ? EXTERNAL_POLL : INTERNAL_POLL;
+        ac_io_mdxf_update_control_status_buffer_impl(17, source);
+        ac_io_mdxf_update_control_status_buffer_impl(18, source);
     }
 }
 
@@ -294,4 +343,8 @@ void acio::MDXFModule::attach() {
     ACIO_MODULE_HOOK(ac_io_mdxf_get_control_status_buffer);
     ACIO_MODULE_HOOK(ac_io_mdxf_set_output_level);
     ACIO_MODULE_HOOK(ac_io_mdxf_update_control_status_buffer);
+}
+
+acio::MDXFModule::~MDXFModule() {
+    mdxf_thread_stop();
 }
