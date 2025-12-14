@@ -3,6 +3,10 @@
 #include "util/logging.h"
 #include "util/utils.h"
 
+static auto format_as(OptionType f) {
+    return fmt::underlying(f);
+}
+
 void Option::value_add(std::string new_value) {
 
     // put in primary slot if possible

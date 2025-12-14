@@ -2,8 +2,6 @@
 
 #include "generic_sub.h"
 
-#include <fmt/format.h>
-
 #include "avs/game.h"
 #include "games/io.h"
 #include "cfg/screen_resize.h"

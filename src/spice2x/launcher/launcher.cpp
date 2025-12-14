@@ -2473,7 +2473,7 @@ void dump_button_bindings(std::vector<Button> *buttons) {
                 button->getName(),
                 button->getDeviceIdentifier(),
                 button->getVKey(),
-                button->getAnalogType()
+                static_cast<uint32_t>(button->getAnalogType())
                 );
         }
 
@@ -2486,7 +2486,7 @@ void dump_button_bindings(std::vector<Button> *buttons) {
                 button->getName(),
                 alt.isNaive() ? "Naive" : alt.getDeviceIdentifier(),
                 alt.getVKey(),
-                alt.getAnalogType()
+                static_cast<uint32_t>(alt.getAnalogType())
                 );
         }
     }

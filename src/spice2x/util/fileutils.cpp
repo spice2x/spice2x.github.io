@@ -1,5 +1,6 @@
 #include "fileutils.h"
 
+#include <algorithm>
 #include <fstream>
 
 #include <sys/stat.h>

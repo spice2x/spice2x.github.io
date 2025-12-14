@@ -42,13 +42,12 @@ struct fmt_log {
 
 template<>
 struct fmt::formatter<fmt_log> {
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext &ctx) {
+    constexpr auto parse(format_parse_context &ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const fmt_log &v, FormatContext &ctx) {
+    auto format(const fmt_log &v, FormatContext &ctx) const {
         return format_to(ctx.out(), FMT_COMPILE("{} {}:{}: "), log_get_datetime(v.ts), v.level, v.module);
     }
 };
@@ -60,13 +59,12 @@ struct fmt_hresult {
 
 template<>
 struct fmt::formatter<fmt_hresult> {
-    template<typename ParseContext>
-    constexpr auto parse(ParseContext &ctx) {
+    constexpr auto parse(format_parse_context &ctx) {
         return ctx.begin();
     }
 
     template<typename FormatContext>
-    auto format(const fmt_hresult &v, FormatContext &ctx) {
+    auto format(const fmt_hresult &v, FormatContext &ctx) const {
         return format_to(ctx.out(), FMT_COMPILE("0x{:08x}"), static_cast<unsigned>(v.result));
     }
 };

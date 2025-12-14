@@ -189,7 +189,7 @@ static std::string format2s(D3DFORMAT format) {
         ENUM_VARIANT(D3DFMT_A2B10G10R10_XR_BIAS);
         ENUM_VARIANT(D3DFMT_BINARYBUFFER);
         default:
-            return fmt::to_string(format);
+            return fmt::to_string(static_cast<uint32_t>(format));
     }
 }
 
@@ -696,7 +696,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
 {
     log_misc("graphics::d3d9", "IDirect3D9::CreateDevice hook hit ({}, {}, {}, {}, {}, {})",
             Adapter,
-            DeviceType,
+            static_cast<uint32_t>(DeviceType),
             fmt::ptr(hFocusWindow),
             behavior2s(BehaviorFlags),
             fmt::ptr(pPresentationParameters),
@@ -771,9 +771,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
                 params->BackBufferHeight,
                 format2s(params->BackBufferFormat),
                 params->BackBufferCount,
-                params->MultiSampleType,
+                static_cast<uint32_t>(params->MultiSampleType),
                 params->MultiSampleQuality,
-                params->SwapEffect,
+                static_cast<uint32_t>(params->SwapEffect),
                 params->Windowed,
                 params->EnableAutoDepthStencil,
                 format2s(params->AutoDepthStencilFormat),
@@ -885,7 +885,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
     log_misc("graphics::d3d9", "IDirect3D9Ex::CreateDeviceEx hook hit ({}, {}, {}, {}, {}, {})",
              Adapter,
-             DeviceType,
+             static_cast<uint32_t>(DeviceType),
              fmt::ptr(hFocusWindow),
              behavior2s(BehaviorFlags),
              fmt::ptr(pPresentationParameters),
@@ -960,9 +960,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
                 params->BackBufferHeight,
                 format2s(params->BackBufferFormat),
                 params->BackBufferCount,
-                params->MultiSampleType,
+                static_cast<uint32_t>(params->MultiSampleType),
                 params->MultiSampleQuality,
-                params->SwapEffect,
+                static_cast<uint32_t>(params->SwapEffect),
                 params->Windowed,
                 params->EnableAutoDepthStencil,
                 format2s(params->AutoDepthStencilFormat),
@@ -991,7 +991,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
                     fullscreen_display_mode->Height,
                     fullscreen_display_mode->RefreshRate,
                     format2s(fullscreen_display_mode->Format),
-                    fullscreen_display_mode->ScanLineOrdering);
+                    static_cast<uint32_t>(fullscreen_display_mode->ScanLineOrdering));
         }
     }
 

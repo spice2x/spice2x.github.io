@@ -509,7 +509,7 @@ namespace games::iidx {
                 // check parse error
                 auto error = doc.GetParseError();
                 if (error) {
-                    log_warning("iidx:camhook", "config parse error: {}", error);
+                    log_warning("iidx:camhook", "config parse error: {}", static_cast<uint32_t>(error));
                     return false;
                 }
 

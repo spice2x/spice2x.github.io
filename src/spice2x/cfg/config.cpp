@@ -68,7 +68,7 @@ Config::Config() {
                 this->firstFillConfigFile();
                 break;
             default:
-                log_warning("cfg", "Unknown XML error reading config: {}", configLoadError);
+                log_warning("cfg", "Unknown XML error reading config: {}", static_cast<uint32_t>(configLoadError));
                 break;
         }
     } while (configLoadError != tinyxml2::XMLError::XML_SUCCESS);

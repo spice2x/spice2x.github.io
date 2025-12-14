@@ -263,7 +263,7 @@ namespace avs::automap {
     int property_node_read(avs::core::node_ptr node, avs::core::node_type type, void *data, uint32_t data_size) {
         auto result = avs::core::property_node_read(node, type, data, data_size);
         if (result < 0 && property_patches_enabled(nullptr, node)) {
-            log_warning("automap", "property_node_read failed ({}): {}", type, result);
+            log_warning("automap", "property_node_read failed ({}): {}", static_cast<uint32_t>(type), result);
 
             // probably wrong type
             memset(data, 0, data_size);
@@ -278,7 +278,7 @@ namespace avs::automap {
             if (parent_node && parent_node != node) {
                 char name_buf[256] {};
                 if (avs::core::property_node_name(node, name_buf, sizeof(name_buf)) >= 0) {
-                    log_warning("automap", "property_node_read replace type ({}): {}", type, result);
+                    log_warning("automap", "property_node_read replace type ({}): {}", static_cast<uint32_t>(type), result);
                     avs::core::property_node_remove(node);
                     avs::core::property_node_create(nullptr, parent_node, type, name_buf, data);
                 }
