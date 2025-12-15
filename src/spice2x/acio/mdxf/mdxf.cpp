@@ -25,13 +25,20 @@ static uint64_t PREV_TIME_P2 = 0;
 static std::mutex MUTEX_P1;
 static std::mutex MUTEX_P2;
 
-static bool MDXF_IS_ACTIVE = false;
+static bool IS_MDXF_ACTIVE = false;
+
+// These are used to determine if a thread needs to be spun up to keep pad state ring buffers populated with enough recent polls
+static uint64_t START_TIME = 0;
+static int CALL_COUNT = 0;
+static int THRESHOLD_REFRESH_RATE = 120;
+static bool IS_REFRESH_RATE_DETERMINED = false;
+static bool IS_THREAD_NEEDED = false;
 
 static std::atomic<bool> MDXF_THREAD_RUNNING{false};
 static std::thread MDXF_THREAD;
 
-static constexpr int REFRESH_RATE_HZ = 125;
-static constexpr auto THREAD_PERIOD = std::chrono::milliseconds(1000 / REFRESH_RATE_HZ);
+static constexpr int THREAD_REFRESH_RATE_HZ = 125;
+static constexpr auto THREAD_PERIOD = std::chrono::milliseconds(1000 / THREAD_REFRESH_RATE_HZ);
 
 // buffers
 #pragma pack(push, 1)
@@ -91,6 +98,58 @@ static void mdxf_thread_stop() {
         MDXF_THREAD.join();
     }
 
+}
+
+// Snaps measured refresh rate to best fit
+static int snap_refresh_rate(int measured_hz) {
+    static constexpr std::array<int, 6> rates = {
+        60, 120, 144, 165, 180, 240
+    };
+
+    int best = rates[0];
+    int best_err = std::fabs(measured_hz - best);
+
+    for (int r : rates) {
+        int err = std::fabs(measured_hz - r);
+        if (err < best_err) {
+            best = r;
+            best_err = err;
+        }
+    }
+    return best;
+}
+
+// Increments the number of times the update function was called, then calculates the current refresh rate of the game after 3 seconds has passed
+static void count_calls_from_game() {
+    if (IS_REFRESH_RATE_DETERMINED) {
+        return;
+    }
+    
+    uint64_t current_time = arkGetTickTime64();
+    
+    if (START_TIME == 0) {
+        START_TIME = current_time;
+    }
+    
+    CALL_COUNT++;
+    
+    uint64_t elapsed_time = current_time - START_TIME;
+    if (elapsed_time >= 3000) {
+        double measured_hz = static_cast<double>(CALL_COUNT) * 1000.0 / static_cast<double>(elapsed_time);
+        
+        // Account for the main loop calling this twice per iteration
+        measured_hz *= 0.5;
+        int snapped_hz = snap_refresh_rate(static_cast<int>(measured_hz));
+
+        IS_THREAD_NEEDED = (snapped_hz < THRESHOLD_REFRESH_RATE);
+        IS_REFRESH_RATE_DETERMINED = true;
+
+        log_info("ARKMDXP4", "Detected: {}Hz, Best Fit: {}Hz (Needs 125Hz Helper Thread: {})", static_cast<int>(measured_hz), snapped_hz, IS_THREAD_NEEDED ? "Yes" : "No");
+
+        if (IS_THREAD_NEEDED) {
+            mdxf_thread_start();
+        }
+    }
 }
 
 /*
@@ -194,9 +253,11 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
     // Dance Dance Revolution
     if (avs::game::is_model("MDX")) {
         // Marks this module as actively being used, allowing this function to be called from other sources
-        if (!MDXF_IS_ACTIVE && source == ARKMDXP4_POLL) {
-            MDXF_IS_ACTIVE = true;
-            mdxf_thread_start();
+        if (source == ARKMDXP4_POLL) {
+            if (!IS_MDXF_ACTIVE) {
+                IS_MDXF_ACTIVE = true;
+            }
+            count_calls_from_game();
         }
         
         uint8_t (*buffer)[STATUS_BUFFER_SIZE];
@@ -319,7 +380,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
 
 // Used for triggering updates of the controller states from outside arkmdxp4.dll main refresh loop (i.e. within rawinput.cpp on controller events)
 void mdxf_poll(bool isExternal) {
-    if (MDXF_IS_ACTIVE) {
+    if (IS_MDXF_ACTIVE) {
         MDXFPollSource source = isExternal ? EXTERNAL_POLL : INTERNAL_POLL;
         ac_io_mdxf_update_control_status_buffer_impl(17, source);
         ac_io_mdxf_update_control_status_buffer_impl(18, source);
