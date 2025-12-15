@@ -2,7 +2,6 @@
 
 #include "smx.h"
 #include "util/logging.h"
-#include <fmt/format.h>
 
 namespace {
     static const std::string DEVICE_NAMES[] = {

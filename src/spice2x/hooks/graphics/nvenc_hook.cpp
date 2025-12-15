@@ -123,7 +123,7 @@ namespace nvenc_hook {
                 log_warning(
                     "nvenc_hook",
                     "nvEncInitializeEncoder: unexpected rateControlMode, expected: NV_ENC_PARAMS_RC_CONSTQP, actual: {}",
-                    rc->rateControlMode);
+                    static_cast<uint32_t>(rc->rateControlMode));
             }
 
         } catch (const std::exception &ex) {}

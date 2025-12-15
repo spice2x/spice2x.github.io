@@ -35,7 +35,7 @@ std::string share_mode_str(AUDCLNT_SHAREMODE share_mode) {
         ENUM_VARIANT(AUDCLNT_SHAREMODE_SHARED);
         ENUM_VARIANT(AUDCLNT_SHAREMODE_EXCLUSIVE);
         default:
-            return fmt::format("ShareMode(0x{:08x})", share_mode);
+            return fmt::format("ShareMode(0x{:08x})", static_cast<uint32_t>(share_mode));
     }
 }
 

@@ -13,7 +13,6 @@
 
 using namespace rapidjson;
 
-
 namespace overlay::windows {
 
     CardManager::CardManager(SpiceOverlay *overlay) : Window(overlay) {
@@ -451,7 +450,7 @@ namespace overlay::windows {
             // check parse error
             auto error = doc.GetParseError();
             if (error) {
-                log_warning("cardmanager", "config parse error: {}", error);
+                log_warning("cardmanager", "config parse error: {}", static_cast<uint32_t>(error));
             }
 
             // verify root is a dict
@@ -542,7 +541,7 @@ namespace overlay::windows {
         // check parse error
         auto error = doc.GetParseError();
         if (error) {
-            log_warning("cardmanager", "template parse error: {}", error);
+            log_warning("cardmanager", "template parse error: {}", static_cast<uint32_t>(error));
         }
 
         // add cards

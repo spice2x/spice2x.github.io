@@ -48,7 +48,7 @@ namespace cfg {
         // check parse error
         auto error = doc.GetParseError();
         if (error) {
-            log_warning("ScreenResize", "config parse error: {}", error);
+            log_warning("ScreenResize", "config parse error: {}", static_cast<uint32_t>(error));
             return;
         }
 

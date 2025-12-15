@@ -40,7 +40,6 @@
 
 using namespace rapidjson;
 
-
 namespace overlay::windows {
 
 
@@ -943,7 +942,7 @@ namespace overlay::windows {
             // check parse error
             auto error = doc.GetParseError();
             if (error) {
-                log_warning("patchmanager", "config file parse error: {}", error);
+                log_warning("patchmanager", "config file parse error: {}", static_cast<uint32_t>(error));
             }
 
             // verify root is a dict
@@ -1051,7 +1050,7 @@ namespace overlay::windows {
         // check parse error
         auto error = doc.GetParseError();
         if (error) {
-            log_warning("patchmanager", "template parse error: {}", error);
+            log_warning("patchmanager", "template parse error: {}", static_cast<uint32_t>(error));
         }
 
         // auto apply setting
@@ -1183,7 +1182,7 @@ namespace overlay::windows {
         // check parse error
         auto error = doc.GetParseError();
         if (error) {
-            log_warning("patchmanager", "embedded patches json file parse error: {}", error);
+            log_warning("patchmanager", "embedded patches json file parse error: {}", static_cast<uint32_t>(error));
         }
 
         // iterate patches
@@ -1515,7 +1514,7 @@ namespace overlay::windows {
                 }
                 case PatchType::Unknown:
                 default:
-                    log_warning("patchmanager", "unknown patch type: {}", patch_data.type);
+                    log_warning("patchmanager", "unknown patch type: {}", static_cast<uint32_t>(patch_data.type));
                     break;
             }
 
@@ -1737,7 +1736,7 @@ namespace overlay::windows {
                 "patchmanager",
                 "patches file parse error at offset {}: {} ({})",
                 error_offset,
-                error,
+                static_cast<uint32_t>(error),
                 rapidjson::GetParseError_En(error));
         }
 
@@ -2245,7 +2244,7 @@ namespace overlay::windows {
             }
             case PatchType::Unknown:
             default:
-                log_warning("patchmanager", "unknown patch type: {}", patch_data.type);
+                log_warning("patchmanager", "unknown patch type: {}", static_cast<uint32_t>(patch_data.type));
                 break;
             }
 

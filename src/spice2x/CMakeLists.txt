@@ -623,7 +623,7 @@ set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/W
 add_executable(spicetools_spice ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 target_link_libraries(spicetools_spice PUBLIC winscard)
 set_target_properties(spicetools_spice PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice PROPERTIES OUTPUT_NAME "spice")
@@ -639,7 +639,7 @@ set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/W
 add_executable(spicetools_spice_laa ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice_laa
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 target_link_libraries(spicetools_spice_laa PUBLIC winscard)
 set_target_properties(spicetools_spice_laa PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice_laa PROPERTIES OUTPUT_NAME "spice_laa")
@@ -656,7 +656,7 @@ set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/W
 add_executable(spicetools_spice_linux ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice_linux
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 set_target_properties(spicetools_spice_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice_linux PROPERTIES OUTPUT_NAME "spice_linux")
 target_compile_definitions(spicetools_spice_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
@@ -674,7 +674,7 @@ add_executable(spicetools_spice64 ${SOURCE_FILES} ${RESOURCE_FILES})
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
-        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 target_link_libraries(spicetools_spice64 PUBLIC winscard)
 set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64 PROPERTIES OUTPUT_NAME "spice64")
@@ -693,7 +693,7 @@ add_executable(spicetools_spice64_linux ${SOURCE_FILES} ${RESOURCE_FILES})
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64_linux
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
-        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 set_target_properties(spicetools_spice64_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64_linux PROPERTIES OUTPUT_NAME "spice64_linux")
 target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE64=1)
@@ -711,7 +711,7 @@ set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.
 add_executable(spicetools_cfg WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg
         PUBLIC ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
-        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 target_link_libraries(spicetools_cfg PUBLIC winscard)
 set_target_properties(spicetools_cfg PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg PROPERTIES OUTPUT_NAME "spicecfg")
@@ -729,7 +729,7 @@ set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.
 add_executable(spicetools_cfg_linux WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg_linux
         PUBLIC ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
-        PRIVATE fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 set_target_properties(spicetools_cfg_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg_linux PROPERTIES OUTPUT_NAME "spicecfg_linux")
 target_compile_definitions(spicetools_cfg_linux PRIVATE SPICETOOLS_SPICECFG_STANDALONE=1)
@@ -745,7 +745,7 @@ endif()
 # kbt.dll
 set(SOURCE_FILES stubs/stubs.cpp)
 add_library(spicetools_stubs_kbt SHARED ${SOURCE_FILES} stubs/stubs.def)
-target_link_libraries(spicetools_stubs_kbt PRIVATE fmt-header-only)
+target_link_libraries(spicetools_stubs_kbt PRIVATE fmt::fmt-header-only)
 set_target_properties(spicetools_stubs_kbt PROPERTIES PREFIX "")
 set_target_properties(spicetools_stubs_kbt PROPERTIES OUTPUT_NAME "kbt")
 target_compile_definitions(spicetools_stubs_kbt PRIVATE STUB=1)
@@ -756,7 +756,7 @@ endif()
 
 # kbt.dll 64bit
 add_library(spicetools_stubs_kbt64 SHARED ${SOURCE_FILES} stubs/stubs.def)
-target_link_libraries(spicetools_stubs_kbt64 PRIVATE fmt-header-only)
+target_link_libraries(spicetools_stubs_kbt64 PRIVATE fmt::fmt-header-only)
 set_target_properties(spicetools_stubs_kbt64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_stubs_kbt64 PROPERTIES OUTPUT_NAME "kbt")
 target_compile_definitions(spicetools_stubs_kbt64 PRIVATE STUB=1)
@@ -768,7 +768,7 @@ endif()
 # kld.dll
 set(SOURCE_FILES stubs/stubs.cpp)
 add_library(spicetools_stubs_kld SHARED ${SOURCE_FILES} stubs/stubs.def)
-target_link_libraries(spicetools_stubs_kld PRIVATE fmt-header-only)
+target_link_libraries(spicetools_stubs_kld PRIVATE fmt::fmt-header-only)
 set_target_properties(spicetools_stubs_kld PROPERTIES PREFIX "")
 set_target_properties(spicetools_stubs_kld PROPERTIES OUTPUT_NAME "kld")
 target_compile_definitions(spicetools_stubs_kld PRIVATE STUB=1)
@@ -779,7 +779,7 @@ endif()
 
 # kld.dll 64bit
 add_library(spicetools_stubs_kld64 SHARED ${SOURCE_FILES} stubs/stubs.def)
-target_link_libraries(spicetools_stubs_kld64 PRIVATE fmt-header-only)
+target_link_libraries(spicetools_stubs_kld64 PRIVATE fmt::fmt-header-only)
 set_target_properties(spicetools_stubs_kld64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_stubs_kld64 PROPERTIES OUTPUT_NAME "kld")
 target_compile_definitions(spicetools_stubs_kld64 PRIVATE STUB=1)

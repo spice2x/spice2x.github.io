@@ -1,7 +1,6 @@
 #pragma once
 
 #include "games/game.h"
-#include "external/linalg.h"
 #include "touch/touch.h"
 
 namespace games::drs {
