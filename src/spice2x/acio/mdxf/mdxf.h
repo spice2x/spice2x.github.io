@@ -9,6 +9,5 @@ namespace acio {
         MDXFModule(HMODULE module, HookMode hookMode);
 
         virtual void attach() override;
-        ~MDXFModule() override; 
     };
 }
