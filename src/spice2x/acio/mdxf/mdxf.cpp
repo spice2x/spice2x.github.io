@@ -27,7 +27,7 @@ static std::mutex MUTEX_P2;
 
 static bool IS_MDXF_ACTIVE = false;
 
-static uint8_t BACKFILL_INTERVAL_MS = 4;
+static const uint8_t BACKFILL_INTERVAL_MS = 4;
 
 // buffers
 #pragma pack(push, 1)
