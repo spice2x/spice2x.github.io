@@ -265,8 +265,10 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             time = current_time - std::min<uint64_t>(current_time, BACKFILL_INTERVAL_MS);
         }
         
+        uint16_t entries_written = 0;
+        
         // Backfill entries a fixed interval apart from each other between prev_time and current_time
-        while (time < current_time) {
+        while (time < current_time && entries_written <= STATUS_BUFFER_NUM_ENTRIES) {
             // Advance head pointer
             *head = (*head + 1) % STATUS_BUFFER_NUM_ENTRIES;
             uint8_t* buffer_entry = buffer[*head];
@@ -276,9 +278,9 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             
             time += BACKFILL_INTERVAL_MS;
             
-            // If the current time is reached, then write current_time and current_state instead
+            // If the current time is reached or the maximum number of backfills has been reached, then write current_time and current_state instead for this final iteration
             bool isEdge = (time >= current_time);
-            if (isEdge) {
+            if (isEdge || entries_written == STATUS_BUFFER_NUM_ENTRIES) {
                 state = current_state;
                 time = current_time;
             }
@@ -289,6 +291,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             
             // Write game time
             *(uint64_t*)&buffer_entry[0x18] = time;
+            entries_written++;
         }
         
         *prev_state = current_state;
