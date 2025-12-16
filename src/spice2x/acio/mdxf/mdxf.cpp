@@ -19,11 +19,16 @@ static uint8_t HEAD_P2 = 0;
 
 static uint16_t PREV_STATE_P1 = 0;
 static uint16_t PREV_STATE_P2 = 0;
+static uint64_t PREV_TIME_P1 = 0;
+static uint64_t PREV_TIME_P2 = 0;
 
 static std::mutex MUTEX_P1;
 static std::mutex MUTEX_P2;
 
-static bool MDXF_IS_ACTIVE = false;
+static bool IS_MDXF_ACTIVE = false;
+
+static const uint8_t BACKFILL_INTERVAL_MS = 4;
+static const uint8_t BACKFILL_PADDING_MS = 2;
 
 // buffers
 #pragma pack(push, 1)
@@ -157,13 +162,14 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
     // Dance Dance Revolution
     if (avs::game::is_model("MDX")) {
         // Marks this module as actively being used, allowing this function to be called from other sources
-        if (!MDXF_IS_ACTIVE && source == ARKMDXP4_POLL) {
-            MDXF_IS_ACTIVE = true;
+        if (!IS_MDXF_ACTIVE && source == ARKMDXP4_POLL) {
+            IS_MDXF_ACTIVE = true;
         }
         
         uint8_t (*buffer)[STATUS_BUFFER_SIZE];
         uint8_t *head = nullptr;
         uint16_t *prev_state = nullptr;
+        uint64_t *prev_time = nullptr;
         std::mutex* mutex = nullptr;
         
         switch (node) {
@@ -172,6 +178,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
                 mutex = &MUTEX_P1;
                 head = &HEAD_P1;
                 prev_state = &PREV_STATE_P1;
+                prev_time = &PREV_TIME_P1;
                 buffer = BUFFERS.STATUS_BUFFER_P1;
                 break;
             case 18:
@@ -179,6 +186,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
                 mutex = &MUTEX_P2;
                 head = &HEAD_P2;
                 prev_state = &PREV_STATE_P2;
+                prev_time = &PREV_TIME_P2;
                 buffer = BUFFERS.STATUS_BUFFER_P2;
                 break;
             default:
@@ -235,30 +243,69 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             left_right |= 0x0F;
         }
         
-        uint16_t current_state = (uint16_t(up_down) << 8) | left_right;
+        const uint16_t current_state = (uint16_t(up_down) << 8) | left_right;
+        const uint64_t current_time = arkGetTickTime64();
         
         std::lock_guard<std::mutex> lock(*mutex);
         
-        // If state hasn't changed and the update was triggered outside arkmdxp4.dll, then don't advance head pointer or write a new entry
-        if (current_state == *prev_state && source != ARKMDXP4_POLL) {
+        // If state hasn't changed and the update was triggered externally, then don't advance head pointer or write a new entry
+        if (source == EXTERNAL_POLL && *prev_state == current_state) {
             return true;
         }
         
+        // If there's already an entry for this exact time, then don't advance head pointer or write a new entry 
+        if (*prev_time >= current_time) {
+            return true;
+        }
+        
+        // The start and stop time cutoffs for backfilling entries. Min(..) ensures times aren't negative.
+        // The stop time is just before the current_time, set by BACKFILL_PADDING_MS, which avoids the last backfilled entry being too close to current_time.
+        uint64_t start_time = *prev_time;
+        const uint64_t stop_time = current_time - std::min<uint64_t>(current_time, BACKFILL_PADDING_MS);
+        
+        // Ensures the first iteration will write the first entry at current_time and not backfill to time 0ms.
+        if (start_time == 0) {
+            start_time = current_time - std::min<uint64_t>(current_time, BACKFILL_INTERVAL_MS);
+        }
+        
+        // Ensures only STATUS_BUFFER_NUM_ENTRIES entries at most are backfilled
+        const uint64_t max_backfill = BACKFILL_INTERVAL_MS * STATUS_BUFFER_NUM_ENTRIES;
+        const uint64_t min_time = current_time - std::min<uint64_t>(current_time, max_backfill);
+        if (start_time < min_time) {
+            start_time = min_time;
+        }
+        
+        uint64_t time = start_time;
+        uint16_t state = *prev_state;
+        
+        // Backfill entries a fixed interval apart from each other between prev_time and current_time
+        while (time < stop_time) {
+            // Advance head pointer
+            *head = (*head + 1) % STATUS_BUFFER_NUM_ENTRIES;
+            uint8_t* buffer_entry = buffer[*head];
+
+            // Clear buffer
+            memset(buffer_entry, 0, STATUS_BUFFER_SIZE);
+            
+            time += BACKFILL_INTERVAL_MS;
+            
+            // If the stop time is reached, then write current_time and current_state instead for this final iteration
+            const bool isEdge = (time >= stop_time);
+            if (isEdge) {
+                state = current_state;
+                time = current_time;
+            }
+            
+            // Write button state
+            buffer_entry[4] = (state >> 8) & 0xFF;
+            buffer_entry[5] = state & 0xFF;
+            
+            // Write game time
+            *(uint64_t*)&buffer_entry[0x18] = time;
+        }
+        
         *prev_state = current_state;
-
-        // Advance head pointer
-        *head = (*head + 1) % STATUS_BUFFER_NUM_ENTRIES;
-        uint8_t* buffer_entry = buffer[*head];
-
-        // Clear buffer
-        memset(buffer_entry, 0, STATUS_BUFFER_SIZE);
-        
-        // Write button state
-        buffer_entry[4] = up_down;
-        buffer_entry[5] = left_right;
-        
-        //Write current game time
-        *(uint64_t*)&buffer_entry[0x18] = arkGetTickTime64();
+        *prev_time = current_time;
     }
 
     // return success
@@ -271,7 +318,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
 
 // Used for triggering updates of the controller states from outside arkmdxp4.dll main refresh loop (i.e. within rawinput.cpp on controller events)
 void mdxf_poll() {
-    if (MDXF_IS_ACTIVE) {
+    if (IS_MDXF_ACTIVE) {
         ac_io_mdxf_update_control_status_buffer_impl(17, EXTERNAL_POLL);
         ac_io_mdxf_update_control_status_buffer_impl(18, EXTERNAL_POLL);
     }
