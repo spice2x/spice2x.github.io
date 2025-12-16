@@ -90,14 +90,20 @@ namespace overlay::windows {
         this->flags |= ImGuiWindowFlags_NoBackground;
         
         if (this->disabled_message.has_value()) {
+            this->draws_window = true;
             this->flags &= ~ImGuiWindowFlags_NoBackground;
             ImGui::TextColored(YELLOW, "%s", this->disabled_message.value().c_str());
+            ImGui::TextUnformatted("");
+            if (ImGui::Button("Close")) {
+                this->set_active(false);
+            }
             return;
         }
 
         this->draw_texture();
 
         if (!this->texture) {
+            this->draws_window = true;
             this->flags &= ~ImGuiWindowFlags_NoBackground;
             ImGui::TextColored(YELLOW, "Failed to acquire surface texture for subscreen.");
             if (avs::game::is_model("LDJ")) {
@@ -110,6 +116,10 @@ namespace overlay::windows {
                     YELLOW,
                     "Ensure that you did not accidentally enable a patch \n"
                     "that turns off subscreen rendering.");
+            }
+            ImGui::TextUnformatted("");
+            if (ImGui::Button("Close")) {
+                this->set_active(false);
             }
         }
 

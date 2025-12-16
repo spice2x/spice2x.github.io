@@ -15,7 +15,6 @@ namespace overlay::windows {
             this->disabled_message =
                 "Close this overlay and use the second window.\n"
                 "If you don't see the window, double check your DLL type and apply TDJ I/O patches as needed.";
-            this->draws_window = false;
         }
 
         float size = 0.5f;
