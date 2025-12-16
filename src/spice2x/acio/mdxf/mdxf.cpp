@@ -259,6 +259,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
         }
         
         // The start and stop time cutoffs for backfilling entries. Min(..) ensures times aren't negative.
+        // The stop time is just before the current_time, set by BACKFILL_PADDING_MS, which avoids the last backfilled entry being too close to current_time.
         uint64_t start_time = *prev_time;
         const uint64_t stop_time = current_time - std::min<uint64_t>(current_time, BACKFILL_PADDING_MS);
         
@@ -288,7 +289,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             
             time += BACKFILL_INTERVAL_MS;
             
-            // If the current time is reached, then write current_time and current_state instead for this final iteration
+            // If the stop time is reached, then write current_time and current_state instead for this final iteration
             const bool isEdge = (time >= stop_time);
             if (isEdge) {
                 state = current_state;
