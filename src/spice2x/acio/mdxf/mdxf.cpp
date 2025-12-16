@@ -28,6 +28,7 @@ static std::mutex MUTEX_P2;
 static bool IS_MDXF_ACTIVE = false;
 
 static const uint8_t BACKFILL_INTERVAL_MS = 4;
+static const uint8_t BACKFILL_PADDING_MS = 2;
 
 // buffers
 #pragma pack(push, 1)
@@ -242,8 +243,8 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             left_right |= 0x0F;
         }
         
-        uint16_t const current_state = (uint16_t(up_down) << 8) | left_right;
-        uint64_t const current_time = arkGetTickTime64();
+        const uint16_t current_state = (uint16_t(up_down) << 8) | left_right;
+        const uint64_t current_time = arkGetTickTime64();
         
         std::lock_guard<std::mutex> lock(*mutex);
         
@@ -257,18 +258,27 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             return true;
         }
         
-        uint16_t state = *prev_state;
-        uint64_t time = *prev_time;
+        // The start and stop time cutoffs for backfilling entries. Min(..) ensures times aren't negative.
+        uint64_t start_time = *prev_time;
+        const uint64_t stop_time = current_time - std::min<uint64_t>(current_time, BACKFILL_PADDING_MS);
         
-        // Ensures the first iteration will write the first entry at current_time and not backfill to time 0ms. Min(..) ensures time isn't negative.
-        if (time == 0) {
-            time = current_time - std::min<uint64_t>(current_time, BACKFILL_INTERVAL_MS);
+        // Ensures the first iteration will write the first entry at current_time and not backfill to time 0ms.
+        if (start_time == 0) {
+            start_time = current_time - std::min<uint64_t>(current_time, BACKFILL_INTERVAL_MS);
         }
         
-        uint16_t entries_written = 0;
+        // Ensures only STATUS_BUFFER_NUM_ENTRIES entries at most are backfilled
+        const uint64_t max_backfill = BACKFILL_INTERVAL_MS * STATUS_BUFFER_NUM_ENTRIES;
+        const uint64_t min_time = current_time - std::min<uint64_t>(current_time, max_backfill);
+        if (start_time < min_time) {
+            start_time = min_time;
+        }
+        
+        uint64_t time = start_time;
+        uint16_t state = *prev_state;
         
         // Backfill entries a fixed interval apart from each other between prev_time and current_time
-        while (time < current_time && entries_written <= STATUS_BUFFER_NUM_ENTRIES) {
+        while (time < stop_time) {
             // Advance head pointer
             *head = (*head + 1) % STATUS_BUFFER_NUM_ENTRIES;
             uint8_t* buffer_entry = buffer[*head];
@@ -278,9 +288,9 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             
             time += BACKFILL_INTERVAL_MS;
             
-            // If the current time is reached or the maximum number of backfills has been reached, then write current_time and current_state instead for this final iteration
-            bool isEdge = (time >= current_time);
-            if (isEdge || entries_written == STATUS_BUFFER_NUM_ENTRIES) {
+            // If the current time is reached, then write current_time and current_state instead for this final iteration
+            const bool isEdge = (time >= stop_time);
+            if (isEdge) {
                 state = current_state;
                 time = current_time;
             }
@@ -291,7 +301,6 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             
             // Write game time
             *(uint64_t*)&buffer_entry[0x18] = time;
-            entries_written++;
         }
         
         *prev_state = current_state;
