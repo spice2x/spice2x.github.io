@@ -1498,7 +1498,7 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                 }
 
                 // get input time
-                double input_time = get_performance_seconds();
+                const auto input_time = get_performance_seconds();
 
                 // lock device
                 device.mutex->lock();
@@ -1826,6 +1826,9 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
                 // free device
                 device.mutex->unlock();
+
+                // don't iterate through the other devices
+                break;
             }
             
             // update controller state ring buffers (DDR/MDXF)
@@ -1924,7 +1927,7 @@ void CALLBACK rawinput::RawInputManager::input_midi_proc(HMIDIIN hMidiIn, UINT w
                 }
 
                 // get input time
-                auto input_time = get_performance_seconds();
+                const auto input_time = get_performance_seconds();
 
                 // lock device
                 std::lock_guard<std::mutex> lock(*device.mutex);
