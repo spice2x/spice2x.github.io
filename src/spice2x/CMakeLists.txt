@@ -467,6 +467,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/pc/bi2x_hook.cpp
 
         # hooks
+        hooks/audio/acm.cpp
         hooks/audio/audio.cpp
         hooks/audio/buffer.cpp
         hooks/audio/util.cpp
