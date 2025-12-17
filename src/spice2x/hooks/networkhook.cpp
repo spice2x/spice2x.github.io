@@ -68,7 +68,7 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
             free(pAdapterInfo2);
         }
 
-        if (ret != ERROR_SUCCESS) {
+        if (ret != ERROR_SUCCESS && ret != ERROR_BUFFER_OVERFLOW) {
             defer_network_adapter_error();
             log_warning(
                 "network",
