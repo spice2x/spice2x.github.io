@@ -1165,8 +1165,26 @@ std::string rawinput::RawInputManager::rawinput_get_device_description(const raw
                     continue;
                 }
 
-                // kthxbye
+                // base description
                 device_description = wchar_to_u8(reinterpret_cast<PWCHAR>(desc_data.get()));
+
+                // append HID product string if available
+                HANDLE hid_handle = CreateFile(
+                        device_path.c_str(), 0,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE,
+                        nullptr,
+                        OPEN_EXISTING,
+                        0, nullptr);
+                if (hid_handle != INVALID_HANDLE_VALUE) {
+                    wchar_t product_buffer[126] {};
+                    if (HidD_GetProductString(hid_handle, product_buffer, sizeof(product_buffer))) {
+                        auto const product_str = wchar_to_u8(product_buffer);
+                        if (!product_str.empty() && device_description != product_str) {
+                            device_description += " - " + product_str;
+                        }
+                    }
+                    CloseHandle(hid_handle);
+                }
             }
         }
     }
