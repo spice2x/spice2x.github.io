@@ -13,6 +13,7 @@
 #include "util/memutils.h"
 
 #include "audio_private.h"
+#include "acm.h"
 
 #ifdef _MSC_VER
 DEFINE_GUID(CLSID_MMDeviceEnumerator,
@@ -101,6 +102,7 @@ namespace hooks::audio {
 
         log_info("audio", "initializing");
         init_low_latency();
+        hooks::audio::acm::init();
 
         // general hooks
         CoCreateInstance_orig = detour::iat_try("CoCreateInstance", CoCreateInstance_hook);

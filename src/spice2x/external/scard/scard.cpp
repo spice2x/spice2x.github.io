@@ -270,6 +270,21 @@ void scard_loop(SCARDCONTEXT hContext, LPCTSTR slot0_reader_name, LPCTSTR slot1_
             continue;
         } else if (lRet != SCARD_S_SUCCESS) {
             log_warning("scard", "failed SCardGetStatusChange: 0x{:08x}", static_cast<unsigned>(lRet));
+
+            // scard service disappeared, probably because the last reader was unplugged
+            // we currently can't recover from this; we would need to rediscover reader devices
+            // using SCardListReaders
+            if (lRet == SCARD_E_SERVICE_STOPPED) {
+                log_warning(
+                    "scard",
+                    "scard service stopped, polling will stop; "
+                    "the smart card reader was likely unplugged");
+                break;
+            }
+
+            // SCardGetStatusChange can return immediately on some error states;
+            // wait a bit to prevent excessive polling
+            Sleep(SCARD_POLL_INTERVAL_MS * 10);
             continue;
         }
 
@@ -399,6 +414,7 @@ int scard_threadmain() {
     if (reader_name_slots[1]) {
         HeapFree(GetProcessHeap(), 0, reader_name_slots[1]);
     }
+    log_misc("scard", "exiting main thread");
     return 0;
 }
 

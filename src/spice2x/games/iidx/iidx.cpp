@@ -235,6 +235,9 @@ namespace games::iidx {
         } else if (data.find(" W:touch: missing trigger:") != std::string::npos) {
             out.clear();
             return true;
+        } else if (data.find(" W:CTexture: no such texture: id 0") != std::string::npos) {
+            out.clear();
+            return true;
         } else if (data.find("SuperstepSound: Audio device is not available") != std::string::npos) {
             deferredlogs::defer_error_messages(deferredlogs::SUPERSTEP_SOUND_ERROR_MESSAGE);
             return false;
