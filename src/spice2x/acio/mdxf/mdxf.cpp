@@ -245,8 +245,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
                 left_right |= 0x0F;
             }
             current_state = (uint16_t(up_down) << 8) | left_right;
-        }
-        else {
+        } else {
             current_state = *prev_state;
         }
         
