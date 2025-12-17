@@ -152,7 +152,7 @@ static bool __cdecl ac_io_mdxf_set_output_level(unsigned int a1, unsigned int a2
     return true;
 }
 
-static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFPollSource source) {
+static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFPollSource source, uint64_t current_time) {
 
     // check freeze
     if (STATUS_BUFFER_FREEZE) {
@@ -224,37 +224,38 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
                 button_map = &buttons_p2[0];
                 break;
         }
-
-        // get buttons
-        auto &buttons = games::ddr::get_buttons();
-        uint8_t up_down = 0;
-        uint8_t left_right = 0;
-
-        if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[0]))) {
-            up_down |= 0xF0;
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[1]))) {
-            up_down |= 0x0F;
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[2]))) {
-            left_right |= 0xF0;
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[3]))) {
-            left_right |= 0x0F;
-        }
         
-        const uint16_t current_state = (uint16_t(up_down) << 8) | left_right;
-        const uint64_t current_time = arkGetTickTime64();
+        uint16_t current_state;
+        if (source == EXTERNAL_POLL) {
+            // get buttons
+            auto &buttons = games::ddr::get_buttons();
+            uint8_t up_down = 0;
+            uint8_t left_right = 0;
+            
+            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[0]))) {
+                up_down |= 0xF0;
+            }
+            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[1]))) {
+                up_down |= 0x0F;
+            }
+            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[2]))) {
+                left_right |= 0xF0;
+            }
+            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[3]))) {
+                left_right |= 0x0F;
+            }
+            current_state = (uint16_t(up_down) << 8) | left_right;
+        } else {
+            current_state = *prev_state;
+        }
         
         std::lock_guard<std::mutex> lock(*mutex);
         
-        // If state hasn't changed and the update was triggered externally, then don't advance head pointer or write a new entry
-        if (source == EXTERNAL_POLL && *prev_state == current_state) {
-            return true;
-        }
+        const bool has_state_changed = *prev_state != current_state;
+        const bool has_time_changed = *prev_time < current_time;
         
-        // If there's already an entry for this exact time, then don't advance head pointer or write a new entry 
-        if (*prev_time >= current_time) {
+        // If state hasn't changed and either the update was triggered externally or the time hasn't changed, then don't advance head pointer or write a new entry
+        if (!has_state_changed && (source == EXTERNAL_POLL || !has_time_changed)) {
             return true;
         }
         
@@ -273,6 +274,11 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
         const uint64_t min_time = current_time - std::min<uint64_t>(current_time, max_backfill);
         if (start_time < min_time) {
             start_time = min_time;
+        }
+        
+        // Only write one entry if called externally
+        if (source == EXTERNAL_POLL) {
+            start_time = stop_time - 1;
         }
         
         uint64_t time = start_time;
@@ -313,14 +319,15 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
 }
 
 static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
-    return ac_io_mdxf_update_control_status_buffer_impl(node, ARKMDXP4_POLL);
+    return ac_io_mdxf_update_control_status_buffer_impl(node, ARKMDXP4_POLL, arkGetTickTime64());
 }
 
 // Used for triggering updates of the controller states from outside arkmdxp4.dll main refresh loop (i.e. within rawinput.cpp on controller events)
 void mdxf_poll() {
     if (IS_MDXF_ACTIVE) {
-        ac_io_mdxf_update_control_status_buffer_impl(17, EXTERNAL_POLL);
-        ac_io_mdxf_update_control_status_buffer_impl(18, EXTERNAL_POLL);
+        const uint64_t call_time_ms = arkGetTickTime64();
+        ac_io_mdxf_update_control_status_buffer_impl(17, EXTERNAL_POLL, call_time_ms);
+        ac_io_mdxf_update_control_status_buffer_impl(18, EXTERNAL_POLL, call_time_ms);
     }
 }
 
