@@ -1850,7 +1850,7 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
             }
             
             // update controller state ring buffers (DDR/MDXF)
-            mdxf_poll();
+            mdxf_poll(true);
 
             // call the default window handler for cleanup
             DefWindowProc(hWnd, msg, wparam, lParam);
