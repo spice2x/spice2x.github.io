@@ -58,11 +58,11 @@ typedef enum {
     BACKFILL_MODE = 1
 } MDXFBufferFillMode;
 
-// Decides which method to use for populating ring buffer entries for "padding". Could possibly be made configurable through spicecfg.
-// THREAD_MODE: Spins a thread running at THREAD_REFRESH_RATE_HZ which periodically fills the ring buffer with auxiliary entries
-// BACKFILL_MODE: On every update cycle, fill the ring buffer with entries for the last known state BACKFILL_INTERVAL_MS apart from each other...
-// ...from the time of the last entry to the current time before adding the entry for the current state
-static const MDXFBufferFillMode BUFFER_FILL_MODE = BACKFILL_MODE;
+ /* Decides which method to use for populating ring buffer entries for "padding". Could possibly be made configurable through spicecfg.
+    THREAD_MODE: Spins a thread running at THREAD_REFRESH_RATE_HZ which periodically fills the ring buffer with auxiliary entries
+    BACKFILL_MODE: On every update cycle, fill the ring buffer with entries for the last known state BACKFILL_INTERVAL_MS apart from each other...
+    ...from the time of the last entry to the current time before adding the entry for the current state */
+static const MDXFBufferFillMode BUFFER_FILL_MODE = THREAD_MODE;
 
 typedef enum {
     ARKMDXP4_POLL = 0,
@@ -197,22 +197,20 @@ static uint64_t __cdecl ac_io_mdxf_get_control_status_buffer(int node, void *out
         }
         
         std::lock_guard<std::mutex> lock(*mutex);
+        
+        uint8_t start_index = (head_in == 0xFF) ? *head : head_in;
 
-        if (head_in != 0xFF) {
-            *head = head_in;
-        }
-
-        // Compute ring index: walk backwards from head as index increases
+        // Compute ring index: walk backwards from start_index as index increases
         // Assumes ring buffer size is a power of two
         const size_t mask = size - 1;
         const size_t offset = static_cast<size_t>(index) & mask;
-        const size_t i = (static_cast<size_t>(*head) - offset + size) & mask;
+        const size_t i = (static_cast<size_t>(start_index) - offset + size) & mask;
 
         // Copy the chosen entry
         memcpy(out, buffer[i], STATUS_BUFFER_SIZE);
 
-        // Return the head value actually used
-        return static_cast<uint64_t>(*head);
+        // Return the start value actually used
+        return static_cast<uint64_t>(start_index);
     }
 
     return error_ret;
