@@ -140,7 +140,7 @@ static void count_calls_from_game() {
         return;
     }
     
-    uint64_t current_time = arkGetTickTime64();
+    const uint64_t current_time = arkGetTickTime64();
     
     if (START_TIME == 0) {
         START_TIME = current_time;
@@ -148,13 +148,13 @@ static void count_calls_from_game() {
     
     CALL_COUNT++;
     
-    uint64_t elapsed_time = current_time - START_TIME;
+    const uint64_t elapsed_time = current_time - START_TIME;
     if (elapsed_time >= 3000) {
         double measured_hz = static_cast<double>(CALL_COUNT) * 1000.0 / static_cast<double>(elapsed_time);
         
         // Account for the main loop calling this twice per iteration
         measured_hz *= 0.5;
-        int snapped_hz = snap_refresh_rate(static_cast<int>(measured_hz));
+        const int snapped_hz = snap_refresh_rate(static_cast<int>(measured_hz));
 
         IS_THREAD_NEEDED = (snapped_hz < THRESHOLD_REFRESH_RATE);
         IS_REFRESH_RATE_DETERMINED = true;
@@ -199,7 +199,7 @@ static uint64_t __cdecl ac_io_mdxf_get_control_status_buffer(int node, void *out
         
         std::lock_guard<std::mutex> lock(*mutex);
         
-        uint8_t start_index = (head_in == 0xFF) ? *head : head_in;
+        const uint8_t start_index = (head_in == 0xFF) ? *head : head_in;
 
         // Compute ring index: walk backwards from start_index as index increases
         // Assumes ring buffer size is a power of two
@@ -436,7 +436,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer(int node) {
 // Used for triggering updates of the controller states from outside arkmdxp4.dll main refresh loop (i.e. within rawinput.cpp on controller events)
 void mdxf_poll(bool isExternal) {
     if (IS_MDXF_ACTIVE) {
-        MDXFPollSource source = isExternal ? EXTERNAL_POLL : INTERNAL_POLL;
+        const MDXFPollSource source = isExternal ? EXTERNAL_POLL : INTERNAL_POLL;
         const uint64_t call_time_ms = arkGetTickTime64();
         ac_io_mdxf_update_control_status_buffer_impl(17, source, call_time_ms);
         ac_io_mdxf_update_control_status_buffer_impl(18, source, call_time_ms);
