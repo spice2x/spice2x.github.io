@@ -33,7 +33,7 @@ static const uint8_t BACKFILL_PADDING_MS = 2;
 // These are used to determine if a thread needs to be spun up to keep pad state ring buffers populated with enough recent polls
 static uint64_t START_TIME = 0;
 static int CALL_COUNT = 0;
-static int THRESHOLD_REFRESH_RATE = 120;
+static const int THRESHOLD_REFRESH_RATE = 120;
 static bool IS_REFRESH_RATE_DETERMINED = false;
 static bool IS_THREAD_NEEDED = false;
 
