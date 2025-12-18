@@ -21,6 +21,48 @@ namespace nativetouchhook {
 
     static decltype(GetTouchInputInfo) *GetTouchInputInfo_orig = nullptr;
 
+    static void strip_contact_size(PTOUCHINPUT point) {
+
+#if TOUCH_SIMULATE_FAT_FINGERS
+        point->dwMask |= 0x004;
+        point->cxContact = 80 * 100;
+        point->cyContact = 60 * 100;
+#endif
+
+        // most monitors do not set TOUCHEVENTFMASK_CONTACTAREA, but for
+        // monitors that do set it, IIDX can get very confused (SDVX is not
+        // affected)
+        //
+        // while the test menu and the touch "glow" seem to work properly,
+        // interacting with subscreen menu items or entering PIN becomes
+        // very unpredictable
+        //
+        // to fix this, simply remove the contact area width and height
+        // 
+        // note: test menu > I/O > touch test  gives 5 numbers:
+        //       n: x, y, w, h
+        //       where 
+        //       n is the nth touch input since boot
+        //       x, y are coordinates (center of finger)
+        //       w, h are contact width and height
+        //
+        // when TOUCHEVENTFMASK_CONTACTAREA is not set, w/h will
+        // automatically be seen as 1x1, which works perfectly fine
+
+        log_debug(
+            "touch::native",
+            "[{}, {}] dwMask = 0x{:x}, cxContact = {}, cyContact = {}",
+            point->x / 100,
+            point->y / 100,
+            point->dwMask,
+            point->cxContact,
+            point->cyContact);
+
+        point->dwMask &= ~(0x004ul); // clear TOUCHEVENTFMASK_CONTACTAREA 
+        point->cxContact = 0;
+        point->cyContact = 0;
+    }
+
     static BOOL WINAPI GetTouchInputInfoHook(
         HTOUCHINPUT hTouchInput, UINT cInputs, PTOUCHINPUT pInputs, int cbSize) {
 
@@ -32,45 +74,7 @@ namespace nativetouchhook {
 
         for (size_t i = 0; i < cInputs; i++) {
             PTOUCHINPUT point = &pInputs[i];
-
-#if TOUCH_SIMULATE_FAT_FINGERS
-            point->dwMask |= 0x004;
-            point->cxContact = 80 * 100;
-            point->cyContact = 60 * 100;
-#endif
-
-            // most monitors do not set TOUCHEVENTFMASK_CONTACTAREA, but for
-            // monitors that do set it, IIDX can get very confused (SDVX is not
-            // affected)
-            //
-            // while the test menu and the touch "glow" seem to work properly,
-            // interacting with subscreen menu items or entering PIN becomes
-            // very unpredictable
-            //
-            // to fix this, simply remove the contact area width and height
-            // 
-            // note: test menu > I/O > touch test  gives 5 numbers:
-            //       n: x, y, w, h
-            //       where 
-            //       n is the nth touch input since boot
-            //       x, y are coordinates (center of finger)
-            //       w, h are contact width and height
-            //
-            // when TOUCHEVENTFMASK_CONTACTAREA is not set, w/h will
-            // automatically be seen as 1x1, which works perfectly fine
-
-            log_debug(
-                "touch::native",
-                "[{}, {}] dwMask = 0x{:x}, cxContact = {}, cyContact = {}",
-                point->x / 100,
-                point->y / 100,
-                point->dwMask,
-                point->cxContact,
-                point->cyContact);
-
-            point->dwMask &= ~(0x004ul); // clear TOUCHEVENTFMASK_CONTACTAREA 
-            point->cxContact = 0;
-            point->cyContact = 0;
+            strip_contact_size(point);
         }
         
         return result;
