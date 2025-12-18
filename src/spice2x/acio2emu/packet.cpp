@@ -95,12 +95,19 @@ namespace acio2emu {
             break;
 
         default:
-            log_fatal("acio2emu", "cannot set step: unknown value: {}", s);
+            log_fatal(
+                "acio2emu",
+                "cannot set step: unknown value: {}",
+                static_cast<uint32_t>(s));
             break;
         }
 
         if (!valid) {
-            log_fatal("acio2emu", "illegal transition detected: {} -> {}", step_, s);
+            log_fatal(
+                "acio2emu",
+                "illegal transition detected: {} -> {}",
+                static_cast<uint32_t>(step_),
+                static_cast<uint32_t>(s));
         }
 #endif
         step_ = s;
