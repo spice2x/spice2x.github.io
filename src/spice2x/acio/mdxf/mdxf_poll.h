@@ -2,4 +2,4 @@
 #pragma once
 
 // Called from rawinput thread whenever inputs have just been updated
-void mdxf_poll();
+void mdxf_poll(bool isExternal);
