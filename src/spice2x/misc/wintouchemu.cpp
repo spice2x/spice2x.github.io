@@ -247,7 +247,10 @@ namespace wintouchemu {
                     touch_input->y *= 100;
                     touch_input->hSource = hTouchInput;
                     touch_input->dwID = 0;
+                    touch_input->dwMask = 0x0004; // TOUCHINPUTMASKF_CONTACTAREA
                     touch_input->dwFlags = 0;
+                    touch_input->cxContact = 8000;
+                    touch_input->cyContact = 8000;
                     switch (mouse_state.touch_event) {
                         case TOUCHEVENTF_DOWN:
                             if (valid) {
@@ -276,11 +279,11 @@ namespace wintouchemu {
                             touch_input->dwFlags |= TOUCHEVENTF_UP;
                             break;
                     }
-                    touch_input->dwMask = 0;
+                    // touch_input->dwMask = 0;
                     touch_input->dwTime = 0;
                     touch_input->dwExtraInfo = 0;
-                    touch_input->cxContact = 0;
-                    touch_input->cyContact = 0;
+                    // touch_input->cxContact = 0;
+                    // touch_input->cyContact = 0;
 
                     // reset it since the event was consumed & propagated as touch
                     mouse_state.touch_event = 0;

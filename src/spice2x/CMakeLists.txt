@@ -526,6 +526,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         misc/device.cpp
         misc/eamuse.cpp
         misc/extdev.cpp
+        misc/nativetouchhook.cpp
         misc/sciunit.cpp
         misc/sde.cpp
         misc/wintouchemu.cpp

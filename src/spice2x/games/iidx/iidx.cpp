@@ -20,6 +20,7 @@
 #include "hooks/sleephook.h"
 #include "launcher/options.h"
 #include "touch/touch.h"
+#include "misc/nativetouchhook.h"
 #include "misc/wintouchemu.h"
 #include "misc/eamuse.h"
 #include "util/detour.h"
@@ -332,7 +333,9 @@ namespace games::iidx {
                 // need to hook `avs2-core.dll` so AVS win32fs operations go through rom hook
                 devicehook_init(avs::core::DLL_INSTANCE);
 
-                if (!NATIVE_TOUCH) {
+                if (NATIVE_TOUCH) {
+                    nativetouchhook::hook(avs::game::DLL_INSTANCE);
+                } else {
                     wintouchemu::FORCE = true;
                     wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
                     wintouchemu::hook_title_ends("beatmania IIDX", "main", avs::game::DLL_INSTANCE);
