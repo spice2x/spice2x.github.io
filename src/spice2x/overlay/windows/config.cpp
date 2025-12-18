@@ -1509,7 +1509,15 @@ namespace overlay::windows {
                             if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
                                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
                             }
-                            ImGui::Text("%s\n\n", button_display.c_str());
+                            // this doesn't account for utf-8 but whatever
+                            if (button_display.size() >= 40) {
+                                ImGui::Text("%.37s...", button_display.c_str());
+                                ImGui::SameLine();
+                                ImGui::HelpMarker(button_display.c_str());
+                            } else {
+                                ImGui::Text("%s", button_display.c_str());
+                            }
+                            ImGui::TextUnformatted("\n");
                             if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
                                 ImGui::PopStyleColor();
                             }
