@@ -51,8 +51,8 @@ namespace nativetouchhook {
             //
             // to fix this, simply remove the contact area width and height
             // 
-            // note: test menu > I/O > touch test screen gives 5 numbers:
-            //       n: x, y, w h
+            // note: test menu > I/O > touch test  gives 5 numbers:
+            //       n: x, y, w, h
             //       where 
             //       n is the nth touch input since boot
             //       x, y are coordinates (center of finger)
