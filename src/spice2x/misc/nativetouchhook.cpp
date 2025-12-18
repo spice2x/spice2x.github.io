@@ -4,10 +4,8 @@
 
 #include "wintouchemu.h"
 
-#include "touch/touch.h"
 #include "util/detour.h"
 #include "util/logging.h"
-#include "util/utils.h"
 
 #define TOUCH_SIMULATE_FAT_FINGERS 0
 #define TOUCH_DEBUG_VERBOSE 0
