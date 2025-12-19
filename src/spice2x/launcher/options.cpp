@@ -2303,7 +2303,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Only has an effect when emulating P4IO (arkmdxp4.dll)",
         .type = OptionType::Enum,
         .game_name = "Dance Dance Revolution",
-        .category = "I/O Options",
+        .category = "Game Options (Advanced)",
         .elements = {
             {"thread", ""},
             {"backfill", ""},
