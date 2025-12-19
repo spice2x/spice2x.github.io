@@ -58,7 +58,7 @@ static bool STATUS_BUFFER_FREEZE = false;
         if the game's refresh rate is fast enough to forego starting the thread.
     BACKFILL_MODE: On every update cycle, fill the ring buffer with entries for the last known state BACKFILL_INTERVAL_MS apart from each other 
         from the time of the last entry to the current time before adding the entry for the current state. */
-MDXFBufferFillMode BUFFER_FILL_MODE = THREAD_MODE;
+acio::MDXFBufferFillMode acio::MDXF_BUFFER_FILL_MODE = acio::THREAD_MODE;
 
 typedef enum {
     ARKMDXP4_POLL = 0,
@@ -265,7 +265,7 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
             if (!IS_MDXF_ACTIVE) {
                 IS_MDXF_ACTIVE = true;
             }
-            if (BUFFER_FILL_MODE == THREAD_MODE) {
+            if (acio::MDXF_BUFFER_FILL_MODE == acio::THREAD_MODE) {
                 count_calls_from_game();
             }
         }
@@ -458,7 +458,7 @@ void acio::MDXFModule::attach() {
 }
 
 acio::MDXFModule::~MDXFModule() {
-    if (BUFFER_FILL_MODE == THREAD_MODE) {
+    if (acio::MDXF_BUFFER_FILL_MODE == acio::THREAD_MODE) {
         mdxf_thread_stop();
     }
 }

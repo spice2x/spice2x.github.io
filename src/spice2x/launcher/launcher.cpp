@@ -1150,11 +1150,11 @@ int main_implementation(int argc, char *argv[]) {
             rawinput::RAWINPUT_REQUIRE_FOCUS = false;
         }
     }
-    if (options[launcher::Options::P4IOBufferMode].is_active()) {
-        if (options[launcher::Options::P4IOBufferMode].value_text() == "thread") {
-            BUFFER_FILL_MODE = THREAD_MODE;
-        } else if (options[launcher::Options::P4IOBufferMode].value_text() == "backfill") {
-            BUFFER_FILL_MODE = BACKFILL_MODE;
+    if (options[launcher::Options::DDRP4IOBufferMode].is_active()) {
+        if (options[launcher::Options::DDRP4IOBufferMode].value_text() == "thread") {
+            acio::MDXF_BUFFER_FILL_MODE = acio::THREAD_MODE;
+        } else if (options[launcher::Options::DDRP4IOBufferMode].value_text() == "backfill") {
+            acio::MDXF_BUFFER_FILL_MODE = acio::BACKFILL_MODE;
         } 
         // else - default (no value)
     }

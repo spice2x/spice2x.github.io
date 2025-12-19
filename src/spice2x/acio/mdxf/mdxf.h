@@ -2,14 +2,14 @@
 
 #include "../module.h"
 
-typedef enum {
-    THREAD_MODE = 0,
-    BACKFILL_MODE = 1
-} MDXFBufferFillMode;
-
-extern MDXFBufferFillMode BUFFER_FILL_MODE;
-
 namespace acio {
+    
+    typedef enum {
+        THREAD_MODE = 0,
+        BACKFILL_MODE = 1
+    } MDXFBufferFillMode;
+
+    extern MDXFBufferFillMode MDXF_BUFFER_FILL_MODE;
 
     class MDXFModule : public ACIOModule {
     public:

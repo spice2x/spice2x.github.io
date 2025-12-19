@@ -2292,9 +2292,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "I/O Options",
     },
     {
-        // P4IOBufferMode
-        .title = "P4IO Buffer Algorithm",
-        .name = "p4iobuffer",
+        // DDRP4IOBufferMode
+        .title = "DDR P4IO Buffer Algorithm",
+        .name = "ddrp4iobuffer",
         .desc =
             "Remember to restart after changing this value.\n\n"
             "Sets the algorithm used to populate entries to the buffer of controller polls read by the game.\n\n"
@@ -2302,7 +2302,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Backfill: Fills the buffer on each frame with last known state info at short regular intervals up to the current time, then writes the current state.\n\n"
             "Only has an effect when emulating P4IO (arkmdxp4.dll)",
         .type = OptionType::Enum,
-        .hidden = true,
         .game_name = "Dance Dance Revolution",
         .category = "I/O Options",
         .elements = {
