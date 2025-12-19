@@ -2292,6 +2292,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "I/O Options",
     },
     {
+        // DDRP4IOBufferMode
+        .title = "DDR P4IO Buffer Algorithm",
+        .name = "ddrp4iobuffer",
+        .desc =
+            "Remember to restart after changing this value.\n\n"
+            "Sets the algorithm used to populate entries to the buffer of controller polls read by the game.\n\n"
+            "Thread: Starts a thread to periodically insert polls into the buffer (defaults to Backfill if game's refresh rate is at least 120Hz).\n\n"
+            "Backfill: Fills the buffer on each frame with last known state info at short regular intervals up to the current time, then writes the current state.\n\n"
+            "Only has an effect when emulating P4IO (arkmdxp4.dll)",
+        .type = OptionType::Enum,
+        .game_name = "Dance Dance Revolution",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"thread", ""},
+            {"backfill", ""},
+        },
+    },
+    {
         // InputRequiresFocus
         .title = "Input Requires Focus",
         .name = "inputfocus",
