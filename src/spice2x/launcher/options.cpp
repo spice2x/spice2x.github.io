@@ -2298,7 +2298,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc =
             "Remember to restart after changing this value.\n\n"
             "Sets the algorithm used to populate entries to the buffer of controller polls read by the game.\n\n"
-            "Thread: Starts a thread to periodically insert polls into the buffer (defaults to Backfill if game's refresh rate is at least 120Hz).\n\n"
+            "Thread (default): Starts a thread to periodically insert polls into the buffer (falls back to Backfill if game's refresh rate is at least 120Hz).\n\n"
             "Backfill: Fills the buffer on each frame with last known state info at short regular intervals up to the current time, then writes the current state.\n\n"
             "Only has an effect when emulating P4IO (arkmdxp4.dll)",
         .type = OptionType::Enum,
