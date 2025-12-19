@@ -10,6 +10,7 @@
 #include "api/modules/capture.h"
 #include "acio/acio.h"
 #include "acio/icca/icca.h"
+#include "acio/mdxf/mdxf.h"
 #include "api/controller.h"
 #include "avs/automap.h"
 #include "avs/core.h"
@@ -1148,6 +1149,14 @@ int main_implementation(int argc, char *argv[]) {
             rawinput::NAIVE_REQUIRE_FOCUS = false;
             rawinput::RAWINPUT_REQUIRE_FOCUS = false;
         }
+    }
+    if (options[launcher::Options::P4IOBufferMode].is_active()) {
+        if (options[launcher::Options::P4IOBufferMode].value_text() == "thread") {
+            BUFFER_FILL_MODE = THREAD_MODE;
+        } else if (options[launcher::Options::P4IOBufferMode].value_text() == "backfill") {
+            BUFFER_FILL_MODE = BACKFILL_MODE;
+        } 
+        // else - default (no value)
     }
 
     if (options[launcher::Options::MidiAlgoVer].is_active()) {

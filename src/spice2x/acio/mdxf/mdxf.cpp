@@ -53,17 +53,12 @@ static struct {
 
 static bool STATUS_BUFFER_FREEZE = false;
 
-typedef enum {
-    THREAD_MODE = 0,
-    BACKFILL_MODE = 1
-} MDXFBufferFillMode;
-
- /* Decides which method to use for populating ring buffer entries for "padding". Could possibly be made configurable through spicecfg.
+ /* Decides which method to use for populating ring buffer entries for "padding". Overwritten in spicecfg using P4IO Buffer Algorithm option.
     THREAD_MODE: Spins a thread running at THREAD_REFRESH_RATE_HZ which periodically fills the ring buffer with auxiliary entries. Falls back on BACKFILL_MODE
         if the game's refresh rate is fast enough to forego starting the thread.
     BACKFILL_MODE: On every update cycle, fill the ring buffer with entries for the last known state BACKFILL_INTERVAL_MS apart from each other 
         from the time of the last entry to the current time before adding the entry for the current state. */
-static const MDXFBufferFillMode BUFFER_FILL_MODE = THREAD_MODE;
+MDXFBufferFillMode BUFFER_FILL_MODE = THREAD_MODE;
 
 typedef enum {
     ARKMDXP4_POLL = 0,

@@ -241,6 +241,7 @@ namespace launcher {
             IIDXRecDisable,
             MidiAlgoVer,
             MidiNoteSustain,
+            P4IOBufferMode,
             InputRequiresFocus,
             NostalgiaPoke,
             ForceBackBufferCount,
