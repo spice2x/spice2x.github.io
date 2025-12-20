@@ -160,12 +160,12 @@ static void count_calls_from_game() {
             START_TIME = current_time;
         }
 
-        // boot screen takes about 10 seconds...
+        // boot screen takes about 10 seconds, so let's wait for double that
         if ((current_time - START_TIME) < 20000) {
             // too early, do nothing
             return;
         } else {
-            // 15s has passed for the first time, start measuring on next call
+            // 20s has passed for the first time, start measuring on next call
             IS_REFRESH_RATE_MEASUREMENT_STARTED = true;
             START_TIME = current_time;
             log_debug("mdxf", "measurement begin");
