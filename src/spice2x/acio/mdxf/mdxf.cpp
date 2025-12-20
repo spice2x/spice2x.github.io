@@ -9,6 +9,15 @@
 #include "util/utils.h"
 #include <mutex>
 
+#define MDFX_DEBUG_VERBOSE 1
+
+#if MDFX_DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
+
 // constants
 const size_t STATUS_BUFFER_SIZE = 32;
 const size_t STATUS_BUFFER_NUM_ENTRIES = 16;
@@ -34,10 +43,12 @@ static const uint8_t BACKFILL_PADDING_MS = 2;
 static uint64_t START_TIME = 0;
 static int CALL_COUNT = 0;
 static const int THRESHOLD_REFRESH_RATE = 120;
-static bool IS_REFRESH_RATE_DETERMINED = false;
-static bool IS_THREAD_NEEDED = false;
 
+static std::atomic<bool> IS_REFRESH_RATE_MEASUREMENT_STARTED{false};
+static std::atomic<bool> IS_REFRESH_RATE_DETERMINED{false};
+static std::atomic<bool> IS_THREAD_NEEDED{false};
 static std::atomic<bool> MDXF_THREAD_RUNNING{false};
+
 static std::thread MDXF_THREAD;
 
 static constexpr int THREAD_REFRESH_RATE_HZ = 125;
@@ -53,12 +64,15 @@ static struct {
 
 static bool STATUS_BUFFER_FREEZE = false;
 
- /* Decides which method to use for populating ring buffer entries for "padding". Overwritten in spicecfg using P4IO Buffer Algorithm option.
-    THREAD_MODE: Spins a thread running at THREAD_REFRESH_RATE_HZ which periodically fills the ring buffer with auxiliary entries. Falls back on BACKFILL_MODE
-        if the game's refresh rate is fast enough to forego starting the thread.
-    BACKFILL_MODE: On every update cycle, fill the ring buffer with entries for the last known state BACKFILL_INTERVAL_MS apart from each other 
-        from the time of the last entry to the current time before adding the entry for the current state. */
-acio::MDXFBufferFillMode acio::MDXF_BUFFER_FILL_MODE = acio::THREAD_MODE;
+// Decides which method to use for populating ring buffer entries for "padding".
+// Overwritten in spicecfg using P4IO Buffer Algorithm option.
+// THREAD_MODE: Spins a thread running at THREAD_REFRESH_RATE_HZ which periodically fills the ring
+//              buffer with auxiliary entries. Falls back on BACKFILL_MODE
+// BACKFILL_MODE: On every update cycle, fill the ring buffer with entries for the last known state
+//                BACKFILL_INTERVAL_MS apart from each other from the time of the last entry to the
+//                current time before adding the entry for the current state.
+// AUTO_MODE: thread mode if <120Hz, backfill if >=120Hz
+acio::MDXFBufferFillMode acio::MDXF_BUFFER_FILL_MODE = acio::MDXFBufferFillMode::AUTO_MODE;
 
 typedef enum {
     ARKMDXP4_POLL = 0,
@@ -88,6 +102,8 @@ static void mdxf_thread_start() {
     if (!MDXF_THREAD_RUNNING.compare_exchange_strong(expected, true)) {
         return;
     }
+
+    log_info("mdxf", "starting poll thread");
 
     MDXF_THREAD = std::thread([] {
         SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
@@ -129,32 +145,50 @@ static int snap_refresh_rate(int measured_hz) {
     return best;
 }
 
-// Increments the number of times the update function was called, then calculates the current refresh rate of the game after 3 seconds has passed
+// Increments the number of times the update function was called,
+// then calculates the current refresh rate of the game
+// (20 seconds after the game starts, until 25 seconds)
 static void count_calls_from_game() {
     if (IS_REFRESH_RATE_DETERMINED) {
         return;
     }
-    
+
     const uint64_t current_time = arkGetTickTime64();
-    
-    if (START_TIME == 0) {
-        START_TIME = current_time;
+
+    if (!IS_REFRESH_RATE_MEASUREMENT_STARTED) {
+        if (START_TIME == 0) {
+            START_TIME = current_time;
+        }
+
+        // boot screen takes about 10 seconds...
+        if ((current_time - START_TIME) < 20000) {
+            // too early, do nothing
+            return;
+        } else {
+            // 15s has passed for the first time, start measuring on next call
+            IS_REFRESH_RATE_MEASUREMENT_STARTED = true;
+            START_TIME = current_time;
+            log_debug("mdxf", "measurement begin");
+            return;
+        }
     }
-    
-    CALL_COUNT++;
-    
+
     const uint64_t elapsed_time = current_time - START_TIME;
-    if (elapsed_time >= 3000) {
+    CALL_COUNT++;
+    if (elapsed_time >= 5000) {
         double measured_hz = static_cast<double>(CALL_COUNT) * 1000.0 / static_cast<double>(elapsed_time);
         
         // Account for the main loop calling this twice per iteration
         measured_hz *= 0.5;
         const int snapped_hz = snap_refresh_rate(static_cast<int>(measured_hz));
 
-        IS_THREAD_NEEDED = (snapped_hz < THRESHOLD_REFRESH_RATE);
         IS_REFRESH_RATE_DETERMINED = true;
-
-        log_info("ARKMDXP4", "Detected: {}Hz, Best Fit: {}Hz (Needs 125Hz Helper Thread: {})", static_cast<int>(measured_hz), snapped_hz, IS_THREAD_NEEDED ? "Yes" : "No");
+        IS_THREAD_NEEDED = (snapped_hz < THRESHOLD_REFRESH_RATE);
+        log_info(
+            "mdxf",
+            "detected: {} Hz, best fit: {} Hz",
+            static_cast<int>(measured_hz),
+            snapped_hz);
 
         if (IS_THREAD_NEEDED) {
             mdxf_thread_start();
@@ -263,9 +297,14 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
         // Marks this module as actively being used, allowing this function to be called from other sources
         if (source == ARKMDXP4_POLL) {
             if (!IS_MDXF_ACTIVE) {
+                log_debug("mdxf", "initializing mdxf I/O support");
                 IS_MDXF_ACTIVE = true;
+                if (acio::MDXF_BUFFER_FILL_MODE == acio::MDXFBufferFillMode::THREAD_MODE) {
+                    IS_THREAD_NEEDED = true;
+                    mdxf_thread_start();
+                }
             }
-            if (acio::MDXF_BUFFER_FILL_MODE == acio::THREAD_MODE) {
+            if (acio::MDXF_BUFFER_FILL_MODE == acio::MDXFBufferFillMode::AUTO_MODE) {
                 count_calls_from_game();
             }
         }
@@ -458,7 +497,7 @@ void acio::MDXFModule::attach() {
 }
 
 acio::MDXFModule::~MDXFModule() {
-    if (acio::MDXF_BUFFER_FILL_MODE == acio::THREAD_MODE) {
+    if (IS_THREAD_NEEDED) {
         mdxf_thread_stop();
     }
 }
