@@ -9,7 +9,7 @@
 #include "util/utils.h"
 #include <mutex>
 
-#define MDFX_DEBUG_VERBOSE 1
+#define MDFX_DEBUG_VERBOSE 0
 
 #if MDFX_DEBUG_VERBOSE
 #define log_debug(module, format_str, ...) logger::push( \
