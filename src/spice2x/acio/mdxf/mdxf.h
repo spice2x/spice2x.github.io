@@ -3,7 +3,7 @@
 #include "../module.h"
 
 namespace acio {
-    
+
     enum class MDXFBufferFillMode {
         // backfill mode, but if <120Hz, enable poll thread
         AUTO_MODE,
