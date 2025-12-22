@@ -46,7 +46,7 @@ struct PredefinedHook {
     uintptr_t       hook_afp_texture_offset;
 };
 
-PredefinedHook g_predefinedHooks[1] = {};
+PredefinedHook g_predefinedHooks[] = {};
 
 const DWORD   g_predefinedHooksLength = ARRAYSIZE(g_predefinedHooks);
 
