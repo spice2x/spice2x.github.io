@@ -8,7 +8,7 @@
 namespace overlay::windows {
 
     SDVXSubScreen::SDVXSubScreen(SpiceOverlay *overlay) : GenericSubScreen(overlay) {
-        this->title = "SDVX Sub Screen";
+        this->title = "SDVX Subscreen";
 
         bool isValkyrieCabinetMode = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
         if (!isValkyrieCabinetMode) {

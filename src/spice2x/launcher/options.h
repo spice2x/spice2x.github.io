@@ -71,6 +71,7 @@ namespace launcher {
             spice2x_IIDXLEDFontSize,
             spice2x_IIDXLEDColor,
             spice2x_IIDXLEDPos,
+            IIDXLEDBorderless,
             LoadSoundVoltexModule,
             SDVXForce720p,
             SDVXPrinterEmulation,
