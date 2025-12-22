@@ -84,7 +84,7 @@ static bool __cdecl ac_io_panb_start_auto_input() {
     return true;
 }
 
-static uint8_t panb_get_button_velocity(Button button, Button button_soft, Button button_medium, Button button_hard) {
+static uint8_t panb_get_button_velocity(Button& button, Button& button_soft, Button& button_medium, Button& button_hard) {
     const auto velocity = Buttons::getVelocity(RI_MGR, button);
     const auto velocity_soft = Buttons::getVelocity(RI_MGR, button_soft);
     const auto velocity_medium = Buttons::getVelocity(RI_MGR, button_medium);
