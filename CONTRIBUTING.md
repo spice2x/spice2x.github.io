@@ -49,6 +49,7 @@ Watch out for legacy OS compatibility. Currently, the minimum support floor is W
 
 ### Code style requirements
 * Indents are four spaces.
+* Try to keep under 100 characters per line. This includes comments and string literals.
 * Always use \{ curly braces \} when appropriate; do not omit them even when it's optional; such as `for` `if` `else`, etc.
 
 OK:
