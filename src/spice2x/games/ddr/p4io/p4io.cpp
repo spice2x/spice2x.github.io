@@ -254,7 +254,7 @@ namespace games::ddr {
             switch((dwIoControlCode>>2)&0x3FFF) {
                 case P4IO_IOCTL_GET_INPUTS: {
                     
-                    // cool down
+                    // Prevents this function from being called at its normal 2000-2500 kHz cadence and overloading the CPU, instead reduces it to 250 Hz
                     Sleep(4);
                     
                     memset(lpOutBuffer, 0, 16);
@@ -267,19 +267,11 @@ namespace games::ddr {
                         {Buttons::TEST, 28}, //Good
                         {Buttons::COIN_MECH, 24}, //Good
                         {Buttons::P1_START, 0}, //Good
-                      /*{Buttons::P1_PANEL_UP, 5}, //Good
-                        {Buttons::P1_PANEL_DOWN, 6}, //Good
-                        {Buttons::P1_PANEL_LEFT, 7}, //Good
-                        {Buttons::P1_PANEL_RIGHT, 16}, //Good */
                         {Buttons::P1_MENU_UP, 1}, //Good
                         {Buttons::P1_MENU_DOWN, 2}, //Good
                         {Buttons::P1_MENU_LEFT, 3}, //Good
                         {Buttons::P1_MENU_RIGHT, 4}, //Good
                         {Buttons::P2_START, 8}, //Good
-                      /*{Buttons::P2_PANEL_UP, 13}, //Good
-                        {Buttons::P2_PANEL_DOWN, 14}, //Good
-                        {Buttons::P2_PANEL_LEFT, 15}, //Good
-                        {Buttons::P2_PANEL_RIGHT, 20}, //Good */
                         {Buttons::P2_MENU_UP, 9}, //Good
                         {Buttons::P2_MENU_DOWN, 10}, //Good
                         {Buttons::P2_MENU_LEFT, 11}, //Good
