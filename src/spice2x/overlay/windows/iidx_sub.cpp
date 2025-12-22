@@ -9,7 +9,7 @@
 namespace overlay::windows {
 
     IIDXSubScreen::IIDXSubScreen(SpiceOverlay *overlay) : GenericSubScreen(overlay) {
-        this->title = "IIDX Sub Screen";
+        this->title = "IIDX TDJ Subscreen";
 
         if (GRAPHICS_IIDX_WSUB) {
             this->disabled_message =

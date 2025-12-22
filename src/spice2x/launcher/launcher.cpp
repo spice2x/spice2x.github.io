@@ -523,6 +523,9 @@ int main_implementation(int argc, char *argv[]) {
         overlay::windows::IIDX_SEGMENT_LOCATION =
             options[launcher::Options::spice2x_IIDXLEDPos].value_text();
     }
+    if (options[launcher::Options::IIDXLEDBorderless].value_bool()) {
+        overlay::windows::IIDX_SEGMENT_BORDERLESS = true;
+    }
     if (options[launcher::Options::spice2x_IIDXNoESpec].value_bool()) {
         games::iidx::DISABLE_ESPEC_IO = true;
     }

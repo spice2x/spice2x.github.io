@@ -1,6 +1,8 @@
 #include "exitprompt.h"
+#include "avs/game.h"
 #include "misc/eamuse.h"
 #include "util/logging.h"
+#include "games/iidx/iidx.h"
 
 namespace overlay::windows {
 
@@ -55,7 +57,21 @@ namespace overlay::windows {
         }
         ImGui::Spacing();
         build_button(this->overlay->window_config, "Show Config", size, NextItem::NEW_LINE, false);
-        build_button(this->overlay->window_sub, "Show Subscreen", size, NextItem::NEW_LINE, false);
+
+        std::string sub = "Show Subscreen";
+        if (avs::game::is_model("LDJ")) {
+            if (games::iidx::TDJ_MODE) {
+                sub = "Show TDJ Subscreen";
+            } else {
+                sub = "Show LDJ LED Ticker";
+            }
+        } else if (avs::game::is_model("KFC")) {
+            sub = "Show Valkyrie Subscreen";
+        } else if (avs::game::is_model("REC")) {
+            sub = "Show DRS Dance Floor";
+        }
+
+        build_button(this->overlay->window_sub, sub, size, NextItem::NEW_LINE, false);
 
         ImGui::TextDisabled("Graphics");
         build_button(this->overlay->window_camera, "Camera control", size, NextItem::NEW_LINE);

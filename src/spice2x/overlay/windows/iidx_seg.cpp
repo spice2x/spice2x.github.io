@@ -10,12 +10,13 @@ namespace overlay::windows {
     uint32_t IIDX_SEGMENT_FONT_SIZE = 64;
     std::optional<uint32_t> IIDX_SEGMENT_FONT_COLOR = std::nullopt;
     std::string IIDX_SEGMENT_LOCATION = "bottom";
+    bool IIDX_SEGMENT_BORDERLESS = false;
 
     static const size_t TICKER_SIZE = 9;
     static const ImVec4 DARK_GRAY(0.1f, 0.1f, 0.1f, 1.f);
     static const ImVec4 RED(1.f, 0.f, 0.f, 1.f);
-    static const int PADDING_Y = 8;
-    static const int PADDING_X = 4;
+    static const float PADDING_Y = 8.f;
+    static const float PADDING_X = 4.f;
 
     static const std::map<char, std::pair<char, char>> CHARMAP = {\
         // period - add a space afterwards (game sends 'm' for period)
@@ -31,16 +32,18 @@ namespace overlay::windows {
             log_fatal("iidx_seg", "DSEG_FONT is null");
         }
 
-        this->title = "IIDX LED Segment Display";
+        this->title = "IIDX LDJ LED Ticker";
         this->toggle_button = games::OverlayButtons::ToggleSubScreen;
         this->remove_window_padding = true;
         this->size_max = ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
-        this->flags = ImGuiWindowFlags_NoTitleBar
-                      | ImGuiWindowFlags_NoScrollbar
+        this->flags = ImGuiWindowFlags_NoScrollbar
                       | ImGuiWindowFlags_NoResize
                       | ImGuiWindowFlags_NoNavFocus
                       | ImGuiWindowFlags_NoNavInputs
                       | ImGuiWindowFlags_NoDocking;
+        if (IIDX_SEGMENT_BORDERLESS) {
+            this->flags |= ImGuiWindowFlags_NoTitleBar;
+        }
 
         if (IIDX_SEGMENT_FONT_COLOR.has_value()) {
             const auto rgb = IIDX_SEGMENT_FONT_COLOR.value();
@@ -51,13 +54,22 @@ namespace overlay::windows {
         }
     }
 
+    float IIDXSegmentDisplay::get_title_bar_height() {
+        // make sure you don't call this within PushFont/PopFont block
+        // since text line height calculation is dependent on current font size
+        return ImGui::GetTextLineHeight() + ImGui::GetStyle().FramePadding.y * 2.0f;
+    }
+
     void IIDXSegmentDisplay::calculate_initial_window() {
         // ImGui::CalcTextSize doesn't seem to work here, so manually calculate
         ImGui::PushFont(DSEG_FONT);
         this->init_size = ImGui::CalcTextSize("~.~.~.~.~.~.~.~.~.");
+        ImGui::PopFont();
         this->init_size.x += PADDING_X * 2;
         this->init_size.y += PADDING_Y * 2;
-        ImGui::PopFont();
+        if (!IIDX_SEGMENT_BORDERLESS) {
+            this->init_size.y += get_title_bar_height();
+        }
 
         // initial horizontal position
         if (IIDX_SEGMENT_LOCATION.find("left") != std::string::npos) {
@@ -127,9 +139,13 @@ namespace overlay::windows {
     }
 
     void IIDXSegmentDisplay::draw_ticker(char *ticker_string) {
-        ImGui::PushFont(DSEG_FONT);
+        float pad_y = PADDING_Y;
+        if (!IIDX_SEGMENT_BORDERLESS) {
+            pad_y += get_title_bar_height();
+        }
+        const auto pos = ImVec2(PADDING_X, pad_y);
 
-        const auto pos = ImVec2(PADDING_X, PADDING_Y);
+        ImGui::PushFont(DSEG_FONT);
 
         // to imitate LED "off"
         ImGui::SetCursorPos(pos);

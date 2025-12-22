@@ -8,12 +8,14 @@ namespace overlay::windows {
     extern uint32_t IIDX_SEGMENT_FONT_SIZE;
     extern std::optional<uint32_t> IIDX_SEGMENT_FONT_COLOR;
     extern std::string IIDX_SEGMENT_LOCATION;
+    extern bool IIDX_SEGMENT_BORDERLESS;
 
     class IIDXSegmentDisplay : public Window {
     public:
         IIDXSegmentDisplay(SpiceOverlay *overlay);
         void calculate_initial_window() override;
         void build_content() override;
+        float get_title_bar_height();
     private:
         ImVec4 color;
         void draw_ticker(char *ticker_string);

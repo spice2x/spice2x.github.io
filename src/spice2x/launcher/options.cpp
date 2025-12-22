@@ -680,6 +680,16 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
+        // IIDXLEDBorderless
+        .title = "IIDX LED Ticker Borderless",
+        .name = "iidxledborderless",
+        .aliases= "iidxledborderless",
+        .desc = "Make LED ticker overlay window borderless (remove window decoration)",
+        .type = OptionType::Bool,
+        .game_name = "Beatmania IIDX",
+        .category = "Overlay",
+    },
+    {
         .title = "Force Load Sound Voltex Module",
         .name = "sdvx",
         .desc = "Manually enable Sound Voltex Module",
