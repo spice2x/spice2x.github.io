@@ -590,7 +590,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
-        .title = "IIDX TDJ Mode",
+        .title = "IIDX TDJ Mode (Lightning Model)",
         .name =  "iidxtdj",
         .desc = "Enables TDJ cabinet mode. Ensure you also set -iidxsounddevice to desired option",
         .type = OptionType::Bool,

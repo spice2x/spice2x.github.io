@@ -907,6 +907,16 @@ namespace games::iidx {
             return;
         }
 
+        // in iidx27-30, most DLL types can handle both, caching things in nvram and possibly end
+        // up with wrong i/o (temporarily until nvram is initialized again)
+        // to avoid false positives, only do this for iidx31+, since we know for sure that iidx31
+        // has a clean 010/012 split
+        if (avs::game::is_ext(0, 2023101000)) {
+            return;
+        }
+
+        // log_warning below could be turned into log_fatal in the future once we gain confidence
+        // that this isn't triggering when it's not supposed to
         if (state == iidx_aio_emulation_state::bi2a_com2 && TDJ_MODE) {
             deferredlogs::defer_error_messages({
                 "IIDX I/O mode conflict",
@@ -916,7 +926,7 @@ namespace games::iidx {
                 "      For TDJ mode (120Hz): import patches and enable Force TDJ Mode patch",
                 "      For LDJ mode (60Hz): turn off IIDX TDJ Mode option",
                 });
-            log_fatal(
+            log_warning(
                 "iidx",
                 "game is using LDJ I/O but spice TDJ mode is turned on! "
                 "enable Force TDJ I/O patch, OR turn off -iidxtdj");
@@ -929,10 +939,12 @@ namespace games::iidx {
                 "      For TDJ mode (120Hz): turn on IIDX TDJ Mode option",
                 "      For LDJ mode (60Hz): import patches and enable Force LDJ Mode patch",
                 });
-            log_fatal(
+            log_warning(
                 "iidx",
                 "game is using TDJ I/O but spice TDJ mode is turned off! "
                 "turn on -iidxtdj, OR enable Force LDJ I/O patch");
+        } else {
+            log_misc("iidx", "i/o mode validation passed");
         }
     }
 }
