@@ -41,6 +41,11 @@ spice2x has a global audience; majority of the user base do not speak English as
 
 Use simple English, avoid colloquialism, and use concise language, even if it's slightly technical.
 
+e.g.,
+
+* Instead of `processor`, use `CPU`
+* Instead of `KFC`, use `SDVX`
+
 ### Using OS APIs
 
 Avoid making permanent changes to user's OS configuration. For example, spice must not make a call to set power profile to Maximum Performance, or switch default audio device. Making the reverse call to restore settings on game shutdown is **not** good enough; there is no guarantee that spice will gracefully shutdown, since games (or spice) can crash. This is to avoid inadvertently putting user's PC into a bad state, which can be seen as malware-like behavior.
@@ -50,6 +55,7 @@ Watch out for legacy OS compatibility. Currently, the minimum support floor is W
 ### Code style requirements
 * Indents are four spaces.
 * Try to keep under 100 characters per line. This includes comments and string literals.
+* Avoid making unnecessary formatting or whitespace changes in a PR; e.g., watch out for text editor automatically stripping trailing whitespace. It pollutes the diff and slows down code review.
 * Always use \{ curly braces \} when appropriate; do not omit them even when it's optional; such as `for` `if` `else`, etc.
 
 OK:
