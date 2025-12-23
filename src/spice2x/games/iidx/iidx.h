@@ -62,4 +62,10 @@ namespace games::iidx {
     const char* get_16seg();
     bool is_tdj_fhd();
     void apply_audio_hacks();
+
+    enum class iidx_aio_emulation_state {
+        bi2a_com2,
+        bi2x_hook
+    };
+    void update_io_emulation_state(iidx_aio_emulation_state state);
 }

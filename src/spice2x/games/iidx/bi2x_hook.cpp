@@ -120,6 +120,11 @@ namespace games::iidx {
 
     static AIO_IOB2_BI2X_TDJ* __fastcall aioIob2Bi2xTDJ_Create(AIO_NMGR_IOB2 *nmgr, int a2) {
         if (!BI2X_PASSTHROUGH) {
+
+            log_info("bi2x_hook", "aioIob2Bi2xTDJ_Create called (TDJ I/O emulation active)");
+            games::iidx::update_io_emulation_state(
+                games::iidx::iidx_aio_emulation_state::bi2x_hook);
+
             custom_node = new AIO_IOB2_BI2X_TDJ;
             memset(&custom_node->data, 0, sizeof(custom_node->data));
 

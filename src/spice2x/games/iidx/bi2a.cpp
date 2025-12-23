@@ -195,11 +195,11 @@ bool games::iidx::IIDXFMSerialHandle::open(LPCWSTR lpFileName) {
         return false;
     }
 
-    log_info("iidx", "Opened COM2 (FM DEVICE)");
+    log_info("iidx", "Opened COM2 (FM DEVICE / bi2a)");
+    games::iidx::update_io_emulation_state(games::iidx::iidx_aio_emulation_state::bi2a_com2);
 
     // ACIO device
     acio_emu.add_device(new FMSerialDevice());
-
     return true;
 }
 
@@ -240,7 +240,7 @@ int games::iidx::IIDXFMSerialHandle::device_io(DWORD dwIoControlCode, LPVOID lpI
 }
 
 bool games::iidx::IIDXFMSerialHandle::close() {
-    log_info("iidx", "Closed COM2 (FM DEVICE)");
+    log_info("iidx", "Closed COM2 (FM DEVICE / bi2a)");
 
     return true;
 }

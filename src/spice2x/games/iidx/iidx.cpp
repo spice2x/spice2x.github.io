@@ -80,6 +80,9 @@ namespace games::iidx {
     bool IIDXIO_LED_TICKER_READONLY = false;
     std::mutex IIDX_LED_TICKER_LOCK;
 
+    // io
+    static bool HAS_LIBAIO; // this is how we detect iidx27+
+
     tapeledutils::tape_led TAPELED_MAPPING[IIDX_TAPELED_TOTAL] = {
         { 19, Lights::StageLeftAvgR, Lights::StageLeftAvgG, Lights::StageLeftAvgB, "Stage Left" },
         { 19, Lights::StageRightAvgR, Lights::StageRightAvgG, Lights::StageRightAvgB, "Stage Right" },
@@ -311,13 +314,14 @@ namespace games::iidx {
             memcpy(settings2.interface_detail, interface_detail2, sizeof(interface_detail2));
             setupapihook_add(settings2);
 
-            // IIDX 25-27 BIO2 BI2A input device
+            // IIDX 25+ BIO2 BI2A input device
             devicehook_add(new IIDXFMSerialHandle());
         }
 
         // check for new I/O DLL
         auto aio = libutils::try_library("libaio.dll");
         if (aio != nullptr) {
+            HAS_LIBAIO = true;
 
             // check TDJ mode
             TDJ_MODE |= fileutils::text_read("C:\\000rom.txt") == "TDJ-JA";
@@ -894,5 +898,41 @@ namespace games::iidx {
 
 #endif
 
+    }
+
+    void update_io_emulation_state(iidx_aio_emulation_state state) {
+        // <iidx27, don't care, since tdj wasn't a thing before
+        // this is also how we detect that iidx module is attached
+        if (!HAS_LIBAIO) {
+            return;
+        }
+
+        if (state == iidx_aio_emulation_state::bi2a_com2 && TDJ_MODE) {
+            deferredlogs::defer_error_messages({
+                "IIDX I/O mode conflict",
+                "    game is currently configured to use LDJ I/O;",
+                "    however, you turned on IIDX TDJ Mode (-iidxtdj)",
+                "    two options to fix this:",
+                "      For TDJ mode (120Hz): import patches and enable Force TDJ Mode patch",
+                "      For LDJ mode (60Hz): turn off IIDX TDJ Mode option",
+                });
+            log_fatal(
+                "iidx",
+                "game is using LDJ I/O but spice TDJ mode is turned on! "
+                "enable Force TDJ I/O patch, OR turn off -iidxtdj");
+        } else if (state == iidx_aio_emulation_state::bi2x_hook && !TDJ_MODE) {
+            deferredlogs::defer_error_messages({
+                "IIDX I/O mode conflict",
+                "    game is currently configured to use TDJ I/O;",
+                "    however, you turned off IIDX TDJ Mode (-iidxtdj)",
+                "    two options to fix this:",
+                "      For TDJ mode (120Hz): turn on IIDX TDJ Mode option",
+                "      For LDJ mode (60Hz): import patches and enable Force LDJ Mode patch",
+                });
+            log_fatal(
+                "iidx",
+                "game is using TDJ I/O but spice TDJ mode is turned off! "
+                "turn on -iidxtdj, OR enable Force LDJ I/O patch");
+        }
     }
 }
