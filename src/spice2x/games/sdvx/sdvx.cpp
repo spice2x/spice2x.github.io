@@ -297,12 +297,8 @@ namespace games::sdvx {
 
 #ifdef SPICE64 // SDVX5+ specific code
         this->VALKYRIE_MODEL = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
-        auto options = games::get_options(eamuse_get_game());
         // check -monitor + UFC mode
-        if (!GRAPHICS_WINDOWED &&
-            options->at(launcher::Options::DisplayAdapter).is_active() &&
-            this->VALKYRIE_MODEL) {
-
+        if (!GRAPHICS_WINDOWED && D3D9_ADAPTER.has_value() && this->VALKYRIE_MODEL) {
             SHOW_VM_MONITOR_WARNING = true;
             log_warning(
                 "sdvx",

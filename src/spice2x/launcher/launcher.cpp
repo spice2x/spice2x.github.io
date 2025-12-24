@@ -348,8 +348,8 @@ int main_implementation(int argc, char *argv[]) {
         options[launcher::Options::DisplayAdapter].value_uint32() != D3DADAPTER_DEFAULT) {
         D3D9_ADAPTER = options[launcher::Options::DisplayAdapter].value_uint32();
 
-        // when we fix up adapter numbers, we can't deal with multi-monitor games
-        // (i.e., we don't reassign secondary windows)
+        // when we fix up adapter numbers, we only fix the first adapter, and not any subsequent
+        // adapters, so we can't deal with multi-monitor games
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
     }
     if (options[launcher::Options::CaptureCursor].value_bool()) {
