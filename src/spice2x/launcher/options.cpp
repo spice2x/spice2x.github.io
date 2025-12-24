@@ -207,7 +207,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "monitor",
         .desc = "Sets the display that the game will be opened in, for multiple monitors.\n\n"
             "0 is the primary monitor, 1 is the second monitor, and so on.\n\n"
-            "Not all games will respect this. Does not work at all with multi-monitor games like TDJ/UFC. "
+            "Not all games will respect this. Not recommended for multi-monitor games like Lightning Model / Valkyrie Model modes. "
             "Disable Full Screen Optimizations for best results",
         .type = OptionType::Integer,
         .category = "Graphics (Full Screen)",
