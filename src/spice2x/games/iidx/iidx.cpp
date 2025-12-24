@@ -79,6 +79,7 @@ namespace games::iidx {
     char IIDXIO_LED_TICKER[10] = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '\x00'};
     bool IIDXIO_LED_TICKER_READONLY = false;
     std::mutex IIDX_LED_TICKER_LOCK;
+    bool IIDX_TDJ_MONITOR_WARNING = false;
 
     // io
     static bool HAS_LIBAIO; // this is how we detect iidx27+
@@ -477,7 +478,10 @@ namespace games::iidx {
         // check -monitor + TDJ mode
         if (!GRAPHICS_WINDOWED &&
             options->at(launcher::Options::DisplayAdapter).is_active() &&
+            options->at(launcher::Options::DisplayAdapter).value_uint32() != D3DADAPTER_DEFAULT &&
             TDJ_MODE) {
+
+            IIDX_TDJ_MONITOR_WARNING = true;
             log_warning(
                 "iidx",
                 "\n\n!!! using -monitor option with TDJ is NOT recommended due to known  !!!\n"

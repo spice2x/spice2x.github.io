@@ -33,6 +33,7 @@ namespace games::iidx {
     extern char IIDXIO_LED_TICKER[10];
     extern bool IIDXIO_LED_TICKER_READONLY;
     extern std::mutex IIDX_LED_TICKER_LOCK;
+    extern bool IIDX_TDJ_MONITOR_WARNING;
 
     constexpr int IIDX_TAPELED_TOTAL = 17;
     // data mapping

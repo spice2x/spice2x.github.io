@@ -52,6 +52,7 @@ namespace games::sdvx {
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
 
     // states
+    bool SHOW_VM_MONITOR_WARNING = false;
     static HKEY real_asio_reg_handle = nullptr;
     static HKEY real_asio_device_reg_handle = nullptr;
 
@@ -295,12 +296,15 @@ namespace games::sdvx {
         }
 
 #ifdef SPICE64 // SDVX5+ specific code
-        bool isValkyrieCabinetMode = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
+        this->VALKYRIE_MODEL = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
         auto options = games::get_options(eamuse_get_game());
         // check -monitor + UFC mode
         if (!GRAPHICS_WINDOWED &&
             options->at(launcher::Options::DisplayAdapter).is_active() &&
-            isValkyrieCabinetMode) {
+            options->at(launcher::Options::DisplayAdapter).value_uint32() != D3DADAPTER_DEFAULT &&
+            this->VALKYRIE_MODEL) {
+
+            SHOW_VM_MONITOR_WARNING = true;
             log_warning(
                 "sdvx",
                 "\n\n!!! using -monitor option with VM mode is NOT recommended due to    !!!\n"
@@ -330,10 +334,9 @@ namespace games::sdvx {
         Game::attach();
 
 #ifdef SPICE64 // SDVX5+ specific code
-        bool isValkyrieCabinetMode = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
 
         // LCD handle
-        if (!isValkyrieCabinetMode) {
+        if (!this->VALKYRIE_MODEL) {
             devicehook_init();
             devicehook_add(new games::shared::LCDHandle());
         }
@@ -372,8 +375,7 @@ namespace games::sdvx {
                 nvapi_hook::initialize(avs::game::DLL_INSTANCE);
             }
 
-            // check for Valkyrie cabinet mode
-            if (isValkyrieCabinetMode) {
+            if (this->VALKYRIE_MODEL) {
                 // hook touch window
                 // in windowed mode, game can accept mouse input on the second screen
                 if (!NATIVETOUCH && !GRAPHICS_WINDOWED) {
