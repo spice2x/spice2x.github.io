@@ -478,7 +478,6 @@ namespace games::iidx {
         // check -monitor + TDJ mode
         if (!GRAPHICS_WINDOWED &&
             options->at(launcher::Options::DisplayAdapter).is_active() &&
-            options->at(launcher::Options::DisplayAdapter).value_uint32() != D3DADAPTER_DEFAULT &&
             TDJ_MODE) {
 
             IIDX_TDJ_MONITOR_WARNING = true;

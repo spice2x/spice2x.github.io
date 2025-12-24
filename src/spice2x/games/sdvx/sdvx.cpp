@@ -301,7 +301,6 @@ namespace games::sdvx {
         // check -monitor + UFC mode
         if (!GRAPHICS_WINDOWED &&
             options->at(launcher::Options::DisplayAdapter).is_active() &&
-            options->at(launcher::Options::DisplayAdapter).value_uint32() != D3DADAPTER_DEFAULT &&
             this->VALKYRIE_MODEL) {
 
             SHOW_VM_MONITOR_WARNING = true;

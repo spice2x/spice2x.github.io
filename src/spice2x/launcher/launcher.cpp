@@ -344,8 +344,13 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
         GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
     }
-    if (options[launcher::Options::DisplayAdapter].is_active()) {
+    if (options[launcher::Options::DisplayAdapter].is_active() && 
+        options[launcher::Options::DisplayAdapter].value_uint32() != D3DADAPTER_DEFAULT) {
         D3D9_ADAPTER = options[launcher::Options::DisplayAdapter].value_uint32();
+
+        // when we fix up adapter numbers, we can't deal with multi-monitor games
+        // (i.e., we don't reassign secondary windows)
+        GRAPHICS_FORCE_SINGLE_ADAPTER = true;
     }
     if (options[launcher::Options::CaptureCursor].value_bool()) {
         GRAPHICS_CAPTURE_CURSOR = true;
