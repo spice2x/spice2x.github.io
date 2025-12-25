@@ -12,7 +12,8 @@ namespace deferredlogs {
         "    this crash is most likely related to audio init failure",
         "      * check if the default audio device has changed",
         "      * fix your audio device settings (e.g., sample rate)",
-        "      * double check your spice audio options and patches"
+        "      * double check your spice audio options and patches",
+        "      * ensure no other application is using the device in exclusive mode"
     };
 
     std::mutex deferred_errors_mutex;
