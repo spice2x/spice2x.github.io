@@ -23,8 +23,8 @@ static bool FAKE_FILE_OPEN = false;
 static std::map<std::string, std::string> ROM_FILE_MAP;
 static std::string *ROM_FILE_CONTENTS = nullptr;
 
-static std::mutex ldj_thumb_stat_cache_mutex;
-static robin_hood::unordered_map<std::string, std::pair<int, struct avs::core::avs_stat>> ldj_thumb_stat_cache;
+static std::mutex lstat_cache_mutex;
+static robin_hood::unordered_map<std::string, std::pair<int, struct avs::core::avs_stat>> lstat_cache;
 
 namespace hooks::avs::config {
     bool DISABLE_VFS_DRIVE_REDIRECTION = false;
@@ -109,11 +109,11 @@ static int cached_avs_fs_lstat(const char *name, struct avs::core::avs_stat *st)
 
     const std::string filename(name);
     int value = 0;
-    std::lock_guard<std::mutex> lock(ldj_thumb_stat_cache_mutex);
+    std::lock_guard<std::mutex> lock(lstat_cache_mutex);
 
     // if this was already seen, return cached result
-    if (ldj_thumb_stat_cache.contains(filename)) {
-        const auto &result = ldj_thumb_stat_cache.at(filename);
+    if (lstat_cache.contains(filename)) {
+        const auto &result = lstat_cache.at(filename);
         value = result.first;
         memcpy(st, &result.second, sizeof(*st));
         WRAP_DEBUG_FMT(
@@ -142,9 +142,9 @@ static int cached_avs_fs_lstat(const char *name, struct avs::core::avs_stat *st)
         st->unk1);
 
     // and cache it if there is room (prevent unconstrained growth)
-    if (ldj_thumb_stat_cache.size() <= 4096) {
+    if (lstat_cache.size() <= 4096) {
         // c++ was a mistake
-        ldj_thumb_stat_cache.emplace(
+        lstat_cache.emplace(
             std::piecewise_construct,
             std::forward_as_tuple(filename),
             std::forward_as_tuple(value, *st));
