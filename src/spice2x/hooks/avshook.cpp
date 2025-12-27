@@ -179,7 +179,7 @@ static int avs_fs_lstat(const char *name, struct avs::core::avs_stat *st) {
         return 1;
     }
 
-    if (!hooks::avs::config::DISABLE_CACHE &&
+    if (!hooks::avs::config::DISABLE_CACHE && (st != nullptr) &&
         avs::game::is_model("LDJ") && is_ldj_cacheable_file(name)) {
         return cached_avs_fs_lstat(name, st);
     }
