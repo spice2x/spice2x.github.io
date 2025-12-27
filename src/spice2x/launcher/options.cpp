@@ -1767,6 +1767,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Development",
     },
     {
+        // DisableAvsCache
+        .title = "Disable AVS Cache",
+        .name = "avscachedisable",
+        .desc = "Disable optimization used for some games to cache data file info (only for IIDX32+ for now)",
+        .type = OptionType::Bool,
+        .category = "Development",
+    },
+    {
         .title = "Output PEB",
         .name = "pebprint",
         .desc = "Prints PEB on startup to console",
