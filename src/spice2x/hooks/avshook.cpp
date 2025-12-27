@@ -1,7 +1,10 @@
 #include "avshook.h"
 
+#include <cassert>
+#include <mutex>
 #include <map>
 #include <optional>
+#include <external/robin_hood.h>
 
 #include "avs/core.h"
 #include "avs/ea3.h"
@@ -20,8 +23,12 @@ static bool FAKE_FILE_OPEN = false;
 static std::map<std::string, std::string> ROM_FILE_MAP;
 static std::string *ROM_FILE_CONTENTS = nullptr;
 
+static std::mutex ldj_thumb_stat_cache_mutex;
+static robin_hood::unordered_map<std::string, std::pair<int, struct avs::core::avs_stat>> ldj_thumb_stat_cache;
+
 namespace hooks::avs::config {
     bool DISABLE_VFS_DRIVE_REDIRECTION = false;
+    bool DISABLE_CACHE = false;
     bool LOG = false;
 };
 
@@ -79,6 +86,74 @@ static bool is_spam_file(const char *file) {
     return false;
 }
 
+static bool is_ldj_cacheable_file(const char *file) {
+    static const char *spam_prefixes[] = {
+        // iidx33: profile background customization, spams on every frame during card entry
+        "/data/graphic/entry_card",
+        // iidx32+: movie thumbnails, spams on every frame during song select
+        "/data/graphic/thumbnail/",
+        "/data/graphic/movie_thumbnail/",
+    };
+
+    for (auto &spam : spam_prefixes) {
+        if (string_begins_with(file, spam)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static int cached_avs_fs_lstat(const char *name, struct avs::core::avs_stat *st) {
+    assert(name != nullptr);
+    assert(st != nullptr);
+
+    const std::string filename(name);
+    int value = 0;
+    std::lock_guard<std::mutex> lock(ldj_thumb_stat_cache_mutex);
+
+    // if this was already seen, return cached result
+    if (ldj_thumb_stat_cache.contains(filename)) {
+        const auto &result = ldj_thumb_stat_cache.at(filename);
+        value = result.first;
+        memcpy(st, &result.second, sizeof(*st));
+        WRAP_DEBUG_FMT(
+            "(cached) file={}, a={}, m={}, c={}, size={}, u={}",
+            name,
+            st->st_atime,
+            st->st_mtime,
+            st->st_ctime,
+            st->filesize,
+            st->unk1);
+        return value;
+    }
+
+    // if not, call the original avs function
+    // this returns 1 on success with valid values in st
+    // return 0 on failure, with filesize set to 0
+    // maybe this could be used for future optimization
+    value = avs::core::avs_fs_lstat(name, st);
+    WRAP_DEBUG_FMT(
+        "file={} a={}, m={}, c={}, size={}, u={}",
+        name,
+        st->st_atime,
+        st->st_mtime,
+        st->st_ctime,
+        st->filesize,
+        st->unk1);
+
+    // and cache it if there is room (prevent unconstrained growth)
+    if (ldj_thumb_stat_cache.size() <= 4096) {
+        // c++ was a mistake
+        ldj_thumb_stat_cache.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(filename),
+            std::forward_as_tuple(value, *st));
+    }
+
+    // done
+    return value;
+}
+
 static int avs_fs_fstat(avs::core::avs_file_t fd, struct avs::core::avs_stat *st) {
     if (is_fake_fd(fd) && ROM_FILE_CONTENTS) {
         if (st) {
@@ -104,7 +179,12 @@ static int avs_fs_lstat(const char *name, struct avs::core::avs_stat *st) {
         return 1;
     }
 
-    auto value = avs::core::avs_fs_lstat(name, st);
+    if (!hooks::avs::config::DISABLE_CACHE &&
+        avs::game::is_model("LDJ") && is_ldj_cacheable_file(name)) {
+        return cached_avs_fs_lstat(name, st);
+    }
+
+    const auto value = avs::core::avs_fs_lstat(name, st);
     if (!is_spam_file(name)) {
         WRAP_DEBUG_FMT("name: {}", name);
     }

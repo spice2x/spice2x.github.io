@@ -196,6 +196,7 @@ namespace launcher {
             DisableSignalHandling,
             DisableDebugHooks,
             DisableAvsVfsDriveMountRedirection,
+            DisableAvsCache,
             OutputPEB,
             DumpSystemInfo,
             QKSArgs,

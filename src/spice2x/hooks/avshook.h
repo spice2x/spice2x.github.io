@@ -9,6 +9,7 @@
 namespace hooks::avs {
     namespace config {
         extern bool DISABLE_VFS_DRIVE_REDIRECTION;
+        extern bool DISABLE_CACHE;
         extern bool LOG;
     };
 

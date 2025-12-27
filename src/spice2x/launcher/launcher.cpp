@@ -747,6 +747,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::DisableAvsVfsDriveMountRedirection].is_active()) {
         hooks::avs::config::DISABLE_VFS_DRIVE_REDIRECTION = true;
     }
+    if (options[launcher::Options::DisableAvsCache].is_active()) {
+        hooks::avs::config::DISABLE_CACHE = true;
+    }
     if (options[launcher::Options::ScreenResizeConfigPath].is_active()) {
         cfg::SCREEN_RESIZE_CFG_PATH_OVERRIDE =
             options[launcher::Options::ScreenResizeConfigPath].value_text();
