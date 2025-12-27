@@ -1108,6 +1108,8 @@ namespace avs {
 
             // SOUND VOLTEX
             {"soundvoltex.dll", 0x10000000},
+            // GITADORA
+            {"gdxg.dll", 0x2000000},
 #endif
             // jubeat
             {"jubeat.dll", 0x2000000},
