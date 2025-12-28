@@ -88,6 +88,7 @@
 #include "misc/device.h"
 #include "misc/eamuse.h"
 #include "misc/extdev.h"
+#include "misc/ami2000.h"
 #include "misc/sciunit.h"
 #include "misc/sde.h"
 #include "misc/wintouchemu.h"
@@ -195,6 +196,7 @@ int main_implementation(int argc, char *argv[]) {
     bool attach_icca = false;
     bool attach_device = false;
     bool attach_extdev = false;
+    bool attach_ami2000 = false;
     bool attach_sciunit = false;
     bool attach_cpusbxpkm_printer = false;
     bool attach_iidx = false;
@@ -1640,6 +1642,7 @@ int main_implementation(int argc, char *argv[]) {
                 attach_io = true;
                 attach_device = true;
                 attach_extdev = true;
+                attach_ami2000 = true;
                 attach_gitadora = true;
                 break;
             }
@@ -2200,6 +2203,11 @@ int main_implementation(int argc, char *argv[]) {
     // ext dev attach
     if (attach_io || attach_extdev) {
         extdev_attach();
+    }
+
+    // ami 2000 card reader attach
+    if (attach_io || attach_ami2000) {
+        ami2000_attach();
     }
 
     // sci unit attach
