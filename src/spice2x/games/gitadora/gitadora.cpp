@@ -1,7 +1,7 @@
 #include "gitadora.h"
-
+#include "handle.h"
+#include "bi2x_hook.h"
 #include <unordered_map>
-
 #include "cfg/configurator.h"
 #include "hooks/graphics/graphics.h"
 #include "util/cpuutils.h"
@@ -9,6 +9,7 @@
 #include "util/libutils.h"
 #include "util/logging.h"
 #include "util/sigscan.h"
+#include "hooks/setupapihook.h"
 
 namespace games::gitadora {
 
@@ -214,6 +215,30 @@ namespace games::gitadora {
                 system_module, "sys_debug_dip_set_param"));
 
 #ifdef SPICE64
+        // gitadora delta 
+        auto aio = libutils::try_library("libaio.dll");
+        if (aio != nullptr)
+        {
+            SETUPAPI_SETTINGS settings{};
+            settings.class_guid[0] = 0x86E0D1E0;
+            settings.class_guid[1] = 0x11D08089;
+            settings.class_guid[2] = 0x0008E49C;
+            settings.class_guid[3] = 0x731F303E;
+            const char property[] = "1CCF(8050)_000";
+            const char property_hardwareid[] = "USB\\VID_1CCF&PID_8050&MI_00\\000";
+            memcpy(settings.property_devicedesc, property, sizeof(property));
+            memcpy(settings.property_hardwareid, property_hardwareid, sizeof(property_hardwareid));
+            setupapihook_init(avs::game::DLL_INSTANCE);
+            setupapihook_add(settings);
+
+            // Gitadora IO(J32D/J33I) board emulation
+            devicehook_init(avs::game::DLL_INSTANCE);
+            devicehook_add(new GitaDoraSerialHandle());
+
+            // test/service/coin buttons
+            bi2x_hook_init();
+            return;
+        }
 
         HMODULE gdme_module = libutils::try_module("libgdme.dll");
 
