@@ -13,8 +13,7 @@
 using namespace acioemu;
 static games::gitadora::GitadoraDevice *device;
 
-bool games::gitadora::GitaDoraSerialHandle::open(LPCWSTR lpFileName)
-{
+bool games::gitadora::GitaDoraSerialHandle::open(LPCWSTR lpFileName) {
     if (wcscmp(lpFileName, L"COM1") != 0) {
         return false;
     }
@@ -23,8 +22,7 @@ bool games::gitadora::GitaDoraSerialHandle::open(LPCWSTR lpFileName)
 
     if (is_drum) {
         device = new J32DSerialDevice();
-    }
-    else {
+    } else {
         device = new J33ISerialDevice();
     }
 
@@ -33,8 +31,7 @@ bool games::gitadora::GitaDoraSerialHandle::open(LPCWSTR lpFileName)
     return true;
 }
 
-int games::gitadora::GitaDoraSerialHandle::read(LPVOID lpBuffer, DWORD nNumberOfBytesToRead)
-{
+int games::gitadora::GitaDoraSerialHandle::read(LPVOID lpBuffer, DWORD nNumberOfBytesToRead) {
 
     auto buffer = reinterpret_cast<uint8_t *>(lpBuffer);
 
@@ -66,14 +63,12 @@ int games::gitadora::GitaDoraSerialHandle::read(LPVOID lpBuffer, DWORD nNumberOf
 
     // read from emu
     DWORD bytes_read = 0;
-    while (bytes_read < nNumberOfBytesToRead)
-    {
+    while (bytes_read < nNumberOfBytesToRead) {
         auto cur_byte = acio_emu.read();
 
         if (cur_byte.has_value()) {
             buffer[bytes_read++] = cur_byte.value();
-        }
-        else {
+        } else {
             break;
         }
     }

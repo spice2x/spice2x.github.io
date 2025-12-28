@@ -99,9 +99,9 @@ bool games::gitadora::J32DSerialDevice::parse_msg(
             break;
         }
         default:
-        #ifdef ACIOEMU_LOG
+#ifdef ACIOEMU_LOG
             log_info("gitadora", "Unhandled cmd {} received.", msg_in->cmd.code);
-        #endif
+#endif
             return false;
     }
 

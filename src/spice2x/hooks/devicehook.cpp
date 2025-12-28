@@ -400,7 +400,7 @@ static BOOL WINAPI ClearCommError_hook(HANDLE hFile, LPDWORD lpErrors, LPCOMSTAT
         }
         if (lpErrors) {
             // gitadora delta needs this, or else
-            // the io will keep spamming 0xAA
+            // the game will keep spamming 0xAA
             *lpErrors = 0;
         }
 

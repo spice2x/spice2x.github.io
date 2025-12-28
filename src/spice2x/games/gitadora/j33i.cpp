@@ -8,16 +8,14 @@
 
 using namespace acioemu;
 
-games::gitadora::J33ISerialDevice::J33ISerialDevice()
-{
+games::gitadora::J33ISerialDevice::J33ISerialDevice() {
     this->node_count = 1;
     log_info("gitadora", "J33I device created.");
 }
 
 bool games::gitadora::J33ISerialDevice::parse_msg(
     MessageData *msg_in,
-    circular_buffer<uint8_t> *response_buffer)
-{
+    circular_buffer<uint8_t> *response_buffer) {
 
 #ifdef ACIOEMU_LOG
     log_info("gitadora", "GTDR ADDR: {}, CMD: 0x{:04x}", msg_in->addr, msg_in->cmd.code);
@@ -94,9 +92,9 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
             break;
         }
     default:
-    #ifdef ACIOEMU_LOG
+#ifdef ACIOEMU_LOG
         log_info("gitadora", "Unhandled cmd {} received.", msg_in->cmd.code);
-    #endif
+#endif
         return false;
     }
 

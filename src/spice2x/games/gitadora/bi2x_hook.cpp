@@ -10,8 +10,7 @@
 #include "util/tapeled.h"
 #include <typeinfo>
 
-namespace games::gitadora
-{
+namespace games::gitadora {
 
     // /*
     //  * class definitions
@@ -159,11 +158,11 @@ namespace games::gitadora
         uint8_t unk[0xB1];
     };
 
-    //  /*
-    //   * typedefs
-    //   */
+     /*
+      * typedefs
+      */
 
-    // // libaio-iob2_video.dll
+    // libaio-iob2_video.dll
     typedef AIO_IOB2_BI2X_AC1 *(__fastcall *aioIob2Bi2xAC1_Create_t)(AIO_NMGR_IOB2 *i_pNodeMgr, uint32_t i_DevId,
                                                                      AIO_IOB2_BI2X_AC1__SETTING *i_Setting);
     typedef void(__fastcall *aioIob2Bi2xAC1_GetDeviceStatus_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl,
@@ -204,10 +203,10 @@ namespace games::gitadora
     typedef bool(__fastcall *aioNodeCtl_IsError_t)(AIO_IOB5_Y32D *i_pNodeCtl, int32_t i_State);
     typedef void(__fastcall *aioNodeCtl_UpdateDevicesStatus_t)();
 
-    // // libaio-iob5.dll
+    // libaio-iob5.dll
     typedef AIO_NMGR_IOB5 *(__fastcall *aioNMgrIob5_Create_t)(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode);
 
-    // // libaio-iob5_y32.dll
+    // libaio-iob5_y32.dll
     typedef AIO_IOB5_Y32D *(__fastcall *aioIob5Y32d_Create_t)(AIO_NMGR_IOB5 *i_pSci, uint32_t i_bfMode);
     // typedef AIO_IOB5_Y33I *(__fastcall *aioIob5Y33i_Create_t)(AIO_NMGR_IOB5 *i_pSci, uint32_t i_bfMode);
 
@@ -216,11 +215,11 @@ namespace games::gitadora
     // typedef void(__fastcall *aioIob5Y33i_GetDeviceStatus_t)(AIO_IOB5_Y33I *i_pNodeCtl,
     //                                                         AIO_IOB2_BI2X_AC1__DEVSTATUS *o_DevStatus);
 
-    // /*
-    //  * function pointers
-    //  */
+    /*
+     * function pointers
+     */
 
-    // // libaio-iob2_video.dll
+    // libaio-iob2_video.dll
     static aioIob2Bi2xAC1_Create_t aioIob2Bi2xAC1_Create_orig = nullptr;
     static aioIob2Bi2xAC1_GetDeviceStatus_t aioIob2Bi2xAC1_GetDeviceStatus_orig = nullptr;
     static aioIob2Bi2xAC1_SetWatchDogTimer_t aioIob2Bi2xAC1_SetWatchDogTimer_orig = nullptr;
@@ -233,7 +232,7 @@ namespace games::gitadora
     static aioIob2Bi2x_WriteFirmGetState_t aioIob2Bi2x_WriteFirmGetState_orig = nullptr;
     static aioIob2Bi2x_WriteFirmIsCompleted_t aioIob2Bi2x_WriteFirmIsCompleted_orig = nullptr;
 
-    // // libaio.dll
+    // libaio.dll
     static aioSciComm_Open_t aioSciComm_Open_orig = nullptr;
     static aioSci_Destroy_t aioSci_Destroy_orig = nullptr;
     static aioSci_GetCommStatus_t aioSci_GetCommStatus_orig = nullptr;
@@ -247,7 +246,7 @@ namespace games::gitadora
     static aioNodeCtl_IsError_t aioNodeCtl_IsError_orig = nullptr;
     static aioNodeCtl_UpdateDevicesStatus_t aioNodeCtl_UpdateDevicesStatus_orig = nullptr;
 
-    // // libaio-iob5.dll
+    // libaio-iob5.dll
     static aioNMgrIob5_Create_t aioNMgrIob5_Create_orig = nullptr;
 
     // libaio-iob.dll
@@ -255,13 +254,13 @@ namespace games::gitadora
     static aioNMgrIob_BeginManage_t aioNMgrIob_BeginManage_orig = nullptr;
     static aioNCtlIob_GetNodeInfo_t aioNCtlIob_GetNodeInfo_orig = nullptr;
 
-    // // libaio-iob5_y32.dll
+    // libaio-iob5_y32.dll
     static aioIob5Y32d_Create_t aioIob5Y32d_Create_orig = nullptr;
     static aioIob5Y32d_GetDeviceStatus_t aioIob5Y32d_GetDeviceStatus_orig = nullptr;
 
-    // /*
-    //  * variables
-    //  */
+    /*
+     * variables
+     */
     static AIO_IOB2_BI2X_AC1 *aioIob2Bi2xAc1;
     static AIO_NMGR_IOB2 *aioNmgrIob2;
     static AIO_NMGR_IOB5 *aioNmgrIob5;
@@ -269,9 +268,9 @@ namespace games::gitadora
     static AIO_SCI_COMM *aioSciComm;
     static AIO_IOB2_BI2X_WRFIRM *aioIob2Bi2xWrfirm;
 
-    // /*
-    //  * implementations
-    //  */
+    /*
+     * implementations
+     */
 
     // libaio-iob2_video.dll
 
@@ -281,9 +280,7 @@ namespace games::gitadora
         if (i_pNodeMgr == aioNmgrIob2) {
             aioIob2Bi2xAc1 = new AIO_IOB2_BI2X_AC1;
             return aioIob2Bi2xAc1;
-        }
-        else
-        {
+        } else {
             return aioIob2Bi2xAC1_Create_orig(i_pNodeMgr, i_DevId, i_Setting);
         }
     }
@@ -320,8 +317,7 @@ namespace games::gitadora
 
         if (i_pNodeCtl == aioIob2Bi2xAc1 && i_Count == 0) {
             eamuse_coin_set_stock((uint16_t)i_Count);
-        }
-        else {
+        } else {
             return aioIob2Bi2xAC1_AddCounter_orig(i_pNodeCtl, i_Counter, i_Count);
         }
     }
@@ -362,8 +358,7 @@ namespace games::gitadora
         if (i_pWrFirm == aioIob2Bi2xWrfirm) {
             delete aioIob2Bi2xWrfirm;
             aioIob2Bi2xWrfirm = nullptr;
-        }
-        else {
+        } else {
             return aioIob2Bi2x_DestroyWriteFirmContext_orig(i_pWrFirm);
         }
     }
@@ -372,8 +367,7 @@ namespace games::gitadora
 
         if (i_pWrFirm == aioIob2Bi2xWrfirm) {
             return 8;
-        }
-        else {
+        } else {
             return aioIob2Bi2x_WriteFirmGetState_orig(i_pWrFirm);
         }
     }
@@ -382,8 +376,7 @@ namespace games::gitadora
 
         if (aioIob2Bi2xWrfirm != nullptr) {
             return true;
-        }
-        else {
+        } else {
             return aioIob2Bi2x_WriteFirmIsCompleted_orig(i_State);
         }
     }
@@ -394,8 +387,7 @@ namespace games::gitadora
         if (i_pSci == aioSciComm) {
             aioNmgrIob2 = new AIO_NMGR_IOB2;
             return aioNmgrIob2;
-        }
-        else {
+        } else {
             return aioNMgrIob2_Create_orig(i_pSci, i_bfMode);
         }
     }
@@ -403,8 +395,7 @@ namespace games::gitadora
     static void __fastcall aioNMgrIob_BeginManage(AIO_NMGR_IOB2 *i_pNodeMgr) {
 
         if (i_pNodeMgr == aioNmgrIob2) {
-        }
-        else {
+        } else {
             return aioNMgrIob_BeginManage_orig(i_pNodeMgr);
         }
     }
@@ -414,8 +405,7 @@ namespace games::gitadora
 
         if (i_pNodeCtl == aioIob5Y32d) {
             memset(o_NodeInfo, 0, sizeof(AIO_NMGR_IOB__NODEINFO));
-        }
-        else {
+        } else {
             return aioNCtlIob_GetNodeInfo_orig(i_pNodeCtl, o_NodeInfo);
         }
     }
@@ -434,8 +424,7 @@ namespace games::gitadora
 
         if (i_pNodeMgr == aioSciComm) {
             memset(i_Status, 0, sizeof(AIO_COMM_STATUS));
-        }
-        else {
+        } else {
             return aioSci_GetCommStatus_orig(i_pNodeMgr, i_Status);
         }
     }
@@ -444,8 +433,7 @@ namespace games::gitadora
       
         if (i_pNodeMgr == aioSciComm) {
             delete aioSciComm;
-        }
-        else {
+        } else {
             return aioSci_Destroy_orig(i_pNodeMgr);
         }
     }
@@ -458,8 +446,7 @@ namespace games::gitadora
 
             delete aioNmgrIob5;
             aioNmgrIob5 = nullptr;
-        }
-        else {
+        } else {
             return aioNodeMgr_Destroy_orig(i_pNodeMgr);
         }
     }
@@ -470,9 +457,7 @@ namespace games::gitadora
             i_pNodeMgr == (AIO_NMGR_IOB5 *)aioIob2Bi2xAc1 ||
             i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
             return 1;
-        }
-        else
-        {
+        } else {
             return aioNodeMgr_GetState_orig(i_pNodeMgr);
         }
     }
@@ -484,8 +469,7 @@ namespace games::gitadora
             i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
 
             return true;
-        }
-        else {
+        } else {
             return aioNodeMgr_IsReady_orig(i_pNodeMgr, i_State);
         }
     }
@@ -497,8 +481,7 @@ namespace games::gitadora
             i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
 
             return false;
-        }
-        else {
+        } else {
             return aioNodeMgr_IsError_orig(i_pNodeMgr, i_State);
         }
     }
@@ -511,8 +494,7 @@ namespace games::gitadora
             
             delete aioIob5Y32d;
             aioIob5Y32d = nullptr;
-        }
-        else {
+        } else {
             return aioNodeCtl_Destroy_orig(i_pNodeCtl);
         }
     }
@@ -524,8 +506,7 @@ namespace games::gitadora
             i_pNodeCtl == (AIO_IOB5_Y32D *)aioNmgrIob2) {
             
             return 1;
-        }
-        else {
+        } else {
             return aioNodeCtl_GetState_orig(i_pNodeCtl);
         }
     }
@@ -537,8 +518,7 @@ namespace games::gitadora
             i_pNodeCtl == (AIO_IOB5_Y32D *)aioNmgrIob2) {
 
             return true;
-        }
-        else {
+        } else {
             return aioNodeCtl_IsReady_orig(i_pNodeCtl, i_State);
         }
     }
@@ -550,8 +530,7 @@ namespace games::gitadora
             i_pNodeCtl == (AIO_IOB5_Y32D *)aioNmgrIob2) {
             
             return false;
-        }
-        else {
+        } else {
             return aioNodeCtl_IsError_orig(i_pNodeCtl, i_State);
         }
     }
@@ -566,8 +545,7 @@ namespace games::gitadora
         if (i_pSci == aioSciComm) {
             aioNmgrIob5 = new AIO_NMGR_IOB5;
             return aioNmgrIob5;
-        }
-        else {
+        } else {
             return aioNMgrIob5_Create_orig(i_pSci, i_bfMode);
         }
     }
@@ -578,8 +556,7 @@ namespace games::gitadora
         if (i_pSci == aioNmgrIob5) {
             aioIob5Y32d = new AIO_IOB5_Y32D;
             return aioIob5Y32d;
-        }
-        else {
+        } else {
             return aioIob5Y32d_Create_orig(i_pSci, i_bfMode);
         }
     }
@@ -600,8 +577,7 @@ namespace games::gitadora
         static bool initialized = false;
         if (initialized) {
             return;
-        }
-        else {
+        } else {
             initialized = true;
         }
 

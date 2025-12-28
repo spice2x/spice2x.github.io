@@ -215,10 +215,9 @@ namespace games::gitadora {
                 system_module, "sys_debug_dip_set_param"));
 
 #ifdef SPICE64
-        // gitadora delta 
+        // gitadora arena model 
         auto aio = libutils::try_library("libaio.dll");
-        if (aio != nullptr)
-        {
+        if (aio != nullptr) {
             SETUPAPI_SETTINGS settings{};
             settings.class_guid[0] = 0x86E0D1E0;
             settings.class_guid[1] = 0x11D08089;
