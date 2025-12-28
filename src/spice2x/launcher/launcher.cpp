@@ -430,8 +430,8 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::EnableEXTDEVModule].value_bool()) {
         attach_extdev = true;
     }
-    if (options[launcher::Options::EnableSCIUNITModule].value_bool()) {
-        attach_sciunit = true;
+    if (options[launcher::Options::EnableAMI2000Module].value_bool()) {
+        attach_ami2000 = true;
     }
     if (options[launcher::Options::EnableDevicePassthrough].value_bool()) {
         hooks::device::ENABLE = false;
