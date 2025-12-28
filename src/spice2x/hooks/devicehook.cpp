@@ -398,9 +398,10 @@ static BOOL WINAPI ClearCommError_hook(HANDLE hFile, LPDWORD lpErrors, LPCOMSTAT
              */
             lpStat->cbInQue = custom_handle->bytes_available();
         }
-        if (lpErrors) {
-            // gitadora delta needs this, or else
-            // the game will keep spamming 0xAA
+
+        // gitadora arena model needs this, or else
+        // the game will keep spamming 0xAA
+        if (avs::game::is_model("M32") && (avs::game::SPEC[0] == 'C' || avs::game::SPEC[0] == 'D') && lpErrors) {
             *lpErrors = 0;
         }
 
