@@ -398,6 +398,11 @@ static BOOL WINAPI ClearCommError_hook(HANDLE hFile, LPDWORD lpErrors, LPCOMSTAT
              */
             lpStat->cbInQue = custom_handle->bytes_available();
         }
+        if (lpErrors) {
+            // gitadora delta needs this, or else
+            // the io will keep spamming 0xAA
+            *lpErrors = 0;
+        }
 
         return TRUE;
     }
