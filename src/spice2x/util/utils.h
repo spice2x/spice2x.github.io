@@ -351,3 +351,22 @@ static inline std::string wchar_to_u8(const wchar_t* wstr) {
     WideCharToMultiByte(CP_UTF8, 0, wstr, -1, out.data(), size - 1, nullptr, nullptr);
     return out;
 }
+
+// convert litte vs big endian
+inline uint64_t bswap64(uint64_t x) {
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_bswap64(x);
+#endif
+#ifdef _MSC_VER
+    return _byteswap_uint64(x);
+#endif
+
+    return  (x >> 56) |
+           ((x >> 40) & 0x000000000000FF00ULL) |
+           ((x >> 24) & 0x0000000000FF0000ULL) |
+           ((x >>  8) & 0x00000000FF000000ULL) |
+           ((x <<  8) & 0x000000FF00000000ULL) |
+           ((x << 24) & 0x0000FF0000000000ULL) |
+           ((x << 40) & 0x00FF000000000000ULL) |
+            (x << 56);
+  }

@@ -41,12 +41,12 @@ static uint64_t __fastcall AMI2000_GetCardIdentifier() {
     if (eamuse_card_insert_consume(1, 0)) {
         eamuse_get_card(1, 0, CARD_UID);
         CARD_TYPE = is_card_uid_felica(CARD_UID) ? 2 : 1;
-        log_info("ami2000", "AMI2000_GetCardIdentifier: {:X}", __builtin_bswap64(*(uint64_t*)CARD_UID));
+        log_info("ami2000", "AMI2000_GetCardIdentifier: {:X}", bswap64(*(uint64_t*)CARD_UID));
     } else {
         CARD_TYPE = 0;
         return 0;
     }
-    return __builtin_bswap64(*(uint64_t *)CARD_UID);
+    return bswap64(*(uint64_t *)CARD_UID);
 }
 
 
