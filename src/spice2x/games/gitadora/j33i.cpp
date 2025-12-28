@@ -88,9 +88,7 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
             if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickUp])) {
                 payload.buttons |= 1 << GUITAR_PICK_UP;
                 picked = true;
-            }
-
-            else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickDown]) && !picked) {
+            } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickDown]) && !picked) {
                 payload.buttons |= 1 << GUITAR_PICK_DOWN;
             }
 
