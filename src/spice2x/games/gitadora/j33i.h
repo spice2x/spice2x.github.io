@@ -5,14 +5,6 @@
 
 namespace games::gitadora {
 
-    #define GUITAR_BTN_R 0x7
-    #define GUITAR_BTN_G 0x6
-    #define GUITAR_BTN_B 0x5
-    #define GUITAR_BTN_Y 0x4
-    #define GUITAR_BTN_P 0x3
-    #define GUITAR_PICK_DOWN 0xC
-    #define GUITAR_PICK_UP 0xD
-
     class J33ISerialDevice : public GitadoraDevice {
         private:
             uint8_t coin_counter = 0;
