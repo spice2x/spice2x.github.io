@@ -477,10 +477,12 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/audio/acm.cpp
         hooks/audio/audio.cpp
         hooks/audio/buffer.cpp
+        hooks/audio/mme.cpp
         hooks/audio/util.cpp
         hooks/audio/backends/dsound/dsound_backend.cpp
         hooks/audio/backends/mmdevice/audio_endpoint_volume.cpp
         hooks/audio/backends/mmdevice/device.cpp
+        hooks/audio/backends/mmdevice/device_collection.cpp
         hooks/audio/backends/mmdevice/device_enumerator.cpp
         hooks/audio/backends/wasapi/audio_client.cpp
         hooks/audio/backends/wasapi/audio_render_client.cpp

@@ -31,4 +31,11 @@ namespace games::gitadora {
             );
     }
 
+    static inline bool is_arena_model() {
+        return (
+            avs::game::is_model("M32") &&
+            (avs::game::SPEC[0] == 'C' || avs::game::SPEC[0] == 'D')
+            );
+    }
+
 }

@@ -8,6 +8,7 @@
 #include "hooks/audio/audio_private.h"
 #include "hooks/audio/backends/mmdevice/audio_endpoint_volume.h"
 #include "hooks/audio/backends/wasapi/audio_client.h"
+#include "util/utils.h"
 
 #define PRINT_FAILED_RESULT(name, ret) \
     do { \
@@ -56,6 +57,7 @@ ULONG STDMETHODCALLTYPE WrappedIMMDevice::Release() {
     ULONG refs = pReal != nullptr ? pReal->Release() : 0;
 
     if (refs == 0) {
+        log_misc("audio::mmdevice", "WrappedIMMDevice::Release");
         delete this;
     }
 
@@ -69,7 +71,7 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
     PROPVARIANT *pActivationParams,
     void **ppInterface)
 {
-    log_misc("audio::mmdevice", "WrappedIMMDevice::Activate");
+    log_misc("audio::mmdevice", "WrappedIMMDevice::Activate {}", guid2s(iid));
 
     // call original
     HRESULT ret = pReal->Activate(iid, dwClsCtx, pActivationParams, ppInterface);

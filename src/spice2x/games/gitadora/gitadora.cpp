@@ -3,6 +3,7 @@
 #include "bi2x_hook.h"
 #include <unordered_map>
 #include "cfg/configurator.h"
+#include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
 #include "util/cpuutils.h"
 #include "util/detour.h"
@@ -236,6 +237,9 @@ namespace games::gitadora {
 
             // test/service/coin buttons
             bi2x_hook_init();
+
+            // volume change prevention
+            hooks::audio::mme::init(avs::game::DLL_INSTANCE);
             return;
         }
 
