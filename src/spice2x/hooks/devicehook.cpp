@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "avs/game.h"
+#include "games/gitadora/gitadora.h"
 #include "util/detour.h"
 #include "util/utils.h"
 
@@ -401,7 +402,7 @@ static BOOL WINAPI ClearCommError_hook(HANDLE hFile, LPDWORD lpErrors, LPCOMSTAT
 
         // gitadora arena model needs this, or else
         // the game will keep spamming 0xAA
-        if (avs::game::is_model("M32") && (avs::game::SPEC[0] == 'C' || avs::game::SPEC[0] == 'D') && lpErrors) {
+        if (games::gitadora::is_arena_model() && lpErrors) {
             *lpErrors = 0;
         }
 

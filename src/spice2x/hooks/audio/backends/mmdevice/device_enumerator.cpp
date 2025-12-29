@@ -1,4 +1,5 @@
 #include "device_enumerator.h"
+#include "device_collection.h"
 #include "device.h"
 #include "util/utils.h"
 
@@ -42,7 +43,11 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDeviceEnumerator::EnumAudioEndpoints(
     DWORD dwStateMask,
     IMMDeviceCollection **ppDevices)
 {
-    return pReal->EnumAudioEndpoints(dataFlow, dwStateMask, ppDevices);
+    const auto hr = pReal->EnumAudioEndpoints(dataFlow, dwStateMask, ppDevices);
+    if (SUCCEEDED(hr) && (ppDevices != nullptr) && (*ppDevices != nullptr)) {
+        *ppDevices = new WrappedIMMDeviceCollection(*ppDevices);
+    }
+    return hr;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIMMDeviceEnumerator::GetDefaultAudioEndpoint(
