@@ -401,6 +401,10 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/nost/poke.cpp
         games/gitadora/gitadora.cpp
         games/gitadora/io.cpp
+        games/gitadora/handle.cpp
+        games/gitadora/j32d.cpp
+        games/gitadora/j33i.cpp
+        games/gitadora/bi2x_hook.cpp
         games/mga/mga.cpp
         games/mga/io.cpp
         games/mga/gunio.cpp
@@ -533,6 +537,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         misc/sciunit.cpp
         misc/sde.cpp
         misc/wintouchemu.cpp
+        misc/ami2000.cpp
 
         # nvapi
         nvapi/nvapi.cpp

@@ -147,6 +147,7 @@ namespace launcher {
             EnableICCAModule,
             EnableDEVICEModule,
             EnableEXTDEVModule,
+            EnableAMI2000Module,
             EnableSCIUNITModule,
             EnableDevicePassthrough,
             ForceWinTouch,
