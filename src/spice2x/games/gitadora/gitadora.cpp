@@ -19,6 +19,30 @@ namespace games::gitadora {
     std::optional<unsigned int> CAB_TYPE = std::nullopt;
 
     /*
+     * Prevent GitaDora from creating folders on F drive
+     */
+
+    static DWORD WINAPI GetLogicalDrives_hook() {
+        return GetLogicalDrives() | 0x20;
+    }
+
+    static UINT WINAPI GetDriveTypeA_hook(LPCSTR lpRootPathName) {
+        if (!strcmp(lpRootPathName, "F:\\")) {
+            return DRIVE_FIXED;
+        }
+
+        return GetDriveTypeA(lpRootPathName);
+    }
+
+    static BOOL WINAPI CreateDirectoryA_hook(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes) {
+        if (!strncmp(lpPathName, "F:/", 3)) {
+            return TRUE;
+        }
+
+        return CreateDirectoryA(lpPathName, lpSecurityAttributes);
+    }
+
+    /*
      * GitaDora checks if the IP address has changed, and if it has it throws 5-1506-0000 like jubeat.
      * We don't want this so we patch it out.
      */
@@ -214,6 +238,10 @@ namespace games::gitadora {
                 system_module, "sys_debug_dip_get_param"));
         detour::inline_hook((void *) sys_debug_dip_set_param, libutils::try_proc(
                 system_module, "sys_debug_dip_set_param"));
+
+        detour::iat_try("GetLogicalDrives", GetLogicalDrives_hook, avs::game::DLL_INSTANCE);
+        detour::iat_try("GetDriveTypeA", GetDriveTypeA_hook, avs::game::DLL_INSTANCE);
+        detour::iat_try("CreateDirectoryA", CreateDirectoryA_hook, avs::game::DLL_INSTANCE);
 
 #ifdef SPICE64
         // gitadora arena model 
