@@ -53,37 +53,25 @@ bool games::gitadora::J32DSerialDevice::parse_msg(
             pid += 1;
             J32D_IO_STATUS payload;
             memset(&payload, 0, sizeof(J32D_IO_STATUS));
+
             auto &buttons = get_buttons();
+            auto high_tom = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumHiTom]) * 1023);
+            auto low_tom = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumLowTom]) * 1023);
+            auto snare = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumSnare]) * 1023);
+            auto floor_tom = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumFloorTom]) * 1023);
+            auto left_cymbal = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumLeftCymbal]) * 1023);
+            auto right_cymbal = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumRightCymbal]) * 1023);
+            auto hihat = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumHiHat]) * 1023);
 
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumHiTom])) {
-                payload.high_tom = 4092;
-            }
-
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumLowTom])) {
-                payload.low_tom = 4092;
-            }
-
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumSnare])) {
-                payload.snare = 4092;
-            }
-
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumFloorTom])) {
-                payload.floor_tom = 4092;
-            }
-
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumLeftCymbal])) {
-                payload.left_cymbal = 4092;
-            }
-
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumRightCymbal])) {
-                payload.right_cymbal = 4092;
-            }
-
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumHiHat]) ||
-                    GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumHiHatClosed]) ||
-                    GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumHiHatHalfOpen])) {
-                payload.hihat = 4092;
-            }
+#define ENCODE_ANALOG(__val) (((__val & 0x3f) << 10) | ((__val & 0x3c0) >> 6))
+            payload.high_tom = ENCODE_ANALOG(high_tom);
+            payload.low_tom = ENCODE_ANALOG(low_tom);
+            payload.snare = ENCODE_ANALOG(snare);
+            payload.floor_tom = ENCODE_ANALOG(floor_tom);
+            payload.left_cymbal = ENCODE_ANALOG(left_cymbal);
+            payload.right_cymbal = ENCODE_ANALOG(right_cymbal);
+            payload.hihat = ENCODE_ANALOG(hihat);
+#undef ENCODE_ANALOG
 
             if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumBassPedal])) {
                 payload.pedals |= 1;
