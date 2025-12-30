@@ -22,6 +22,7 @@ namespace games::gitadora {
      * Prevent GitaDora from creating folders on F drive
      */
 
+#ifdef SPICE64
     static DWORD WINAPI GetLogicalDrives_hook() {
         return GetLogicalDrives() | 0x20;
     }
@@ -41,6 +42,7 @@ namespace games::gitadora {
 
         return CreateDirectoryA(lpPathName, lpSecurityAttributes);
     }
+#endif
 
     /*
      * GitaDora checks if the IP address has changed, and if it has it throws 5-1506-0000 like jubeat.
