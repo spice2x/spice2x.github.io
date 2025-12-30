@@ -2,6 +2,7 @@
 #include "gfdm_sub.h"
 #include "games/gitadora/gitadora.h"
 #include "hooks/graphics/graphics.h"
+#include "touch/touch.h"
 
 namespace overlay::windows {
 
@@ -33,6 +34,16 @@ namespace overlay::windows {
     void GitaDoraSubScreen::touch_transform(const ImVec2 xy_in, LONG *x_out, LONG *y_out) {
         if (!this->get_active()) {
             return;
+        }
+
+        if (GRAPHICS_WINDOWED) {
+            // Touch needs to be registered on global coords
+            *x_out = SPICETOUCH_TOUCH_X + xy_in.x * SPICETOUCH_TOUCH_WIDTH;
+            *y_out = SPICETOUCH_TOUCH_Y + xy_in.y * SPICETOUCH_TOUCH_HEIGHT;
+        } else {
+            // Fullscreen mode, scale to game coords
+            *x_out = xy_in.x * ImGui::GetIO().DisplaySize.x;
+            *y_out = xy_in.y * ImGui::GetIO().DisplaySize.y;
         }
     }
 }
