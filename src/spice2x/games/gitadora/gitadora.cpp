@@ -239,10 +239,6 @@ namespace games::gitadora {
         detour::inline_hook((void *) sys_debug_dip_set_param, libutils::try_proc(
                 system_module, "sys_debug_dip_set_param"));
 
-        detour::iat_try("GetLogicalDrives", GetLogicalDrives_hook, avs::game::DLL_INSTANCE);
-        detour::iat_try("GetDriveTypeA", GetDriveTypeA_hook, avs::game::DLL_INSTANCE);
-        detour::iat_try("CreateDirectoryA", CreateDirectoryA_hook, avs::game::DLL_INSTANCE);
-
 #ifdef SPICE64
         // gitadora arena model 
         auto aio = libutils::try_library("libaio.dll");
@@ -265,6 +261,11 @@ namespace games::gitadora {
 
             // test/service/coin buttons
             bi2x_hook_init();
+
+            // f: drive hook
+            detour::iat_try("GetLogicalDrives", GetLogicalDrives_hook, avs::game::DLL_INSTANCE);
+            detour::iat_try("GetDriveTypeA", GetDriveTypeA_hook, avs::game::DLL_INSTANCE);
+            detour::iat_try("CreateDirectoryA", CreateDirectoryA_hook, avs::game::DLL_INSTANCE);
 
             // volume change prevention
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
