@@ -11,6 +11,7 @@ namespace games::gitadora {
             Service,
             Test,
             Coin,
+            Headphone,
             GuitarP1Start,
             GuitarP1Up,
             GuitarP1Down,
