@@ -21,6 +21,9 @@ using namespace acioemu;
 // higher but the red dot will reach the edge at +-189
 #define ARENA_MODEL_WAIL_MAX 189
 
+static bool GFDM_GF_PICK_STATE_UP;
+static bool GFDM_GF_PICK_STATE_DOWN;
+
 games::gitadora::J33ISerialDevice::J33ISerialDevice() {
     this->node_count = 1;
     log_info("gitadora", "J33I device created.");
@@ -89,9 +92,21 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
             }
 
             if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickUp])) {
-                payload.buttons |= 1 << GUITAR_PICK_UP;
-            } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickDown])) {
-                payload.buttons |= 1 << GUITAR_PICK_DOWN;
+                if (!GFDM_GF_PICK_STATE_UP) {
+                    GFDM_GF_PICK_STATE_UP = true;
+                    payload.buttons |= 1 << GUITAR_PICK_UP;
+                }
+            } else {
+                GFDM_GF_PICK_STATE_UP = false;
+            }
+
+            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickDown])) {
+                if (!GFDM_GF_PICK_STATE_DOWN) {
+                    GFDM_GF_PICK_STATE_DOWN = true;
+                    payload.buttons |= 1 << GUITAR_PICK_DOWN;
+                }
+            } else {
+                GFDM_GF_PICK_STATE_DOWN = false;
             }
 
             auto &analogs = get_analogs();
