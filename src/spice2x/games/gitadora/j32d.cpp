@@ -55,13 +55,15 @@ bool games::gitadora::J32DSerialDevice::parse_msg(
             memset(&payload, 0, sizeof(J32D_IO_STATUS));
 
             auto &buttons = get_buttons();
-            auto high_tom = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumHiTom]) * 1023);
-            auto low_tom = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumLowTom]) * 1023);
-            auto snare = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumSnare]) * 1023);
-            auto floor_tom = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumFloorTom]) * 1023);
-            auto left_cymbal = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumLeftCymbal]) * 1023);
-            auto right_cymbal = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumRightCymbal]) * 1023);
-            auto hihat = (uint16_t) (GameAPI::Buttons::getVelocity(RI_MGR, buttons[Buttons::DrumHiHat]) * 1023);
+            auto high_tom = (uint16_t) (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumHiTom]) * 1023);
+            auto low_tom = (uint16_t) (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumLowTom]) * 1023);
+            auto snare = (uint16_t) (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumSnare]) * 1023);
+            auto floor_tom = (uint16_t) (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumFloorTom]) * 1023);
+            auto left_cymbal = (uint16_t) (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumLeftCymbal]) * 1023);
+            auto right_cymbal = (uint16_t) (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumRightCymbal]) * 1023);
+            auto hihat = (uint16_t) ((GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumHiHat]) ||
+                                     GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumHiHatClosed]) ||
+                                     GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::DrumHiHatHalfOpen])) * 1023);
 
 #define ENCODE_ANALOG(__val) (((__val & 0x3f) << 10) | ((__val & 0x3c0) >> 6))
             payload.high_tom = ENCODE_ANALOG(high_tom);
