@@ -494,7 +494,9 @@ namespace avs {
             std::ostringstream init_code;
             init_code << EA3_MODEL;
             init_code << EA3_DEST;
-            if (strcmp(EA3_MODEL, "MDX") == 0 && strcmp(EA3_SPEC, "I") == 0) {
+            if (avs::game::DLL_NAME == "arkmdxbio2.dll" &&
+                strcmp(EA3_MODEL, "MDX") == 0 && strcmp(EA3_SPEC, "I") == 0) {
+                // ddr gold cab
                 init_code << "G";
                 init_code << "B";
             } else {
@@ -529,7 +531,7 @@ namespace avs {
             auto app_param = avs::core::property_search_safe(app_config, nullptr, "/param");
 
             // call the game init
-            log_info("avs-ea3", "calling entry init");
+            log_info("avs-ea3", "calling entry init (init code = {})", init_code_str);
             if (!avs::game::entry_init(init_code_str.data(), app_param)) {
                 log_fatal("avs-ea3", "entry init failed :(");
             }
