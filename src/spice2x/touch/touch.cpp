@@ -241,7 +241,9 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
     }
 
     const auto is_windowed_sub =
-        (GRAPHICS_IIDX_WSUB && hWnd == TDJ_SUBSCREEN_WINDOW) || (hWnd == SDVX_SUBSCREEN_WINDOW);
+        (GRAPHICS_IIDX_WSUB && hWnd == TDJ_SUBSCREEN_WINDOW) ||
+         (hWnd == SDVX_SUBSCREEN_WINDOW) ||
+         (hWnd == GFDM_SUBSCREEN_WINDOW);
 
     if (msg == WM_CLOSE) { 
         if (is_windowed_sub) {
