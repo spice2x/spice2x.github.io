@@ -295,13 +295,13 @@ namespace games::gitadora {
 
         memset(o_DevStatus, 0x00, sizeof(AIO_IOB2_BI2X_AC1__DEVSTATUS));
 
-        
         auto &buttons = get_buttons();
         // struct may be misaligned
         o_DevStatus->Input.CN8_10 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Test]) ? 0 : 0xFF;
         o_DevStatus->Input.CN9_8 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Service]) ? 0 : 0xFF;
         o_DevStatus->Input.CN9_9 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Coin]) ? 0 : 0xFF;
-        
+        o_DevStatus->Input.CN12_14 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]) ? 0xFF : 0;
+
         // coin
         o_DevStatus->Input.Coin1Count = eamuse_coin_get_stock();
     }

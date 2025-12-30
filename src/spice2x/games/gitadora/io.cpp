@@ -10,6 +10,7 @@ std::vector<Button> &games::gitadora::get_buttons() {
                 "Service",
                 "Test",
                 "Coin",
+                "Headphone",
                 "Guitar P1 Start",
                 "Guitar P1 Up",
                 "Guitar P1 Down",
