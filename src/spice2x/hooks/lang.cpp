@@ -9,6 +9,7 @@
 
 #include "avs/game.h"
 #include "games/iidx/iidx.h"
+#include "games/gitadora/gitadora.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -24,6 +25,7 @@ static decltype(GetLocaleInfoEx) *GetLocaleInfoEx_orig = nullptr;
 #ifdef SPICE64
 static decltype(GetSystemDefaultLCID) *GetSystemDefaultLCID_orig = nullptr;
 static decltype(IsDBCSLeadByte) *IsDBCSLeadByte_orig = nullptr;
+static decltype(WideCharToMultiByte) *WideCharToMultiByte_orig = nullptr;
 #endif
 
 static NTSTATUS NTAPI RtlMultiByteToUnicodeN_hook(
@@ -173,6 +175,41 @@ static BOOL WINAPI IsDBCSLeadByte_hook (
     return IsDBCSLeadByteEx(CODEPAGE_SHIFT_JIS, TestChar);
 }
 
+static
+int
+WINAPI
+WideCharToMultiByte_hook(
+    UINT CodePage,
+    DWORD dwFlags,
+    LPCWCH lpWideCharStr,
+    int cchWideChar,
+    LPSTR lpMultiByteStr,
+    int cbMultiByte,
+    LPCCH lpDefaultChar,
+    LPBOOL lpUsedDefaultChar
+    )
+{
+    switch (CodePage) {
+        case CP_ACP:
+        case CP_THREAD_ACP:
+            SetThreadLocale(MAKELANGID(LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN));
+            CodePage = CODEPAGE_SHIFT_JIS;
+            break;
+
+        default:
+            break;
+    }
+    return WideCharToMultiByte_orig(
+        CodePage,
+        dwFlags,
+        lpWideCharStr,
+        cchWideChar,
+        lpMultiByteStr,
+        cbMultiByte,
+        lpDefaultChar,
+        lpUsedDefaultChar);
+}
+
 #endif
 
 void hooks::lang::early_init() {
@@ -212,6 +249,15 @@ void hooks::lang::early_init() {
             "IsDBCSLeadByte",
             IsDBCSLeadByte_hook,
             &IsDBCSLeadByte_orig);
+    }
+
+    if (games::gitadora::is_arena_model()) {
+        log_info("hooks::lang", "hooking WideCharToMultiByte");
+        detour::trampoline_try(
+            "kernel32.dll",
+            "WideCharToMultiByte",
+            WideCharToMultiByte_hook,
+            &WideCharToMultiByte_orig);
     }
 #endif
 
