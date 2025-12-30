@@ -16,6 +16,14 @@
 
 using namespace acioemu;
 
+// why this number?? no clue, but this is what the test menu shows as the max
+// value in the green box with the red dot; the value display itself can go
+// higher but the red dot will reach the edge at +-189
+#define ARENA_MODEL_WAIL_MAX 189
+
+static bool GFDM_GF_PICK_STATE_UP;
+static bool GFDM_GF_PICK_STATE_DOWN;
+
 games::gitadora::J33ISerialDevice::J33ISerialDevice() {
     this->node_count = 1;
     log_info("gitadora", "J33I device created.");
@@ -62,8 +70,6 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
             J33I_IO_STATUS payload;
             memset(&payload, 0, sizeof(J33I_IO_STATUS));
 
-            bool picked = false;
-
             auto &buttons = get_buttons();
             if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1R])) {
                 payload.buttons |= 1 << GUITAR_BTN_R;
@@ -86,11 +92,56 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
             }
 
             if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickUp])) {
-                payload.buttons |= 1 << GUITAR_PICK_UP;
-                picked = true;
-            } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickDown]) && !picked) {
-                payload.buttons |= 1 << GUITAR_PICK_DOWN;
+                if (!GFDM_GF_PICK_STATE_UP) {
+                    GFDM_GF_PICK_STATE_UP = true;
+                    payload.buttons |= 1 << GUITAR_PICK_UP;
+                }
+            } else {
+                GFDM_GF_PICK_STATE_UP = false;
             }
+
+            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickDown])) {
+                if (!GFDM_GF_PICK_STATE_DOWN) {
+                    GFDM_GF_PICK_STATE_DOWN = true;
+                    payload.buttons |= 1 << GUITAR_PICK_DOWN;
+                }
+            } else {
+                GFDM_GF_PICK_STATE_DOWN = false;
+            }
+
+            auto &analogs = get_analogs();
+
+            // get x,y,z analog values [-0.5f, 0.5f], centered at 0.f
+            float x = 0.f;
+            auto x_analog = analogs[Analogs::GuitarP1WailX];
+            if (x_analog.isSet()) {
+                x = GameAPI::Analogs::getState(RI_MGR, x_analog) - 0.5f;
+            }
+
+            float y = 0.f;
+            auto y_analog = analogs[Analogs::GuitarP1WailY];
+            if (y_analog.isSet()) {
+                y = GameAPI::Analogs::getState(RI_MGR, y_analog) - 0.5f;
+            }
+            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1WailUp])) {
+                y = -0.5f;
+            } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1WailDown])) {
+                y = 0.5f;
+            }
+
+            float z = 0.f;
+            auto z_analog = analogs[Analogs::GuitarP1WailZ];
+            if (z_analog.isSet()) {
+                z = GameAPI::Analogs::getState(RI_MGR, z_analog) - 0.5f;
+            }
+
+            // convert x,y,z to unsigned integer values that the game expects
+            const uint16_t x_int = x * ARENA_MODEL_WAIL_MAX * 2;
+            const uint16_t y_int = y * ARENA_MODEL_WAIL_MAX * 2;
+            const uint16_t z_int = z * ARENA_MODEL_WAIL_MAX * 2;
+            payload.gyroscope_x = static_cast<uint16_t>(((x_int >> 3) & (0xFF)) | ((x_int & 0x07) << 12));
+            payload.gyroscope_y = static_cast<uint16_t>(((y_int >> 3) & (0xFF)) | ((y_int & 0x07) << 12));
+            payload.gyroscope_z = static_cast<uint16_t>(((z_int >> 3) & (0xFF)) | ((z_int & 0x07) << 12));
 
             memcpy(msg->cmd.raw, &payload, sizeof(J33I_IO_STATUS));
             write_msg(msg, response_buffer);
