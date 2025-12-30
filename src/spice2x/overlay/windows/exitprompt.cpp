@@ -3,6 +3,7 @@
 #include "misc/eamuse.h"
 #include "util/logging.h"
 #include "games/iidx/iidx.h"
+#include "games/gitadora/gitadora.h"
 
 namespace overlay::windows {
 
@@ -69,6 +70,8 @@ namespace overlay::windows {
             sub = "Show Valkyrie Subscreen";
         } else if (avs::game::is_model("REC")) {
             sub = "Show DRS Dance Floor";
+        } else if (games::gitadora::is_arena_model()) {
+            sub = "Show GITADORA Subscreen";
         }
 
         build_button(this->overlay->window_sub, sub, size, NextItem::NEW_LINE, false);

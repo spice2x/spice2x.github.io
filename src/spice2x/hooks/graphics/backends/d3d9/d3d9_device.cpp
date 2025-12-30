@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include "avs/game.h"
+#include "games/gitadora/gitadora.h"
 #include "hooks/graphics/graphics.h"
 #include "overlay/overlay.h"
 #include "util/flags_helper.h"
@@ -249,8 +250,15 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
     WRAP_VERBOSE;
 
     HRESULT hr = pReal->CreateAdditionalSwapChain(pPresentationParameters, ppSwapChain);
-
+    bool create_swap_chain = false;
     if (avs::game::is_model({"LDJ", "KFC"})) {
+        create_swap_chain = true;
+    } else if (games::gitadora::is_arena_model() &&
+        pPresentationParameters->BackBufferWidth == 800) {
+        create_swap_chain = true;
+    }
+
+    if (create_swap_chain) {
         if (SUCCEEDED(hr) && !sub_swapchain) {
             sub_swapchain = new WrappedIDirect3DSwapChain9(this, *ppSwapChain);
             sub_swapchain->should_run_hooks = false;
@@ -308,6 +316,24 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
 
             graphics_screens_register(iSwapChain);
             return D3D_OK;
+        }
+    }
+
+    if (games::gitadora::is_arena_model()) {
+        if (iSwapChain == 3) {
+            if (sub_swapchain) {
+                sub_swapchain->AddRef();
+                *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(sub_swapchain);
+
+                graphics_screens_register(iSwapChain);
+                return D3D_OK;
+            } else if (fake_sub_swapchain) {
+                fake_sub_swapchain->AddRef();
+                *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(fake_sub_swapchain);
+
+                graphics_screens_register(iSwapChain);
+                return D3D_OK;
+            }
         }
     }
 

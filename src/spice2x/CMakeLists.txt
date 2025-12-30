@@ -554,6 +554,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         overlay/windows/camera_control.cpp
         overlay/windows/card_manager.cpp
         overlay/windows/drs_dancefloor.cpp
+        overlay/windows/gfdm_sub.cpp
         overlay/windows/screen_resize.cpp
         overlay/windows/sdvx_sub.cpp
         overlay/windows/config.cpp

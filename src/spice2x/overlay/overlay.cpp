@@ -3,6 +3,7 @@
 #include "avs/game.h"
 #include "cfg/configurator.h"
 #include "games/io.h"
+#include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/eamuse.h"
@@ -28,6 +29,7 @@
 #include "windows/generic_sub.h"
 #include "windows/iidx_seg.h"
 #include "windows/iidx_sub.h"
+#include "windows/gfdm_sub.h"
 #include "windows/drs_dancefloor.h"
 #include "windows/iopanel.h"
 #include "windows/iopanel_ddr.h"
@@ -393,7 +395,10 @@ void overlay::SpiceOverlay::init() {
             window_sub = new overlay::windows::DRSDanceFloorDisplay(this);
         } else if (avs::game::is_model("KFC")) {
             window_sub = new overlay::windows::SDVXSubScreen(this);
+        } else if (games::gitadora::is_arena_model()) {
+            window_sub = new overlay::windows::GitaDoraSubScreen(this);
         }
+
         if (window_sub) {
             this->window_add(window_sub);
             if (AUTO_SHOW_SUBSCREEN) {
