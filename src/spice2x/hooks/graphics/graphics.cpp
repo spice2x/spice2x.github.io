@@ -2,8 +2,6 @@
 
 #include "graphics.h"
 
-#include <set>
-#include <vector>
 #include <mutex>
 #include <condition_variable>
 
@@ -432,11 +430,12 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
     if (is_gfdm_sub_window) {
         GFDM_SUBSCREEN_WINDOWS.insert(result);
-        if (is_gfdm_sub_window_small) {
+        // only hook touch window if multiple windows are allowed
+        if (is_gfdm_sub_window_small && !games::gitadora::ARENA_SINGLE_WINDOW) {
             GFDM_SUBSCREEN_WINDOW_SMALL = result;
-            graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
+            graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW_SMALL);
         }
-    )
+    }
 
     disable_touch_indicators(result);
     return result;
@@ -669,6 +668,7 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
         return TRUE;
     }
 
+    // take this opportunity to close the gitadora sub windows
     if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
         if (GFDM_SUBSCREEN_WINDOWS.contains(hWnd)) {
             log_info("graphics","SetWindowPos hook - hiding GFDM subscreen window {}", fmt::ptr(hWnd));
