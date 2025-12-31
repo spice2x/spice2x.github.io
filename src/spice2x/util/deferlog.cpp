@@ -76,8 +76,8 @@ namespace deferredlogs {
                 msg += "\n";
             }
 
-            for (auto messages : errors) {
-                for (auto message : messages) {
+            for (const auto &messages : errors) {
+                for (const auto &message : messages) {
                     msg += "  " + message + "\n";
                 }
                 msg += "\n";
@@ -91,7 +91,7 @@ namespace deferredlogs {
             msg += "\n";
             msg += "\\------------------------- spice2x auto-troubleshooter ------------------------/\n";
 
-            log_warning("troubleshooter", "{}", msg);
+            log_special("troubleshooter", "{}", msg);
         });
     }
 }
