@@ -32,6 +32,16 @@ namespace deferredlogs {
         deferred_errors.emplace_back(messages);
     }
 
+    void report_fatal_message() {
+        static std::once_flag printed;
+        std::call_once(printed, []() {
+            deferredlogs::defer_error_messages({
+                "game reported FATAL error(s)",
+                "    look for messages containing F: in the log",
+                });
+        });
+    }
+
     void dump_to_logger(bool is_crash) {
         static std::once_flag printed;
         std::call_once(printed, [is_crash]() {

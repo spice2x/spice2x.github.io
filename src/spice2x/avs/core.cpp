@@ -1234,6 +1234,7 @@ namespace avs {
                                 break;
                             case 'F':
                                 new_style = logger::Style::RED;
+                                deferredlogs::report_fatal_message();
                                 break;
                             default:
                                 position = 0;
@@ -1302,6 +1303,7 @@ namespace avs {
                     break;
                 case 'F':
                     style = logger::Style::RED;
+                    deferredlogs::report_fatal_message();
                     break;
                 case 'W':
                     style = logger::Style::YELLOW;
