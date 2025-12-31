@@ -393,7 +393,7 @@ namespace wintouchemu {
                     // use mouse position as ImGui overlay will block the touch window  
                     log_info("wintouchemu", "use mouse cursor API for ldj overlay subscreen");
                     USE_MOUSE = true;
-                } else if (games::gitadora::is_arena_model()) {
+                } else if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
                     log_info("wintouchemu", "use mouse cursor API for gitadora overlay subscreen");
                     USE_MOUSE = true;
                 } else {

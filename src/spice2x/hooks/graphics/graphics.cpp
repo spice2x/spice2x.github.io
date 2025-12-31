@@ -34,7 +34,11 @@ struct CaptureData {
 
 HWND TDJ_SUBSCREEN_WINDOW = nullptr;
 HWND SDVX_SUBSCREEN_WINDOW = nullptr;
-HWND GFDM_SUBSCREEN_WINDOW = nullptr;
+
+// gitadora arena model - small touch window
+HWND GFDM_SUBSCREEN_WINDOW_SMALL = nullptr;
+// gitadora arena model - all sub windows except the main one
+std::set<HWND> GFDM_SUBSCREEN_WINDOWS;
 
 // icon
 static HICON WINDOW_ICON = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(MAINICON));
@@ -371,17 +375,19 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
     bool is_tdj_sub_window = avs::game::is_model("LDJ") && window_name.ends_with(" sub");
     bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
-    bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
+    bool is_gfdm_sub_window = (games::gitadora::is_arena_model() &&
+        games::gitadora::ARENA_SINGLE_WINDOW && !window_name.empty());
+    bool is_gfdm_sub_window_small = is_gfdm_sub_window && window_name.ends_with("SMALL");
 
-    // TDJ windowed mode with subscreen: hide maximize button
-    if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window || is_gfdm_sub_window) {
+    // hide maximize button (prevent misaligned touches)
+    if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window || is_gfdm_sub_window_small) {
         dwStyle &= ~(WS_MAXIMIZEBOX);
     }
     // mouse clicks become misaligned when resized
-    if (is_gfdm_sub_window) {
+    if (is_gfdm_sub_window_small) {
         dwStyle &= ~(WS_SIZEBOX);
     }
-    if ((is_tdj_sub_window || is_sdvx_sub_window || is_gfdm_sub_window) && GRAPHICS_WSUB_BORDERLESS) {
+    if ((is_tdj_sub_window || is_sdvx_sub_window) && GRAPHICS_WSUB_BORDERLESS) {
         dwStyle &= ~(WS_OVERLAPPEDWINDOW);
     }
 
@@ -425,9 +431,12 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     if (is_gfdm_sub_window) {
-        GFDM_SUBSCREEN_WINDOW = result;
-        graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
-    }
+        GFDM_SUBSCREEN_WINDOWS.insert(result);
+        if (is_gfdm_sub_window_small) {
+            GFDM_SUBSCREEN_WINDOW_SMALL = result;
+            graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
+        }
+    )
 
     disable_touch_indicators(result);
     return result;
@@ -658,6 +667,15 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
     // windowed mode adjustments
     if (GRAPHICS_WINDOWED && (avs::game::is_model("LMA") || avs::game::is_model("MDX"))) {
         return TRUE;
+    }
+
+    if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
+        if (GFDM_SUBSCREEN_WINDOWS.contains(hWnd)) {
+            log_info("graphics","SetWindowPos hook - hiding GFDM subscreen window {}", fmt::ptr(hWnd));
+            SendMessage(hWnd, WM_CLOSE, 0, 0);
+            GFDM_SUBSCREEN_WINDOWS.erase(hWnd);
+            return TRUE;
+        }
     }
 
     // call original

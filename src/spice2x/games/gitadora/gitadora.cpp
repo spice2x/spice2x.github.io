@@ -18,6 +18,7 @@ namespace games::gitadora {
     // settings
     bool TWOCHANNEL = false;
     std::optional<unsigned int> CAB_TYPE = std::nullopt;
+    bool ARENA_SINGLE_WINDOW = false;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -274,10 +275,12 @@ namespace games::gitadora {
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
 
             // touch hook
-            // TODO: native touch option
-            wintouchemu::FORCE = true;
-            wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
-            wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);
+            if (ARENA_SINGLE_WINDOW) {
+                // TODO: native touch option?
+                wintouchemu::FORCE = true;
+                wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
+                wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);
+            }
             return;
         }
 

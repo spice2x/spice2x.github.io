@@ -1364,7 +1364,8 @@ void graphics_d3d9_on_present(
         avs::game::is_model("KFC") &&
         (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H');
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
-    const bool is_gfdm_arena = games::gitadora::is_arena_model();
+    const bool is_gfdm_arena =
+        games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW;
     if (is_vm || is_tdj || is_gfdm_arena) {
         graphics_d3d9_ldj_on_present(wrapped_device);
     }

@@ -918,6 +918,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .elements = {{"1", "DX"}, {"2", "SD"}, {"3", "SD2 - white cab"}},
     },
     {
+        // GitaDoraArenaSingleWindow
+        .title = "GitaDora Arena Single Window (EXPERIMENTAL)",
+        .name = "gdaonewindow",
+        .desc = "For Arena Model, when running in windowed mode, only show the main game window; enables subscreen overlay",
+        .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+    },
+    {
         .title = "Force Load Jubeat Module",
         .name = "jb",
         .desc = "Manually enable Jubeat module",
