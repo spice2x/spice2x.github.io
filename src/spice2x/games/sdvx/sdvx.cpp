@@ -245,7 +245,7 @@ namespace games::sdvx {
         if (ASIO_DRIVER.has_value()) {
             log_misc(
                 "sdvx",
-                "-sdvxasio is set to \"{}\", game will try asio first", ASIO_DRIVER.value());
+                "-sdvxasio is set to \"{}\"", ASIO_DRIVER.value());
             USE_ASIO = true;
         } else {
             // see if XONAR AE is present; if so, use that
@@ -257,11 +257,11 @@ namespace games::sdvx {
                 USE_ASIO = true;
                 log_misc(
                     "sdvx",
-                    "found HKLM\\SOFTWARE\\ASIO\\XONAR SOUND CARD(64), game will try asio first");
+                    "found HKLM\\SOFTWARE\\ASIO\\XONAR SOUND CARD(64)");
             }
         }
         if (!USE_ASIO) {
-            log_misc("sdvx", "asio not configured; game will use wasapi");
+            log_misc("sdvx", "asio not configured");
         }
     }
 
