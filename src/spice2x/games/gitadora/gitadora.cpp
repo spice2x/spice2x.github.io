@@ -5,6 +5,7 @@
 #include "cfg/configurator.h"
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
+#include "misc/wintouchemu.h"
 #include "util/cpuutils.h"
 #include "util/detour.h"
 #include "util/libutils.h"
@@ -17,6 +18,7 @@ namespace games::gitadora {
     // settings
     bool TWOCHANNEL = false;
     std::optional<unsigned int> CAB_TYPE = std::nullopt;
+    bool ARENA_SINGLE_WINDOW = false;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -271,6 +273,14 @@ namespace games::gitadora {
 
             // volume change prevention
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
+
+            // touch hook
+            if (ARENA_SINGLE_WINDOW) {
+                // TODO: native touch option?
+                wintouchemu::FORCE = true;
+                wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
+                wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);
+            }
             return;
         }
 
