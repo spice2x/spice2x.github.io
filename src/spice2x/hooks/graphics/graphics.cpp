@@ -672,8 +672,10 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
     if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
         if (GFDM_SUBSCREEN_WINDOWS.contains(hWnd)) {
             log_info("graphics","SetWindowPos hook - hiding GFDM subscreen window {}", fmt::ptr(hWnd));
-            SendMessage(hWnd, WM_CLOSE, 0, 0);
-            GFDM_SUBSCREEN_WINDOWS.erase(hWnd);
+            // TODO: this races with CreateDeviceEx, so if the window is closed before the game
+            // gets a chance to set up rendering, game will crash... :(
+            // SendMessage(hWnd, WM_CLOSE, 0, 0);
+            // GFDM_SUBSCREEN_WINDOWS.erase(hWnd);
             return TRUE;
         }
     }
