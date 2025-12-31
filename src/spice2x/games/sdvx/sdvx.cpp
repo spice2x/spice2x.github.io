@@ -64,6 +64,10 @@ namespace games::sdvx {
 
             // prevent the game from randomly picking an ASIO device
             if (!USE_ASIO) {
+                log_info(
+                    "sdvx::asio",
+                    "game tried to access HKLM\\SOFTWARE\\ASIO but ASIO is disabled; "
+                    "access prevented, ASIO init will fail");
                 return ERROR_FILE_NOT_FOUND;
             }
             // convince the game to use our hook (so we can swap in the preferred device)
