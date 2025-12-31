@@ -12,7 +12,8 @@ namespace logger {
         DEFAULT = 0,
         GREY = 1,
         YELLOW = 2,
-        RED = 3
+        RED = 3,
+        SPECIAL = 4,
     };
 
     void start();
