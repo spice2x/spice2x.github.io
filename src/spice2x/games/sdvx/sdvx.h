@@ -39,5 +39,6 @@ namespace games::sdvx {
         // not depend on the fact that SDVX module is active (since it can be
         // inactive on cabs or partial I/O setup)
         bool VALKYRIE_MODEL = false;
+        void detect_sound_output_device();
     };
 }
