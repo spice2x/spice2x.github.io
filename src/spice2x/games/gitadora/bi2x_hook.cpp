@@ -323,7 +323,7 @@ namespace games::gitadora {
     }
 
     void __fastcall aioIob2Bi2xAC1_SetOutputData(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_CnPin, uint8_t i_Data) {
-        
+
         if (i_pNodeCtl != aioIob2Bi2xAc1) {
             return aioIob2Bi2xAC1_SetOutputData_orig(i_pNodeCtl, i_CnPin, i_Data);
         }
@@ -335,6 +335,16 @@ namespace games::gitadora {
 
         if (i_pNodeCtl != aioIob2Bi2xAc1) {
             return aioIob2Bi2xAC1_SetTapeLedDataPart_orig(i_pNodeCtl, i_TapeLedCh, i_Offset, i_pData, i_cntTapeLed, i_bReverse);
+        }
+
+        if (tapeledutils::is_enabled() && 
+            i_TapeLedCh == 0 && i_Offset == 0 && i_cntTapeLed == 62) {
+
+            auto &lights = get_lights();
+            const auto rgb = tapeledutils::pick_color_from_led_tape(i_pData, i_cntTapeLed);
+            GameAPI::Lights::writeLight(RI_MGR, lights[Lights::ArenaTitleAvgR], rgb.r);
+            GameAPI::Lights::writeLight(RI_MGR, lights[Lights::ArenaTitleAvgG], rgb.g);
+            GameAPI::Lights::writeLight(RI_MGR, lights[Lights::ArenaTitleAvgB], rgb.b);
         }
     }
 

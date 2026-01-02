@@ -191,7 +191,12 @@ namespace games::gitadora {
             GuitarRightSpeakerMidLowRightB,
             GuitarRightSpeakerLowerR,
             GuitarRightSpeakerLowerG,
-            GuitarRightSpeakerLowerB
+            GuitarRightSpeakerLowerB,
+
+            // Title RGB LED strip, Arena Model only
+            ArenaTitleAvgR,
+            ArenaTitleAvgG,
+            ArenaTitleAvgB,
         } gitadora_lights_t;
     }
 

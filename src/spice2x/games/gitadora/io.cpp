@@ -211,7 +211,11 @@ std::vector<Light> &games::gitadora::get_lights() {
                 "Guitar Right Speaker Mid Low Right B (DX)",
                 "Guitar Right Speaker Lower R (DX)",
                 "Guitar Right Speaker Lower G (DX)",
-                "Guitar Right Speaker Lower B (DX)"
+                "Guitar Right Speaker Lower B (DX)",
+
+                "Title Average R (Arena)",
+                "Title Average G (Arena)",
+                "Title Average B (Arena)"
         );
     }
 
