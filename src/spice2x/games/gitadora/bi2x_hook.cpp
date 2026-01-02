@@ -561,6 +561,7 @@ namespace games::gitadora {
     }
 
     // libaio-iob5_y32.dll
+
     static AIO_IOB5_Y32D *__fastcall aioIob5Y32d_Create(AIO_NMGR_IOB5 *i_pSci, uint32_t i_bfMode) {
 
         if (i_pSci == aioNmgrIob5) {
