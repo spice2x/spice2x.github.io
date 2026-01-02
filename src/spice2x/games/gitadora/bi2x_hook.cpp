@@ -1,5 +1,6 @@
 #include "bi2x_hook.h"
 
+#include <optional>
 #include <cstdint>
 #include "util/detour.h"
 #include "util/logging.h"
@@ -323,9 +324,37 @@ namespace games::gitadora {
     }
 
     void __fastcall aioIob2Bi2xAC1_SetOutputData(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_CnPin, uint8_t i_Data) {
-        
+
         if (i_pNodeCtl != aioIob2Bi2xAc1) {
             return aioIob2Bi2xAC1_SetOutputData_orig(i_pNodeCtl, i_CnPin, i_Data);
+        }
+
+        std::optional<Lights::gitadora_lights_t> light;
+        switch (i_CnPin) {
+            case 14:
+                light = Lights::ArenaWooferR;
+                break;
+            case 15:
+                light = Lights::ArenaWooferG;
+                break;
+            case 16:
+                light = Lights::ArenaWooferB;
+                break;
+            case 17:
+                light = Lights::ArenaCardR;
+                break;
+            case 18:
+                light = Lights::ArenaCardG;
+                break;
+            case 19:
+                light = Lights::ArenaCardB;
+                break;
+            default:
+                break;
+        }
+        if (light.has_value()) {
+            auto &lights = games::gitadora::get_lights();
+            GameAPI::Lights::writeLight(RI_MGR, lights.at(light.value()), i_Data / 255.f);
         }
     }
 
@@ -335,6 +364,16 @@ namespace games::gitadora {
 
         if (i_pNodeCtl != aioIob2Bi2xAc1) {
             return aioIob2Bi2xAC1_SetTapeLedDataPart_orig(i_pNodeCtl, i_TapeLedCh, i_Offset, i_pData, i_cntTapeLed, i_bReverse);
+        }
+
+        if (tapeledutils::is_enabled() && 
+            i_TapeLedCh == 0 && i_Offset == 0 && i_cntTapeLed == 62) {
+
+            auto &lights = get_lights();
+            const auto rgb = tapeledutils::pick_color_from_led_tape(i_pData, i_cntTapeLed);
+            GameAPI::Lights::writeLight(RI_MGR, lights[Lights::ArenaTitleAvgR], rgb.r);
+            GameAPI::Lights::writeLight(RI_MGR, lights[Lights::ArenaTitleAvgG], rgb.g);
+            GameAPI::Lights::writeLight(RI_MGR, lights[Lights::ArenaTitleAvgB], rgb.b);
         }
     }
 
@@ -551,6 +590,7 @@ namespace games::gitadora {
     }
 
     // libaio-iob5_y32.dll
+
     static AIO_IOB5_Y32D *__fastcall aioIob5Y32d_Create(AIO_NMGR_IOB5 *i_pSci, uint32_t i_bfMode) {
 
         if (i_pSci == aioNmgrIob5) {

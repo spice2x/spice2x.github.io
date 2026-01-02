@@ -191,7 +191,18 @@ namespace games::gitadora {
             GuitarRightSpeakerMidLowRightB,
             GuitarRightSpeakerLowerR,
             GuitarRightSpeakerLowerG,
-            GuitarRightSpeakerLowerB
+            GuitarRightSpeakerLowerB,
+
+            // arena model (common for both guitar and drum)
+            ArenaTitleAvgR,
+            ArenaTitleAvgG,
+            ArenaTitleAvgB,
+            ArenaWooferR,
+            ArenaWooferG,
+            ArenaWooferB,
+            ArenaCardR,
+            ArenaCardG,
+            ArenaCardB,
         } gitadora_lights_t;
     }
 
