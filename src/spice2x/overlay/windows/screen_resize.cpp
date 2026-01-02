@@ -29,8 +29,8 @@ namespace overlay::windows {
     HWND ScreenResize::get_first_window() {
         // hack for gitadora arena model which races to create many windows
         // so [0] is not always the main one
-        if (GRAPHICS_WINDOW_MAIN) {
-            return GRAPHICS_WINDOW_MAIN;
+        if (GRAPHICS_WINDOW_MAIN.has_value()) {
+            return GRAPHICS_WINDOW_MAIN.value();
         }
         if (GRAPHICS_WINDOWS.size() == 0) {
             return NULL;

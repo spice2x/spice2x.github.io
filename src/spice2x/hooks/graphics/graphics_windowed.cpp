@@ -7,7 +7,7 @@
 #include "util/utils.h"
 #include "touch/touch.h"
 
-#if 1
+#if 0
 #define log_debug(module, format_str, ...) logger::push( \
     LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
 #else
