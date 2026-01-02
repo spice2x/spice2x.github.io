@@ -56,6 +56,7 @@ void graphics_capture_initial_window(HWND hWnd) {
     graphics_load_windowed_parameters();
 
     cfg::SCREENRESIZE->init_window_style = GetWindowLong(hWnd, GWL_STYLE);
+    cfg::SCREENRESIZE->init_window_style_ex = GetWindowLong(hWnd, GWL_EXSTYLE);
 
     log_debug(
         "graphics-windowed",
@@ -382,9 +383,12 @@ void graphics_update_window_style(HWND hWnd) {
 
     // update frame style
     auto style = cfg::SCREENRESIZE->init_window_style;
+    auto style_ex = cfg::SCREENRESIZE->init_window_style_ex;
     switch (cfg::SCREENRESIZE->window_decoration) {
         case cfg::WindowDecorationMode::Borderless:
             style &= ~WS_OVERLAPPEDWINDOW;
+            style_ex &= ~WS_EX_CLIENTEDGE;
+            style_ex &= ~WS_EX_WINDOWEDGE;
             break;
         case cfg::WindowDecorationMode::ResizableFrame:
             style |= WS_OVERLAPPEDWINDOW;
@@ -403,13 +407,22 @@ void graphics_update_window_style(HWND hWnd) {
     const auto ret = SetWindowLong(hWnd, GWL_STYLE, style);
     (void)ret;
     
-    // SetWindowPos must be called after SetWindowLong if the frame style changed
-    // this will be done in WM_STYLECHANGED handler
     log_debug(
         "graphics-windowed",
-        "graphics_update_window_style returned {:x}, GLE={}",
+        "graphics_update_window_style - SetWindowLong(GWL_STYLE) returned {:x}, GLE={}",
         ret,
         GetLastError());
+
+    const auto ret2 = SetWindowLong(hWnd, GWL_EXSTYLE, style_ex);
+    (void)ret2;
+    log_debug(
+        "graphics-windowed",
+        "graphics_update_window_style SetWindowLong(GWL_EXSTYLE) returned {:x}, GLE={}",
+        ret2,
+        GetLastError());
+
+    // SetWindowPos must be called after SetWindowLong if the frame style changed
+    // this will be done in WM_STYLECHANGED handler
 }
 
 void graphics_update_z_order(HWND hWnd, bool always_on_top) {
