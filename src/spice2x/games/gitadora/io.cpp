@@ -215,7 +215,15 @@ std::vector<Light> &games::gitadora::get_lights() {
 
                 "Title Average R (Arena)",
                 "Title Average G (Arena)",
-                "Title Average B (Arena)"
+                "Title Average B (Arena)",
+
+                "Woofer R (Arena)",
+                "Woofer G (Arena)",
+                "Woofer B (Arena)",
+
+                "Card Reader R (Arena)",
+                "Card Reader G (Arena)",
+                "Card Reader B (Arena)"
         );
     }
 

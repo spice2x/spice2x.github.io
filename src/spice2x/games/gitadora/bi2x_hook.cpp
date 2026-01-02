@@ -1,5 +1,6 @@
 #include "bi2x_hook.h"
 
+#include <optional>
 #include <cstdint>
 #include "util/detour.h"
 #include "util/logging.h"
@@ -326,6 +327,34 @@ namespace games::gitadora {
 
         if (i_pNodeCtl != aioIob2Bi2xAc1) {
             return aioIob2Bi2xAC1_SetOutputData_orig(i_pNodeCtl, i_CnPin, i_Data);
+        }
+
+        std::optional<Lights::gitadora_lights_t> light;
+        switch (i_CnPin) {
+            case 14:
+                light = Lights::ArenaWooferR;
+                break;
+            case 15:
+                light = Lights::ArenaWooferG;
+                break;
+            case 16:
+                light = Lights::ArenaWooferB;
+                break;
+            case 17:
+                light = Lights::ArenaCardR;
+                break;
+            case 18:
+                light = Lights::ArenaCardG;
+                break;
+            case 19:
+                light = Lights::ArenaCardB;
+                break;
+            default:
+                break;
+        }
+        if (light.has_value()) {
+            auto &lights = games::gitadora::get_lights();
+            GameAPI::Lights::writeLight(RI_MGR, lights.at(light.value()), i_Data / 255.f);
         }
     }
 
