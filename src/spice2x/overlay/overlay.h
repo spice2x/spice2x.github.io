@@ -30,6 +30,14 @@ namespace overlay {
     extern bool SHOW_DEBUG_LOG_WINDOW;
     extern std::optional<uint32_t> UI_SCALE_PERCENT;
 
+    template <typename T>
+    float apply_scaling(T input) {
+        if (!UI_SCALE_PERCENT.has_value()) {
+            return input;
+        }
+        return static_cast<float>(input) * UI_SCALE_PERCENT.value() / 100.f;
+    }
+
     class SpiceOverlay {
     public:
 

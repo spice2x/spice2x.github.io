@@ -959,9 +959,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::DisableOverlay].value_bool()) {
         overlay::ENABLED = false;
     }
-    if (options[launcher::Options::OverlayScaling].is_active() && !cfg::CONFIGURATOR_STANDALONE) {
+    if (options[launcher::Options::OverlayScaling].is_active() && !cfg::CONFIGURATOR_STANDALONE && !cfg_run) {
         const auto val = options[launcher::Options::OverlayScaling].value_uint32();
-        if (10 <= val && val <= 400) {
+        if (10 <= val && val <= 400 && val != 100) {
             overlay::UI_SCALE_PERCENT = options[launcher::Options::OverlayScaling].value_uint32();
         }
     }

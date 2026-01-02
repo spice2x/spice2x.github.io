@@ -172,7 +172,7 @@ void overlay::SpiceOverlay::init() {
         style.WindowRounding = 0;
     }
 
-    if (UI_SCALE_PERCENT.has_value() && UI_SCALE_PERCENT.value() != 100) {
+    if (UI_SCALE_PERCENT.has_value()) {
         const auto scale = static_cast<float>(UI_SCALE_PERCENT.value()) / 100.f;
         ImGui::GetStyle().ScaleAllSizes(scale);
         ImGui::GetIO().FontGlobalScale = scale;
