@@ -41,6 +41,15 @@
 #undef min
 #endif
 
+#define D3D9_BACKEND_DEBUG 0
+
+#if D3D9_BACKEND_DEBUG
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
+
 #define CHECK_RESULT(x) \
     do { \
         HRESULT __ret = (x); \
@@ -514,7 +523,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
             if (!modified && games::iidx::is_tdj_fhd() && refresh < 110) {
                 if ((width == 1920 && height == 1080) ||
                     (width == 1280 && height == 720)){
-                    log_misc(
+                    log_debug(
                         "graphics::d3d9", "removing mode {}, {}x{} @ {}Hz (for TDJ FHD)",
                         Mode, width, height, refresh);
                     memset(pMode, 0, sizeof(*pMode));
@@ -527,7 +536,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
             // - skip 75 and 90 Hz entries because LDJ game timing is messed up with it
             //   (TDJ should be fine as it assumes a fixed 60 Hz timing)
             if (!modified && (width == 1360 || width == 1366 || refresh == 75 || refresh == 90)) {
-                log_misc(
+                log_debug(
                     "graphics::d3d9", "removing mode {}, {}x{} @ {}Hz (for LDJ/TDJ)",
                     Mode, width, height, refresh);
                 memset(pMode, 0, sizeof(*pMode));
@@ -535,7 +544,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
             }
 
             if (!modified && !games::iidx::TDJ_MODE && games::iidx::FORCE_720P && (height > 720)) {
-                log_misc(
+                log_debug(
                     "graphics::d3d9", "removing mode {}, {}x{} @ {}Hz (-iidxforce720p)",
                     Mode, width, height, refresh);
                 memset(pMode, 0, sizeof(*pMode));
