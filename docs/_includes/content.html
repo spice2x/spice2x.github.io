@@ -17,11 +17,39 @@
 
 <h2>downloads</h2>
 
-<p><a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases/latest">latest stable release</a></p>
+<p style="font-weight: bold";>
+  <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases/latest">
+    latest stable release<span id="octo_latest_release"></span>
+  </a>
+</p>
 
-<p><a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases">all releases, including pre-release versions</a></p>
+<p>
+  <a class="download-link" href="https://github.com/spice2x/spice2x.github.io/releases">
+    all releases, including pre-release versions
+   <span id="octo_latest_prerelease"></span>
+  </a>
+</p>
 
 <p><a class="download-link" href="https://nightly.link/spice2x/spice2x.github.io/workflows/ci/main">nightly builds (untested)</a></p>
+
+<script type="module">
+    import { Octokit } from "https://cdn.skypack.dev/@octokit/core";
+    const octokit = new Octokit();
+    const owner = "spice2x";
+    const repo = "spice2x.github.io";
+    const latest = await octokit.request(
+        "GET /repos/{owner}/{repo}/releases/latest",
+        { owner, repo });
+    if (latest && latest.data && latest.data.name) {
+        document.getElementById("octo_latest_release").textContent = " (" + latest.data.name + ")";
+    }
+    const releases = await octokit.request(
+        "GET /repos/{owner}/{repo}/releases",
+        { owner, repo, per_page: 1, page: 1 });
+    if (releases && releases.data && releases.data.length >= 1 && releases.data[0].name) {
+        document.getElementById("octo_latest_prerelease").textContent = " (" + releases.data[0].name + ")";
+    }
+</script>
 
 <h2>documentation</h2>
 
