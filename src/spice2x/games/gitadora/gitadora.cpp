@@ -5,6 +5,7 @@
 #include "cfg/configurator.h"
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
+#include "overlay/overlay.h"
 #include "util/cpuutils.h"
 #include "util/detour.h"
 #include "util/libutils.h"
@@ -212,6 +213,13 @@ namespace games::gitadora {
                 log_fatal("gitadora", "Cabinet type 3 (SD2) not supported on XG series");
             }
 #endif
+
+            // arena model launches a tiny window yet backbuffer at 4k, resulting in unusable overlay
+            // force scaling to make things usable
+            if (!overlay::UI_SCALE_PERCENT.has_value() && is_arena_model() &&
+                GRAPHICS_WINDOWED && !cfg::CONFIGURATOR_STANDALONE) {
+                overlay::UI_SCALE_PERCENT = 250;
+            }
         }
     }
 

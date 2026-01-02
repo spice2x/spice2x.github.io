@@ -56,6 +56,8 @@ namespace overlay {
 
     bool FPS_SHOULD_FLIP = false;
 
+    std::optional<uint32_t> UI_SCALE_PERCENT;
+
     // global
     std::mutex OVERLAY_MUTEX;
     std::unique_ptr<overlay::SpiceOverlay> OVERLAY = nullptr;
@@ -170,8 +172,11 @@ void overlay::SpiceOverlay::init() {
         style.WindowRounding = 0;
     }
 
-    ImGui::GetStyle().ScaleAllSizes(2.f);
-    ImGui::GetIO().FontGlobalScale = 2.f;
+    if (UI_SCALE_PERCENT.has_value() && UI_SCALE_PERCENT.value() != 100) {
+        const auto scale = static_cast<float>(UI_SCALE_PERCENT.value()) / 100.f;
+        ImGui::GetStyle().ScaleAllSizes(scale);
+        ImGui::GetIO().FontGlobalScale = scale;
+    }
 
     // red theme based on:
     // https://github.com/ocornut/imgui/issues/707#issuecomment-760220280

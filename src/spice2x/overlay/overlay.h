@@ -3,6 +3,7 @@
 #include <memory>
 #include <mutex>
 #include <functional>
+#include <optional>
 #include <vector>
 #include <windows.h>
 #include <d3d9.h>
@@ -27,6 +28,7 @@ namespace overlay {
     extern bool USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT;
     extern bool FPS_SHOULD_FLIP;
     extern bool SHOW_DEBUG_LOG_WINDOW;
+    extern std::optional<uint32_t> UI_SCALE_PERCENT;
 
     class SpiceOverlay {
     public:

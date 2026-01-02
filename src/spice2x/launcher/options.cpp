@@ -383,10 +383,22 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .disabled = true,
     },
     {
+        // DisableOverlay
         .title = "Disable Spice Overlay",
         .name = "overlaydisable",
         .desc = "Disables the in-game overlay",
         .type = OptionType::Bool,
+        .category = "Overlay",
+    },
+    {
+        // OverlayScaling
+        .title = "Spice Overlay UI Scale % (EXPERIMENTAL)",
+        .name = "overlayscale",
+        .desc = "Forces UI scaling for the overlay, "
+            "things can look off since the UI was written for 100% scaling. "
+            "Enter value in percentage, between 10-400, inclusive",
+        .type = OptionType::Integer,
+        .setting_name = "200",
         .category = "Overlay",
     },
     {
