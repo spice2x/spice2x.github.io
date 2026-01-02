@@ -69,6 +69,7 @@ namespace cfg {
         uint32_t init_client_height = 0;
         float init_client_aspect_ratio = 1.f;
         uint32_t init_window_style = 0;
+        uint32_t init_window_style_ex = 0;
         uint32_t window_deco_width = 0;
         uint32_t window_deco_height = 0;
 

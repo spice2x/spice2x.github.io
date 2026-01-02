@@ -31,6 +31,7 @@ extern bool GRAPHICS_SHOW_CURSOR;
 extern bool GRAPHICS_WINDOWED;
 extern graphics_orientation GRAPHICS_ADJUST_ORIENTATION;
 extern std::vector<HWND> GRAPHICS_WINDOWS;
+extern std::optional<HWND> GRAPHICS_WINDOW_MAIN;
 extern UINT GRAPHICS_FORCE_REFRESH;
 extern std::optional<int> GRAPHICS_FORCE_VSYNC_BUFFER;
 extern bool GRAPHICS_FORCE_SINGLE_ADAPTER;
