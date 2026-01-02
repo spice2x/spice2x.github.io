@@ -401,7 +401,8 @@ void graphics_update_window_style(HWND hWnd) {
         style);
 
     const auto ret = SetWindowLong(hWnd, GWL_STYLE, style);
-
+    (void)ret;
+    
     // SetWindowPos must be called after SetWindowLong if the frame style changed
     // this will be done in WM_STYLECHANGED handler
     log_debug(
