@@ -170,6 +170,9 @@ void overlay::SpiceOverlay::init() {
         style.WindowRounding = 0;
     }
 
+    ImGui::GetStyle().ScaleAllSizes(2.f);
+    ImGui::GetIO().FontGlobalScale = 2.f;
+
     // red theme based on:
     // https://github.com/ocornut/imgui/issues/707#issuecomment-760220280
     // r, g, b, a
@@ -245,7 +248,6 @@ void overlay::SpiceOverlay::init() {
 
     if (!cfg::CONFIGURATOR_STANDALONE) {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
     if (is_touch_available("SpiceOverlay::init")) {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
