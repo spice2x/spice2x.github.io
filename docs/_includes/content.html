@@ -46,7 +46,7 @@
     const releases = await octokit.request(
         "GET /repos/{owner}/{repo}/releases",
         { owner, repo, per_page: 1, page: 1 });
-    if (releases && releases.data && releases.data.length >= 1 && releases.data[0].name) {
+    if (releases && releases.data && releases.data.length >= 1 && releases.data[0].name && releases.data[0].prerelease) {
         document.getElementById("octo_latest_prerelease").textContent = " (" + releases.data[0].name + ")";
     }
 </script>
