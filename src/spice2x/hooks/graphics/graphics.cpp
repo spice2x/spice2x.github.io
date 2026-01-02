@@ -670,6 +670,11 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
         return TRUE;
     }
 
+    if (GRAPHICS_WINDOWED && games::gitadora::is_arena_model() &&
+        cfg::SCREENRESIZE->enable_window_resize) {
+        return TRUE;
+    }
+
     // call original
     return SetWindowPos_orig(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
