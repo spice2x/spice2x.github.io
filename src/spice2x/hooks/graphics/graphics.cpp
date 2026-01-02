@@ -362,10 +362,12 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     // gfdm
+    bool is_gitadora_main_window = false;
     if (avs::game::is_model({"J32", "J33", "K32", "K33", "L32", "L33", "M32"})) {
         // set window name
         if (!lpWindowName) {
             lpWindowName = "GITADORA";
+            is_gitadora_main_window = true;
         }
     }
 
@@ -408,6 +410,11 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             hWndParent, hMenu, hInstance, lpParam);
     GRAPHICS_WINDOWS.push_back(result);
 
+    // this is only really needed for arena model, but pre-arena model was single window anyway
+    if (is_gitadora_main_window) {
+        GRAPHICS_WINDOW_MAIN = result;
+    }
+
     if (is_tdj_sub_window) {
         // TDJ windowed mode: remember the subscreen window handle for later
         TDJ_SUBSCREEN_WINDOW = result;
@@ -430,6 +437,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     disable_touch_indicators(result);
+    log_misc("graphics", "CreateWindowExA returned {}", fmt::ptr(result));
     return result;
 }
 
@@ -496,6 +504,7 @@ static HWND WINAPI CreateWindowExW_hook(DWORD dwExStyle, LPCWSTR lpClassName, LP
             hWndParent, hMenu, hInstance, lpParam);
     GRAPHICS_WINDOWS.push_back(result);
 
+    log_misc("graphics", "CreateWindowExW returned {}", fmt::ptr(result));
     disable_touch_indicators(result);
     return result;
 }

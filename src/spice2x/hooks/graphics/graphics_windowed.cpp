@@ -7,7 +7,7 @@
 #include "util/utils.h"
 #include "touch/touch.h"
 
-#if 0
+#if 1
 #define log_debug(module, format_str, ...) logger::push( \
     LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
 #else
@@ -57,7 +57,10 @@ void graphics_capture_initial_window(HWND hWnd) {
 
     cfg::SCREENRESIZE->init_window_style = GetWindowLong(hWnd, GWL_STYLE);
 
-    log_debug("graphics-windowed", "graphics_capture_initial_window called");
+    log_debug(
+        "graphics-windowed",
+        "graphics_capture_initial_window called, hWnd={}",
+        fmt::ptr(hWnd));
 
     RECT rect;
     if (!GetClientRect(hWnd, &rect)) {
@@ -372,7 +375,10 @@ void graphics_update_window_style(HWND hWnd) {
         return;
     }
 
-    log_debug("graphics-windowed", "graphics_update_window_style called");
+    log_debug(
+        "graphics-windowed",
+        "graphics_update_window_style called for hWnd={}",
+        fmt::ptr(hWnd));
 
     // update frame style
     auto style = cfg::SCREENRESIZE->init_window_style;
@@ -393,11 +399,16 @@ void graphics_update_window_style(HWND hWnd) {
         "graphics_update_window_style - calling SetWindowLong with Mode {}, style 0x{:x}",
         static_cast<int>(cfg::SCREENRESIZE->window_decoration),
         style);
-    SetWindowLong(hWnd, GWL_STYLE, style);
+
+    const auto ret = SetWindowLong(hWnd, GWL_STYLE, style);
 
     // SetWindowPos must be called after SetWindowLong if the frame style changed
     // this will be done in WM_STYLECHANGED handler
-    log_debug("graphics-windowed", "graphics_update_window_style returned");
+    log_debug(
+        "graphics-windowed",
+        "graphics_update_window_style returned {:x}, GLE={}",
+        ret,
+        GetLastError());
 }
 
 void graphics_update_z_order(HWND hWnd, bool always_on_top) {
