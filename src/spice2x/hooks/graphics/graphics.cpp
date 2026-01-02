@@ -670,7 +670,9 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
         return TRUE;
     }
 
+    // prevent gitadora arena model from shifting windows around if the user has preferences
     if (GRAPHICS_WINDOWED && games::gitadora::is_arena_model() &&
+        GRAPHICS_WINDOW_MAIN.has_value() && hWnd == GRAPHICS_WINDOW_MAIN.value() &&
         cfg::SCREENRESIZE->enable_window_resize) {
         return TRUE;
     }
