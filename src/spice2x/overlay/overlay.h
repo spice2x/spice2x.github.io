@@ -38,6 +38,8 @@ namespace overlay {
         return static_cast<float>(input) * UI_SCALE_PERCENT.value() / 100.f;
     }
 
+    ImVec2 apply_scaling_to_vector(const ImVec2& input);
+
     class SpiceOverlay {
     public:
 

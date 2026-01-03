@@ -3,6 +3,7 @@
 #include "avs/game.h"
 #include "cfg/configurator.h"
 #include "games/io.h"
+#include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/eamuse.h"
@@ -51,11 +52,8 @@ namespace overlay {
     bool AUTO_SHOW_IOPANEL = false;
     bool AUTO_SHOW_KEYPAD_P1 = false;
     bool AUTO_SHOW_KEYPAD_P2 = false;
-
     bool USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT = false;
-
     bool FPS_SHOULD_FLIP = false;
-
     std::optional<uint32_t> UI_SCALE_PERCENT;
 
     // global
@@ -63,6 +61,13 @@ namespace overlay {
     std::unique_ptr<overlay::SpiceOverlay> OVERLAY = nullptr;
     ImFont* DSEG_FONT = nullptr;
     bool SHOW_DEBUG_LOG_WINDOW = false;
+
+    ImVec2 apply_scaling_to_vector(const ImVec2& input) {
+        if (!UI_SCALE_PERCENT.has_value()) {
+            return input;
+        }
+        return ImVec2(apply_scaling(input.x), apply_scaling(input.y));
+    }
 }
 
 static void *ImGui_Alloc(size_t sz, void *user_data) {
@@ -373,7 +378,8 @@ void overlay::SpiceOverlay::init() {
             window_iopanel = new overlay::windows::IIDXIOPanel(this);
         } else if (avs::game::is_model("MDX")) {
             window_iopanel = new overlay::windows::DDRIOPanel(this);
-        } else if (avs::game::is_model({"J32", "J33", "K32", "K33", "L32", "L33", "M32"})) {
+        } else if (avs::game::is_model({"J32", "J33", "K32", "K33", "L32", "L33", "M32"}) &&
+            !games::gitadora::is_arena_model()) {
             window_iopanel = new overlay::windows::GitadoraIOPanel(this);
         } else {
             window_iopanel = new overlay::windows::IOPanel(this);
