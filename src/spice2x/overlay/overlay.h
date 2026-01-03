@@ -39,6 +39,7 @@ namespace overlay {
     }
 
     ImVec2 apply_scaling_to_vector(const ImVec2& input);
+    ImVec2 apply_scaling_to_vector(float x, float y);
 
     class SpiceOverlay {
     public:

@@ -68,6 +68,12 @@ namespace overlay {
         }
         return ImVec2(apply_scaling(input.x), apply_scaling(input.y));
     }
+    ImVec2 apply_scaling_to_vector(float x, float y) {
+        if (!UI_SCALE_PERCENT.has_value()) {
+            return ImVec2(x, y);
+        }
+        return ImVec2(apply_scaling(x), apply_scaling(y));
+    }
 }
 
 static void *ImGui_Alloc(size_t sz, void *user_data) {
