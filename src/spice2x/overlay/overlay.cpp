@@ -62,17 +62,15 @@ namespace overlay {
     ImFont* DSEG_FONT = nullptr;
     bool SHOW_DEBUG_LOG_WINDOW = false;
 
-    ImVec2 apply_scaling_to_vector(const ImVec2& input) {
-        if (!UI_SCALE_PERCENT.has_value()) {
-            return input;
-        }
-        return ImVec2(apply_scaling(input.x), apply_scaling(input.y));
-    }
     ImVec2 apply_scaling_to_vector(float x, float y) {
         if (!UI_SCALE_PERCENT.has_value()) {
             return ImVec2(x, y);
         }
         return ImVec2(apply_scaling(x), apply_scaling(y));
+    }
+    
+    ImVec2 apply_scaling_to_vector(const ImVec2& input) {
+        return apply_scaling_to_vector(input.x, input.y);
     }
 }
 
