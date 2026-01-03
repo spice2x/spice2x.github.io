@@ -74,53 +74,11 @@ pre {
     font-size: 0.75em;
 }
 
-ul.downloads, ul.downloads-beta {
-    list-style-type: none;
-    padding-left: 0;
+.download-link {
+    font-family: monospace;
+    font-size: 1.2em;
 }
 
-ul.downloads > li, ul.downloads-beta > li {
-    margin-bottom: 24px;
-}
-
-ul.downloads li img, ul.downloads-beta li img {
-    width: 94%;
-}
-
-ul.downloads li, ul.downloads-beta li {
-    font-size: 0.96em;
-}
-
-ul.downloads li a.download-link, ul.downloads-beta li a.download-link {
-    font-size: 1.4em;
-    font-weight: lighter;
-}
-
-ul.downloads li a.download-link {
-    color: #cfa6a5;
-}
-
-ul.downloads-beta li a.download-link {
-    color: #d37876;
-}
-
-ul.downloads.highlight-latest li:first-child a.download-link {
-    font-weight: bold;
-    color: #CE534D;
-}
-
-// ul.downloads.highlight-latest li:first-child a.download-link::after {
-//     content: " (click here to download latest version)";
-// }
-
-ul.downloads-beta.highlight-latest li:first-child a.download-link {
-    font-weight: bold;
-    color: #CE534D;
-}
-
-// ul.downloads-beta.highlight-latest li:first-child a.download-link::after {
-//     content: " (click here to download latest beta version)";
-// }
 
 /*** author ***/
 .author-container h1 {
