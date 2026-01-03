@@ -83,6 +83,7 @@ namespace launcher {
             SDVXDisableCameras,
             SDVXNativeTouch,
             spice2x_SDVXDigitalKnobSensitivity,
+            SDVXKnobSOCD,
             spice2x_SDVXAsioDriver,
             spice2x_SDVXSubPos,
             spice2x_SDVXSubRedraw,

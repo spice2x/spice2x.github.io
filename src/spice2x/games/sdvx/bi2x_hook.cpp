@@ -11,6 +11,7 @@
 #include "io.h"
 #include "games/sdvx/sdvx.h"
 #include "util/tapeled.h"
+#include "util/time.h"
 #include "acioemu/icca.h"
 
 namespace games::sdvx {
@@ -164,19 +165,27 @@ namespace games::sdvx {
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]))
             status->buffer[22] = 0x01;
 
+        const auto now = get_performance_milliseconds();
+
         // volume left
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Left])) {
+        const auto vol_l_state = sdvx::get_knob(SDVX_KNOB_VOL_L,
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Left]),
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Right]),
+            now);
+        if (vol_l_state == SdvxKnobCCW) {
             VOL_L -= ((uint16_t)DIGITAL_KNOB_SENS * 4);
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Right])) {
+        } else if (vol_l_state == SdvxKnobCW) {
             VOL_L += ((uint16_t)DIGITAL_KNOB_SENS * 4);
         }
 
         // volume right
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Left])) {
+        const auto vol_r_state = sdvx::get_knob(SDVX_KNOB_VOL_R,
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Left]),
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Right]),
+            now);
+        if (vol_r_state == SdvxKnobCCW) {
             VOL_R -= ((uint16_t)DIGITAL_KNOB_SENS * 4);
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Right])) {
+        } else if (vol_r_state == SdvxKnobCW) {
             VOL_R += ((uint16_t)DIGITAL_KNOB_SENS * 4);
         }
 

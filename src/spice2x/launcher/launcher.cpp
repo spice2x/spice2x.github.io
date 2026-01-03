@@ -446,6 +446,10 @@ int main_implementation(int argc, char *argv[]) {
         games::sdvx::DIGITAL_KNOB_SENS = (uint8_t)
             options[launcher::Options::spice2x_SDVXDigitalKnobSensitivity].value_uint32();
     }
+    if (options[launcher::Options::SDVXKnobSOCD].is_active() &&
+        options[launcher::Options::SDVXKnobSOCD].value_text() == "neutral") {
+        games::sdvx::KNOB_SOCD_PREFER_LAST_INPUT = false;
+    }
     if (options[launcher::Options::spice2x_SDVXAsioDriver].is_active()) {
         games::sdvx::ASIO_DRIVER = options[launcher::Options::spice2x_SDVXAsioDriver].value_text();
     }

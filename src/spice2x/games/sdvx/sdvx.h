@@ -19,12 +19,24 @@ namespace games::sdvx {
     // settings
     extern bool NATIVETOUCH;
     extern uint8_t DIGITAL_KNOB_SENS;
+    extern bool KNOB_SOCD_PREFER_LAST_INPUT;
     extern std::optional<std::string> ASIO_DRIVER;
     extern bool BI2X_INITIALIZED;
     extern SdvxOverlayPosition OVERLAY_POS;
 
     // states
     extern bool SHOW_VM_MONITOR_WARNING;
+
+    typedef enum _SdvxKnob {
+        SDVX_KNOB_VOL_L = 0,
+        SDVX_KNOB_VOL_R = 1
+    } SdvxKnob;
+    typedef enum _SdvxKnobDirection {
+        SdvxKnobCCW = 0,
+        SdvxKnobCW = 1,
+        SdvxKnobNone = 2
+    } SdvxKnobDirection;
+    SdvxKnobDirection get_knob(SdvxKnob knob, bool ccw, bool cw, double time_now);
 
     class SDVXGame : public games::Game {
     public:
