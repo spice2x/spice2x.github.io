@@ -793,6 +793,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // SDVXKnobSOCD
+        .title = "SDVX Digital Knob SOCD",
+        .name = "sdvxsocd",
+        .desc = "SOCD for knobs when using button input; what happens when both directions are pressed.\n\n"
+            "neutral: knob does not move\n\n"
+            "last (default): most recent input takes priority",
+        .type = OptionType::Enum,
+        .game_name = "Sound Voltex",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"neutral", ""},
+            {"last", ""},
+        },
+    },
+    {
         // spice2x_SDVXAsioDriver
         .title = "SDVX ASIO driver",
         .name = "sp2x-sdvxasio",
