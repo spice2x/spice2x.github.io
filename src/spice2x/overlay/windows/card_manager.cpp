@@ -17,7 +17,7 @@ namespace overlay::windows {
 
     CardManager::CardManager(SpiceOverlay *overlay) : Window(overlay) {
         this->title = "Card Manager";
-        this->init_size = ImVec2(420, 420);
+        this->init_size = overlay::apply_scaling_to_vector(ImVec2(420, 420));
 
         if (cfg::CONFIGURATOR_STANDALONE) {
             this->init_pos = ImVec2(40, 40);
@@ -303,7 +303,7 @@ namespace overlay::windows {
         //
         // setting ImGuiInputTextFlags_CallbackCharFilter and pressing escape doesn't cause below 
         // to return true, making it necessary to provide a callback...
-        ImGui::SetNextItemWidth(240);
+        ImGui::SetNextItemWidth(overlay::apply_scaling(240));
         if (ImGui::InputTextWithHint("", "Type here to search..", &this->search_filter)) {
             this->current_card = nullptr;
             this->search_filter_in_lower_case = strtolower(this->search_filter);

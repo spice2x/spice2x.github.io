@@ -10,10 +10,10 @@ namespace overlay::windows {
         this->title = "spice2x";
         this->init_size = ImVec2(
             (ImGui::GetFontSize() * 14) + (ImGui::GetStyle().ItemSpacing.x * 2),
-            120);
+            overlay::apply_scaling(120));
         this->init_pos = ImVec2(
                     ImGui::GetIO().DisplaySize.x / 2 - this->init_size.x / 2,
-                    10);
+                    overlay::apply_scaling(10));
 
         this->flags = ImGuiWindowFlags_NoResize
                       | ImGuiWindowFlags_NoCollapse

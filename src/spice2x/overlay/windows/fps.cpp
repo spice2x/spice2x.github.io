@@ -20,8 +20,11 @@ namespace overlay::windows {
 
     void FPS::calculate_initial_window() {
         // width is 114x82 px with window decoration, 98x47 for the content
-        int pos_x = overlay::FPS_SHOULD_FLIP ? 8 : ImGui::GetIO().DisplaySize.x - 122;
-        this->init_pos =  ImVec2(pos_x, 8);
+        int pos_x =
+            overlay::FPS_SHOULD_FLIP ?
+            overlay::apply_scaling(8) :
+            ImGui::GetIO().DisplaySize.x - overlay::apply_scaling(122);
+        this->init_pos =  ImVec2(pos_x, overlay::apply_scaling(8));
     }
 
     void FPS::build_content() {
