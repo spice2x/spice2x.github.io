@@ -9,10 +9,21 @@
 #include "games/drs/drs.h"
 #include "misc/eamuse.h"
 #include "util/logging.h"
+#include "util/socd_cleaner.h"
+#include "util/time.h"
 #include "util/utils.h"
 #include "util/tapeled.h"
 
 using namespace GameAPI;
+
+#define DEBUG_VERBOSE 0
+
+#if DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
 
 // state
 static uint8_t STATUS_BUFFER[272] {};
@@ -94,18 +105,25 @@ static bool __cdecl ac_io_bi2a_update_control_status_buffer() {
         }
 
         // volume left
-        if (Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_L_Left))) {
+        const auto now = get_performance_milliseconds();
+        const auto vol_l_state = socd::socd_clean(0,
+            Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_L_Left)),
+            Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_L_Right)),
+            now);
+        if (vol_l_state == socd::SocdCCW) {
             BI2A_VOLL = (BI2A_VOLL - games::sdvx::DIGITAL_KNOB_SENS) & 1023;
-        }
-        if (Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_L_Right))) {
+        } else if (vol_l_state == socd::SocdCW) {
             BI2A_VOLL = (BI2A_VOLL + games::sdvx::DIGITAL_KNOB_SENS) & 1023;
         }
 
         // volume right
-        if (Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_R_Left))) {
+        const auto vol_r_state = socd::socd_clean(1,
+            Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_R_Left)),
+            Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_R_Right)),
+            now);
+        if (vol_r_state == socd::SocdCCW) {
             BI2A_VOLR = (BI2A_VOLR - games::sdvx::DIGITAL_KNOB_SENS) & 1023;
-        }
-        if (Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_R_Right))) {
+        } else if (vol_r_state == socd::SocdCW) {
             BI2A_VOLR = (BI2A_VOLR + games::sdvx::DIGITAL_KNOB_SENS) & 1023;
         }
 
@@ -127,6 +145,12 @@ static bool __cdecl ac_io_bi2a_update_control_status_buffer() {
         // save volumes in buffer
         *((uint16_t*) &STATUS_BUFFER[17]) = (uint16_t) ((vol_left) << 2);
         *((uint16_t*) &STATUS_BUFFER[19]) = (uint16_t) ((vol_right) << 2);
+
+        log_debug(
+            "bi2a",
+            "knobs = {} {}",
+            *((uint16_t*) &STATUS_BUFFER[17]),
+            *((uint16_t*) &STATUS_BUFFER[19]));
     }
 
     // DanceDanceRevolution

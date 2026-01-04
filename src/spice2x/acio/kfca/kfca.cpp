@@ -8,9 +8,20 @@
 #include "games/sdvx/io.h"
 #include "misc/eamuse.h"
 #include "rawinput/rawinput.h"
+#include "util/socd_cleaner.h"
+#include "util/time.h"
 #include "util/utils.h"
 
 using namespace GameAPI;
+
+#define DEBUG_VERBOSE 0
+
+#if DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
 
 // globals
 uint8_t KFCA_VOL_SOUND = 96;
@@ -342,18 +353,25 @@ static char __cdecl ac_io_kfca_update_control_status_buffer() {
         }
 
         // volume left
-        if (Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_L_Left))) {
+        const auto now = get_performance_milliseconds();
+        const auto vol_l_state = socd::socd_clean(0,
+            Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_L_Left)),
+            Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_L_Right)),
+            now);
+        if (vol_l_state == socd::SocdCCW) {
             KFCA_VOLL = (KFCA_VOLL - games::sdvx::DIGITAL_KNOB_SENS) & 1023;
-        }
-        if (Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_L_Right))) {
+        } else if (vol_l_state == socd::SocdCW) {
             KFCA_VOLL = (KFCA_VOLL + games::sdvx::DIGITAL_KNOB_SENS) & 1023;
         }
 
         // volume right
-        if (Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_R_Left))) {
+        const auto vol_r_state = socd::socd_clean(1,
+            Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_R_Left)),
+            Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_R_Right)),
+            now);
+        if (vol_r_state == socd::SocdCCW) {
             KFCA_VOLR = (KFCA_VOLR - games::sdvx::DIGITAL_KNOB_SENS) & 1023;
-        }
-        if (Buttons::getState(RI_MGR, buttons.at(games::sdvx::Buttons::VOL_R_Right))) {
+        } else if (vol_r_state == socd::SocdCW) {
             KFCA_VOLR = (KFCA_VOLR + games::sdvx::DIGITAL_KNOB_SENS) & 1023;
         }
 
@@ -371,6 +389,8 @@ static char __cdecl ac_io_kfca_update_control_status_buffer() {
         // proper loops
         vol_left %= 1024;
         vol_right %= 1024;
+        
+        log_debug("kfca", "knobs = {} {}", vol_left, vol_right);
 
         // save volumes in buffer
         STATUS_BUFFER[input_offset + 16 + 0] |= (unsigned char) ((vol_left << 6) & 0xFF);
