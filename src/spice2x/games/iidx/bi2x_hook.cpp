@@ -470,7 +470,11 @@ namespace games::iidx {
             aioNmgrIob2->iob2 = new AIO_NMGR_IOB2{};
             aioNmgrIob2->iob2->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
         }
-        log_info("bi2x_hook", "aioNMgrIob2_Create");
+
+        log_info("bi2x_hook", "aioNMgrIob2_Create returned {}, padded size=0x{:x}, IOB2 @ {}, size=0x{:x}",
+            fmt::ptr(&aioNmgrIob2->iob2), sizeof(*aioNmgrIob2), 
+            fmt::ptr(aioNmgrIob2->iob2), sizeof(*aioNmgrIob2->iob2));
+
         return &aioNmgrIob2->iob2;
     }
 
