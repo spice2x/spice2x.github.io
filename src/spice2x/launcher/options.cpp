@@ -610,6 +610,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // IIDXDigitalTTSocd
+        .title = "IIDX Digital TT SOCD Cleaner",
+        .name = "iidxsocd",
+        .desc = "SOCD for turntables when using button input; what happens when both directions are pressed.\n\n"
+            "last (default): most recently pressed direction takes priority\n\n"
+            "first: first pressed direction takes priority\n\n"
+            "neutral: knob does not move when both directions are pressed",
+        .type = OptionType::Enum,
+        .game_name = "Beatmania IIDX",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"last", ""},
+            {"first", ""},
+            {"neutral", ""},
+        },
+    },
+    {
         // spice2x_IIDXLDJForce720p
         .title = "IIDX LDJ Force 720p (HD)",
         .name = "sp2x-iidxldjforce720p",
@@ -793,18 +810,20 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
-        // SDVXKnobSOCD
-        .title = "SDVX Digital Knob SOCD",
+        // SDVXDigitalKnobSocd
+        .title = "SDVX Digital Knob SOCD Cleaner",
         .name = "sdvxsocd",
         .desc = "SOCD for knobs when using button input; what happens when both directions are pressed.\n\n"
-            "neutral: knob does not move\n\n"
-            "last (default): most recent input takes priority",
+            "last (default): most recently pressed direction takes priority\n\n"
+            "first: first pressed direction takes priority\n\n"
+            "neutral: knob does not move when both directions are pressed",
         .type = OptionType::Enum,
         .game_name = "Sound Voltex",
         .category = "Game Options (Advanced)",
         .elements = {
-            {"neutral", ""},
             {"last", ""},
+            {"first", ""},
+            {"neutral", ""},
         },
     },
     {

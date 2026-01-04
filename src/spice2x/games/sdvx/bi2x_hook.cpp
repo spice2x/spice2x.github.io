@@ -10,6 +10,7 @@
 #include "launcher/options.h"
 #include "io.h"
 #include "games/sdvx/sdvx.h"
+#include "util/socd_cleaner.h"
 #include "util/tapeled.h"
 #include "util/time.h"
 #include "acioemu/icca.h"
@@ -168,24 +169,24 @@ namespace games::sdvx {
         const auto now = get_performance_milliseconds();
 
         // volume left
-        const auto vol_l_state = sdvx::get_knob(SDVX_KNOB_VOL_L,
+        const auto vol_l_state = socd::socd_clean(0,
             GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Left]),
             GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Right]),
             now);
-        if (vol_l_state == SdvxKnobCCW) {
+        if (vol_l_state == socd::SocdCCW) {
             VOL_L -= ((uint16_t)DIGITAL_KNOB_SENS * 4);
-        } else if (vol_l_state == SdvxKnobCW) {
+        } else if (vol_l_state == socd::SocdCW) {
             VOL_L += ((uint16_t)DIGITAL_KNOB_SENS * 4);
         }
 
         // volume right
-        const auto vol_r_state = sdvx::get_knob(SDVX_KNOB_VOL_R,
+        const auto vol_r_state = socd::socd_clean(1,
             GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Left]),
             GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Right]),
             now);
-        if (vol_r_state == SdvxKnobCCW) {
+        if (vol_r_state == socd::SocdCCW) {
             VOL_R -= ((uint16_t)DIGITAL_KNOB_SENS * 4);
-        } else if (vol_r_state == SdvxKnobCW) {
+        } else if (vol_r_state == socd::SocdCW) {
             VOL_R += ((uint16_t)DIGITAL_KNOB_SENS * 4);
         }
 

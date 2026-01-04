@@ -1,6 +1,5 @@
 #include "sdvx.h"
 
-#include <cassert>
 #include <external/robin_hood.h>
 
 #include "avs/game.h"
@@ -567,57 +566,5 @@ namespace games::sdvx {
         Game::detach();
 
         devicehook_dispose();
-    }
-
-    // basically, SOCD for knobs
-    static double last_rising_edge[2][2] = {};
-    static bool last_button_state[2][2] = {};
-    SdvxKnobDirection get_knob(SdvxKnob knob, bool ccw, bool cw, double time_now) {
-
-        // SOCD last input algorithm needs to keep track of rising edge times
-        if (KNOB_SOCD_PREFER_LAST_INPUT) {
-            // detect rising edges
-            if (!last_button_state[knob][SdvxKnobCCW] && ccw) {
-                last_rising_edge[knob][SdvxKnobCCW] = time_now;
-            }
-            if (!last_button_state[knob][SdvxKnobCW] && cw) {
-                last_rising_edge[knob][SdvxKnobCW] = time_now;
-            }
-
-            // update button state for next time
-            last_button_state[knob][SdvxKnobCCW] = ccw;
-            last_button_state[knob][SdvxKnobCW] = cw;
-        }
-
-        // determine direction: easy cases
-        if (!ccw && !cw) {
-            return SdvxKnobNone;
-        }
-        if (ccw && !cw) {
-            return SdvxKnobCCW;
-        }
-        if (!ccw && cw) {
-            return SdvxKnobCW;
-        }
-
-        // SOCD logic; depends on algorithm in use
-        if (KNOB_SOCD_PREFER_LAST_INPUT) {
-            // SOCD: prefer last input
-            const auto ccw_time = last_rising_edge[knob][SdvxKnobCCW];
-            const auto cw_time = last_rising_edge[knob][SdvxKnobCW];
-            if (ccw_time < cw_time) {
-                // while CCW is being held, CW got pressed
-                return SdvxKnobCW;
-            } else if (ccw_time > cw_time) {
-                // while CW is being held, CCW got pressed
-                return SdvxKnobCCW;
-            } else {
-                // it's a tie
-                return SdvxKnobNone;
-            }
-        } else {
-            // SOCD: neutral when both are pressed
-            return SdvxKnobNone;
-        }
     }
 }

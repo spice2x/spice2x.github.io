@@ -29,6 +29,8 @@
 #include "util/libutils.h"
 #include "util/memutils.h"
 #include "util/sigscan.h"
+#include "util/socd_cleaner.h"
+#include "util/time.h"
 #include "util/utils.h"
 #include "launcher/signal.h"
 
@@ -722,13 +724,12 @@ namespace games::iidx {
         bool ttpm_alt = GameAPI::Buttons::getState(RI_MGR, buttons.at(
                 player != 0 ? Buttons::P2_TTPlusMinusAlt : Buttons::P1_TTPlusMinusAlt));
 
-        // TT+
-        if (ttp)
+        const auto tt_socd = socd::socd_clean(player, ttm, ttp, get_performance_milliseconds());
+        if (tt_socd == socd::SocdCW) {
             IIDXIO_TT_STATE[player] += change;
-
-        // TT-
-        if (ttm)
+        } else if (tt_socd == socd::SocdCCW) {
             IIDXIO_TT_STATE[player] -= change;
+        }
 
         // TT+/-
         bool ttpm_rising_edge = !IIDXIO_TT_PRESSED[player] && ttpm;
