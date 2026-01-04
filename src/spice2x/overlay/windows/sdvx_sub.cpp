@@ -10,8 +10,7 @@ namespace overlay::windows {
     SDVXSubScreen::SDVXSubScreen(SpiceOverlay *overlay) : GenericSubScreen(overlay) {
         this->title = "SDVX Subscreen";
 
-        bool isValkyrieCabinetMode = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
-        if (!isValkyrieCabinetMode) {
+        if (!games::sdvx::is_valkyrie_model()) {
             this->disabled_message = "Valkyrie Model mode is not enabled!";
         } else if (games::sdvx::SHOW_VM_MONITOR_WARNING) {
             this->disabled_message = "VM mode subscreen overlay is not compatible with -monitor option";

@@ -26,6 +26,13 @@ namespace games::sdvx {
     // states
     extern bool SHOW_VM_MONITOR_WARNING;
 
+    static inline bool is_valkyrie_model() {
+        return (
+            avs::game::is_model("KFC") &&
+            (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H')
+            );
+    }
+
     class SDVXGame : public games::Game {
     public:
         SDVXGame();
@@ -34,11 +41,6 @@ namespace games::sdvx {
         virtual void post_attach() override;
         virtual void detach() override;
     private:
-        // don't be tempted to make this into a public or a global variable
-        // various modules need to check if VM mode is active and they should
-        // not depend on the fact that SDVX module is active (since it can be
-        // inactive on cabs or partial I/O setup)
-        bool VALKYRIE_MODEL = false;
         void detect_sound_output_device();
     };
 }

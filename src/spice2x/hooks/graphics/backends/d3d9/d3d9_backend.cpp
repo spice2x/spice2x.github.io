@@ -1362,9 +1362,7 @@ void graphics_d3d9_on_present(
     }
 
     // for IIDX TDJ / SDVX UFC, handle subscreen
-    const bool is_vm = 
-        avs::game::is_model("KFC") &&
-        (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H');
+    const bool is_vm = games::sdvx::is_valkyrie_model();
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
     if (is_vm || is_tdj) {
         graphics_d3d9_ldj_on_present(wrapped_device);
