@@ -614,9 +614,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "IIDX Digital TT SOCD Cleaner",
         .name = "iidxsocd",
         .desc = "SOCD for turntables when using button input; what happens when both directions are pressed.\n\n"
-            "last (default): most recently pressed direction takes priority\n\n"
+            "last: most recently pressed direction takes priority\n\n"
             "first: first pressed direction takes priority\n\n"
-            "neutral: knob does not move when both directions are pressed",
+            "neutral (default): TT does not move when both directions are pressed, recommended to avoid excessive POORs",
         .type = OptionType::Enum,
         .game_name = "Beatmania IIDX",
         .category = "Game Options (Advanced)",
@@ -814,7 +814,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "SDVX Digital Knob SOCD Cleaner",
         .name = "sdvxsocd",
         .desc = "SOCD for knobs when using button input; what happens when both directions are pressed.\n\n"
-            "last (default): most recently pressed direction takes priority\n\n"
+            "last (default): most recently pressed direction takes priority, recommended to deal with slams\n\n"
             "first: first pressed direction takes priority\n\n"
             "neutral: knob does not move when both directions are pressed",
         .type = OptionType::Enum,

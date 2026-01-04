@@ -447,23 +447,6 @@ int main_implementation(int argc, char *argv[]) {
         games::sdvx::DIGITAL_KNOB_SENS = (uint8_t)
             options[launcher::Options::spice2x_SDVXDigitalKnobSensitivity].value_uint32();
     }
-
-    // socd - same for iidx and sdvx
-    if (options[launcher::Options::SDVXDigitalKnobSocd].is_active()) {
-        if (options[launcher::Options::SDVXDigitalKnobSocd].value_text() == "neutral") {
-            socd::ALGORITHM = socd::SocdAlgorithm::Neutral;
-        } else if (options[launcher::Options::SDVXDigitalKnobSocd].value_text() == "first") {
-            socd::ALGORITHM = socd::SocdAlgorithm::PreferFirst;
-        }
-    }
-    if (options[launcher::Options::IIDXDigitalTTSocd].is_active()) {
-        if (options[launcher::Options::IIDXDigitalTTSocd].value_text() == "neutral") {
-            socd::ALGORITHM = socd::SocdAlgorithm::Neutral;
-        } else if (options[launcher::Options::IIDXDigitalTTSocd].value_text() == "first") {
-            socd::ALGORITHM = socd::SocdAlgorithm::PreferFirst;
-        }
-    }
-
     if (options[launcher::Options::spice2x_SDVXAsioDriver].is_active()) {
         games::sdvx::ASIO_DRIVER = options[launcher::Options::spice2x_SDVXAsioDriver].value_text();
     }

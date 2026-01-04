@@ -12,8 +12,8 @@
 #endif
 
 namespace socd {
-    
-    SocdAlgorithm ALGORITHM = SocdAlgorithm::PreferRecent;
+
+    SocdAlgorithm ALGORITHM = SocdAlgorithm::Neutral;
    
     static double last_rising_edge[2][2] = {};
     static bool last_button_state[2][2] = {};

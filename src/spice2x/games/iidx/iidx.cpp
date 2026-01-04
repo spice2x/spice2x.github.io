@@ -501,6 +501,16 @@ namespace games::iidx {
                 "    monitor in Windows settings before launching the game"
                 });
         }
+
+        // socd
+        socd::ALGORITHM = socd::SocdAlgorithm::Neutral;
+        if (options->at(launcher::Options::IIDXDigitalTTSocd).is_active()) {
+            if (options->at(launcher::Options::IIDXDigitalTTSocd).value_text() == "last") {
+                socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
+            } else if (options->at(launcher::Options::IIDXDigitalTTSocd).value_text() == "first") {
+                socd::ALGORITHM = socd::SocdAlgorithm::PreferFirst;
+            }
+        }
     }
 
     void IIDXGame::detach() {
