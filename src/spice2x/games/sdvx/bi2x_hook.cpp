@@ -15,6 +15,15 @@
 #include "util/time.h"
 #include "acioemu/icca.h"
 
+#define DEBUG_VERBOSE 0
+
+#if DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
+
 namespace games::sdvx {
     constexpr bool BI2X_PASSTHROUGH = false;
     bool BI2X_INITIALIZED = false;
@@ -201,6 +210,12 @@ namespace games::sdvx {
 
         *((uint16_t*) &status->buffer[312]) = vol_left;
         *((uint16_t*) &status->buffer[314]) = vol_right;
+
+        log_debug(
+            "bi2x_hook",
+            "knobs = {} {}",
+            *((uint16_t*) &status->buffer[312]),
+            *((uint16_t*) &status->buffer[314]));
     }
 
     static void __fastcall AIO_IOB2_BI2X_UFC__IoReset(AIO_IOB2_BI2X_UFC *This,

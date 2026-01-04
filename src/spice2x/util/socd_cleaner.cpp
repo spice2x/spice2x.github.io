@@ -2,6 +2,15 @@
 
 #include "util/logging.h"
 
+#define DEBUG_VERBOSE 0
+
+#if DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
+
 namespace socd {
     
     SocdAlgorithm ALGORITHM = SocdAlgorithm::PreferRecent;
@@ -44,6 +53,8 @@ namespace socd {
         // SOCD logic; depends on algorithm in use
         const auto ccw_time = last_rising_edge[device][SocdCCW];
         const auto cw_time = last_rising_edge[device][SocdCW];
+        log_debug("socd", "ccw={}, cw ={}", ccw_time, cw_time);
+
         if (ALGORITHM == SocdAlgorithm::PreferRecent) {
             // SOCD: prefer last input
             if (ccw_time < cw_time) {
@@ -53,8 +64,8 @@ namespace socd {
                 // while CW is being held, CCW got pressed
                 return SocdCCW;
             } else {
-                // it's a tie
-                return SocdNone;
+                // it's a tie; instead of none, we'll pick a direction
+                return SocdCW;
             }
         } else if (ALGORITHM == SocdAlgorithm::PreferFirst) {
             // SOCD: keep first input
@@ -65,8 +76,8 @@ namespace socd {
                 // while CW is being held, CCW got pressed
                 return SocdCW;
             } else {
-                // it's a tie
-                return SocdNone;
+                // it's a tie; instead of none, we'll pick a direction
+                return SocdCW;
             }
         } else {
             // SOCD: neutral when both are pressed
