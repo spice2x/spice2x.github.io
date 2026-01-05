@@ -251,6 +251,8 @@ namespace games::iidx {
         }
     }
 
+#if SPICE64
+
     typedef void* (*aioIob2Bi2x_CreateWriteFirmContext_t)(unsigned int, int);
     static aioIob2Bi2x_CreateWriteFirmContext_t aioIob2Bi2x_CreateWriteFirmContext_orig = nullptr;
 
@@ -268,6 +270,8 @@ namespace games::iidx {
         log_warning("iidx", "CreateWriteFirmContext == nullptr");
         return nullptr;
     }
+
+#endif
 
     IIDXGame::IIDXGame() : Game("Beatmania IIDX") {
         logger::hook_add(log_hook, this);
@@ -318,6 +322,8 @@ namespace games::iidx {
             // IIDX 25+ BIO2 BI2A input device
             devicehook_add(new IIDXFMSerialHandle());
         }
+
+#if SPICE64
 
         // check for new I/O DLL
         auto aio = libutils::try_library("libaio.dll");
@@ -383,6 +389,8 @@ namespace games::iidx {
                 */
             }
         }
+
+#endif
 
         if (hooks::audio::ENABLED) {
             apply_audio_hacks();
