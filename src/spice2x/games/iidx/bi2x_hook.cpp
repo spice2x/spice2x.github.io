@@ -27,13 +27,14 @@ namespace games::iidx {
     };
 
     struct AIO_NMGR_IOB2_VTABLE {
-        uint8_t dummy0[0x50];
+        // other functions here, but they never get called
+        uint8_t dummy[0x50];
         void (__fastcall *pAIO_NMGR_IOB_BeginManage)(int64_t a1);
     };
 
     struct AIO_NMGR_IOB2 {
         AIO_NMGR_IOB2_VTABLE *vptr;
-        uint8_t dummy1[0x9F0];
+        uint8_t dummy[0x9F0];
     };
 
     // confirmed 0x9F8 in iidx27, iidx32 aioNMgrIob2_Create
@@ -475,7 +476,7 @@ namespace games::iidx {
             aioNmgrIob2->vptr->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
         }
         log_info("bi2x_hook", "aioNMgrIob2_Create returned {}, size=0x{:x}, vptr @ {}",
-            fmt::ptr(&aioNmgrIob2->vptr), sizeof(*aioNmgrIob2), fmt::ptr(aioNmgrIob2->vptr));
+            fmt::ptr(aioNmgrIob2), sizeof(*aioNmgrIob2), fmt::ptr(aioNmgrIob2->vptr));
 
         return aioNmgrIob2;
     }
