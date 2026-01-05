@@ -1,5 +1,7 @@
 #include "bi2x_hook.h"
 
+#if SPICE64
+
 #include <cstdint>
 #include "util/detour.h"
 #include "util/logging.h"
@@ -15,7 +17,6 @@
 
 namespace games::sdvx {
     constexpr bool BI2X_PASSTHROUGH = false;
-    bool BI2X_INITIALIZED = false;
 
     /*
      * class definitions
@@ -26,16 +27,26 @@ namespace games::sdvx {
         uint8_t data[0x10];
     };
 
-    struct AIO_NMGR_IOB2 {
+    struct AIO_NMGR_IOB2_VTABLE {
         uint8_t dummy0[0x50];
         void (__fastcall *pAIO_NMGR_IOB_BeginManage)(int64_t a1);
-        uint8_t dummy1[0x9A0];
     };
+
+    struct AIO_NMGR_IOB2 {
+        AIO_NMGR_IOB2_VTABLE *vptr;
+        uint8_t dummy1[0x9F0];
+    };
+
+    // confirmed in EG final in aioNMgrIob2_Create
+    static_assert(sizeof(AIO_NMGR_IOB2) == 0x9F8);
 
     struct AIO_IOB2_BI2X_UFC {
         // who knows
-        uint8_t data[0x13F8];
+        uint8_t data[0x39D8];
     };
+
+    // confirmed in EG final in aioIob2Bi2xUFC_Create
+    static_assert(sizeof(AIO_IOB2_BI2X_UFC) == 0x39D8);
 
     struct AIO_IOB2_BI2X_UFC__DEVSTATUS {
         // of course you could work with variables here
@@ -66,7 +77,7 @@ namespace games::sdvx {
     // libaio-iob.dll
     typedef AC_HNDLIF* (__fastcall *aioIob2Bi2x_OpenSciUsbCdc_t)(uint8_t device_num);
     typedef int64_t (__fastcall *aioIob2Bi2x_WriteFirmGetState_t)(int64_t a1);
-    typedef AIO_NMGR_IOB2** (__fastcall *aioNMgrIob2_Create_t)(AC_HNDLIF *a1, unsigned int a2);
+    typedef AIO_NMGR_IOB2* (__fastcall *aioNMgrIob2_Create_t)(AC_HNDLIF *a1, unsigned int a2);
 
     /*
      * function pointers
@@ -345,21 +356,21 @@ namespace games::sdvx {
         log_info("bi2x_hook", "AIO_NMGR_IOB::BeginManage");
     }
 
-    static AIO_NMGR_IOB2** __fastcall aioNMgrIob2_Create(AC_HNDLIF *a1, unsigned int a2) {
+    static AIO_NMGR_IOB2* __fastcall aioNMgrIob2_Create(AC_HNDLIF *a1, unsigned int a2) {
         if (aioNmgrIob2 == nullptr) {
-            aioNmgrIob2 = new AIO_NMGR_IOB2;
-            memset(aioNmgrIob2, 0x0, sizeof(AIO_NMGR_IOB2));
-            aioNmgrIob2->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
+            aioNmgrIob2 = new AIO_NMGR_IOB2{};
+            aioNmgrIob2->vptr = new AIO_NMGR_IOB2_VTABLE{};
+            aioNmgrIob2->vptr->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
         }
-        log_info("bi2x_hook", "aioNMgrIob2_Create");
-        BI2X_INITIALIZED = true;
+        log_info("bi2x_hook", "aioNMgrIob2_Create returned {}, size=0x{:x}, vptr @ {}",
+            fmt::ptr(&aioNmgrIob2->vptr), sizeof(*aioNmgrIob2), fmt::ptr(aioNmgrIob2->vptr));
 
         // enable hack to make PIN pad work for KFC in BI2X mode
         // this explicit check in the I/O init path is necessary
         // (as opposed to just doing a check for "isValkyrieCabMode?")
         // because there are hex edits that allow you to use legacy (KFC/BIO2) IO while in Valk mode
         acioemu::ICCA_DEVICE_HACK = true;
-        return &aioNmgrIob2;
+        return aioNmgrIob2;
     }
 
     static int64_t __fastcall aioIob2Bi2x_WriteFirmGetState(int64_t a1) {
@@ -411,3 +422,5 @@ namespace games::sdvx {
                 aioNMgrIob2_Create, &aioNMgrIob2_Create_orig);
     }
 }
+
+#endif

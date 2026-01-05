@@ -1,5 +1,7 @@
 #include "bi2x_hook.h"
 
+#if SPICE64
+
 #include <cstdint>
 #include "util/detour.h"
 #include "util/logging.h"
@@ -24,16 +26,26 @@ namespace games::iidx {
         uint8_t data[0x10];
     };
 
-    struct AIO_NMGR_IOB2 {
+    struct AIO_NMGR_IOB2_VTABLE {
         uint8_t dummy0[0x50];
         void (__fastcall *pAIO_NMGR_IOB_BeginManage)(int64_t a1);
-        uint8_t dummy1[0x9A0];
     };
+
+    struct AIO_NMGR_IOB2 {
+        AIO_NMGR_IOB2_VTABLE *vptr;
+        uint8_t dummy1[0x9F0];
+    };
+
+    // confirmed 0x9F8 in iidx27, iidx32 aioNMgrIob2_Create
+    static_assert(sizeof(AIO_NMGR_IOB2) == 0x9F8);
 
     struct AIO_IOB2_BI2X_TDJ {
         // who knows
         uint8_t data[0x13F8];
     };
+
+    // confirmed 0x13F8 in iidx27, iidx32 in aioIob2Bi2xTDJ_Create
+    static_assert(sizeof(AIO_IOB2_BI2X_TDJ) == 0x13F8);
 
     struct AIO_IOB2_BI2X_TDJ__DEVSTATUS {
         // of course you could work with variables here
@@ -78,7 +90,7 @@ namespace games::iidx {
     // libaio-iob.dll
     typedef AC_HNDLIF* (__fastcall *aioIob2Bi2x_OpenSciUsbCdc_t)(uint8_t device_num);
     typedef int64_t (__fastcall *aioIob2Bi2x_WriteFirmGetState_t)(int64_t a1);
-    typedef AIO_NMGR_IOB2** (__fastcall *aioNMgrIob2_Create_t)(AC_HNDLIF *a1, unsigned int a2);
+    typedef AIO_NMGR_IOB2* (__fastcall *aioNMgrIob2_Create_t)(AC_HNDLIF *a1, unsigned int a2);
 
     /*
      * function pointers
@@ -443,7 +455,7 @@ namespace games::iidx {
         }
     }
 
-    static AC_HNDLIF* __fastcall aioIob2Bi2X_OpenSciUsbCdc(uint8_t device_num) {
+    static AC_HNDLIF* __fastcall aioIob2Bi2x_OpenSciUsbCdc(uint8_t device_num) {
         if (acHndlif == nullptr) {
             acHndlif = new AC_HNDLIF;
             memset(acHndlif->data, 0x0, sizeof(acHndlif->data));
@@ -456,14 +468,16 @@ namespace games::iidx {
         log_info("bi2x_hook", "AIO_NMGR_IOB::BeginManage");
     };
 
-    static AIO_NMGR_IOB2** __fastcall aioNMgrIob2_Create(AC_HNDLIF *a1, unsigned int a2) {
+    static AIO_NMGR_IOB2* __fastcall aioNMgrIob2_Create(AC_HNDLIF *a1, unsigned int a2) {
         if (aioNmgrIob2 == nullptr) {
-            aioNmgrIob2 = new AIO_NMGR_IOB2;
-            memset(aioNmgrIob2, 0x0, sizeof(AIO_NMGR_IOB2));
-            aioNmgrIob2->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
+            aioNmgrIob2 = new AIO_NMGR_IOB2{};
+            aioNmgrIob2->vptr = new AIO_NMGR_IOB2_VTABLE{};
+            aioNmgrIob2->vptr->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
         }
-        log_info("bi2x_hook", "aioNMgrIob2_Create");
-        return &aioNmgrIob2;
+        log_info("bi2x_hook", "aioNMgrIob2_Create returned {}, size=0x{:x}, vptr @ {}",
+            fmt::ptr(&aioNmgrIob2->vptr), sizeof(*aioNmgrIob2), fmt::ptr(aioNmgrIob2->vptr));
+
+        return aioNmgrIob2;
     }
 
     static int64_t __fastcall aioIob2Bi2x_WriteFirmGetState(int64_t a1) {
@@ -520,10 +534,12 @@ namespace games::iidx {
         // hook IOB
         const auto libaioIobDll = "libaio-iob.dll";
         detour::trampoline_try(libaioIobDll, "aioIob2Bi2x_OpenSciUsbCdc",
-                aioIob2Bi2X_OpenSciUsbCdc, &aioIob2Bi2x_OpenSciUsbCdc_orig);
+                aioIob2Bi2x_OpenSciUsbCdc, &aioIob2Bi2x_OpenSciUsbCdc_orig);
         detour::trampoline_try(libaioIobDll, "aioIob2Bi2x_WriteFirmGetState",
                 aioIob2Bi2x_WriteFirmGetState, &aioIob2Bi2x_WriteFirmGetState_orig);
         detour::trampoline_try(libaioIobDll, "aioNMgrIob2_Create",
                 aioNMgrIob2_Create, &aioNMgrIob2_Create_orig);
     }
 }
+
+#endif
