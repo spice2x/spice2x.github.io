@@ -18,6 +18,8 @@
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/sigscan.h"
+#include "util/socd_cleaner.h"
+#include "util/time.h"
 #include "util/libutils.h"
 #include "misc/wintouchemu.h"
 #include "misc/eamuse.h"
@@ -360,6 +362,16 @@ namespace games::sdvx {
         this->detect_sound_output_device();
 #endif
 
+        // SOCD
+        auto options = games::get_options(eamuse_get_game());
+        socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
+        if (options->at(launcher::Options::SDVXDigitalKnobSocd).is_active()) {
+            if (options->at(launcher::Options::SDVXDigitalKnobSocd).value_text() == "neutral") {
+                socd::ALGORITHM = socd::SocdAlgorithm::Neutral;
+            } else if (options->at(launcher::Options::SDVXDigitalKnobSocd).value_text() == "last") {
+                socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
+            }
+        }
     }
 
     void SDVXGame::attach() {

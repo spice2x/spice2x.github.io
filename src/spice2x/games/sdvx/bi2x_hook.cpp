@@ -12,8 +12,19 @@
 #include "launcher/options.h"
 #include "io.h"
 #include "games/sdvx/sdvx.h"
+#include "util/socd_cleaner.h"
 #include "util/tapeled.h"
+#include "util/time.h"
 #include "acioemu/icca.h"
+
+#define DEBUG_VERBOSE 0
+
+#if DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
 
 namespace games::sdvx {
     constexpr bool BI2X_PASSTHROUGH = false;
@@ -176,19 +187,27 @@ namespace games::sdvx {
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]))
             status->buffer[22] = 0x01;
 
+        const auto now = get_performance_milliseconds();
+
         // volume left
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Left])) {
+        const auto vol_l_state = socd::socd_clean(0,
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Left]),
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Right]),
+            now);
+        if (vol_l_state == socd::SocdCCW) {
             VOL_L -= ((uint16_t)DIGITAL_KNOB_SENS * 4);
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Right])) {
+        } else if (vol_l_state == socd::SocdCW) {
             VOL_L += ((uint16_t)DIGITAL_KNOB_SENS * 4);
         }
 
         // volume right
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Left])) {
+        const auto vol_r_state = socd::socd_clean(1,
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Left]),
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Right]),
+            now);
+        if (vol_r_state == socd::SocdCCW) {
             VOL_R -= ((uint16_t)DIGITAL_KNOB_SENS * 4);
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Right])) {
+        } else if (vol_r_state == socd::SocdCW) {
             VOL_R += ((uint16_t)DIGITAL_KNOB_SENS * 4);
         }
 
@@ -203,6 +222,12 @@ namespace games::sdvx {
 
         *((uint16_t*) &status->buffer[312]) = vol_left;
         *((uint16_t*) &status->buffer[314]) = vol_right;
+
+        log_debug(
+            "bi2x_hook",
+            "knobs = {} {}",
+            *((uint16_t*) &status->buffer[312]),
+            *((uint16_t*) &status->buffer[314]));
     }
 
     static void __fastcall AIO_IOB2_BI2X_UFC__IoReset(AIO_IOB2_BI2X_UFC *This,

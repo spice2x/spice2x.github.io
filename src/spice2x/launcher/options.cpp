@@ -604,7 +604,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "IIDX TDJ Mode (Lightning Model)",
         .name =  "iidxtdj",
-        .desc = "Enables TDJ cabinet mode. Ensure you also set -iidxsounddevice to desired option",
+        .desc = "Enables TDJ mode (Lightning Model cabinet).",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
@@ -620,6 +620,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "(0-255)",
         .game_name = "Beatmania IIDX",
         .category = "Game Options (Advanced)",
+    },
+    {
+        // IIDXDigitalTTSocd
+        .title = "IIDX Digital TT SOCD Cleaner",
+        .name = "iidxsocd",
+        .desc = "SOCD for turntables when using button input; what happens when both directions are pressed.\n\n"
+            "last: most recently pressed direction takes priority\n\n"
+            "first: first pressed direction takes priority\n\n"
+            "neutral (default): TT does not move when both directions are pressed, recommended to avoid excessive POORs",
+        .type = OptionType::Enum,
+        .game_name = "Beatmania IIDX",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"last", ""},
+            {"first", ""},
+            {"neutral", ""},
+        },
     },
     {
         // spice2x_IIDXLDJForce720p
@@ -803,6 +820,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "(0-255)",
         .game_name = "Sound Voltex",
         .category = "Game Options (Advanced)",
+    },
+    {
+        // SDVXDigitalKnobSocd
+        .title = "SDVX Digital Knob SOCD Cleaner",
+        .name = "sdvxsocd",
+        .desc = "SOCD for knobs when using button input; what happens when both directions are pressed.\n\n"
+            "last (default): most recently pressed direction takes priority, recommended to deal with slams\n\n"
+            "first: first pressed direction takes priority\n\n"
+            "neutral: knob does not move when both directions are pressed",
+        .type = OptionType::Enum,
+        .game_name = "Sound Voltex",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"last", ""},
+            {"first", ""},
+            {"neutral", ""},
+        },
     },
     {
         // spice2x_SDVXAsioDriver
