@@ -2,7 +2,6 @@
 
 #include <external/robin_hood.h>
 
-#include "avs/game.h"
 #include "games/shared/lcdhandle.h"
 #include "games/io.h"
 #include "hooks/audio/audio.h"
@@ -331,9 +330,8 @@ namespace games::sdvx {
         }
 
 #ifdef SPICE64 // SDVX5+ specific code
-        this->VALKYRIE_MODEL = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
         // check -monitor + UFC mode
-        if (!GRAPHICS_WINDOWED && D3D9_ADAPTER.has_value() && this->VALKYRIE_MODEL) {
+        if (!GRAPHICS_WINDOWED && D3D9_ADAPTER.has_value() && is_valkyrie_model()) {
             SHOW_VM_MONITOR_WARNING = true;
             log_warning(
                 "sdvx",
@@ -370,7 +368,7 @@ namespace games::sdvx {
 #ifdef SPICE64 // SDVX5+ specific code
 
         // LCD handle
-        if (!this->VALKYRIE_MODEL) {
+        if (!is_valkyrie_model()) {
             devicehook_init();
             devicehook_add(new games::shared::LCDHandle());
         }
@@ -409,7 +407,7 @@ namespace games::sdvx {
                 nvapi_hook::initialize(avs::game::DLL_INSTANCE);
             }
 
-            if (this->VALKYRIE_MODEL) {
+            if (is_valkyrie_model()) {
                 // hook touch window
                 // in windowed mode, game can accept mouse input on the second screen
                 if (!NATIVETOUCH && !GRAPHICS_WINDOWED) {
