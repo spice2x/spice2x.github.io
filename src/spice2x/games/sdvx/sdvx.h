@@ -4,6 +4,7 @@
 #include <optional>
 #include <cstdint>
 
+#include "avs/game.h"
 #include "games/game.h"
 
 namespace games::sdvx {

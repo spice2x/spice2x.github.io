@@ -2,7 +2,6 @@
 
 #include <external/robin_hood.h>
 
-#include "avs/game.h"
 #include "games/shared/lcdhandle.h"
 #include "games/io.h"
 #include "hooks/audio/audio.h"
