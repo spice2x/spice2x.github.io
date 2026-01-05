@@ -19,15 +19,15 @@ namespace overlay::windows {
             case 0: {
                 this->toggle_button = games::OverlayButtons::ToggleVirtualKeypadP1;
                 this->init_pos = ImVec2(
-                        26,
-                        ImGui::GetIO().DisplaySize.y - 264);
+                        overlay::apply_scaling(26),
+                        ImGui::GetIO().DisplaySize.y - overlay::apply_scaling(264));
                 break;
             }
             case 1: {
                 this->toggle_button = games::OverlayButtons::ToggleVirtualKeypadP2;
                 this->init_pos = ImVec2(
-                        ImGui::GetIO().DisplaySize.x - 220,
-                        ImGui::GetIO().DisplaySize.y - 264);
+                        ImGui::GetIO().DisplaySize.x - overlay::apply_scaling(220),
+                        ImGui::GetIO().DisplaySize.y - overlay::apply_scaling(264));
                 break;
             }
         }
@@ -82,9 +82,17 @@ namespace overlay::windows {
 
             // add selectable (fill last line)
             if (i == std::size(BUTTONS) - 1) {
-                ImGui::Selectable(button.text, false, 0, ImVec2(112, 32));
+                ImGui::Selectable(
+                    button.text,
+                    false,
+                    0,
+                    overlay::apply_scaling_to_vector(ImVec2(112, 32)));
             } else {
-                ImGui::Selectable(button.text, false, 0, ImVec2(32, 32));
+                ImGui::Selectable(
+                    button.text,
+                    false,
+                    0,
+                    overlay::apply_scaling_to_vector(ImVec2(32, 32)));
             }
 
             // mouse down handler

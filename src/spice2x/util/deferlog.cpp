@@ -95,7 +95,7 @@ namespace deferredlogs {
 
             msg += "  unsure what to do next?\n";
             msg += "    * update to the latest version:\n";
-            msg += "        https://github.com/spice2x/spice2x.github.io/releases/latest\n";
+            msg += "        https://github.com/spice2x/spice2x.github.io/releases\n";
             msg += "    * check the FAQ:\n";
             msg += "        https://github.com/spice2x/spice2x.github.io/wiki/Known-issues\n";
             msg += "\n";

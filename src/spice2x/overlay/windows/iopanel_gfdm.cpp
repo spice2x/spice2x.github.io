@@ -68,7 +68,7 @@ namespace overlay::windows {
     }
 
     void GitadoraIOPanel::build_io_panel() {
-        ImGui::Dummy(ImVec2(12, 0));
+        ImGui::Dummy(overlay::apply_scaling_to_vector(12, 0));
 
         ImGui::SameLine();
         this->draw_buttons(0);
@@ -80,7 +80,7 @@ namespace overlay::windows {
         // draw p2 only if guitar freaks
         if (this->two_players) {
             ImGui::SameLine();
-            ImGui::Dummy(ImVec2(12, 0));
+            ImGui::Dummy(overlay::apply_scaling_to_vector(12, 0));
             ImGui::SameLine();
             this->draw_buttons(1);
             if (this->has_guitar_knobs) {
@@ -146,7 +146,7 @@ namespace overlay::windows {
             games::gitadora::Analogs::GuitarP1Knob :
             games::gitadora::Analogs::GuitarP2Knob;
 
-        const ImVec2 slider_size(32, get_suggested_height());
+        const ImVec2 slider_size(overlay::apply_scaling(32), get_suggested_height());
 
         // get analog
         const auto analogs = games::get_analogs(eamuse_get_game());

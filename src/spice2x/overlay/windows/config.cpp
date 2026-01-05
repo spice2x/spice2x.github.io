@@ -42,8 +42,8 @@ namespace overlay::windows {
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
         this->title = "Configuration";
         this->toggle_button = games::OverlayButtons::ToggleConfig;
-        this->init_size = ImVec2(800, 600);
-        this->size_min = ImVec2(100, 200);
+        this->init_size = overlay::apply_scaling_to_vector(ImVec2(800, 600));
+        this->size_min = overlay::apply_scaling_to_vector(ImVec2(100, 200));
         this->init_pos = ImVec2(0, 0);
         if (cfg::CONFIGURATOR_STANDALONE && cfg::CONFIGURATOR_TYPE == cfg::ConfigType::Config) {
             this->active = true;
@@ -238,8 +238,8 @@ namespace overlay::windows {
         // tab selection
         auto tab_selected_new = ConfigTab::CONFIG_TAB_INVALID;
         if (ImGui::BeginTabBar("Config Tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
-            const int page_offset = cfg::CONFIGURATOR_STANDALONE ? 88 : 110;
-            const int page_offset2 = cfg::CONFIGURATOR_STANDALONE ? 65 : 87;
+            const int page_offset = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 88 : 110);
+            const int page_offset2 = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 65 : 87);
 
             if (ImGui::BeginTabItem("Buttons")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_BUTTONS;
@@ -575,7 +575,7 @@ namespace overlay::windows {
         if (ImGui::BeginTable("ButtonsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 240);
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(240));
 
             // check if empty
             if (!buttons || buttons->empty()) {
@@ -1644,7 +1644,7 @@ namespace overlay::windows {
         if (ImGui::BeginTable("AnalogsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 240);
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(240));
 
             // check if empty
             if (!analogs || analogs->empty()) {
@@ -2086,7 +2086,7 @@ namespace overlay::windows {
         if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 240);
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(240));
 
             // check if empty
             if (!lights || lights->empty()) {
@@ -2643,8 +2643,14 @@ namespace overlay::windows {
         // tables must share the same ID to have synced column settings
         if (ImGui::BeginTable("OptionsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("CMD Line Parameter", ImGuiTableColumnFlags_WidthFixed, 216);
-            ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, 240);
+            ImGui::TableSetupColumn(
+                "CMD Line Parameter",
+                ImGuiTableColumnFlags_WidthFixed,
+                overlay::apply_scaling(216));
+            ImGui::TableSetupColumn(
+                "Setting",
+                ImGuiTableColumnFlags_WidthFixed,
+                overlay::apply_scaling(240));
 
             // iterate options
             options_count = 0;
@@ -3056,7 +3062,11 @@ namespace overlay::windows {
             ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.34f, 0.14f, 0.14f, 0.54f));
             ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.34f, 0.14f, 0.14f, 0.54f));
             ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.34f, 0.14f, 0.14f, 0.64f));
-            ImGui::PushItemWidth(MIN(700, MAX(100, ImGui::GetWindowSize().x - 400)));
+            ImGui::PushItemWidth(
+                MIN(overlay::apply_scaling(700),
+                    MAX(overlay::apply_scaling(100),
+                        ImGui::GetWindowSize().x - overlay::apply_scaling(400))));
+
             ImGui::Combo("##game_selector", game_selected, games_names.data(), (int)games_list.size());
             ImGui::PopItemWidth();
             ImGui::PopStyleColor(3);
@@ -3080,8 +3090,8 @@ namespace overlay::windows {
         // draw popups
         {
             const ImVec2 popup_size(
-                std::min(ImGui::GetIO().DisplaySize.x * 0.9f, 800.f),
-                std::min(ImGui::GetIO().DisplaySize.y * 0.9f, 800.f));
+                std::min(ImGui::GetIO().DisplaySize.x * 0.9f, overlay::apply_scaling(800.f)),
+                std::min(ImGui::GetIO().DisplaySize.y * 0.9f, overlay::apply_scaling(800.f)));
 
             const ImVec2 popup_pos(
                 ImGui::GetIO().DisplaySize.x / 2 - popup_size.x / 2,
