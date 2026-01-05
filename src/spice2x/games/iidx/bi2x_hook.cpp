@@ -30,14 +30,6 @@ namespace games::iidx {
         uint8_t dummy1[0x9A0];
     };
 
-    // add padding before and after as the game will try to deref an offset
-    // from the address returned by aioNMgrIob2_Create
-    struct AIO_NMGR_IOB2_PTR {
-        uint8_t dummy0[0x100];
-        AIO_NMGR_IOB2 *iob2;
-        uint8_t dummy1[0x400 - sizeof(AIO_NMGR_IOB2 *)];
-    };
-
     struct AIO_IOB2_BI2X_TDJ {
         // who knows
         uint8_t data[0x13F8];
@@ -120,7 +112,7 @@ namespace games::iidx {
 
     AIO_IOB2_BI2X_TDJ *custom_node = nullptr;
     AC_HNDLIF *acHndlif = nullptr;
-    AIO_NMGR_IOB2_PTR *aioNmgrIob2 = nullptr;
+    AIO_NMGR_IOB2 *aioNmgrIob2 = nullptr;
 
     /*
      * implementations
@@ -466,16 +458,12 @@ namespace games::iidx {
 
     static AIO_NMGR_IOB2** __fastcall aioNMgrIob2_Create(AC_HNDLIF *a1, unsigned int a2) {
         if (aioNmgrIob2 == nullptr) {
-            aioNmgrIob2 = new AIO_NMGR_IOB2_PTR{};
-            aioNmgrIob2->iob2 = new AIO_NMGR_IOB2{};
-            aioNmgrIob2->iob2->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
+            aioNmgrIob2 = new AIO_NMGR_IOB2;
+            memset(aioNmgrIob2, 0x0, sizeof(AIO_NMGR_IOB2));
+            aioNmgrIob2->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
         }
-
-        log_info("bi2x_hook", "aioNMgrIob2_Create returned {}, padded size=0x{:x}, IOB2 @ {}, size=0x{:x}",
-            fmt::ptr(&aioNmgrIob2->iob2), sizeof(*aioNmgrIob2), 
-            fmt::ptr(aioNmgrIob2->iob2), sizeof(*aioNmgrIob2->iob2));
-
-        return &aioNmgrIob2->iob2;
+        log_info("bi2x_hook", "aioNMgrIob2_Create");
+        return &aioNmgrIob2;
     }
 
     static int64_t __fastcall aioIob2Bi2x_WriteFirmGetState(int64_t a1) {
