@@ -1,9 +1,11 @@
 #include "screen_resize.h"
 
+#include "avs/game.h"
 #include "external/rapidjson/document.h"
 #include "external/rapidjson/pointer.h"
 #include "external/rapidjson/prettywriter.h"
 #include "misc/eamuse.h"
+#include "util/deferlog.h"
 #include "util/utils.h"
 #include "util/fileutils.h"
 #include "hooks/graphics/graphics.h"
@@ -78,6 +80,21 @@ namespace cfg {
             root);
         
         load_bool_value(doc, root + "enable_screen_resize", this->enable_screen_resize);
+        if (this->enable_screen_resize) {
+            if (avs::game::is_model("KFC")) {
+                log_warning(
+                    "ScreenResize",
+                    "Image Resize feature enabled for SDVX; enabling this is known to significantly "
+                    "lower framerate for songs with Live2D!");
+                deferredlogs::defer_error_messages({
+                    "Image Resize + SDVX Live2D performance warning",
+                    "    Enabling Image Resize feature is known to have significant impact",
+                    "    on Live2D performance; you should disable it"});
+            } else {
+                log_misc("ScreenResize", "enabled by config file");
+            }
+        }
+
         load_bool_value(doc, root + "enable_linear_filter", this->enable_linear_filter);
         for (size_t i = 0; i < std::size(this->scene_settings); i++) {
             auto& scene = this->scene_settings[i];
