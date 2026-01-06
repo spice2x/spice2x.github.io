@@ -1,8 +1,7 @@
 ## Contributing
 Baseline rules for patch submissions are as follows. Any patches violating the rules below will not be accepted.
 
-### New as of March 2025
-Pull requests in GitHub are open. You don't need to bother with patch file submissions anymore. To contribute, fork the repo (just the main branch), make changes in your fork, and contribute to upstream by opening a pull request to the main repo.
+To contribute, fork the repo (just the main branch), make changes in your fork, and contribute to upstream by opening a pull request to the main repo.
 
 ### Adding support for games
 
@@ -11,6 +10,13 @@ Pull requests in GitHub are open. You don't need to bother with patch file submi
 * No support for eaCloud ("Konasute") games.
 * For a new game that was never supported (not a new version of a game, but rather a new series): please wait 1 year after official AC release in Japan.
 * For new version of an already supported game: proceed with caution and use generally-accepted community guidelines.
+
+### Forbidden "features" that will never be accepted
+
+* Performing decryption of encrypted files
+* Including (bundling), distributing, or linking to game data, or making it easier to find/download game data
+* Any features that [phone home](https://en.wikipedia.org/wiki/Phoning_home)
+  * Exception: we have allowed the "patch import from URL" but this has only been done under very careful considerations and plenty of warnings to the user.
 
 ### Avoiding regressions
 
