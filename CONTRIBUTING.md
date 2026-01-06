@@ -29,7 +29,7 @@ Therefore, when making code changes, please be extremely careful about containin
 
 #### Config file compatibility
 
-Do not change the names of options, buttons binds, analogs, etc - since they are used as unique identifiers in config files. If they are changed, you will introduce an incompatibility with previous versions of config file.
+Do not change the names of buttons binds, analogs, strings for command line parameters, etc - since they are used as unique identifiers in config files. If they are changed, you will introduce an incompatibility with previous versions of config file.
 
 ### Code quality requirements
 
