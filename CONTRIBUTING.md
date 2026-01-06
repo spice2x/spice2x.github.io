@@ -16,6 +16,7 @@ To contribute, fork the repo (just the main branch), make changes in your fork, 
 * Performing decryption of encrypted files
 * Including (bundling), distributing, or linking to game data, or making it easier to find/download game data
 * Any features that [phone home](https://en.wikipedia.org/wiki/Phoning_home)
+  * This includes automatic updaters.
   * Exception: we have allowed the "patch import from URL" but this has only been done under very careful considerations and plenty of warnings to the user.
 
 ### Avoiding regressions
