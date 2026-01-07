@@ -176,7 +176,7 @@ namespace overlay::windows {
         }
 
         static const char* dupe_items[] = { "None", "Copy Left", "Copy Right" };
-        ImGui::Combo(
+        const bool duplicate_changed = ImGui::Combo(
             "Duplicate",
             reinterpret_cast<int *>(&scene.duplicate),
             dupe_items,
@@ -184,10 +184,14 @@ namespace overlay::windows {
         ImGui::SameLine();
         ImGui::HelpMarker(
             "Show an identical copy of the image on the left or right, allowing you to achieve "
-            "wrap-around effect when an offset is set. May result in ghost images if you toggle "
-            "this on and off; you should restart the game when that happens.");
+            "wrap-around effect when an offset is set.");
 
         ImGui::EndDisabled();
+
+        // tell d3d9 device to clear surface to get rid of ghost image
+        if (duplicate_changed) {
+            cfg::SCREENRESIZE->need_surface_clean = true;
+        }
     }
 
     void ScreenResize::build_windowed_config() {

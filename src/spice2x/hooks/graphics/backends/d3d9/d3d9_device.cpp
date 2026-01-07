@@ -742,10 +742,13 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     const int w = param.BackBufferWidth;
     const int h = param.BackBufferHeight;
 
-    // this code used to clear the surface using ColorFill, but this turned out
-    // to be very expensive, leading to major frame drops in SDVX Live2D scenario
-    // since we are not doing that anymore, turning the Duplicate option on and then
-    // off will end up with a ghost image that doesn't get cleared
+    // this code used to clear the surface using ColorFill on every call, but
+    // this turned out to be very expensive, leading to major frame drops in
+    // SDVX Live2D scenario
+    if (cfg::SCREENRESIZE->need_surface_clean) {
+        pReal->ColorFill(topSurface, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+        cfg::SCREENRESIZE->need_surface_clean = false;
+    }
     
     D3DLOCKED_RECT rect;
     HRESULT hr;
