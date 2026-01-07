@@ -242,14 +242,16 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // FullscreenOrientationFlip
-        .title = "Full Screen Orientation Swap",
+        .title = "Full Screen Orientation Swap (EXPERIMENTAL)",
         .name = "forceresswap",
         .desc =
             "Allows you to play portrait games in in landscape (and vice versa) by transposing resolution and applying image scaling.\n\n"
             "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
             "Strongly consider combining this with -forceres option to render at monitor native resolution\n\n"
-            "WARNING: for SDVX, this messes with camera angle for note lanes, causing it to be zoomed out!",
+            "WARNING: for SDVX, this messes with camera angle for note lanes, causing it to be zoomed out, and causes performance issues "
+            "with Live2D!",
         .type = OptionType::Bool,
+        .hidden = true,
         .category = "Graphics (Full Screen)"
     },
     {

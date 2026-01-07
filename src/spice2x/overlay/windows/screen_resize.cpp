@@ -100,6 +100,17 @@ namespace overlay::windows {
     }
 
     void ScreenResize::build_fullscreen_config() {
+
+        if (avs::game::is_model("KFC")) {
+            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
+                "Warning: Enabling Image Resize will significantly\n"
+                "lower framerate for songs with Live2D!");
+        } else {
+            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
+                "Warning: Some games are known to have significant\n"
+                "performance issues when Image Resize is enabled.");
+        }
+
         // enable checkbox
         ImGui::Checkbox("Enable", &cfg::SCREENRESIZE->enable_screen_resize);
         ImGui::SameLine();
@@ -176,7 +187,6 @@ namespace overlay::windows {
             return;
         }
 
-        ImGui::TextUnformatted("Warning: may cause some games to crash.");
         ImGui::BeginDisabled(graphics_window_change_crashes_game());
         if (ImGui::Combo(
                 "Window Style",
