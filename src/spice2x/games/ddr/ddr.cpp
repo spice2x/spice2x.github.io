@@ -8,6 +8,7 @@
 #include "hooks/setupapihook.h"
 #include "hooks/sleephook.h"
 #include "hooks/input/dinput8/hook.h"
+#include "util/deferlog.h"
 #include "util/utils.h"
 #include "util/libutils.h"
 #include "util/fileutils.h"
@@ -108,18 +109,32 @@ namespace games::ddr {
                     log_info("ddr", "`{}` returned {}", cmd, result);
                 } else {
                     log_warning("ddr", "`{}` failed, returned {}", cmd, result);
+                    deferredlogs::defer_error_messages({
+                        "DDR codec registration failure",
+                        fmt::format("    {} failed to register with error {}", filename.string(), result)});
                 }
 
-                if (!contains_only_ascii(file.path().string())) {
-                    log_warning(
-                        "ddr",
-                        "BAD PATH ERROR\n\n\n"
-                        "!!!                                                          !!!\n"
-                        "!!! filesystem path to codec contains non-ASCII characters!  !!!\n"
-                        "!!! this may cause the game to crash!                        !!!\n"
-                        "!!!                                                          !!!\n"
-                        );
-                }
+                static std::once_flag printed;
+                std::call_once(printed, [file]() {
+                    if (!contains_only_ascii(file.path().string())) {
+                        log_warning(
+                            "ddr",
+                            "BAD PATH ERROR\n\n"
+                            "!!!                                                          !!!\n"
+                            "!!! filesystem path to codec contains non-ASCII characters!  !!!\n"
+                            "!!! this may cause failures when loading codecs, and         !!!\n"
+                            "!!! potentially leading the game to crash!                   !!!\n"
+                            "!!!                                                          !!!\n"
+                            );
+
+                        deferredlogs::defer_error_messages({
+                            "path to DDR codecs contain non-Latin characters",
+                            "    this may lead to movies not playing, white screen issue,",
+                            "    game hanging, or potentially a crash",
+                            "    move the game to a directory that does not contain non-Latin characters",
+                            "    if you encountered any issues"});
+                    }
+                });
             }
         }
     }
