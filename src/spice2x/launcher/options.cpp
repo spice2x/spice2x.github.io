@@ -258,7 +258,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // Graphics9On12
         .title = "DirectX 9 on 12 (DEPRECATED - use -dx9on12 instead)",
         .name = "9on12",
-        .desc = "Use D3D9On12 wrapper library, requires Windows 10 Insider Preview 18956 or later. Deprecated - use -dx9on12 instead",
+        .desc = "Use D3D9On12 wrapper library, requires Windows 10. Deprecated - use -dx9on12 instead",
         .type = OptionType::Bool,
         .hidden = true,
         .category = "Graphics (Common)",
@@ -269,7 +269,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sp2x-dx9on12",
         .display_name = "dx9on12",
         .aliases= "dx9on12",
-        .desc = "Use D3D9On12 wrapper library, requires Windows 10 Insider Preview 18956 or later. Has no effect games on that don't use DX9. Can cause some games to crash.\n\n"
+        .desc = "Use D3D9On12 wrapper library, requires Windows 10. Has no effect games on that don't use DX9. Can cause some games to crash.\n\n"
             "Default: auto (use DX9 for most games, but turn on 9on12 for games that require it on non-NVIDIA GPUs)",
         .type = OptionType::Enum,
         .category = "Graphics (Common)",
@@ -2227,7 +2227,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .display_name = "tapeledalgo",
         .aliases= "tapeledalgo",
         .desc = "For games with light arrays, determine the algorithm that is used to translate them into a single light binding in Lights tab. "
-        "Only applies to IIDX, SDVX, and DDR for now. Default: mid",
+            "Default: mid",
         .type = OptionType::Enum,
         .category = "I/O Options",
         .elements = {

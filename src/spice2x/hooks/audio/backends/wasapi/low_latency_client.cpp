@@ -149,5 +149,12 @@ LowLatencyAudioClient *LowLatencyAudioClient::Create(IMMDevice *device) {
     log_info("audio::lowlatency", "... max buffer size     : {} samples ({} ms)", maxPeriod, 1000.0f * maxPeriod / pFormat->nSamplesPerSec);
     log_info("audio::lowlatency", "... default buffer size : {} samples ({} ms)", defaultPeriod, 1000.0f * defaultPeriod / pFormat->nSamplesPerSec);
     log_info("audio::lowlatency", "... Windows will use minimum buffer size (instead of default) for shared mode audio clients from now on");
+    if (minPeriod < defaultPeriod) {
+        log_info("audio::lowlatency", "minimum period is less than default period, you will see latency improvement");
+    } else {
+        log_warning("audio::lowlatency", "minimum period is not less than default period, you will see NO latency improvement");
+        log_warning("audio::lowlatency", "this an audio driver / hardware limitation");
+    }
+
     return new LowLatencyAudioClient(audioClient);
 }
