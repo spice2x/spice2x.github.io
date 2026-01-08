@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <optional>
@@ -50,6 +51,9 @@ namespace cfg {
         int8_t screen_resize_current_scene = 0;
         bool enable_linear_filter = true;
         fullscreen_setting scene_settings[4];
+
+        // state
+        std::atomic<bool> need_surface_clean = false;
 
         // windowed mode sizing
         // Windows terminology:

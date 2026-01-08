@@ -742,14 +742,12 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     const int w = param.BackBufferWidth;
     const int h = param.BackBufferHeight;
 
-    if (cfg::SCREENRESIZE->enable_screen_resize) {
-        RECT rect {
-            0,
-            0,
-            (LONG)topSurface_width,
-            (LONG)topSurface_height,
-        };
-        pReal->ColorFill(topSurface, &rect, D3DCOLOR_XRGB(0, 0, 0));
+    // this code used to clear the surface using ColorFill on every call, but
+    // this turned out to be very expensive, leading to major frame drops in
+    // SDVX Live2D scenario
+    if (cfg::SCREENRESIZE->need_surface_clean) {
+        pReal->ColorFill(topSurface, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+        cfg::SCREENRESIZE->need_surface_clean = false;
     }
     
     D3DLOCKED_RECT rect;
