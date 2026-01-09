@@ -812,6 +812,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
             "either use -graphics-force-refresh option or change the desktop resolution beforehand.");
     }
 
+    if (!GRAPHICS_WINDOWED && num_adapters >= 2 && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+        log_info("graphics::d3d9", "force sub refresh rate: {} => {} Hz (-graphics-force-refresh-sub option)",
+                pPresentationParameters[1].FullScreen_RefreshRateInHz,
+                GRAPHICS_FORCE_REFRESH_SUB.value());
+
+        pPresentationParameters[1].FullScreen_RefreshRateInHz = GRAPHICS_FORCE_REFRESH_SUB.value();
+    }
+
     // force single adapter
     if (GRAPHICS_FORCE_SINGLE_ADAPTER) {
         log_info("graphics::d3d9", "disabling adapter group device with force single adapter mode");
@@ -1028,6 +1036,17 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
         if (pFullscreenDisplayMode) {
             pFullscreenDisplayMode->RefreshRate = GRAPHICS_FORCE_REFRESH;
+        }
+    }
+
+    if (!GRAPHICS_WINDOWED && num_adapters >= 2 && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+        log_info("graphics::d3d9", "force sub refresh rate: {} => {} Hz (-graphics-force-refresh-sub option)",
+                pPresentationParameters[1].FullScreen_RefreshRateInHz,
+                GRAPHICS_FORCE_REFRESH_SUB.value());
+
+        pPresentationParameters[1].FullScreen_RefreshRateInHz = GRAPHICS_FORCE_REFRESH_SUB.value();
+        if (pFullscreenDisplayMode) {
+            pFullscreenDisplayMode[1].RefreshRate = GRAPHICS_FORCE_REFRESH_SUB.value();
         }
     }
 
