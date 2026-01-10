@@ -68,7 +68,7 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
 
         new_client = new DummyIAudioClient(backend);
     } else {
-        new_client = new WrappedIAudioClient(audio_client, backend);
+        new_client = new WrappedIAudioClient(audio_client, nullptr, backend);
     }
 
     return new_client;
@@ -76,7 +76,7 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
 IAudioClient3 *wrap_audio_client3(IAudioClient3 *audio_client) {
     // TODO: ASIO backend for IAudioClient3?
     log_info("audio::wasapi", "wrapping IAudioClient3");
-    return new WrappedIAudioClient3(audio_client, nullptr);
+    return new WrappedIAudioClient(audio_client, audio_client, nullptr);
 }
 
 // IUnknown
@@ -85,7 +85,9 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::QueryInterface(REFIID riid, void 
         return E_POINTER;
     }
 
-    if (riid == IID_WrappedIAudioClient || riid == IID_IAudioClient) {
+    if (riid == IID_WrappedIAudioClient ||
+        riid == IID_IAudioClient ||
+        riid == IID_IAudioClient3) {
         this->AddRef();
         *ppvObj = this;
 
@@ -110,18 +112,14 @@ ULONG STDMETHODCALLTYPE WrappedIAudioClient::Release() {
 }
 
 // IAudioClient
-static HRESULT wrappedaudioclient_Initialize(
-    IAudioClient *pReal,
-    AudioBackend *backend,
-    bool *exclusive_mode,
-    int *frame_size,
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     AUDCLNT_SHAREMODE ShareMode,
-    DWORD StreamFlags, 
+    DWORD StreamFlags,
     REFERENCE_TIME hnsBufferDuration,
     REFERENCE_TIME hnsPeriodicity,
     const WAVEFORMATEX *pFormat,
-    LPCGUID AudioSessionGuid) {
-
+    LPCGUID AudioSessionGuid)
+{
     WRAP_DEBUG;
 
     if (!pFormat) {
@@ -141,8 +139,8 @@ static HRESULT wrappedaudioclient_Initialize(
     log_info("audio::wasapi", "... hnsPeriodicity    : {}", hnsPeriodicity);
     print_format(pFormat);
 
-    if (backend) {
-        SAFE_CALL("AudioBackend", "on_initialize", backend->on_initialize(
+    if (this->backend) {
+        SAFE_CALL("AudioBackend", "on_initialize", this->backend->on_initialize(
                 &ShareMode,
                 &StreamFlags,
                 &hnsBufferDuration,
@@ -160,8 +158,8 @@ static HRESULT wrappedaudioclient_Initialize(
 
     // check for exclusive mode
     if (ShareMode == AUDCLNT_SHAREMODE_EXCLUSIVE) {
-        *exclusive_mode = true;
-        *frame_size = pFormat->nChannels * (pFormat->wBitsPerSample / 8);
+        this->exclusive_mode = true;
+        this->frame_size = pFormat->nChannels * (pFormat->wBitsPerSample / 8);
     }
 
     // call next
@@ -184,63 +182,16 @@ static HRESULT wrappedaudioclient_Initialize(
 
     return ret;
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
-    AUDCLNT_SHAREMODE ShareMode,
-    DWORD StreamFlags,
-    REFERENCE_TIME hnsBufferDuration,
-    REFERENCE_TIME hnsPeriodicity,
-    const WAVEFORMATEX *pFormat,
-    LPCGUID AudioSessionGuid) {
-
-    return wrappedaudioclient_Initialize(
-        this->pReal,
-        this->backend,
-        &this->exclusive_mode,
-        &this->frame_size,
-        ShareMode,
-        StreamFlags,
-        hnsBufferDuration,
-        hnsPeriodicity,
-        pFormat,
-        AudioSessionGuid);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Initialize(
-    AUDCLNT_SHAREMODE ShareMode,
-    DWORD StreamFlags,
-    REFERENCE_TIME hnsBufferDuration,
-    REFERENCE_TIME hnsPeriodicity,
-    const WAVEFORMATEX *pFormat,
-    LPCGUID AudioSessionGuid) {
-
-    return wrappedaudioclient_Initialize(
-        this->pReal3,
-        this->backend,
-        &this->exclusive_mode,
-        &this->frame_size,
-        ShareMode,
-        StreamFlags,
-        hnsBufferDuration,
-        hnsPeriodicity,
-        pFormat,
-        AudioSessionGuid);
-}
-
-static HRESULT wrappedaudioclient_GetBufferSize(
-    IAudioClient *pReal,
-    AudioBackend *backend,
-    UINT32 *pNumBufferFrames) {
-
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSize(UINT32 *pNumBufferFrames) {
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "wrappedaudioclient_GetBufferSize");
+        log_misc("audio::wasapi", "WrappedIAudioClient::GetBufferSize");
     });
 
-    if (backend) {
+    if (this->backend) {
         uint32_t buffer_frames = 0;
 
-        SAFE_CALL("AudioBackend", "on_get_buffer_size", backend->on_get_buffer_size(&buffer_frames));
+        SAFE_CALL("AudioBackend", "on_get_buffer_size", this->backend->on_get_buffer_size(&buffer_frames));
 
         if (buffer_frames > 0) {
             *pNumBufferFrames = buffer_frames;
@@ -251,29 +202,16 @@ static HRESULT wrappedaudioclient_GetBufferSize(
 
     CHECK_RESULT(pReal->GetBufferSize(pNumBufferFrames));
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSize(UINT32 *pNumBufferFrames) {
-    return wrappedaudioclient_GetBufferSize(this->pReal, this->backend, pNumBufferFrames);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetBufferSize(UINT32 *pNumBufferFrames) {
-    return wrappedaudioclient_GetBufferSize(this->pReal3, this->backend, pNumBufferFrames);
-}
-
-static HRESULT wrappedaudioclient_GetStreamLatency(
-    IAudioClient *pReal,
-    AudioBackend *backend,
-    REFERENCE_TIME *phnsLatency) {
-
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetStreamLatency(REFERENCE_TIME *phnsLatency) {
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "wrappedaudioclient_GetStreamLatency");
+        log_misc("audio::wasapi", "WrappedIAudioClient::GetStreamLatency");
     });
 
-    if (backend) {
+    if (this->backend) {
         REFERENCE_TIME latency = 0;
 
-        SAFE_CALL("AudioBackend", "on_get_stream_latency", backend->on_get_stream_latency(
+        SAFE_CALL("AudioBackend", "on_get_stream_latency", this->backend->on_get_stream_latency(
                 &latency));
 
         if (latency > 0) {
@@ -285,30 +223,16 @@ static HRESULT wrappedaudioclient_GetStreamLatency(
 
     CHECK_RESULT(pReal->GetStreamLatency(phnsLatency));
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetStreamLatency(REFERENCE_TIME *phnsLatency) {
-    return wrappedaudioclient_GetStreamLatency(this->pReal, this->backend, phnsLatency);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetStreamLatency(REFERENCE_TIME *phnsLatency) {
-    return wrappedaudioclient_GetStreamLatency(this->pReal3, this->backend, phnsLatency);
-}
-
-
-static HRESULT wrappedaudioclient_GetCurrentPadding(
-    IAudioClient *pReal,
-    AudioBackend *backend,
-    UINT32 *pNumPaddingFrames) {
-
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetCurrentPadding(UINT32 *pNumPaddingFrames) {
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "wrappedaudioclient_GetCurrentPadding");
+        log_misc("audio::wasapi", "WrappedIAudioClient::GetCurrentPadding");
     });
 
-    if (pNumPaddingFrames && backend) {
+    if (pNumPaddingFrames && this->backend) {
         std::optional<uint32_t> padding_frames;
 
-        SAFE_CALL("AudioBackend", "on_get_current_padding",backend->on_get_current_padding(
+        SAFE_CALL("AudioBackend", "on_get_current_padding",this->backend->on_get_current_padding(
                 padding_frames));
 
         if (padding_frames.has_value()) {
@@ -320,18 +244,7 @@ static HRESULT wrappedaudioclient_GetCurrentPadding(
 
     CHECK_RESULT(pReal->GetCurrentPadding(pNumPaddingFrames));
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetCurrentPadding(UINT32 *pNumPaddingFrames) {
-    return wrappedaudioclient_GetCurrentPadding(this->pReal, this->backend, pNumPaddingFrames);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetCurrentPadding(UINT32 *pNumPaddingFrames) {
-    return wrappedaudioclient_GetCurrentPadding(this->pReal3, this->backend, pNumPaddingFrames);
-}
-
-static HRESULT wrappedaudioclient_IsFormatSupported(
-    IAudioClient *pReal,
-    AudioBackend *backend,
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
     AUDCLNT_SHAREMODE ShareMode,
     const WAVEFORMATEX *pFormat,
     WAVEFORMATEX **ppClosestMatch)
@@ -347,8 +260,8 @@ static HRESULT wrappedaudioclient_IsFormatSupported(
         fix_rec_format(const_cast<WAVEFORMATEX *>(pFormat));
     }
 
-    if (backend) {
-        HRESULT ret = backend->on_is_format_supported(&ShareMode, pFormat, ppClosestMatch);
+    if (this->backend) {
+        HRESULT ret = this->backend->on_is_format_supported(&ShareMode, pFormat, ppClosestMatch);
 
         if (SUCCEEDED(ret)) {
             return ret;
@@ -362,46 +275,15 @@ static HRESULT wrappedaudioclient_IsFormatSupported(
 
     CHECK_RESULT(pReal->IsFormatSupported(ShareMode, pFormat, ppClosestMatch));
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
-    AUDCLNT_SHAREMODE ShareMode,
-    const WAVEFORMATEX *pFormat,
-    WAVEFORMATEX **ppClosestMatch) {
-
-    return wrappedaudioclient_IsFormatSupported(
-        this->pReal,
-        this->backend,
-        ShareMode,
-        pFormat,
-        ppClosestMatch);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::IsFormatSupported(
-    AUDCLNT_SHAREMODE ShareMode,
-    const WAVEFORMATEX *pFormat,
-    WAVEFORMATEX **ppClosestMatch) {
-
-    return wrappedaudioclient_IsFormatSupported(
-        this->pReal3,
-        this->backend,
-        ShareMode,
-        pFormat,
-        ppClosestMatch);
-}
-
-static HRESULT wrappedaudioclient_GetMixFormat(
-    IAudioClient *pReal,
-    AudioBackend *backend,
-    WAVEFORMATEX **ppDeviceFormat) {
-
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetMixFormat(WAVEFORMATEX **ppDeviceFormat) {
     WRAP_VERBOSE;
 
     if (!ppDeviceFormat) {
         return E_POINTER;
     }
 
-    if (backend) {
-        HRESULT ret = backend->on_get_mix_format(ppDeviceFormat);
+    if (this->backend) {
+        HRESULT ret = this->backend->on_get_mix_format(ppDeviceFormat);
 
         if (SUCCEEDED(ret)) {
             return ret;
@@ -415,138 +297,60 @@ static HRESULT wrappedaudioclient_GetMixFormat(
 
     CHECK_RESULT(pReal->GetMixFormat(ppDeviceFormat));
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetMixFormat(WAVEFORMATEX **ppDeviceFormat) {
-    return wrappedaudioclient_GetMixFormat(this->pReal, this->backend, ppDeviceFormat);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetMixFormat(WAVEFORMATEX **ppDeviceFormat) {
-    return wrappedaudioclient_GetMixFormat(this->pReal3, this->backend, ppDeviceFormat);
-}
-
-
-static HRESULT wrappedaudioclient_GetDevicePeriod(
-    IAudioClient *pReal,
-    AudioBackend *backend,
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetDevicePeriod(
     REFERENCE_TIME *phnsDefaultDevicePeriod,
     REFERENCE_TIME *phnsMinimumDevicePeriod)
 {
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "wrappedaudioclient_GetDevicePeriod");
+        log_misc("audio::wasapi", "WrappedIAudioClient::GetDevicePeriod");
     });
 
     HRESULT ret = pReal->GetDevicePeriod(phnsDefaultDevicePeriod, phnsMinimumDevicePeriod);
 
-    if (SUCCEEDED(ret) && backend) {
-        SAFE_CALL("AudioBackend", "on_get_device_period", backend->on_get_device_period(
+    if (SUCCEEDED(ret) && this->backend) {
+        SAFE_CALL("AudioBackend", "on_get_device_period", this->backend->on_get_device_period(
                 phnsDefaultDevicePeriod,
                 phnsMinimumDevicePeriod));
     }
 
     CHECK_RESULT(ret);
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetDevicePeriod(
-    REFERENCE_TIME *phnsDefaultDevicePeriod,
-    REFERENCE_TIME *phnsMinimumDevicePeriod) {
-
-    return wrappedaudioclient_GetDevicePeriod(
-        this->pReal,
-        this->backend,
-        phnsDefaultDevicePeriod,
-        phnsMinimumDevicePeriod);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetDevicePeriod(
-    REFERENCE_TIME *phnsDefaultDevicePeriod,
-    REFERENCE_TIME *phnsMinimumDevicePeriod) {
-
-    return wrappedaudioclient_GetDevicePeriod(
-        this->pReal3,
-        this->backend,
-        phnsDefaultDevicePeriod,
-        phnsMinimumDevicePeriod);
-}
-
-static HRESULT wrappedaudioclient_Start(
-    IAudioClient *pReal,
-    AudioBackend *backend) {
-
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Start() {
     WRAP_VERBOSE;
 
     HRESULT ret = pReal->Start();
 
-    if (SUCCEEDED(ret) && backend) {
-        SAFE_CALL("AudioBackend", "on_start", backend->on_start());
+    if (SUCCEEDED(ret) && this->backend) {
+        SAFE_CALL("AudioBackend", "on_start", this->backend->on_start());
     }
 
     CHECK_RESULT(ret);
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Start() {
-    return wrappedaudioclient_Start(this->pReal, this->backend);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Start() {
-    return wrappedaudioclient_Start(this->pReal3, this->backend);
-}
-
-static HRESULT wrappedaudioclient_Stop(
-    IAudioClient *pReal,
-    AudioBackend *backend) {
-
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Stop() {
     WRAP_VERBOSE;
 
     HRESULT ret = pReal->Stop();
 
-    if (SUCCEEDED(ret) && backend) {
-        SAFE_CALL("AudioBackend", "on_stop", backend->on_stop());
+    if (SUCCEEDED(ret) && this->backend) {
+        SAFE_CALL("AudioBackend", "on_stop", this->backend->on_stop());
     }
 
     CHECK_RESULT(ret);
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Stop() {
-    return wrappedaudioclient_Stop(this->pReal, this->backend);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Stop() {
-    return wrappedaudioclient_Stop(this->pReal3, this->backend);
-}
-
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Reset() {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->Reset());
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Reset() {
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::SetEventHandle(HANDLE eventHandle) {
     WRAP_VERBOSE;
-    CHECK_RESULT(pReal3->Reset());
-}
 
-static HRESULT wrappedaudioclient_SetEventHandle(
-    IAudioClient *pReal,
-    AudioBackend *backend,
-    HANDLE eventHandle) {
-
-    WRAP_VERBOSE;
-    if (backend) {
-        SAFE_CALL("AudioBackend", "on_set_event_handle", backend->on_set_event_handle(&eventHandle));
+    if (this->backend) {
+        SAFE_CALL("AudioBackend", "on_set_event_handle", this->backend->on_set_event_handle(&eventHandle));
     }
 
     CHECK_RESULT(pReal->SetEventHandle(eventHandle));
 }
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient::SetEventHandle(HANDLE eventHandle) {
-    return wrappedaudioclient_SetEventHandle(this->pReal, this->backend, eventHandle);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::SetEventHandle(HANDLE eventHandle) {
-    return wrappedaudioclient_SetEventHandle(this->pReal3, this->backend, eventHandle);
-}
-
-
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetService(REFIID riid, void **ppv) {
     WRAP_DEBUG_FMT("WrappedIAudioClient::GetService({})", guid2s(riid));
 
@@ -561,44 +365,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetService(REFIID riid, void **pp
     return ret;
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetService(REFIID riid, void **ppv) {
-    WRAP_DEBUG_FMT("WrappedIAudioClient3::GetService({})", guid2s(riid));
-    // TODO: proper backend with WrappedIAudioRenderClient
-    return pReal3->GetService(riid, ppv);
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::QueryInterface(REFIID riid, void **ppvObj) {
-    if (ppvObj == nullptr) {
-        return E_POINTER;
-    }
-
-    if (riid == IID_WrappedIAudioClient3 ||
-        riid == IID_IAudioClient ||
-        riid == IID_IAudioClient3) {
-        this->AddRef();
-        *ppvObj = this;
-
-        return S_OK;
-    }
-
-    return pReal3->QueryInterface(riid, ppvObj);
-}
-
-ULONG STDMETHODCALLTYPE WrappedIAudioClient3::AddRef() {
-    return pReal3->AddRef();
-}
-
-ULONG STDMETHODCALLTYPE WrappedIAudioClient3::Release() {
-    // get reference count of underlying interface
-    ULONG refs = pReal3 != nullptr ? pReal3->Release() : 0;
-    if (refs == 0) {
-        delete this;
-    }
-
-    return refs;
-}
-
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::IsOffloadCapable(
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsOffloadCapable(
         AUDIO_STREAM_CATEGORY Category,
         BOOL *pbOffloadCapable) {
     WRAP_VERBOSE;
@@ -606,14 +373,14 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::IsOffloadCapable(
     CHECK_RESULT(pReal3->IsOffloadCapable(Category, pbOffloadCapable));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::SetClientProperties( 
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::SetClientProperties( 
     const AudioClientProperties *pProperties) {
 
     WRAP_VERBOSE;
-    CHECK_RESULT(pReal3 ->SetClientProperties(pProperties));
+    CHECK_RESULT(pReal3->SetClientProperties(pProperties));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetBufferSizeLimits( 
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSizeLimits( 
     const WAVEFORMATEX *pFormat,
     BOOL bEventDriven,
     REFERENCE_TIME *phnsMinBufferDuration,
@@ -627,7 +394,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetBufferSizeLimits(
         phnsMaxBufferDuration));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetSharedModeEnginePeriod( 
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetSharedModeEnginePeriod( 
     const WAVEFORMATEX *pFormat,
     UINT32 *pDefaultPeriodInFrames,
     UINT32 *pFundamentalPeriodInFrames,
@@ -643,7 +410,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetSharedModeEnginePeriod(
         pMaxPeriodInFrames));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetCurrentSharedModeEnginePeriod( 
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetCurrentSharedModeEnginePeriod( 
     WAVEFORMATEX **ppFormat,
     UINT32 *pCurrentPeriodInFrames) {
 
@@ -653,7 +420,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetCurrentSharedModeEnginePeriod
         pCurrentPeriodInFrames));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::InitializeSharedAudioStream( 
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::InitializeSharedAudioStream( 
     DWORD StreamFlags,
     UINT32 PeriodInFrames,
     const WAVEFORMATEX *pFormat,
