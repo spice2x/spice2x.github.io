@@ -16,7 +16,7 @@
 #include "dummy_audio_client.h"
 #include "wasapi_private.h"
 
-#if 1
+#if 0
 #define WRAP_DEBUG log_misc("audio::wasapi", "{}::{}", CLASS_NAME, __func__)
 #define WRAP_DEBUG_FMT(format, ...) log_misc("audio::wasapi", format, __VA_ARGS__)
 #else
@@ -110,7 +110,7 @@ ULONG STDMETHODCALLTYPE WrappedIAudioClient::Release() {
 }
 
 // IAudioClient
-static HRESULT audioclient_Initialize(
+static HRESULT wrappedaudioclient_Initialize(
     IAudioClient *pReal,
     AudioBackend *backend,
     bool *exclusive_mode,
@@ -193,7 +193,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     const WAVEFORMATEX *pFormat,
     LPCGUID AudioSessionGuid) {
 
-    return audioclient_Initialize(
+    return wrappedaudioclient_Initialize(
         this->pReal,
         this->backend,
         &this->exclusive_mode,
@@ -214,7 +214,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Initialize(
     const WAVEFORMATEX *pFormat,
     LPCGUID AudioSessionGuid) {
 
-    return audioclient_Initialize(
+    return wrappedaudioclient_Initialize(
         this->pReal3,
         this->backend,
         &this->exclusive_mode,
@@ -227,14 +227,14 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Initialize(
         AudioSessionGuid);
 }
 
-static HRESULT audioclient_GetBufferSize(
+static HRESULT wrappedaudioclient_GetBufferSize(
     IAudioClient *pReal,
     AudioBackend *backend,
     UINT32 *pNumBufferFrames) {
 
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "audioclient_GetBufferSize");
+        log_misc("audio::wasapi", "wrappedaudioclient_GetBufferSize");
     });
 
     if (backend) {
@@ -253,21 +253,21 @@ static HRESULT audioclient_GetBufferSize(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSize(UINT32 *pNumBufferFrames) {
-    return audioclient_GetBufferSize(this->pReal, this->backend, pNumBufferFrames);
+    return wrappedaudioclient_GetBufferSize(this->pReal, this->backend, pNumBufferFrames);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetBufferSize(UINT32 *pNumBufferFrames) {
-    return audioclient_GetBufferSize(this->pReal3, this->backend, pNumBufferFrames);
+    return wrappedaudioclient_GetBufferSize(this->pReal3, this->backend, pNumBufferFrames);
 }
 
-static HRESULT audioclient_GetStreamLatency(
+static HRESULT wrappedaudioclient_GetStreamLatency(
     IAudioClient *pReal,
     AudioBackend *backend,
     REFERENCE_TIME *phnsLatency) {
 
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "audioclient_GetStreamLatency");
+        log_misc("audio::wasapi", "wrappedaudioclient_GetStreamLatency");
     });
 
     if (backend) {
@@ -287,22 +287,22 @@ static HRESULT audioclient_GetStreamLatency(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetStreamLatency(REFERENCE_TIME *phnsLatency) {
-    return audioclient_GetStreamLatency(this->pReal, this->backend, phnsLatency);
+    return wrappedaudioclient_GetStreamLatency(this->pReal, this->backend, phnsLatency);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetStreamLatency(REFERENCE_TIME *phnsLatency) {
-    return audioclient_GetStreamLatency(this->pReal3, this->backend, phnsLatency);
+    return wrappedaudioclient_GetStreamLatency(this->pReal3, this->backend, phnsLatency);
 }
 
 
-static HRESULT audioclient_GetCurrentPadding(
+static HRESULT wrappedaudioclient_GetCurrentPadding(
     IAudioClient *pReal,
     AudioBackend *backend,
     UINT32 *pNumPaddingFrames) {
 
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "audioclient_GetCurrentPadding");
+        log_misc("audio::wasapi", "wrappedaudioclient_GetCurrentPadding");
     });
 
     if (pNumPaddingFrames && backend) {
@@ -322,14 +322,14 @@ static HRESULT audioclient_GetCurrentPadding(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetCurrentPadding(UINT32 *pNumPaddingFrames) {
-    return audioclient_GetCurrentPadding(this->pReal, this->backend, pNumPaddingFrames);
+    return wrappedaudioclient_GetCurrentPadding(this->pReal, this->backend, pNumPaddingFrames);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetCurrentPadding(UINT32 *pNumPaddingFrames) {
-    return audioclient_GetCurrentPadding(this->pReal3, this->backend, pNumPaddingFrames);
+    return wrappedaudioclient_GetCurrentPadding(this->pReal3, this->backend, pNumPaddingFrames);
 }
 
-static HRESULT audioclient_IsFormatSupported(
+static HRESULT wrappedaudioclient_IsFormatSupported(
     IAudioClient *pReal,
     AudioBackend *backend,
     AUDCLNT_SHAREMODE ShareMode,
@@ -368,7 +368,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
     const WAVEFORMATEX *pFormat,
     WAVEFORMATEX **ppClosestMatch) {
 
-    return audioclient_IsFormatSupported(
+    return wrappedaudioclient_IsFormatSupported(
         this->pReal,
         this->backend,
         ShareMode,
@@ -381,7 +381,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::IsFormatSupported(
     const WAVEFORMATEX *pFormat,
     WAVEFORMATEX **ppClosestMatch) {
 
-    return audioclient_IsFormatSupported(
+    return wrappedaudioclient_IsFormatSupported(
         this->pReal3,
         this->backend,
         ShareMode,
@@ -389,7 +389,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::IsFormatSupported(
         ppClosestMatch);
 }
 
-static HRESULT audioclient_GetMixFormat(
+static HRESULT wrappedaudioclient_GetMixFormat(
     IAudioClient *pReal,
     AudioBackend *backend,
     WAVEFORMATEX **ppDeviceFormat) {
@@ -417,15 +417,15 @@ static HRESULT audioclient_GetMixFormat(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetMixFormat(WAVEFORMATEX **ppDeviceFormat) {
-    return audioclient_GetMixFormat(this->pReal, this->backend, ppDeviceFormat);
+    return wrappedaudioclient_GetMixFormat(this->pReal, this->backend, ppDeviceFormat);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetMixFormat(WAVEFORMATEX **ppDeviceFormat) {
-    return audioclient_GetMixFormat(this->pReal3, this->backend, ppDeviceFormat);
+    return wrappedaudioclient_GetMixFormat(this->pReal3, this->backend, ppDeviceFormat);
 }
 
 
-static HRESULT audioclient_GetDevicePeriod(
+static HRESULT wrappedaudioclient_GetDevicePeriod(
     IAudioClient *pReal,
     AudioBackend *backend,
     REFERENCE_TIME *phnsDefaultDevicePeriod,
@@ -433,7 +433,7 @@ static HRESULT audioclient_GetDevicePeriod(
 {
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "audioclient_GetDevicePeriod");
+        log_misc("audio::wasapi", "wrappedaudioclient_GetDevicePeriod");
     });
 
     HRESULT ret = pReal->GetDevicePeriod(phnsDefaultDevicePeriod, phnsMinimumDevicePeriod);
@@ -451,7 +451,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetDevicePeriod(
     REFERENCE_TIME *phnsDefaultDevicePeriod,
     REFERENCE_TIME *phnsMinimumDevicePeriod) {
 
-    return audioclient_GetDevicePeriod(
+    return wrappedaudioclient_GetDevicePeriod(
         this->pReal,
         this->backend,
         phnsDefaultDevicePeriod,
@@ -462,14 +462,14 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetDevicePeriod(
     REFERENCE_TIME *phnsDefaultDevicePeriod,
     REFERENCE_TIME *phnsMinimumDevicePeriod) {
 
-    return audioclient_GetDevicePeriod(
+    return wrappedaudioclient_GetDevicePeriod(
         this->pReal3,
         this->backend,
         phnsDefaultDevicePeriod,
         phnsMinimumDevicePeriod);
 }
 
-static HRESULT audioclient_Start(
+static HRESULT wrappedaudioclient_Start(
     IAudioClient *pReal,
     AudioBackend *backend) {
 
@@ -485,14 +485,14 @@ static HRESULT audioclient_Start(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Start() {
-    return audioclient_Start(this->pReal, this->backend);
+    return wrappedaudioclient_Start(this->pReal, this->backend);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Start() {
-    return audioclient_Start(this->pReal3, this->backend);
+    return wrappedaudioclient_Start(this->pReal3, this->backend);
 }
 
-static HRESULT audioclient_Stop(
+static HRESULT wrappedaudioclient_Stop(
     IAudioClient *pReal,
     AudioBackend *backend) {
 
@@ -508,11 +508,11 @@ static HRESULT audioclient_Stop(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Stop() {
-    return audioclient_Stop(this->pReal, this->backend);
+    return wrappedaudioclient_Stop(this->pReal, this->backend);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Stop() {
-    return audioclient_Stop(this->pReal3, this->backend);
+    return wrappedaudioclient_Stop(this->pReal3, this->backend);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Reset() {
@@ -525,7 +525,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::Reset() {
     CHECK_RESULT(pReal3->Reset());
 }
 
-static HRESULT audioclient_SetEventHandle(
+static HRESULT wrappedaudioclient_SetEventHandle(
     IAudioClient *pReal,
     AudioBackend *backend,
     HANDLE eventHandle) {
@@ -539,11 +539,11 @@ static HRESULT audioclient_SetEventHandle(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::SetEventHandle(HANDLE eventHandle) {
-    return audioclient_SetEventHandle(this->pReal, this->backend, eventHandle);
+    return wrappedaudioclient_SetEventHandle(this->pReal, this->backend, eventHandle);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::SetEventHandle(HANDLE eventHandle) {
-    return audioclient_SetEventHandle(this->pReal3, this->backend, eventHandle);
+    return wrappedaudioclient_SetEventHandle(this->pReal3, this->backend, eventHandle);
 }
 
 

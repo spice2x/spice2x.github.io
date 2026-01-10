@@ -57,14 +57,13 @@ UPX_FLAGS="-q --best --lzma --compress-exports=0"
 
 CLEAN_BUILD=1
 INCLUDE_SRC=1
-DIST_ENABLE=0
+DIST_ENABLE=1
 DIST_FOLDER="./dist"
 DIST_NAME="spice2x-$(date +%y)-$(date +%m)-$(date +%d).zip"
 DIST_NAME_EXTRAS="spice2x-$(date +%y)-$(date +%m)-$(date +%d)-full.zip"
 DIST_COMMENT=${DIST_NAME}$'\n'"$GIT_BRANCH - $GIT_HEAD"$'\nThank you for playing.'
-# TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_cfg_linux spicetools_spice spicetools_spice_laa spicetools_spice_linux spicetools_stubs_cpusbxpkm"
 TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_cfg_linux spicetools_spice spicetools_spice_laa spicetools_spice_linux spicetools_stubs_cpusbxpkm"
-TARGETS_64="spicetools_spice64"
+TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEncodeAPI64 spicetools_stubs_nvcuvid spicetools_stubs_nvcuda spicetools_spice64 spicetools_spice64_linux"
 
 # determine build type
 BUILD_TYPE="Release"
@@ -115,7 +114,7 @@ time (
 	fi
 	mkdir -p ${BUILDDIR_32}
 	pushd ${BUILDDIR_32} > /dev/null
-	# cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $OLDPWD && ninja ${TARGETS_32}
+	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $OLDPWD && ninja ${TARGETS_32}
 	popd > /dev/null
 
 	# 64 bit
@@ -193,41 +192,41 @@ mkdir -p ${OUTDIR_EXTRAS}
 mkdir -p ${OUTDIR_EXTRAS}/largeaddressaware
 mkdir -p ${OUTDIR_EXTRAS}/linux
 
-# if false # ((DEBUG > 0))
-# then
+if false # ((DEBUG > 0))
+then
     # debug files
-    # cp ${BUILDDIR_32}/spicetools/spicecfg-pdb.exe ${OUTDIR} 2>/dev/null
-    # cp ${BUILDDIR_32}/spicetools/spicecfg-pdb.pdb ${OUTDIR} 2>/dev/null
-    # cp ${BUILDDIR_32}/spicetools/32/spice-pdb.exe ${OUTDIR} 2>/dev/null
-    # cp ${BUILDDIR_32}/spicetools/32/spice-pdb.pdb ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/spicecfg-pdb.exe ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/spicecfg-pdb.pdb ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/spice-pdb.exe ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/spice-pdb.pdb ${OUTDIR} 2>/dev/null
     #cp ${BUILDDIR_32}/spicetools/32/kbt.dll ${OUTDIR}/stubs/32 2>/dev/null
     #cp ${BUILDDIR_32}/spicetools/32/kld.dll ${OUTDIR}/stubs/32 2>/dev/null
-    # cp ${BUILDDIR_64}/spicetools/64/spice64-pdb.exe ${OUTDIR} 2>/dev/null
-    # cp ${BUILDDIR_64}/spicetools/64/spice64-pdb.pdb ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_64}/spicetools/64/spice64-pdb.exe ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_64}/spicetools/64/spice64-pdb.pdb ${OUTDIR} 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/kbt.dll ${OUTDIR}/stubs/64 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/kld.dll ${OUTDIR}/stubs/64 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/nvEncodeAPI64.dll ${OUTDIR}/stubs/64 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
     #cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
 	#cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
-# else
-#     # # release files
-#     # cp ${BUILDDIR_32}/spicetools/spicecfg.exe ${OUTDIR} 2>/dev/null
-#     # cp ${BUILDDIR_32}/spicetools/spicecfg_linux.exe ${OUTDIR_EXTRAS}/linux/spicecfg.exe 2>/dev/null
-#     # cp ${BUILDDIR_32}/spicetools/32/spice.exe ${OUTDIR} 2>/dev/null
-#     # cp ${BUILDDIR_32}/spicetools/32/spice_laa.exe ${OUTDIR_EXTRAS}/largeaddressaware/spice.exe 2>/dev/null
-#     # cp ${BUILDDIR_32}/spicetools/32/spice_linux.exe ${OUTDIR_EXTRAS}/linux/spice.exe 2>/dev/null
-#     # #cp ${BUILDDIR_32}/spicetools/32/kbt.dll ${OUTDIR}/stubs/32 2>/dev/null
-#     # #cp ${BUILDDIR_32}/spicetools/32/kld.dll ${OUTDIR}/stubs/32 2>/dev/null
+else
+    # release files
+    cp ${BUILDDIR_32}/spicetools/spicecfg.exe ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/spicecfg_linux.exe ${OUTDIR_EXTRAS}/linux/spicecfg.exe 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/spice.exe ${OUTDIR} 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/spice_laa.exe ${OUTDIR_EXTRAS}/largeaddressaware/spice.exe 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/spice_linux.exe ${OUTDIR_EXTRAS}/linux/spice.exe 2>/dev/null
+    #cp ${BUILDDIR_32}/spicetools/32/kbt.dll ${OUTDIR}/stubs/32 2>/dev/null
+    #cp ${BUILDDIR_32}/spicetools/32/kld.dll ${OUTDIR}/stubs/32 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/spice64.exe ${OUTDIR} 2>/dev/null
-#     # cp ${BUILDDIR_64}/spicetools/64/spice64_linux.exe ${OUTDIR_EXTRAS}/linux/spice64.exe 2>/dev/null
-#     # #cp ${BUILDDIR_64}/spicetools/64/kbt.dll ${OUTDIR}/stubs/64 2>/dev/null
-#     # #cp ${BUILDDIR_64}/spicetools/64/kld.dll ${OUTDIR}/stubs/64 2>/dev/null
-#     # cp ${BUILDDIR_64}/spicetools/64/nvEncodeAPI64.dll ${OUTDIR}/stubs/64 2>/dev/null
-#     # cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
-#     # cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
-#     # cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
-# fi
+    cp ${BUILDDIR_64}/spicetools/64/spice64_linux.exe ${OUTDIR_EXTRAS}/linux/spice64.exe 2>/dev/null
+    #cp ${BUILDDIR_64}/spicetools/64/kbt.dll ${OUTDIR}/stubs/64 2>/dev/null
+    #cp ${BUILDDIR_64}/spicetools/64/kld.dll ${OUTDIR}/stubs/64 2>/dev/null
+    cp ${BUILDDIR_64}/spicetools/64/nvEncodeAPI64.dll ${OUTDIR}/stubs/64 2>/dev/null
+    cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
+    cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
+    cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
+fi
 
 # pack source files to output directory
 rm -rf ${OUTDIR}/src
