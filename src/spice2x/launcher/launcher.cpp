@@ -326,6 +326,10 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GraphicsForceRefresh].is_active()) {
         GRAPHICS_FORCE_REFRESH = options[launcher::Options::GraphicsForceRefresh].value_uint32();
     }
+    if (options[launcher::Options::FullscreenSubRefreshRate].is_active()) {
+        GRAPHICS_FORCE_REFRESH_SUB =
+            options[launcher::Options::FullscreenSubRefreshRate].value_uint32();
+    }
     if (options[launcher::Options::GraphicsForceSingleAdapter].value_bool()) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
     }

@@ -221,9 +221,11 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Full Screen)",
     },
     {
-        .title = "Force Refresh Rate",
+        .title = "Force Monitor Refresh Rate",
         .name = "graphics-force-refresh",
-        .desc = "Force the refresh rate for the primary display adapter; works in both full screen and windowed modes",
+        .desc =
+            "Attempt to change the refresh rate for the primary monitor before the game boots; "
+            "works in both full screen and windowed modes, but known to fail for some games",
         .type = OptionType::Integer,
         .category = "Graphics (Common)",
     },
@@ -252,6 +254,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "with Live2D!",
         .type = OptionType::Bool,
         .hidden = true,
+        .category = "Graphics (Full Screen)"
+    },
+    {
+        // FullscreenSubRefreshRate
+        .title = "Force Submonitor Refresh Rate (EXPERIMENTAL)",
+        .name = "graphics-force-refresh-sub",
+        .desc =
+            "Override fullscreen refresh rate requested by the game for second monitor, "
+            "useful if you have a sub monitor that is not quite exactly 60Hz.\n\n"
+            "WARNING: experimental as we have not done extensive testing to see if this causes desyncs",
+        .type = OptionType::Integer,
         .category = "Graphics (Full Screen)"
     },
     {
