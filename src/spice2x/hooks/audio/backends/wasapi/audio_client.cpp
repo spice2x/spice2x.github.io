@@ -76,6 +76,18 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
 IAudioClient3 *wrap_audio_client3(IAudioClient3 *audio_client) {
     // TODO: ASIO backend for IAudioClient3, if there is a game that needs it
     log_info("audio::wasapi", "wrapping IAudioClient3");
+
+    if (hooks::audio::BACKEND.has_value()) {
+        log_fatal(
+            "audio::wasapi",
+            "IAudioClient3 does not currently support backends! clear -audiobackend and try again");
+    }
+    if (hooks::audio::USE_DUMMY) {
+        log_fatal(
+            "audio::wasapi",
+            "IAudioClient3 does not currently support dummy context, clear -audiodummy and try again");
+    }
+
     return new WrappedIAudioClient(audio_client, nullptr);
 }
 
