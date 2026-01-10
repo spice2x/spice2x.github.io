@@ -14,8 +14,17 @@
 static const GUID IID_WrappedIAudioClient = {
     0x1fbc8530, 0xaf3e, 0x4128, { 0xb4, 0x18, 0x11, 0x5d, 0xe7, 0x2f, 0x76, 0xb6 }
 };
+// {1FBC8530-AF3E-4128-B418-115DE72F76B7}
+static const GUID IID_WrappedIAudioClient2 = {
+    0x1fbc8530, 0xaf3e, 0x4128, { 0xb4, 0x18, 0x11, 0x5d, 0xe7, 0x2f, 0x76, 0xb7 }
+};
+// {1FBC8530-AF3E-4128-B418-115DE72F76B8}
+static const GUID IID_WrappedIAudioClient3 = {
+    0x1fbc8530, 0xaf3e, 0x4128, { 0xb4, 0x18, 0x11, 0x5d, 0xe7, 0x2f, 0x76, 0xb8 }
+};
 
 IAudioClient *wrap_audio_client(IAudioClient *client);
+IAudioClient3 *wrap_audio_client3(IAudioClient3 *client);
 
 struct WrappedIAudioClient : IAudioClient {
     explicit WrappedIAudioClient(IAudioClient *orig, AudioBackend *backend) : pReal(orig), backend(backend) {
@@ -23,7 +32,6 @@ struct WrappedIAudioClient : IAudioClient {
 
     WrappedIAudioClient(const WrappedIAudioClient &) = delete;
     WrappedIAudioClient &operator=(const WrappedIAudioClient &) = delete;
-
     virtual ~WrappedIAudioClient() = default;
 
 #pragma region IUnknown
@@ -52,4 +60,67 @@ struct WrappedIAudioClient : IAudioClient {
 
     bool exclusive_mode = false;
     int frame_size = 0;
+};
+
+struct WrappedIAudioClient2 : WrappedIAudioClient {
+
+    explicit WrappedIAudioClient2(IAudioClient2 *orig, AudioBackend *backend)
+        : WrappedIAudioClient(orig, backend), pReal2(orig) {
+    }
+
+    WrappedIAudioClient2(const WrappedIAudioClient2 &) = delete;
+    WrappedIAudioClient2 &operator=(const WrappedIAudioClient2 &) = delete;
+    virtual ~WrappedIAudioClient2() = default;
+
+#pragma region IAudioClient2
+
+    HRESULT STDMETHODCALLTYPE IsOffloadCapable(
+        AUDIO_STREAM_CATEGORY Category,
+        BOOL *pbOffloadCapable) override;
+
+    HRESULT STDMETHODCALLTYPE SetClientProperties( 
+        const AudioClientProperties *pProperties) override;
+
+    HRESULT STDMETHODCALLTYPE GetBufferSizeLimits( 
+        const WAVEFORMATEX *pFormat,
+        BOOL bEventDriven,
+        REFERENCE_TIME *phnsMinBufferDuration,
+        REFERENCE_TIME *phnsMaxBufferDuration) override;
+
+#pragma endregion
+
+    IAudioClient2 *const pReal2;
+};
+
+struct WrappedIAudioClient3 : WrappedIAudioClient2 {
+
+    explicit WrappedIAudioClient3(IAudioClient3 *orig, AudioBackend *backend)
+        : WrappedIAudioClient2(orig, backend), pReal3(orig) {
+    }
+
+    WrappedIAudioClient3(const WrappedIAudioClient3 &) = delete;
+    WrappedIAudioClient3 &operator=(const WrappedIAudioClient3 &) = delete;
+    virtual ~WrappedIAudioClient3() = default;
+
+#pragma region IAudioClient3
+    HRESULT STDMETHODCALLTYPE GetSharedModeEnginePeriod( 
+        const WAVEFORMATEX *pFormat,
+        UINT32 *pDefaultPeriodInFrames,
+        UINT32 *pFundamentalPeriodInFrames,
+        UINT32 *pMinPeriodInFrames,
+        UINT32 *pMaxPeriodInFrames) override;
+    
+    HRESULT STDMETHODCALLTYPE GetCurrentSharedModeEnginePeriod( 
+        WAVEFORMATEX **ppFormat,
+        UINT32 *pCurrentPeriodInFrames) override;
+    
+    HRESULT STDMETHODCALLTYPE InitializeSharedAudioStream( 
+        DWORD StreamFlags,
+        UINT32 PeriodInFrames,
+        const WAVEFORMATEX *pFormat,
+        LPCGUID AudioSessionGuid) override;
+        
+#pragma endregion
+
+    IAudioClient3 *const pReal3;
 };

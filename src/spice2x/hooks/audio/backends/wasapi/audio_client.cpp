@@ -10,6 +10,7 @@
 #include "hooks/audio/implementations/asio.h"
 #include "hooks/audio/implementations/wave_out.h"
 //#include "util/co_task_mem_ptr.h"
+#include "util/utils.h"
 
 #include "defs.h"
 #include "dummy_audio_client.h"
@@ -164,9 +165,6 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
                 break;
         }
     }
-    //} else if (!exclusive_available) {
-    //    backend = new WaveOutBackend();
-    //}
 
     IAudioClient *new_client;
 
@@ -182,6 +180,10 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
 
     return new_client;
 }
+IAudioClient3 *wrap_audio_client3(IAudioClient3 *audio_client) {
+    // TODO: ASIO backend for IAudioClient3?
+    return new WrappedIAudioClient3(audio_client, nullptr);
+}
 
 // IUnknown
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::QueryInterface(REFIID riid, void **ppvObj) {
@@ -190,6 +192,8 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::QueryInterface(REFIID riid, void 
     }
 
     if (riid == IID_WrappedIAudioClient ||
+        riid == IID_WrappedIAudioClient2 ||
+        riid == IID_WrappedIAudioClient3 ||
         riid == IID_IAudioClient)
     {
         this->AddRef();
@@ -481,4 +485,73 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetService(REFIID riid, void **pp
     }
 
     return ret;
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient2::IsOffloadCapable(
+        AUDIO_STREAM_CATEGORY Category,
+        BOOL *pbOffloadCapable) {
+    WRAP_VERBOSE;
+
+    CHECK_RESULT(pReal2->IsOffloadCapable(Category, pbOffloadCapable));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient2::SetClientProperties( 
+    const AudioClientProperties *pProperties) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal2 ->SetClientProperties(pProperties));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient2::GetBufferSizeLimits( 
+    const WAVEFORMATEX *pFormat,
+    BOOL bEventDriven,
+    REFERENCE_TIME *phnsMinBufferDuration,
+    REFERENCE_TIME *phnsMaxBufferDuration) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal2->GetBufferSizeLimits(
+        pFormat,
+        bEventDriven,
+        phnsMinBufferDuration,
+        phnsMaxBufferDuration));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetSharedModeEnginePeriod( 
+    const WAVEFORMATEX *pFormat,
+    UINT32 *pDefaultPeriodInFrames,
+    UINT32 *pFundamentalPeriodInFrames,
+    UINT32 *pMinPeriodInFrames,
+    UINT32 *pMaxPeriodInFrames) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal3->GetSharedModeEnginePeriod(
+        pFormat,
+        pDefaultPeriodInFrames,
+        pFundamentalPeriodInFrames,
+        pMinPeriodInFrames,
+        pMaxPeriodInFrames));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::GetCurrentSharedModeEnginePeriod( 
+    WAVEFORMATEX **ppFormat,
+    UINT32 *pCurrentPeriodInFrames) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal3->GetCurrentSharedModeEnginePeriod(
+        ppFormat,
+        pCurrentPeriodInFrames));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::InitializeSharedAudioStream( 
+    DWORD StreamFlags,
+    UINT32 PeriodInFrames,
+    const WAVEFORMATEX *pFormat,
+    LPCGUID AudioSessionGuid) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal3->InitializeSharedAudioStream(
+        StreamFlags,
+        PeriodInFrames,
+        pFormat,
+        AudioSessionGuid));
 }

@@ -82,6 +82,9 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
         return ret;
     }
 
+    // almost all games request IAudioClient
+    // so far we have not seen any games request IAudioClient2
+    // SDVX EG Final uses IID_IAudioClient3
     if (iid == IID_IAudioClient) {
 
         // prevent initialization recursion when using some ASIO backends that proxy to DirectSound, WASAPI, or WDM
@@ -99,14 +102,31 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
             hooks::audio::CLIENT->Release();
         }
 
-        /*
-        ret = wrap_audio_client(pReal, dwClsCtx, pActivationParams, &client);
-        if (FAILED(ret)) {
+        client = wrap_audio_client(client);
+        *ppInterface = client;
+
+        // persist the audio client
+        hooks::audio::CLIENT = client;
+        hooks::audio::CLIENT->AddRef();
+
+    } else if (iid == IID_IAudioClient3) {
+
+        // prevent initialization recursion when using some ASIO backends that proxy to DirectSound, WASAPI, or WDM
+        // like ASIO4All or FlexASIO
+        if (!hooks::audio::INITIALIZE_LOCK.try_lock()) {
+            log_warning("audio::mmdevice", "ignoring wrap request while backend is initializing, possible recursion");
             return ret;
         }
-        */
-        client = wrap_audio_client(client);
+        std::lock_guard initialize_guard(hooks::audio::INITIALIZE_LOCK, std::adopt_lock);
 
+        auto client = reinterpret_cast<IAudioClient3 *>(*ppInterface);
+
+        // release old audio client if initialized
+        if (hooks::audio::CLIENT) {
+            hooks::audio::CLIENT->Release();
+        }
+
+        client = wrap_audio_client3(client);
         *ppInterface = client;
 
         // persist the audio client
