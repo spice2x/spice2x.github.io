@@ -75,7 +75,7 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
 }
 IAudioClient3 *wrap_audio_client3(IAudioClient3 *audio_client) {
     // TODO: ASIO backend for IAudioClient3?
-    log_info("audio::wasapi", "wrapping IAudioClient3 without backend");
+    log_info("audio::wasapi", "wrapping IAudioClient3");
     return new WrappedIAudioClient3(audio_client, nullptr);
 }
 
@@ -234,7 +234,7 @@ static HRESULT audioclient_GetBufferSize(
 
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "WrappedIAudioClient::GetBufferSize");
+        log_misc("audio::wasapi", "audioclient_GetBufferSize");
     });
 
     if (backend) {
@@ -267,7 +267,7 @@ static HRESULT audioclient_GetStreamLatency(
 
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "WrappedIAudioClient::GetStreamLatency");
+        log_misc("audio::wasapi", "audioclient_GetStreamLatency");
     });
 
     if (backend) {
@@ -302,7 +302,7 @@ static HRESULT audioclient_GetCurrentPadding(
 
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "WrappedIAudioClient::GetCurrentPadding");
+        log_misc("audio::wasapi", "audioclient_GetCurrentPadding");
     });
 
     if (pNumPaddingFrames && backend) {
@@ -433,7 +433,7 @@ static HRESULT audioclient_GetDevicePeriod(
 {
     static std::once_flag printed;
     std::call_once(printed, []() {
-        log_misc("audio::wasapi", "WrappedIAudioClient::GetDevicePeriod");
+        log_misc("audio::wasapi", "audioclient_GetDevicePeriod");
     });
 
     HRESULT ret = pReal->GetDevicePeriod(phnsDefaultDevicePeriod, phnsMinimumDevicePeriod);
@@ -572,7 +572,9 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::QueryInterface(REFIID riid, void
         return E_POINTER;
     }
 
-    if (riid == IID_WrappedIAudioClient3 || riid == IID_IAudioClient) {
+    if (riid == IID_WrappedIAudioClient3 ||
+        riid == IID_IAudioClient ||
+        riid == IID_IAudioClient3) {
         this->AddRef();
         *ppvObj = this;
 
@@ -662,7 +664,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient3::InitializeSharedAudioStream(
     }
 
     // verbose output
-    log_info("audio::wasapi", "IAudioClien3t::InitializeSharedAudioStream hook hit");
+    log_info("audio::wasapi", "IAudioClient3::InitializeSharedAudioStream hook hit");
     log_info("audio::wasapi", "... StreamFlags       : {}", stream_flags_str(StreamFlags));
     log_info("audio::wasapi", "... PeriodInFrames    : {}", PeriodInFrames);
     print_format(pFormat);
