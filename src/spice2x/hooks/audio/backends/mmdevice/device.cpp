@@ -100,19 +100,15 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
             hooks::audio::CLIENT->Release();
         }
 
+        IAudioClient *client = nullptr;
         if (iid == IID_IAudioClient) {
-            auto client = reinterpret_cast<IAudioClient *>(*ppInterface);
-            client = wrap_audio_client(client);
-            *ppInterface = client;
-            // persist the audio client
-            hooks::audio::CLIENT = client;
+            client = wrap_audio_client(reinterpret_cast<IAudioClient *>(*ppInterface));
         } else { // IID_IAudioClient3
-            auto client = reinterpret_cast<IAudioClient3 *>(*ppInterface);
-            client = wrap_audio_client3(client);
-            *ppInterface = client;
-            // persist the audio client
-            hooks::audio::CLIENT = client;
+            client = wrap_audio_client3(reinterpret_cast<IAudioClient3 *>(*ppInterface));
         }
+        *ppInterface = client;
+        // persist the audio client
+        hooks::audio::CLIENT = client;
         hooks::audio::CLIENT->AddRef();
 
     } else if (iid == __uuidof(IAudioEndpointVolume) && hooks::audio::VOLUME_HOOK_ENABLED) {
