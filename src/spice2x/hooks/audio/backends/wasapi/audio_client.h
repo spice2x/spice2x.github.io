@@ -20,8 +20,12 @@ IAudioClient3 *wrap_audio_client3(IAudioClient3 *client);
 
 struct WrappedIAudioClient : IAudioClient3 {
 
-    explicit WrappedIAudioClient(IAudioClient *orig, IAudioClient3 *orig3, AudioBackend *backend) :
-        pReal(orig), pReal3(orig3), backend(backend) {
+    explicit WrappedIAudioClient(IAudioClient3 *orig3, AudioBackend *backend) :
+        pReal(orig3), pReal3(orig3), backend(backend) {
+    }
+
+    explicit WrappedIAudioClient(IAudioClient *orig, AudioBackend *backend) :
+        pReal(orig), pReal3(nullptr), backend(backend) {
     }
 
     WrappedIAudioClient(const WrappedIAudioClient &) = delete;

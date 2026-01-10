@@ -84,7 +84,7 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
 
     // almost all games request IAudioClient
     // so far we have not seen any games request IAudioClient2
-    // SDVX EG Final uses IID_IAudioClient3
+    // SDVX EG Final uses IID_IAudioClient3, but only when shared mode patch is on
     if (iid == IID_IAudioClient || iid == IID_IAudioClient3) {
 
         // prevent initialization recursion when using some ASIO backends that proxy to DirectSound, WASAPI, or WDM

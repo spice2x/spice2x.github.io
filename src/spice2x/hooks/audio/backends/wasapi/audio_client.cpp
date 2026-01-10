@@ -68,15 +68,15 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
 
         new_client = new DummyIAudioClient(backend);
     } else {
-        new_client = new WrappedIAudioClient(audio_client, nullptr, backend);
+        new_client = new WrappedIAudioClient(audio_client, backend);
     }
 
     return new_client;
 }
 IAudioClient3 *wrap_audio_client3(IAudioClient3 *audio_client) {
-    // TODO: ASIO backend for IAudioClient3?
+    // TODO: ASIO backend for IAudioClient3, if there is a game that needs it
     log_info("audio::wasapi", "wrapping IAudioClient3");
-    return new WrappedIAudioClient(audio_client, audio_client, nullptr);
+    return new WrappedIAudioClient(audio_client, nullptr);
 }
 
 // IUnknown
@@ -432,6 +432,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::InitializeSharedAudioStream(
 
     // verbose output
     log_info("audio::wasapi", "IAudioClient3::InitializeSharedAudioStream hook hit");
+    log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(AUDCLNT_SHAREMODE_SHARED));
     log_info("audio::wasapi", "... StreamFlags       : {}", stream_flags_str(StreamFlags));
     log_info("audio::wasapi", "... PeriodInFrames    : {}", PeriodInFrames);
     print_format(pFormat);
