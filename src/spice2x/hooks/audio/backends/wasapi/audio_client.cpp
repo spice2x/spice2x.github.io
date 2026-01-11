@@ -42,6 +42,8 @@ static void fix_rec_format(WAVEFORMATEX *pFormat) {
 }
 
 IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
+    log_misc("audio::wasapi", "wrapping IAudioClient");
+
     AudioBackend *backend = nullptr;
     bool requires_dummy = false;
 
@@ -75,7 +77,7 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
 }
 IAudioClient3 *wrap_audio_client3(IAudioClient3 *audio_client) {
     // TODO: ASIO backend for IAudioClient3, if there is a game that needs it
-    log_info("audio::wasapi", "wrapping IAudioClient3");
+    log_misc("audio::wasapi", "wrapping IAudioClient3");
 
     if (hooks::audio::BACKEND.has_value()) {
         log_fatal(
