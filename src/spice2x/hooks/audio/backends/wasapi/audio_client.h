@@ -16,9 +16,16 @@ static const GUID IID_WrappedIAudioClient = {
 };
 
 IAudioClient *wrap_audio_client(IAudioClient *client);
+IAudioClient3 *wrap_audio_client3(IAudioClient3 *client);
 
-struct WrappedIAudioClient : IAudioClient {
-    explicit WrappedIAudioClient(IAudioClient *orig, AudioBackend *backend) : pReal(orig), backend(backend) {
+struct WrappedIAudioClient : IAudioClient3 {
+
+    explicit WrappedIAudioClient(IAudioClient3 *orig3, AudioBackend *backend) :
+        pReal(orig3), pReal3(orig3), backend(backend) {
+    }
+
+    explicit WrappedIAudioClient(IAudioClient *orig, AudioBackend *backend) :
+        pReal(orig), pReal3(nullptr), backend(backend) {
     }
 
     WrappedIAudioClient(const WrappedIAudioClient &) = delete;
@@ -47,9 +54,43 @@ struct WrappedIAudioClient : IAudioClient {
     HRESULT STDMETHODCALLTYPE GetService(REFIID riid, void **ppv) override;
 #pragma endregion
 
-    IAudioClient *const pReal;
-    AudioBackend *const backend;
+#pragma region IAudioClient2
+    HRESULT STDMETHODCALLTYPE IsOffloadCapable(
+        AUDIO_STREAM_CATEGORY Category,
+        BOOL *pbOffloadCapable) override;
 
+    HRESULT STDMETHODCALLTYPE SetClientProperties( 
+        const AudioClientProperties *pProperties) override;
+
+    HRESULT STDMETHODCALLTYPE GetBufferSizeLimits( 
+        const WAVEFORMATEX *pFormat,
+        BOOL bEventDriven,
+        REFERENCE_TIME *phnsMinBufferDuration,
+        REFERENCE_TIME *phnsMaxBufferDuration) override;
+#pragma endregion
+
+#pragma region IAudioClient3
+    HRESULT STDMETHODCALLTYPE GetSharedModeEnginePeriod( 
+        const WAVEFORMATEX *pFormat,
+        UINT32 *pDefaultPeriodInFrames,
+        UINT32 *pFundamentalPeriodInFrames,
+        UINT32 *pMinPeriodInFrames,
+        UINT32 *pMaxPeriodInFrames) override;
+    
+    HRESULT STDMETHODCALLTYPE GetCurrentSharedModeEnginePeriod( 
+        WAVEFORMATEX **ppFormat,
+        UINT32 *pCurrentPeriodInFrames) override;
+    
+    HRESULT STDMETHODCALLTYPE InitializeSharedAudioStream( 
+        DWORD StreamFlags,
+        UINT32 PeriodInFrames,
+        const WAVEFORMATEX *pFormat,
+        LPCGUID AudioSessionGuid) override;
+#pragma endregion
+
+    IAudioClient *const pReal;
+    IAudioClient3 *const pReal3;
+    AudioBackend *const backend;
     bool exclusive_mode = false;
     int frame_size = 0;
 };

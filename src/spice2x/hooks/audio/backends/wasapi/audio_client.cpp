@@ -10,6 +10,7 @@
 #include "hooks/audio/implementations/asio.h"
 #include "hooks/audio/implementations/wave_out.h"
 //#include "util/co_task_mem_ptr.h"
+#include "util/utils.h"
 
 #include "defs.h"
 #include "dummy_audio_client.h"
@@ -40,114 +41,9 @@ static void fix_rec_format(WAVEFORMATEX *pFormat) {
     pFormat->nAvgBytesPerSec = pFormat->nSamplesPerSec * pFormat->nBlockAlign;
 }
 
-// TODO(felix): is it appropriate to automatically switch to shared mode? should we do a
-// `MessageBox` to notify the user?
-/*
-static bool check_for_exclusive_access(IAudioClient *client) {
-    static bool checked_once = false;
-    static bool previous_check_result = false;
-
-    CoTaskMemPtr<WAVEFORMATEX> mix_format;
-    REFERENCE_TIME requested_duration = 0;
-
-    if (checked_once) {
-        return previous_check_result;
-    }
-    if (audio::BACKEND.has_value()) {
-        return false;
-    }
-
-    // scope function so it has access to the local static variables
-    auto set_result = [](bool result) {
-        checked_once = true;
-        previous_check_result = result;
-
-        return result;
-    };
-
-    HRESULT ret = client->GetMixFormat(mix_format.ppv());
-    if (FAILED(ret)) {
-        PRINT_FAILED_RESULT("IAudioClient::GetMixFormat", ret);
-        return set_result(false);
-    }
-
-    log_info("audio::wasapi", "Mix Format:");
-    print_format(mix_format.data());
-
-    ret = client->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, mix_format.data(), nullptr);
-    if (ret == AUDCLNT_E_UNSUPPORTED_FORMAT) {
-        auto mix_format_ex = reinterpret_cast<WAVEFORMATEXTENSIBLE *>(mix_format.data());
-
-        log_warning("audio::wasapi", "device does not natively support the mix format, converting to PCM");
-
-        if (mix_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE &&
-            IsEqualGUID(GUID_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT, mix_format_ex->SubFormat))
-        {
-            mix_format_ex->Format.wBitsPerSample = 16;
-            mix_format_ex->Format.nBlockAlign = mix_format_ex->Format.nChannels * (mix_format_ex->Format.wBitsPerSample / 8);
-            mix_format_ex->Format.nAvgBytesPerSec = mix_format_ex->Format.nSamplesPerSec * mix_format_ex->Format.nBlockAlign;
-            mix_format_ex->Samples.wValidBitsPerSample = 16;
-            mix_format_ex->SubFormat = GUID_KSDATAFORMAT_SUBTYPE_PCM;
-        } else if (mix_format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT) {
-            mix_format->wBitsPerSample = 16;
-            mix_format->nBlockAlign = mix_format->nChannels * (mix_format->wBitsPerSample / 8);
-            mix_format->nAvgBytesPerSec = mix_format->nSamplesPerSec * mix_format->nBlockAlign;
-            mix_format->wFormatTag = WAVE_FORMAT_PCM;
-        } else {
-            log_warning("audio::wasapi", "mix format is not a floating point format");
-            return set_result(false);
-        }
-
-        ret = client->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, mix_format.data(), nullptr);
-        if (FAILED(ret)) {
-            log_warning("audio::wasapi", "mix format is not supported");
-            return set_result(false);
-        }
-    }
-
-    ret = client->GetDevicePeriod(nullptr, &requested_duration);
-    if (FAILED(ret)) {
-        PRINT_FAILED_RESULT("IAudioClient::GetDevicePeriod", ret);
-        return false;
-    }
-
-    ret = client->Initialize(
-            AUDCLNT_SHAREMODE_EXCLUSIVE,
-            AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
-            requested_duration,
-            requested_duration,
-            mix_format.data(),
-            nullptr);
-
-    if (ret == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED || SUCCEEDED(ret)) {
-        log_info("audio::wasapi", "exclusive mode is available, disabling backend");
-        return set_result(true);
-    } else {
-        log_warning("audio::wasapi", "exclusive mode is not available, enabling backend, hr={}", FMT_HRESULT(ret));
-    }
-
-    return set_result(false);
-}
-
-HRESULT wrap_audio_client(
-    IMMDevice *device,
-    DWORD cls_ctx,
-    PROPVARIANT *activation_params,
-    IAudioClient **audio_client)
-{
-    auto exclusive_available = check_for_exclusive_access(*audio_client);
-    (*audio_client)->Stop();
-    (*audio_client)->Reset();
-    (*audio_client)->Release();
-    *audio_client = nullptr;
-
-    SAFE_CALL("IMMDevice", "Activate", device->Activate(
-            IID_IAudioClient,
-            cls_ctx,
-            activation_params,
-            reinterpret_cast<void **>(audio_client)));
-*/
 IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
+    log_misc("audio::wasapi", "wrapping IAudioClient");
+
     AudioBackend *backend = nullptr;
     bool requires_dummy = false;
 
@@ -164,9 +60,6 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
                 break;
         }
     }
-    //} else if (!exclusive_available) {
-    //    backend = new WaveOutBackend();
-    //}
 
     IAudioClient *new_client;
 
@@ -182,6 +75,23 @@ IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
 
     return new_client;
 }
+IAudioClient3 *wrap_audio_client3(IAudioClient3 *audio_client) {
+    // TODO: ASIO backend for IAudioClient3, if there is a game that needs it
+    log_misc("audio::wasapi", "wrapping IAudioClient3");
+
+    if (hooks::audio::BACKEND.has_value()) {
+        log_fatal(
+            "audio::wasapi",
+            "IAudioClient3 does not currently support backends! clear -audiobackend and try again");
+    }
+    if (hooks::audio::USE_DUMMY) {
+        log_fatal(
+            "audio::wasapi",
+            "IAudioClient3 does not currently support dummy context, clear -audiodummy and try again");
+    }
+
+    return new WrappedIAudioClient(audio_client, nullptr);
+}
 
 // IUnknown
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::QueryInterface(REFIID riid, void **ppvObj) {
@@ -190,8 +100,8 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::QueryInterface(REFIID riid, void 
     }
 
     if (riid == IID_WrappedIAudioClient ||
-        riid == IID_IAudioClient)
-    {
+        riid == IID_IAudioClient ||
+        riid == IID_IAudioClient3) {
         this->AddRef();
         *ppvObj = this;
 
@@ -282,20 +192,6 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     }
 
     log_info("audio::wasapi", "IAudioClient::Initialize success, hr={}", FMT_HRESULT(ret));
-
-    /*
-    if (ShareMode == AUDCLNT_SHAREMODE_SHARED) {
-        IAudioClockAdjustment *clock = nullptr;
-
-        SAFE_CALL("IAudioClient", "GetService", pReal->GetService(
-                IID_IAudioClockAdjustment,
-                reinterpret_cast<void **>(&clock)));
-
-        SAFE_CALL("IAudioClockAdjustment", "SetSampleRate", clock->SetSampleRate(
-                static_cast<float>(pFormat->nSamplesPerSec)));
-    }
-    */
-
     copy_wave_format(&hooks::audio::FORMAT, pFormat);
 
     return ret;
@@ -480,5 +376,95 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetService(REFIID riid, void **pp
         *ppv = new WrappedIAudioRenderClient(this, render_client);
     }
 
+    return ret;
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsOffloadCapable(
+        AUDIO_STREAM_CATEGORY Category,
+        BOOL *pbOffloadCapable) {
+    WRAP_VERBOSE;
+
+    CHECK_RESULT(pReal3->IsOffloadCapable(Category, pbOffloadCapable));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::SetClientProperties( 
+    const AudioClientProperties *pProperties) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal3->SetClientProperties(pProperties));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSizeLimits( 
+    const WAVEFORMATEX *pFormat,
+    BOOL bEventDriven,
+    REFERENCE_TIME *phnsMinBufferDuration,
+    REFERENCE_TIME *phnsMaxBufferDuration) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal3->GetBufferSizeLimits(
+        pFormat,
+        bEventDriven,
+        phnsMinBufferDuration,
+        phnsMaxBufferDuration));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetSharedModeEnginePeriod( 
+    const WAVEFORMATEX *pFormat,
+    UINT32 *pDefaultPeriodInFrames,
+    UINT32 *pFundamentalPeriodInFrames,
+    UINT32 *pMinPeriodInFrames,
+    UINT32 *pMaxPeriodInFrames) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal3->GetSharedModeEnginePeriod(
+        pFormat,
+        pDefaultPeriodInFrames,
+        pFundamentalPeriodInFrames,
+        pMinPeriodInFrames,
+        pMaxPeriodInFrames));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetCurrentSharedModeEnginePeriod( 
+    WAVEFORMATEX **ppFormat,
+    UINT32 *pCurrentPeriodInFrames) {
+
+    WRAP_VERBOSE;
+    CHECK_RESULT(pReal3->GetCurrentSharedModeEnginePeriod(
+        ppFormat,
+        pCurrentPeriodInFrames));
+}
+
+HRESULT STDMETHODCALLTYPE WrappedIAudioClient::InitializeSharedAudioStream( 
+    DWORD StreamFlags,
+    UINT32 PeriodInFrames,
+    const WAVEFORMATEX *pFormat,
+    LPCGUID AudioSessionGuid) {
+
+    if (!pFormat) {
+        return E_POINTER;
+    }
+
+    // verbose output
+    log_info("audio::wasapi", "IAudioClient3::InitializeSharedAudioStream hook hit");
+    log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(AUDCLNT_SHAREMODE_SHARED));
+    log_info("audio::wasapi", "... StreamFlags       : {}", stream_flags_str(StreamFlags));
+    log_info("audio::wasapi", "... PeriodInFrames    : {}", PeriodInFrames);
+    print_format(pFormat);
+
+    // call next
+    HRESULT ret = pReal3->InitializeSharedAudioStream(
+        StreamFlags,
+        PeriodInFrames,
+        pFormat,
+        AudioSessionGuid);
+
+    // check for failure
+    if (FAILED(ret)) {
+        PRINT_FAILED_RESULT("IAudioClient3", "InitializeSharedAudioStream", ret);
+        return ret;
+    }
+
+    log_info("audio::wasapi", "IAudioClient3::InitializeSharedAudioStream success, hr={}", FMT_HRESULT(ret));
+    copy_wave_format(&hooks::audio::FORMAT, pFormat);
     return ret;
 }

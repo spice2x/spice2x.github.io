@@ -82,7 +82,10 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
         return ret;
     }
 
-    if (iid == IID_IAudioClient) {
+    // almost all games request IAudioClient
+    // so far we have not seen any games request IAudioClient2
+    // SDVX EG Final uses IID_IAudioClient3, but only when shared mode patch is on
+    if (iid == IID_IAudioClient || iid == IID_IAudioClient3) {
 
         // prevent initialization recursion when using some ASIO backends that proxy to DirectSound, WASAPI, or WDM
         // like ASIO4All or FlexASIO
@@ -92,23 +95,18 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
         }
         std::lock_guard initialize_guard(hooks::audio::INITIALIZE_LOCK, std::adopt_lock);
 
-        auto client = reinterpret_cast<IAudioClient *>(*ppInterface);
-
         // release old audio client if initialized
         if (hooks::audio::CLIENT) {
             hooks::audio::CLIENT->Release();
         }
 
-        /*
-        ret = wrap_audio_client(pReal, dwClsCtx, pActivationParams, &client);
-        if (FAILED(ret)) {
-            return ret;
+        IAudioClient *client = nullptr;
+        if (iid == IID_IAudioClient) {
+            client = wrap_audio_client(reinterpret_cast<IAudioClient *>(*ppInterface));
+        } else { // IID_IAudioClient3
+            client = wrap_audio_client3(reinterpret_cast<IAudioClient3 *>(*ppInterface));
         }
-        */
-        client = wrap_audio_client(client);
-
         *ppInterface = client;
-
         // persist the audio client
         hooks::audio::CLIENT = client;
         hooks::audio::CLIENT->AddRef();
