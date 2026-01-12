@@ -982,8 +982,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // GitaDoraLefty,
         .title = "GitaDora Lefty Guitar (for Digital Wailing)",
         .name = "gdlefty",
-        .desc = "Enables lefty mode, flipping motion sensor directions. \n\n"
-            "Without this option, enabling LEFT in the game option will continuously trigger UP wail. \n\n"
+        .desc = "Enables lefty mode, flipping motion sensor directions.\n\n"
+            "Without this option, enabling LEFT in the game option will continuously trigger UP wail.\n\n"
             "Has no effect if you are using analog bindings for X/Y axis; expectation is that your controller "
             "handles this correctly (most do not, however).\n\n"
             "As always, remember to restart the game after changing options",

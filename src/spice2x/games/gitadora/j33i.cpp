@@ -1,10 +1,11 @@
 ﻿
 #include "misc/eamuse.h"
-#include "util/utils.h"
+#include "games/gitadora/gitadora.h"
+#include "util/socd_cleaner.h"
 #include "util/time.h"
+#include "util/utils.h"
 #include "io.h"
 #include "j33i.h"
-
 
 #define GUITAR_BTN_R 0x7
 #define GUITAR_BTN_G 0x6
@@ -111,8 +112,8 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
 
             auto &analogs = get_analogs();
 
-            // get x,y,z analog values [-0.5f, 0.5f], centered at 0.f
-            float x = 0.f;
+            // get x,y,z analog values [-0.5f, 0.5f]
+            float x = games::gitadora::LEFTY ? 0.3f : -0.5f;
             auto x_analog = analogs[Analogs::GuitarP1WailX];
             if (x_analog.isSet()) {
                 x = GameAPI::Analogs::getState(RI_MGR, x_analog) - 0.5f;
@@ -123,16 +124,36 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
             if (y_analog.isSet()) {
                 y = GameAPI::Analogs::getState(RI_MGR, y_analog) - 0.5f;
             }
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1WailUp])) {
-                y = -0.5f;
-            } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1WailDown])) {
-                y = 0.5f;
-            }
 
             float z = 0.f;
             auto z_analog = analogs[Analogs::GuitarP1WailZ];
             if (z_analog.isSet()) {
                 z = GameAPI::Analogs::getState(RI_MGR, z_analog) - 0.5f;
+            }
+
+            // handle digital wail up/down
+            const auto wail_up = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1WailUp]);
+            const auto wail_down = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1WailDown]);
+            const auto wail_result =
+                socd::get_guitar_wail(0, wail_up, wail_down, get_performance_milliseconds());
+            if (!games::gitadora::LEFTY) {
+                // righty
+                if (wail_result == socd::TiltUp) {
+                    x = 0;
+                    y = -0.5f;
+                } else if (wail_result == socd::TiltDown) {
+                    x = -0.5f;
+                    y = 0.5f;
+                }
+            } else {
+                // lefty
+                if (wail_result == socd::TiltUp) {
+                    x = 0.f;
+                    y = 0.f;
+                } else if (wail_result == socd::TiltDown) {
+                    x = 0.5f;
+                    y = 0.f;
+                }
             }
 
             // convert x,y,z to unsigned integer values that the game expects

@@ -368,7 +368,7 @@ static void *__cdecl gfdm_unit_get_button_p(void *a1, int a2, size_t player) {
                 RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 0])) * 8160.f) - 4080;
 
     // wail Y
-    ((int *) a1)[5] = games::gitadora::LEFTY ? 0 : 0;
+    ((int *) a1)[5] = 0;
     if (analogs.at(player * 3 + 1).isSet()) {
         ((int *) a1)[5] = lroundf(Analogs::getState(
                 RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 1])) * 8160.f) - 4080;
@@ -662,7 +662,7 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
 
     // wail Y
     if (a2 == 1) {
-        long ret = games::gitadora::LEFTY ? 0 : 0;
+        long ret = 0;
 
         // analog override
         if (analogs.at(player * 3 + 1).isSet()) {
