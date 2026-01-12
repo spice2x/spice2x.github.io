@@ -11,6 +11,7 @@
 #include "util/libutils.h"
 #include "util/logging.h"
 #include "util/sigscan.h"
+#include "util/socd_cleaner.h"
 #include "hooks/setupapihook.h"
 
 namespace games::gitadora {
@@ -220,6 +221,9 @@ namespace games::gitadora {
                 GRAPHICS_WINDOWED && !cfg::CONFIGURATOR_STANDALONE) {
                 overlay::UI_SCALE_PERCENT = 250;
             }
+
+             // for guitar wail SOCD cleaning
+            socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
         }
     }
 

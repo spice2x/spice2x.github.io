@@ -84,4 +84,63 @@ namespace socd {
             return SocdNone;
         }
     }
+
+    // first dimension: p1/p2
+    // second dimension: TiltUp / TiltDown
+    // value: last timestamp when it was on
+    static double most_recent_active[2][2] = {};
+
+    uint32_t TILT_HOLD_MS = 120;
+
+    TiltResult get_guitar_wail(uint8_t device, bool up, bool down, double time_now) {
+        if (device >= 2) {
+            log_fatal("socd", "invalid device index in socd_clean: {}", device);
+        }
+
+        const auto socd_result = socd_clean(device, up, down, time_now);
+
+        if (up) {
+            most_recent_active[device][TiltUp] = time_now;
+        }
+        if (down) {
+            most_recent_active[device][TiltDown] = time_now;
+        }
+
+        log_debug(
+            "socd",
+            "p{} wail up={}, down={}",
+            device + 1,
+            most_recent_active[device][TiltUp],
+            most_recent_active[device][TiltDown]);
+
+        const auto delta_up = time_now - most_recent_active[device][TiltUp];
+        const auto delta_down = time_now - most_recent_active[device][TiltDown];
+        const bool is_up = delta_up <= TILT_HOLD_MS;
+        const bool is_down = delta_down <= TILT_HOLD_MS;
+
+        auto result = TiltNone;
+        if (is_up && is_down) {
+            // both held recently: prefer more recently held using SOCD logic
+            if (socd_result == SocdCCW) {
+                result = TiltUp;
+            } else if (socd_result == SocdCW) {
+                result = TiltDown;
+            } else {
+                result = TiltUp;
+            }
+        } else if (is_up) {
+            result = TiltUp;
+        } else if (is_down) {
+            result = TiltDown;
+        }
+
+        // clear opposite direction being held
+        if (result == TiltUp) {
+            most_recent_active[device][TiltDown] = 0.f;
+        } else if (result == TiltDown) {
+            most_recent_active[device][TiltUp] = 0.f;
+        }
+
+        return result;
+    }
 }

@@ -7,6 +7,8 @@
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/circular_buffer.h"
+#include "util/socd_cleaner.h"
+#include "util/time.h"
 #include "misc/eamuse.h"
 #include "cfg/api.h"
 #include "acio/icca/icca.h"
@@ -336,6 +338,7 @@ static int __cdecl gfdm_unit2_boot_initialize() {
     return 1;
 }
 
+// this seems to be only used in the I/O test menu, not in gameplay
 static void *__cdecl gfdm_unit_get_button_p(void *a1, int a2, size_t player) {
     memset(a1, 0, 64);
 
@@ -348,23 +351,32 @@ static void *__cdecl gfdm_unit_get_button_p(void *a1, int a2, size_t player) {
     auto &buttons = games::gitadora::get_buttons();
     auto &analogs = games::gitadora::get_analogs();
 
-    // X
-    ((int *) a1)[4] = a2 == 1 ? 4080 : -4080;
+    // wail X
+    ((int *) a1)[4] = 0;
     if (analogs.at(player * 3 + 0).isSet())
         ((int *) a1)[4] = lroundf(Analogs::getState(
                 RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 0])) * 8160.f) - 4080;
 
-    // Y
+    // wail Y
     ((int *) a1)[5] = 0;
-    if (analogs.at(player * 3 + 1).isSet())
+    if (analogs.at(player * 3 + 1).isSet()) {
         ((int *) a1)[5] = lroundf(Analogs::getState(
                 RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 1])) * 8160.f) - 4080;
-    if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + 11 * (size_t) player])))
-        ((int *) a1)[5] = -4080;
-    if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + 11 * (size_t) player])))
-        ((int *) a1)[5] = 4080;
+    }
+    const auto wail_up =
+        Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + 11 * (size_t) player]));
+    const auto wail_down =
+        Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + 11 * (size_t) player]));
+    const auto wail_result =
+        socd::get_guitar_wail(player, wail_up, wail_down, get_performance_milliseconds());
 
-    // Z
+    if (wail_result == socd::TiltUp) {
+        ((int *) a1)[5] = -4080;
+    } else if (wail_result == socd::TiltDown) {
+        ((int *) a1)[5] = 4080;
+    }
+
+    // wail Z
     ((int *) a1)[6] = 0;
     if (analogs.at(player * 3 + 2).isSet())
         ((int *) a1)[6] = lroundf(Analogs::getState(
@@ -585,6 +597,7 @@ static long __cdecl gfdm_unit2_get_input(int device) {
     return gfdm_unit_get_input_p(device, 1);
 }
 
+// this is used in gameplay
 static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
 
     // return if it's actually drum mania
@@ -595,7 +608,7 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
     auto &buttons = games::gitadora::get_buttons();
     auto &analogs = games::gitadora::get_analogs();
 
-    // X
+    // wail X
     if (a2 == 0) {
 
         // analog override
@@ -605,29 +618,30 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
         }
 
         // default
-        return a1 == 1 ? 4080 : -4080;
+        return 0;
     }
 
-    // Y
+    // wail Y
     if (a2 == 1) {
+
+        long ret = 0;
 
         // analog override
         if (analogs.at(player * 3 + 1).isSet()) {
-            return lroundf(Analogs::getState(
+            ret = lroundf(Analogs::getState(
                     RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 1])) * 8160.f) - 4080;
         }
 
         // variables
-        long ret = 0;
-        size_t offset = (size_t) player * 11;
+        const size_t offset = (size_t) player * 11;
 
-        // wail up
-        if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + offset]))) {
+        // wail up/down
+        const auto wail_up = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + offset]));
+        const auto wail_down = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + offset]));
+        const auto wail_result = socd::get_guitar_wail(player, wail_up, wail_down, get_performance_milliseconds());
+        if (wail_result == socd::TiltUp) {
             ret -= 4080;
-        }
-
-        // wail down
-        if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + offset]))) {
+        } else if (wail_result == socd::TiltDown) {
             ret += 4080;
         }
 
@@ -635,7 +649,7 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
         return ret;
     }
 
-    // Z
+    // wail Z
     if (a2 == 2) {
 
         // analog override
