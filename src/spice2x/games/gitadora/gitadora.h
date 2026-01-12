@@ -10,6 +10,7 @@ namespace games::gitadora {
     // settings
     extern bool TWOCHANNEL;
     extern std::optional<unsigned int> CAB_TYPE;
+    extern bool LEFTY;
 
     class GitaDoraGame : public games::Game {
     public:

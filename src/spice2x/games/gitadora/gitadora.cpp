@@ -19,6 +19,7 @@ namespace games::gitadora {
     // settings
     bool TWOCHANNEL = false;
     std::optional<unsigned int> CAB_TYPE = std::nullopt;
+    bool LEFTY = false;
 
     /*
      * Prevent GitaDora from creating folders on F drive

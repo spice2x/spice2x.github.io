@@ -609,6 +609,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraTwoChannelAudio].value_bool()) {
         games::gitadora::TWOCHANNEL = true;
     }
+    if (options[launcher::Options::GitaDoraLefty].value_bool()) {
+        games::gitadora::LEFTY = true;
+    }
     if (options[launcher::Options::LoadDDRModule].value_bool()) {
         attach_ddr = true;
     }
