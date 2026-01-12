@@ -52,7 +52,7 @@ static bool __cdecl ac_io_j32d_update_control_status_buffer(size_t a1) {
         float pad3_vel = Buttons::getVelocity(RI_MGR, buttons.at(games::ftt::Buttons::Pad3));
         float pad4_vel = Buttons::getVelocity(RI_MGR, buttons.at(games::ftt::Buttons::Pad4));
         // FIXME(felix): this logic seems wrong for analog handling but correct for digital inputs
-        if (pad1_vel > 0.f) {
+        if (Buttons::getState(RI_MGR, buttons.at(games::ftt::Buttons::Pad1))) {
             STATUS_BUFFER[6] = (int) (51.f * pad1_vel + 0.5f);
         }
         if (Buttons::getState(RI_MGR, buttons.at(games::ftt::Buttons::Pad2))) {
@@ -67,10 +67,10 @@ static bool __cdecl ac_io_j32d_update_control_status_buffer(size_t a1) {
 
         // process analogs
         auto &analogs = games::ftt::get_analogs();
-        auto pad1_analog = analogs.at(games::ftt::Analogs::Pad1);
-        auto pad2_analog = analogs.at(games::ftt::Analogs::Pad2);
-        auto pad3_analog = analogs.at(games::ftt::Analogs::Pad3);
-        auto pad4_analog = analogs.at(games::ftt::Analogs::Pad4);
+        auto &pad1_analog = analogs.at(games::ftt::Analogs::Pad1);
+        auto &pad2_analog = analogs.at(games::ftt::Analogs::Pad2);
+        auto &pad3_analog = analogs.at(games::ftt::Analogs::Pad3);
+        auto &pad4_analog = analogs.at(games::ftt::Analogs::Pad4);
         if (pad1_analog.isSet()) {
             auto val = (uint32_t) (51.f * Analogs::getState(RI_MGR, pad1_analog) + 0.5f);
             STATUS_BUFFER[6] = MAX(STATUS_BUFFER[6], val);
