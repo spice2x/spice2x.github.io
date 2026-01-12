@@ -3,6 +3,7 @@
 #include "games/io.h"
 #include "games/gitadora/gitadora.h"
 #include "games/gitadora/io.h"
+#include "overlay/imgui/extensions.h"
 #include "misc/eamuse.h"
 #include "util/logging.h"
 
@@ -134,6 +135,10 @@ namespace overlay::windows {
         {
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetFrameHeightWithSpacing());
             this->build_button("<", leftright_size, this->left[p], nullptr, this->leftright_light[p]);
+            this->build_button("+", tiny_size, this->help[p], this->start[p], nullptr);
+            if (ImGui::IsItemHovered()) {
+                ImGui::HelpTooltip("HELP + START");
+            }
         }
         ImGui::EndGroup();
 
@@ -162,8 +167,10 @@ namespace overlay::windows {
         ImGui::BeginGroup();
         {
             this->build_button("?", tiny_size, this->help[p], nullptr, this->help_light[p]);
+            if (ImGui::IsItemHovered()) {
+                ImGui::HelpTooltip("HELP");
+            }
             this->build_button(">", leftright_size, this->right[p], nullptr, this->leftright_light[p]);
-            this->build_button("+", tiny_size, this->help[p], this->start[p], nullptr);
         }
         ImGui::EndGroup();
     }
