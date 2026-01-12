@@ -979,17 +979,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .elements = {{"1", "DX"}, {"2", "SD"}, {"3", "SD2 - white cab"}},
     },
     {
-        // GitaDoraLefty,
+        // GitaDoraLefty
         .title = "GitaDora Lefty Guitar (for Digital Wailing)",
         .name = "gdlefty",
-        .desc = "Enables lefty mode, flipping motion sensor directions.\n\n"
+        .desc = "Enables lefty mode, flipping motion sensor directions. Default: off.\n\n"
             "Without this option, enabling LEFT in the game option will continuously trigger UP wail.\n\n"
             "Has no effect if you are using analog bindings for X/Y axis; expectation is that your controller "
             "handles this correctly (most do not, however).\n\n"
             "As always, remember to restart the game after changing options",
-        .type = OptionType::Bool,
+        .type = OptionType::Enum,
         .game_name = "GitaDora",
         .category = "Game Options",
+        .elements = {
+            {"off", "both righty"},
+            {"p1", "p1 is lefty"},
+            {"p2", "p2 is lefty"},
+            {"both", "both lefty"},
+        },
     },
     {
         .title = "Force Load Jubeat Module",

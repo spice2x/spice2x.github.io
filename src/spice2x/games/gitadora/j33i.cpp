@@ -113,7 +113,7 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
             auto &analogs = get_analogs();
 
             // get x,y,z analog values [-0.5f, 0.5f]
-            float x = games::gitadora::LEFTY ? 0.3f : -0.5f;
+            float x = is_player_lefty(0) ? 0.3f : -0.5f;
             auto x_analog = analogs[Analogs::GuitarP1WailX];
             if (x_analog.isSet()) {
                 x = GameAPI::Analogs::getState(RI_MGR, x_analog) - 0.5f;
@@ -136,7 +136,7 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
             const auto wail_down = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1WailDown]);
             const auto wail_result =
                 socd::get_guitar_wail(0, wail_up, wail_down, get_performance_milliseconds());
-            if (!games::gitadora::LEFTY) {
+            if (!is_player_lefty(0)) {
                 // righty
                 if (wail_result == socd::TiltUp) {
                     x = 0;

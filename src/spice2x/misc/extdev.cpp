@@ -362,7 +362,7 @@ static void *__cdecl gfdm_unit_get_button_p(void *a1, int a2, size_t player) {
         socd::get_guitar_wail(player, wail_up, wail_down, get_performance_milliseconds());
 
     // wail X
-    ((int *) a1)[4] = games::gitadora::LEFTY ? LEFTY_X_CENTER : -4080;
+    ((int *) a1)[4] = games::gitadora::is_player_lefty(player) ? LEFTY_X_CENTER : -4080;
     if (analogs.at(player * 3 + 0).isSet())
         ((int *) a1)[4] = lroundf(Analogs::getState(
                 RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 0])) * 8160.f) - 4080;
@@ -375,7 +375,7 @@ static void *__cdecl gfdm_unit_get_button_p(void *a1, int a2, size_t player) {
     }
 
     // digital wailing
-    if (!games::gitadora::LEFTY) {
+    if (!games::gitadora::is_player_lefty(player)) {
         // righty
         if (wail_result == socd::TiltUp) {
             // top center
@@ -641,7 +641,7 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
 
     // wail X
     if (a2 == 0) {
-        long ret = games::gitadora::LEFTY ? LEFTY_X_CENTER : -4080;
+        long ret = games::gitadora::is_player_lefty(player) ? LEFTY_X_CENTER : -4080;
 
         // analog override
         if (analogs.at(gitadora_analog_mapping[player * 3 + 0]).isSet()) {
@@ -651,9 +651,9 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
 
         // digital wail up/down
         if (wail_result == socd::TiltUp) {
-            ret = games::gitadora::LEFTY ? -4080 : 0;
+            ret = games::gitadora::is_player_lefty(player) ? -4080 : 0;
         } else if (wail_result == socd::TiltDown) {
-            ret = games::gitadora::LEFTY ? +4080 : -4080;
+            ret = games::gitadora::is_player_lefty(player) ? +4080 : -4080;
         }
 
         // default
@@ -672,9 +672,9 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
 
         // digital wail up/down
         if (wail_result == socd::TiltUp) {
-            ret = games::gitadora::LEFTY ? 0 : -4080;
+            ret = games::gitadora::is_player_lefty(player) ? 0 : -4080;
         } else if (wail_result == socd::TiltDown) {
-            ret = games::gitadora::LEFTY ? 0 : 4080;
+            ret = games::gitadora::is_player_lefty(player) ? 0 : 4080;
         }
 
         // return value
