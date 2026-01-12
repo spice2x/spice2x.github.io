@@ -986,7 +986,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Without this option, enabling LEFT in the game option will continuously trigger UP wail.\n\n"
             "Has no effect if you are using analog bindings for X/Y axis; expectation is that your controller "
             "handles this correctly (most do not, however).\n\n"
-            "As always, remember to restart the game after changing options",
+            "As always, remember to restart the game after changing options. If you need to change in the game, "
+            "use the I/O panel overlay window",
         .type = OptionType::Enum,
         .game_name = "GitaDora",
         .category = "Game Options",
