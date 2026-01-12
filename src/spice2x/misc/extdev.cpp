@@ -371,9 +371,10 @@ static void *__cdecl gfdm_unit_get_button_p(void *a1, int a2, size_t player) {
         socd::get_guitar_wail(player, wail_up, wail_down, get_performance_milliseconds());
 
     if (wail_result == socd::TiltUp) {
-        ((int *) a1)[5] = -4080;
+        ((int *) a1)[5] = -4080; // Y
     } else if (wail_result == socd::TiltDown) {
-        ((int *) a1)[5] = 4080;
+        ((int *) a1)[4] = -4080; // Y also affects X
+        ((int *) a1)[5] = 4080; // Y
     }
 
     // wail Z
@@ -608,22 +609,33 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
     auto &buttons = games::gitadora::get_buttons();
     auto &analogs = games::gitadora::get_analogs();
 
+    // figure out digital wail Y
+    const size_t offset = (size_t) player * 11;
+    const auto wail_up = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + offset]));
+    const auto wail_down = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + offset]));
+    const auto wail_result = socd::get_guitar_wail(player, wail_up, wail_down, get_performance_milliseconds());
+
     // wail X
     if (a2 == 0) {
+        long ret = 0;
 
         // analog override
         if (analogs.at(gitadora_analog_mapping[player * 3 + 0]).isSet()) {
-            return lroundf(Analogs::getState(
+            ret = lroundf(Analogs::getState(
                     RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 0])) * 8160.f) - 4080;
         }
 
+        // Y also affects X
+        if (wail_result == socd::TiltDown) {
+            ret = -4080;
+        }
+
         // default
-        return 0;
+        return ret;
     }
 
     // wail Y
     if (a2 == 1) {
-
         long ret = 0;
 
         // analog override
@@ -632,13 +644,7 @@ static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
                     RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 1])) * 8160.f) - 4080;
         }
 
-        // variables
-        const size_t offset = (size_t) player * 11;
-
-        // wail up/down
-        const auto wail_up = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + offset]));
-        const auto wail_down = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + offset]));
-        const auto wail_result = socd::get_guitar_wail(player, wail_up, wail_down, get_performance_milliseconds());
+        // digital wail up/down
         if (wail_result == socd::TiltUp) {
             ret -= 4080;
         } else if (wail_result == socd::TiltDown) {

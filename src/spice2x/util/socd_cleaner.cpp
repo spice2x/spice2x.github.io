@@ -90,7 +90,7 @@ namespace socd {
     // value: last timestamp when it was on
     static double most_recent_active[2][2] = {};
 
-    uint32_t TILT_HOLD_MS = 120;
+    uint32_t TILT_HOLD_MS = 100;
 
     TiltResult get_guitar_wail(uint8_t device, bool up, bool down, double time_now) {
         if (device >= 2) {
