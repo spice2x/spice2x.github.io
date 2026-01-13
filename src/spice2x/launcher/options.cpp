@@ -999,6 +999,19 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
+        // GitaDoraWailHold
+        .title = "GitaDora Digital Wail Hold",
+        .name = "gdwailhold",
+        .desc = "For digital wail input, how long (in milliseconds) to hold the wail state. Practically, this controls "
+            "how sensitive wailing is.\n\n"
+            "Default: 100 (ms)\n\n"
+            "If set to 0, no hold will occur, which means you need to press the wail button longer to register; "
+            "default value of 100ms will cause the game to trigger wail even on a light tap of the button",
+        .type = OptionType::Integer,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+    },
+    {
         .title = "Force Load Jubeat Module",
         .name = "jb",
         .desc = "Manually enable Jubeat module",
