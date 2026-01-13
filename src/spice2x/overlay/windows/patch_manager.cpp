@@ -1,11 +1,13 @@
 #include "patch_manager.h"
 
+#include <chrono>
 #include <thread>
 #include <fstream>
 #include <shellapi.h>
 #include <winhttp.h>
 #include <psapi.h>
 #include <format>
+#include "external/fmt/include/fmt/chrono.h"
 #include "external/rapidjson/document.h"
 #include "external/rapidjson/prettywriter.h"
 #include "external/rapidjson/stringbuffer.h"
@@ -1150,7 +1152,7 @@ namespace overlay::windows {
         }
     }
 
-    std::string get_game_identifier(const std::filesystem::path& dll_path) {
+    std::string get_game_identifier(const std::filesystem::path& dll_path, bool print_info) {
         uint32_t time_date_stamp = 0;
         uint32_t address_of_entry_point = 0;
 
@@ -1159,7 +1161,7 @@ namespace overlay::windows {
         if (!result) {
             return "";
         }
-        
+
         // concatenate TimeDateStamp and AddressOfEntryPoint
         std::string identifier =
             fmt::format(
@@ -1168,6 +1170,16 @@ namespace overlay::windows {
                 time_date_stamp,
                 address_of_entry_point);
 
+        if (print_info) {
+            const auto time = std::chrono::system_clock::from_time_t(time_date_stamp);
+            log_info(
+                "patchmanager",
+                "file: {}, patch id: {}, build timestamp of dll: {:%Y-%m-%d %H:%M}",
+                dll_path.has_filename() ? dll_path.filename().string() : dll_path.string(),
+                identifier,
+                time);
+        }
+        
         return identifier;
     }
 
@@ -1657,14 +1669,12 @@ namespace overlay::windows {
         ACTIVE_JSON_FILE = "";
 
         std::string firstDll = avs::game::DLL_NAME;
-        std::string first_id = get_game_identifier(MODULE_PATH / firstDll);
+        std::string first_id = get_game_identifier(MODULE_PATH / firstDll, true);
         std::filesystem::path firstPath = fmt::format("patches/{}.json", first_id);
-
-        log_misc("patchmanager", "patch identifier of {}: {}", firstDll, first_id);
 
         auto extraDlls = getExtraDlls(firstDll);
         std::erase_if(extraDlls, [](const std::string& dll) {
-            auto identifier = get_game_identifier(MODULE_PATH / dll);
+            auto identifier = get_game_identifier(MODULE_PATH / dll, true);
             return identifier.empty() || !fileutils::file_exists(fmt::format("patches/{}.json", identifier));
         });
 
