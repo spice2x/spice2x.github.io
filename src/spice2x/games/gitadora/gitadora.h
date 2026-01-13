@@ -10,6 +10,8 @@ namespace games::gitadora {
     // settings
     extern bool TWOCHANNEL;
     extern std::optional<unsigned int> CAB_TYPE;
+    extern bool P1_LEFTY;
+    extern bool P2_LEFTY;
 
     class GitaDoraGame : public games::Game {
     public:
@@ -38,4 +40,12 @@ namespace games::gitadora {
             );
     }
 
+    static inline bool is_player_lefty(size_t player) {
+        if (player == 0) {
+            return P1_LEFTY;
+        } else if (player == 1) {
+            return P2_LEFTY;
+        }
+        return false;
+    }
 }

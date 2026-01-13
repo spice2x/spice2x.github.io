@@ -3,6 +3,7 @@
 #include "launcher/launcher.h"
 #include "games/io.h"
 #include "misc/eamuse.h"
+#include "overlay/imgui/extensions.h"
 
 namespace overlay::windows {
 
@@ -80,6 +81,9 @@ namespace overlay::windows {
         {
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetFrameHeightWithSpacing());
             this->build_button("+", tall, this->test_button, this->service_button);
+            if (ImGui::IsItemHovered()) {
+                ImGui::HelpTooltip("SERVICE + TEST");
+            }
         }
         ImGui::EndGroup();
 

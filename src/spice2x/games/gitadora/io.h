@@ -209,6 +209,7 @@ namespace games::gitadora {
     // getters
     std::vector<Button> &get_buttons();
     std::string get_buttons_help();
+    std::string get_analogs_help();
     std::vector<Analog> &get_analogs();
     std::vector<Light> &get_lights();
 }

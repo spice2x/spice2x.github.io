@@ -7,6 +7,8 @@
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/circular_buffer.h"
+#include "util/socd_cleaner.h"
+#include "util/time.h"
 #include "misc/eamuse.h"
 #include "cfg/api.h"
 #include "acio/icca/icca.h"
@@ -336,6 +338,9 @@ static int __cdecl gfdm_unit2_boot_initialize() {
     return 1;
 }
 
+constexpr int LEFTY_X_CENTER = 2040;
+
+// this seems to be only used in the I/O test menu, not in gameplay
 static void *__cdecl gfdm_unit_get_button_p(void *a1, int a2, size_t player) {
     memset(a1, 0, 64);
 
@@ -344,31 +349,61 @@ static void *__cdecl gfdm_unit_get_button_p(void *a1, int a2, size_t player) {
         return a1;
     }
 
+    // log_info("gitadora", "gfdm_unit_get_button_p: a2={}, player={}", a2, player);
+
     // get buttons
     auto &buttons = games::gitadora::get_buttons();
     auto &analogs = games::gitadora::get_analogs();
+    const auto wail_up =
+        Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + 11 * (size_t) player]));
+    const auto wail_down =
+        Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + 11 * (size_t) player]));
+    const auto wail_result =
+        socd::get_guitar_wail(player, wail_up, wail_down, get_performance_milliseconds());
 
-    // X
-    ((int *) a1)[4] = a2 == 1 ? 4080 : -4080;
-    if (analogs.at(player * 3 + 0).isSet())
-        ((int *) a1)[4] = lroundf(Analogs::getState(
-                RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 0])) * 8160.f) - 4080;
+    // wail X
+    ((int *) a1)[4] = games::gitadora::is_player_lefty(player) ? LEFTY_X_CENTER : -4080;
+    auto &analog_x = analogs.at(gitadora_analog_mapping[player * 4 + 0]);
+    if (analog_x.isSet())
+        ((int *) a1)[4] = lroundf(Analogs::getState(RI_MGR, analog_x) * 8160.f) - 4080;
 
-    // Y
+    // wail Y
     ((int *) a1)[5] = 0;
-    if (analogs.at(player * 3 + 1).isSet())
-        ((int *) a1)[5] = lroundf(Analogs::getState(
-                RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 1])) * 8160.f) - 4080;
-    if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + 11 * (size_t) player])))
-        ((int *) a1)[5] = -4080;
-    if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + 11 * (size_t) player])))
-        ((int *) a1)[5] = 4080;
+    auto &analog_y = analogs.at(gitadora_analog_mapping[player * 4 + 1]);
+    if (analog_y.isSet()) {
+        ((int *) a1)[5] = lroundf(Analogs::getState(RI_MGR, analog_y) * 8160.f) - 4080;
+    }
 
-    // Z
+    // digital wailing
+    if (!games::gitadora::is_player_lefty(player)) {
+        // righty
+        if (wail_result == socd::TiltUp) {
+            // top center
+            ((int *) a1)[4] = 0; // X
+            ((int *) a1)[5] = -4080; // Y
+        } else if (wail_result == socd::TiltDown) {
+            // bottom left; for lefty, bottom right
+            ((int *) a1)[4] = -4080; // X
+            ((int *) a1)[5] = 4080; // Y
+        }
+    } else {
+        // lefty
+        if (wail_result == socd::TiltUp) {
+            // left
+            ((int *) a1)[4] = -4080; // X
+            ((int *) a1)[5] = 0; // Y
+        } else if (wail_result == socd::TiltDown) {
+            // right
+            ((int *) a1)[4] = 4080; // X
+            ((int *) a1)[5] = 0; // Y
+        }   
+    }
+
+    // wail Z
     ((int *) a1)[6] = 0;
-    if (analogs.at(player * 3 + 2).isSet())
-        ((int *) a1)[6] = lroundf(Analogs::getState(
-                RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 2])) * 8160.f) - 4080;
+    auto &analog_z = analogs.at(gitadora_analog_mapping[player * 4 + 2]);
+    if (analog_z.isSet())
+        ((int *) a1)[6] = lroundf(Analogs::getState(RI_MGR, analog_z) * 8160.f) - 4080;
 
     // return the same buffer
     return a1;
@@ -585,63 +620,74 @@ static long __cdecl gfdm_unit2_get_input(int device) {
     return gfdm_unit_get_input_p(device, 1);
 }
 
+// this is used in gameplay
 static long __cdecl gfdm_unit_get_sensor_gf_p(int a1, int a2, size_t player) {
 
     // return if it's actually drum mania
     if (games::gitadora::is_drum())
         return 0;
 
+    // log_info("gitadora", "gfdm_unit_get_sensor_gf_p: a1={}, a2={}, player={}", a1, a2, player);
+
     // get buttons and analogs
     auto &buttons = games::gitadora::get_buttons();
     auto &analogs = games::gitadora::get_analogs();
 
-    // X
+    // figure out digital wail Y
+    const size_t offset = (size_t) player * 11;
+    const auto wail_up = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + offset]));
+    const auto wail_down = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + offset]));
+    const auto wail_result = socd::get_guitar_wail(player, wail_up, wail_down, get_performance_milliseconds());
+
+    // wail X
     if (a2 == 0) {
+        long ret = games::gitadora::is_player_lefty(player) ? LEFTY_X_CENTER : -4080;
 
         // analog override
-        if (analogs.at(gitadora_analog_mapping[player * 3 + 0]).isSet()) {
-            return lroundf(Analogs::getState(
-                    RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 0])) * 8160.f) - 4080;
+        auto &analog_x = analogs.at(gitadora_analog_mapping[player * 4 + 0]);
+        if (analog_x.isSet()) {
+            ret = lroundf(Analogs::getState(RI_MGR, analog_x) * 8160.f) - 4080;
+        }
+
+        // digital wail up/down
+        if (wail_result == socd::TiltUp) {
+            ret = games::gitadora::is_player_lefty(player) ? -4080 : 0;
+        } else if (wail_result == socd::TiltDown) {
+            ret = games::gitadora::is_player_lefty(player) ? +4080 : -4080;
         }
 
         // default
-        return a1 == 1 ? 4080 : -4080;
+        return ret;
     }
 
-    // Y
+    // wail Y
     if (a2 == 1) {
+        long ret = 0;
 
         // analog override
-        if (analogs.at(player * 3 + 1).isSet()) {
-            return lroundf(Analogs::getState(
-                    RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 1])) * 8160.f) - 4080;
+        auto &analog_y = analogs.at(gitadora_analog_mapping[player * 4 + 1]);
+        if (analog_y.isSet()) {
+            ret = lroundf(Analogs::getState(RI_MGR, analog_y) * 8160.f) - 4080;
         }
 
-        // variables
-        long ret = 0;
-        size_t offset = (size_t) player * 11;
-
-        // wail up
-        if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[12 + offset]))) {
-            ret -= 4080;
-        }
-
-        // wail down
-        if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[13 + offset]))) {
-            ret += 4080;
+        // digital wail up/down
+        if (wail_result == socd::TiltUp) {
+            ret = games::gitadora::is_player_lefty(player) ? 0 : -4080;
+        } else if (wail_result == socd::TiltDown) {
+            ret = games::gitadora::is_player_lefty(player) ? 0 : 4080;
         }
 
         // return value
         return ret;
     }
 
-    // Z
+    // wail Z
     if (a2 == 2) {
 
         // analog override
-        if (analogs.at(gitadora_analog_mapping[player * 3 + 2]).isSet()) {
-            return lroundf(Analogs::getState(
-                    RI_MGR, analogs.at(gitadora_analog_mapping[player * 4 + 2])) * 8160.f) - 4080;
+        auto &analog_z = analogs.at(gitadora_analog_mapping[player * 4 + 2]);
+        if (analog_z.isSet()) {
+            return lroundf(Analogs::getState(RI_MGR, analog_z) * 8160.f) - 4080;
         }
 
         // default

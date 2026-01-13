@@ -609,6 +609,17 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraTwoChannelAudio].value_bool()) {
         games::gitadora::TWOCHANNEL = true;
     }
+    if (options[launcher::Options::GitaDoraLefty].is_active()) {
+        const auto text = options[launcher::Options::GitaDoraLefty].value_text();
+        if (text == "p1") {
+            games::gitadora::P1_LEFTY = true;
+        } else if (text == "p2") {
+            games::gitadora::P2_LEFTY = true;
+        } else if (text == "both") {
+            games::gitadora::P1_LEFTY = true;
+            games::gitadora::P2_LEFTY = true;
+        }
+    }
     if (options[launcher::Options::LoadDDRModule].value_bool()) {
         attach_ddr = true;
     }

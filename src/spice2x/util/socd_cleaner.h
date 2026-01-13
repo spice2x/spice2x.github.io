@@ -4,6 +4,8 @@
 
 namespace socd {
 
+    // SOCD for knobs / turntables
+
     enum class SocdAlgorithm {
         Neutral,
         PreferRecent,
@@ -19,4 +21,16 @@ namespace socd {
     } SocdResult;
 
     SocdResult socd_clean(uint8_t device, bool ccw, bool cw, double time_now);
+
+    // for guitar wail (up/down only)
+
+    extern uint32_t TILT_HOLD_MS;
+
+    typedef enum _TiltResult {
+        TiltUp = 0,
+        TiltDown = 1,
+        TiltNone = 2
+    } TiltResult;
+
+    TiltResult get_guitar_wail(uint8_t device, bool up, bool down, double time_now);
 }
