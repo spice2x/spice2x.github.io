@@ -97,7 +97,7 @@ namespace overlay::windows {
 
     extern std::optional<std::string> PATCH_MANAGER_CFG_PATH_OVERRIDE;
 
-    std::string get_game_identifier(const std::filesystem::path& dll_path);
+    std::string get_game_identifier(const std::filesystem::path& dll_path, bool print_info=false);
 
     class PatchManager : public Window {
     public:
