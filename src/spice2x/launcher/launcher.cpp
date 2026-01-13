@@ -107,6 +107,7 @@
 #include "util/libutils.h"
 #include "util/logging.h"
 #include "util/peb.h"
+#include "util/socd_cleaner.h"
 #include "util/sysutils.h"
 #include "util/tapeled.h"
 #include "util/time.h"
@@ -587,6 +588,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::GitaDoraCabinetType].is_active()) {
         games::gitadora::CAB_TYPE = options[launcher::Options::GitaDoraCabinetType].value_uint32();
+    }
+    if (options[launcher::Options::GitaDoraWailHold].is_active()) {
+        socd::TILT_HOLD_MS = options[launcher::Options::GitaDoraWailHold].value_uint32();
     }
     if (options[launcher::Options::LoadNostalgiaModule].value_bool()) {
         attach_nostalgia = true;
