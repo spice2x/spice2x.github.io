@@ -249,7 +249,7 @@ namespace overlay::windows {
                 // help text for binding buttons, if the game has one
                 const auto help_text = games::get_buttons_help(this->games_selected_name);
                 if (!help_text.empty()) {
-                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Button Layout");
+                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Button Bindings");
                     ImGui::Spacing();
                     ImGui::TextWrapped("%s", help_text.c_str());
                     ImGui::TextUnformatted("");
@@ -299,8 +299,18 @@ namespace overlay::windows {
             }
             if (ImGui::BeginTabItem("Analogs")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_ANALOGS;
+
                 ImGui::BeginChild("Analogs", ImVec2(
                     0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
+
+                // help text for binding analog, if the game has one
+                const auto help_text = games::get_analogs_help(this->games_selected_name);
+                if (!help_text.empty()) {
+                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Analog Bindings");
+                    ImGui::Spacing();
+                    ImGui::TextWrapped("%s", help_text.c_str());
+                    ImGui::TextUnformatted("");
+                }
                 this->build_analogs("Game", games::get_analogs(this->games_selected_name));
                 ImGui::EndChild();
                 ImGui::EndTabItem();

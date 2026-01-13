@@ -47,6 +47,7 @@ namespace games {
     static robin_hood::unordered_map<std::string, std::vector<Button>> buttons_keypads;
     static robin_hood::unordered_map<std::string, std::vector<Button>> buttons_overlay;
     static robin_hood::unordered_map<std::string, std::string> buttons_help;
+    static robin_hood::unordered_map<std::string, std::string> analogs_help;
     static robin_hood::unordered_map<std::string, std::vector<Analog> &> analogs;
     static robin_hood::unordered_map<std::string, std::vector<Light> &> lights;
     static robin_hood::unordered_map<std::string, std::vector<Option>> options;
@@ -107,6 +108,7 @@ namespace games {
         games.push_back(gitadora);
         buttons.insert({ gitadora, gitadora::get_buttons() });
         buttons_help.insert({ gitadora, gitadora::get_buttons_help() });
+        analogs_help.insert({ gitadora, gitadora::get_analogs_help() });
         analogs.insert({ gitadora, gitadora::get_analogs() });
         lights.insert({ gitadora, gitadora::get_lights() });
         file_hints[gitadora].emplace_back("gdxg.dll");
@@ -344,6 +346,15 @@ namespace games {
         initialize();
         auto it = buttons_help.find(game);
         if (it == buttons_help.end()) {
+            return "";
+        }
+        return it->second;
+    }
+
+    std::string get_analogs_help(const std::string &game) {
+        initialize();
+        auto it = analogs_help.find(game);
+        if (it == analogs_help.end()) {
             return "";
         }
         return it->second;
