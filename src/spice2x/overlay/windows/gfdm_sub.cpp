@@ -15,15 +15,15 @@ namespace overlay::windows {
 
         this->resize_callback = keep_10_by_16;
 
-        const float size = 0.5f;
+        const float size = 0.48f;
         const float height = ImGui::GetIO().DisplaySize.y * size;
         const float width = height * 10 / 16;
         this->init_size = ImVec2(width, height + ImGui::GetFrameHeight());
 
         // bottom right
         this->init_pos = ImVec2(
-            ImGui::GetIO().DisplaySize.x - ImGui::GetFrameHeight() / 2 - this->init_size.x,
-            ImGui::GetIO().DisplaySize.y - this->init_size.y - (ImGui::GetFrameHeight() / 2));
+            ImGui::GetIO().DisplaySize.x - ImGui::GetFrameHeight() / 4 - this->init_size.x,
+            ImGui::GetIO().DisplaySize.y - this->init_size.y - (ImGui::GetFrameHeight() / 4));
     }
 
     void GitaDoraSubScreen::touch_transform(const ImVec2 xy_in, LONG *x_out, LONG *y_out) {
