@@ -20,14 +20,9 @@ namespace overlay::windows {
         const float width = height * 10 / 16;
         this->init_size = ImVec2(width, height + ImGui::GetFrameHeight());
 
-        // middle / bottom
-        // this->init_pos = ImVec2(
-        //     ImGui::GetIO().DisplaySize.x / 2 - this->init_size.x / 2,
-        //     ImGui::GetIO().DisplaySize.y - this->init_size.y - (ImGui::GetFrameHeight() / 2));
-
         // bottom right
         this->init_pos = ImVec2(
-            ImGui::GetIO().DisplaySize.x * 0.99f - this->init_size.x,
+            ImGui::GetIO().DisplaySize.x - ImGui::GetFrameHeight() / 2 - this->init_size.x,
             ImGui::GetIO().DisplaySize.y - this->init_size.y - (ImGui::GetFrameHeight() / 2));
     }
 

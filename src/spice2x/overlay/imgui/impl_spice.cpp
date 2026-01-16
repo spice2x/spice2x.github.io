@@ -182,8 +182,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
         // trigger any overlay, don't process anything else
         const auto is_windowed_subscreen = 
             (GRAPHICS_IIDX_WSUB && active_window == TDJ_SUBSCREEN_WINDOW) ||
-            (active_window == SDVX_SUBSCREEN_WINDOW) || 
-            GFDM_SUBSCREEN_WINDOWS.contains(active_window);
+            (active_window == SDVX_SUBSCREEN_WINDOW);
         if (is_windowed_subscreen) {
             io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
             return;
