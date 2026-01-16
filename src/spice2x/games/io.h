@@ -58,6 +58,7 @@ namespace games {
     const std::vector<std::string> &get_games();
     std::vector<Button> *get_buttons(const std::string &game);
     std::string get_buttons_help(const std::string &game);
+    std::string get_analogs_help(const std::string &game);
     std::vector<Button> *get_buttons_keypads(const std::string &game);
     std::vector<Button> *get_buttons_overlay(const std::string &game);
     std::vector<Analog> *get_analogs(const std::string &game);

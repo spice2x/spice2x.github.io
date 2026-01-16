@@ -10,6 +10,7 @@
 #include "avs/game.h"
 #include "games/iidx/iidx.h"
 #include "games/gitadora/gitadora.h"
+#include "games/sdvx/sdvx.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -220,8 +221,7 @@ void hooks::lang::early_init() {
     detour::trampoline_try("kernel32.dll", "GetOEMCP", GetOEMCP_hook, &GetOEMCP_orig);
 
 #ifdef SPICE64 // SDVX5+ specific code
-    bool isValkyrieCabinetMode = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
-    if (avs::game::is_model("KFC") && isValkyrieCabinetMode) {
+    if (games::sdvx::is_valkyrie_model()) {
         log_info("hooks::lang", "hooking GetSystemDefaultLCID");
         detour::trampoline_try(
             "kernel32.dll",

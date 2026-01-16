@@ -18,6 +18,7 @@ namespace overlay::windows {
         void draw_buttons(const int player);
         void draw_sliders(const int player);
 
+        bool has_menu_controls;
         bool two_players;
         bool has_guitar_knobs;
 

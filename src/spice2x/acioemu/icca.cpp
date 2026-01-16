@@ -2,6 +2,7 @@
 
 #include "acio/icca/icca.h"
 #include "avs/game.h"
+#include "games/sdvx/sdvx.h"
 #include "misc/eamuse.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -101,13 +102,10 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
 
             // send version data
             auto msg = this->create_msg(msg_in, MSG_VERSION_SIZE);
-            if (
-                avs::game::is_model({"LDJ", "TBS", "UJK", "XIF"}) ||
-                // SDVX Valkyrie cabinet mode
-                (avs::game::is_model("KFC") && (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H'))
-            ) {
+            if (avs::game::is_model({"LDJ", "TBS", "UJK", "XIF"}) ||
+                games::sdvx::is_valkyrie_model()) {
                 this->set_version(msg, 0x3, 0, 1, 7, 0, "ICCA");
-            } else if (avs::game::is_model({"VFG"})) {
+            } else if (avs::game::is_model("VFG")) {
                 this->set_version(msg, 0x3, 0, 1, 7, 0, "ICCB");
             } else {
                 this->set_version(msg, 0x3, 0, 1, 6, 0, "ICCA");
@@ -520,11 +518,7 @@ void ICCADevice::update_status(int unit) {
             buffer[1] = felica ? 0x01 : 0x00;
             buffer[10] = felica ? 0x01 : 0x00;
 
-        } else if (
-            avs::game::is_model({"LDJ", "TBS", "XIF"}) ||
-            // SDVX Valkyrie cabinet mode
-            (avs::game::is_model("KFC") && (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H'))) {
-
+        } else if (avs::game::is_model({"LDJ", "TBS", "XIF"}) || games::sdvx::is_valkyrie_model()) {
             // set status to 0 otherwise reader power on fails
             buffer[0] = 0x00;
         } else {

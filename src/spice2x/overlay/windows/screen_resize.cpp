@@ -27,6 +27,11 @@ namespace overlay::windows {
     }
 
     HWND ScreenResize::get_first_window() {
+        // hack for gitadora arena model which races to create many windows
+        // so [0] is not always the main one
+        if (GRAPHICS_WINDOW_MAIN.has_value()) {
+            return GRAPHICS_WINDOW_MAIN.value();
+        }
         if (GRAPHICS_WINDOWS.size() == 0) {
             return NULL;
         }
@@ -95,6 +100,21 @@ namespace overlay::windows {
     }
 
     void ScreenResize::build_fullscreen_config() {
+
+        if (avs::game::is_model("KFC")) {
+            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
+                "Warning: Enabling Image Resize uses more GPU\n"
+                "resources and may significantly lower framerate\n"
+                "for songs with Live2D! Results may vary, use at\n"
+                "your own risk.");
+        } else {
+            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
+                "Warning: Enabling Image Resize uses more GPU\n"
+                "resources and may significantly lower framerate\n"
+                "in some situations! Results may vary, use at\n"
+                "your own risk.");
+        }
+
         // enable checkbox
         ImGui::Checkbox("Enable", &cfg::SCREENRESIZE->enable_screen_resize);
         ImGui::SameLine();
@@ -136,22 +156,27 @@ namespace overlay::windows {
         // aspect ratio
         ImGui::Checkbox("Keep Aspect Ratio", &scene.keep_aspect_ratio);
         if (scene.keep_aspect_ratio) {
-            if (ImGui::SliderFloat("Scale", &scene.scale_x, 0.5f, 2.5f)) {
+
+            // we want to avoid zooming out below 0.6 as it will cause StretchRect calls to
+            // go on a slow sync path with the GPU, leading to frame drops in some situations
+            // (e.g., SDVX Live2D)
+
+            if (ImGui::SliderFloat("Scale", &scene.scale_x, 0.6f, 2.5f)) {
                 scene.scale_y = scene.scale_x;
             }
             ImGui::SameLine();
             ImGui::HelpMarker("Hint: ctrl + click on the slider to type in a numeric value.");
         } else {
-            ImGui::SliderFloat("Width Scale", &scene.scale_x, 0.5f, 2.5f);
+            ImGui::SliderFloat("Width Scale", &scene.scale_x, 0.6f, 2.5f);
             ImGui::SameLine();
             ImGui::HelpMarker("Hint: ctrl + click on the slider to type in a numeric value.");
-            ImGui::SliderFloat("Height Scale", &scene.scale_y, 0.5f, 2.5f);
+            ImGui::SliderFloat("Height Scale", &scene.scale_y, 0.6f, 2.5f);
             ImGui::SameLine();
             ImGui::HelpMarker("Hint: ctrl + click on the slider to type in a numeric value.");
         }
 
         static const char* dupe_items[] = { "None", "Copy Left", "Copy Right" };
-        ImGui::Combo(
+        const bool duplicate_changed = ImGui::Combo(
             "Duplicate",
             reinterpret_cast<int *>(&scene.duplicate),
             dupe_items,
@@ -162,6 +187,11 @@ namespace overlay::windows {
             "wrap-around effect when an offset is set.");
 
         ImGui::EndDisabled();
+
+        // tell d3d9 device to clear surface to get rid of ghost image
+        if (duplicate_changed) {
+            cfg::SCREENRESIZE->need_surface_clean = true;
+        }
     }
 
     void ScreenResize::build_windowed_config() {
@@ -171,7 +201,6 @@ namespace overlay::windows {
             return;
         }
 
-        ImGui::TextUnformatted("Warning: may cause some games to crash.");
         ImGui::BeginDisabled(graphics_window_change_crashes_game());
         if (ImGui::Combo(
                 "Window Style",

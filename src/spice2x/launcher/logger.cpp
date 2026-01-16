@@ -12,9 +12,11 @@
 #include "launcher/launcher.h"
 #include "util/utils.h"
 
-#define FOREGROUND_GREY   (8)
-#define FOREGROUND_WHITE  (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN)
-#define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
+#define FOREGROUND_GREY    (8)
+#define FOREGROUND_WHITE   (FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN)
+#define FOREGROUND_YELLOW  (FOREGROUND_RED | FOREGROUND_GREEN)
+#define FOREGROUND_CYAN    (FOREGROUND_GREEN | FOREGROUND_BLUE)
+#define FOREGROUND_MAGENTA (FOREGROUND_RED | FOREGROUND_BLUE)
 
 namespace logger {
 
@@ -103,9 +105,6 @@ namespace logger {
                 last_style = content.second;
 
                 switch (content.second) {
-                    case Style::DEFAULT:
-                        set_console_color(hTerminal, FOREGROUND_WHITE);
-                        break;
                     case Style::GREY:
                         set_console_color(hTerminal, FOREGROUND_GREY);
                         break;
@@ -114,6 +113,13 @@ namespace logger {
                         break;
                     case Style::RED:
                         set_console_color(hTerminal, FOREGROUND_RED);
+                        break;
+                    case Style::SPECIAL:
+                        set_console_color(hTerminal, FOREGROUND_CYAN);
+                        break;
+                    case Style::DEFAULT:
+                    default:
+                        set_console_color(hTerminal, FOREGROUND_WHITE);
                         break;
                 }
             }

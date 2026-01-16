@@ -191,13 +191,25 @@ namespace games::gitadora {
             GuitarRightSpeakerMidLowRightB,
             GuitarRightSpeakerLowerR,
             GuitarRightSpeakerLowerG,
-            GuitarRightSpeakerLowerB
+            GuitarRightSpeakerLowerB,
+
+            // arena model (common for both guitar and drum)
+            ArenaTitleAvgR,
+            ArenaTitleAvgG,
+            ArenaTitleAvgB,
+            ArenaWooferR,
+            ArenaWooferG,
+            ArenaWooferB,
+            ArenaCardR,
+            ArenaCardG,
+            ArenaCardB,
         } gitadora_lights_t;
     }
 
     // getters
     std::vector<Button> &get_buttons();
     std::string get_buttons_help();
+    std::string get_analogs_help();
     std::vector<Analog> &get_analogs();
     std::vector<Light> &get_lights();
 }

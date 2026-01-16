@@ -1986,7 +1986,7 @@ void CALLBACK rawinput::RawInputManager::input_midi_proc(HMIDIIN hMidiIn, UINT w
                                     device.midiInfo->v2_last_off_time[midi_index] = get_performance_milliseconds();
                                     device.updated = true;
                                 }
-                                // for v2_drum, NOTE ON is ignored
+                                // for v2_drum, NOTE OFF is ignored
                             }
                         }
 

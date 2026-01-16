@@ -32,6 +32,16 @@ namespace deferredlogs {
         deferred_errors.emplace_back(messages);
     }
 
+    void report_fatal_message() {
+        static std::once_flag printed;
+        std::call_once(printed, []() {
+            deferredlogs::defer_error_messages({
+                "game reported FATAL error(s)",
+                "    look for messages containing F: in the log",
+                });
+        });
+    }
+
     void dump_to_logger(bool is_crash) {
         static std::once_flag printed;
         std::call_once(printed, [is_crash]() {
@@ -76,8 +86,8 @@ namespace deferredlogs {
                 msg += "\n";
             }
 
-            for (auto messages : errors) {
-                for (auto message : messages) {
+            for (const auto &messages : errors) {
+                for (const auto &message : messages) {
                     msg += "  " + message + "\n";
                 }
                 msg += "\n";
@@ -85,13 +95,13 @@ namespace deferredlogs {
 
             msg += "  unsure what to do next?\n";
             msg += "    * update to the latest version:\n";
-            msg += "        https://github.com/spice2x/spice2x.github.io/releases/latest\n";
+            msg += "        https://github.com/spice2x/spice2x.github.io/releases\n";
             msg += "    * check the FAQ:\n";
             msg += "        https://github.com/spice2x/spice2x.github.io/wiki/Known-issues\n";
             msg += "\n";
             msg += "\\------------------------- spice2x auto-troubleshooter ------------------------/\n";
 
-            log_warning("troubleshooter", "{}", msg);
+            log_special("troubleshooter", "{}", msg);
         });
     }
 }

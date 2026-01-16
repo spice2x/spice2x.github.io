@@ -4,6 +4,7 @@
 #include <optional>
 #include <cstdint>
 
+#include "avs/game.h"
 #include "games/game.h"
 
 namespace games::sdvx {
@@ -20,11 +21,17 @@ namespace games::sdvx {
     extern bool NATIVETOUCH;
     extern uint8_t DIGITAL_KNOB_SENS;
     extern std::optional<std::string> ASIO_DRIVER;
-    extern bool BI2X_INITIALIZED;
     extern SdvxOverlayPosition OVERLAY_POS;
 
     // states
     extern bool SHOW_VM_MONITOR_WARNING;
+
+    static inline bool is_valkyrie_model() {
+        return (
+            avs::game::is_model("KFC") &&
+            (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H')
+            );
+    }
 
     class SDVXGame : public games::Game {
     public:
@@ -34,10 +41,6 @@ namespace games::sdvx {
         virtual void post_attach() override;
         virtual void detach() override;
     private:
-        // don't be tempted to make this into a public or a global variable
-        // various modules need to check if VM mode is active and they should
-        // not depend on the fact that SDVX module is active (since it can be
-        // inactive on cabs or partial I/O setup)
-        bool VALKYRIE_MODEL = false;
+        void detect_sound_output_device();
     };
 }

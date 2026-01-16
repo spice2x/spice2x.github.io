@@ -63,7 +63,9 @@ bool GRAPHICS_SHOW_CURSOR = false;
 graphics_orientation GRAPHICS_ADJUST_ORIENTATION = ORIENTATION_NORMAL;
 bool GRAPHICS_WINDOWED = false;
 std::vector<HWND> GRAPHICS_WINDOWS;
+std::optional<HWND> GRAPHICS_WINDOW_MAIN;
 UINT GRAPHICS_FORCE_REFRESH = 0;
+std::optional<uint32_t> GRAPHICS_FORCE_REFRESH_SUB;
 std::optional<int> GRAPHICS_FORCE_VSYNC_BUFFER;
 bool GRAPHICS_FORCE_SINGLE_ADAPTER = false;
 bool GRAPHICS_PREVENT_SECONDARY_WINDOW = false;
@@ -364,10 +366,12 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     // gfdm
+    bool is_gitadora_main_window = false;
     if (avs::game::is_model({"J32", "J33", "K32", "K33", "L32", "L33", "M32"})) {
         // set window name
         if (!lpWindowName) {
             lpWindowName = "GITADORA";
+            is_gitadora_main_window = true;
         }
     }
 
@@ -412,6 +416,11 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             hWndParent, hMenu, hInstance, lpParam);
     GRAPHICS_WINDOWS.push_back(result);
 
+    // this is only really needed for arena model, but pre-arena model was single window anyway
+    if (is_gitadora_main_window) {
+        GRAPHICS_WINDOW_MAIN = result;
+    }
+
     if (is_tdj_sub_window) {
         // TDJ windowed mode: remember the subscreen window handle for later
         TDJ_SUBSCREEN_WINDOW = result;
@@ -438,6 +447,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     disable_touch_indicators(result);
+    log_misc("graphics", "CreateWindowExA returned {}", fmt::ptr(result));
     return result;
 }
 
@@ -504,6 +514,7 @@ static HWND WINAPI CreateWindowExW_hook(DWORD dwExStyle, LPCWSTR lpClassName, LP
             hWndParent, hMenu, hInstance, lpParam);
     GRAPHICS_WINDOWS.push_back(result);
 
+    log_misc("graphics", "CreateWindowExW returned {}", fmt::ptr(result));
     disable_touch_indicators(result);
     return result;
 }
@@ -668,16 +679,11 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
         return TRUE;
     }
 
-    // take this opportunity to close the gitadora sub windows
-    if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
-        if (GFDM_SUBSCREEN_WINDOWS.contains(hWnd)) {
-            log_info("graphics","SetWindowPos hook - hiding GFDM subscreen window {}", fmt::ptr(hWnd));
-            // TODO: this races with CreateDeviceEx, so if the window is closed before the game
-            // gets a chance to set up rendering, game will crash... :(
-            // SendMessage(hWnd, WM_CLOSE, 0, 0);
-            // GFDM_SUBSCREEN_WINDOWS.erase(hWnd);
-            return TRUE;
-        }
+    // prevent gitadora arena model from shifting windows around if the user has preferences
+    if (GRAPHICS_WINDOWED && games::gitadora::is_arena_model() &&
+        GRAPHICS_WINDOW_MAIN.has_value() && hWnd == GRAPHICS_WINDOW_MAIN.value() &&
+        cfg::SCREENRESIZE->enable_window_resize) {
+        return TRUE;
     }
 
     // call original

@@ -1,5 +1,7 @@
 #include "bi2x_hook.h"
 
+#if SPICE64
+
 #include <cstdint>
 #include "util/detour.h"
 #include "util/logging.h"
@@ -10,12 +12,22 @@
 #include "launcher/options.h"
 #include "io.h"
 #include "games/sdvx/sdvx.h"
+#include "util/socd_cleaner.h"
 #include "util/tapeled.h"
+#include "util/time.h"
 #include "acioemu/icca.h"
+
+#define DEBUG_VERBOSE 0
+
+#if DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
 
 namespace games::sdvx {
     constexpr bool BI2X_PASSTHROUGH = false;
-    bool BI2X_INITIALIZED = false;
 
     /*
      * class definitions
@@ -26,20 +38,54 @@ namespace games::sdvx {
         uint8_t data[0x10];
     };
 
-    struct AIO_NMGR_IOB2 {
-        uint8_t dummy0[0x50];
+    struct AIO_NMGR_IOB2_VTABLE {
+        // other functions here, but they never get called
+        uint8_t dummy[0x50];
         void (__fastcall *pAIO_NMGR_IOB_BeginManage)(int64_t a1);
-        uint8_t dummy1[0x9A0];
     };
+
+    struct AIO_NMGR_IOB2 {
+        AIO_NMGR_IOB2_VTABLE *vptr;
+        uint8_t dummy[0x9F0];
+    };
+
+    // confirmed in EG final in aioNMgrIob2_Create
+    static_assert(sizeof(AIO_NMGR_IOB2) == 0x9F8);
 
     struct AIO_IOB2_BI2X_UFC {
         // who knows
-        uint8_t data[0x13F8];
+        uint8_t data[0x39D8];
+    };
+
+    // confirmed in EG final in aioIob2Bi2xUFC_Create
+    static_assert(sizeof(AIO_IOB2_BI2X_UFC) == 0x39D8);
+
+    struct AIO_IOB2_BI2X_UFC__INPUT {
+        uint8_t DevIoCounter;
+        uint8_t bExIoAErr;
+        uint8_t bExIoBErr;
+        uint8_t bPcPowerOn;
+        uint8_t bPcPowerCheck;
+        uint8_t CoinCount;
+        uint8_t bTest;
+        uint8_t bService;
+        uint8_t bCoinSw;
+        uint8_t bCoinJam;
+        uint8_t bHPDetect;
     };
 
     struct AIO_IOB2_BI2X_UFC__DEVSTATUS {
-        // of course you could work with variables here
-        uint8_t buffer[0x19E];
+        uint8_t InputCounter;
+        uint8_t OutputCounter;
+        uint8_t IoResetCounter;
+        uint8_t TapeLedCounter;
+        uint8_t TapeLedRate[8];
+        AIO_IOB2_BI2X_UFC__INPUT Input;
+        uint8_t unk_1[289];
+        uint16_t AnalogLeft;
+        uint16_t AnalogRight;
+        uint8_t Buttons;
+        uint8_t unk_2[97];
     };
 
     /*
@@ -66,7 +112,7 @@ namespace games::sdvx {
     // libaio-iob.dll
     typedef AC_HNDLIF* (__fastcall *aioIob2Bi2x_OpenSciUsbCdc_t)(uint8_t device_num);
     typedef int64_t (__fastcall *aioIob2Bi2x_WriteFirmGetState_t)(int64_t a1);
-    typedef AIO_NMGR_IOB2** (__fastcall *aioNMgrIob2_Create_t)(AC_HNDLIF *a1, unsigned int a2);
+    typedef AIO_NMGR_IOB2* (__fastcall *aioNMgrIob2_Create_t)(AC_HNDLIF *a1, unsigned int a2);
 
     /*
      * function pointers
@@ -133,8 +179,8 @@ namespace games::sdvx {
             AIO_IOB2_BI2X_UFC__GetDeviceStatus_orig(This, status);
         }
 
-        status->buffer[0] = count;
-        status->buffer[12] = count;
+        status->InputCounter = count;
+        status->Input.DevIoCounter = count;
         count++;
 
         // get buttons
@@ -142,41 +188,51 @@ namespace games::sdvx {
 
         // control buttons
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Test]))
-            status->buffer[18] = 0x01;
+            status->Input.bTest = 0x01;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Service]))
-            status->buffer[19] = 0x01;
+            status->Input.bService = 0x01;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::CoinMech]))
-            status->buffer[20] = 0x01;
+            status->Input.bCoinSw = 0x01;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Start]))
-            status->buffer[316] |= 0x01;
+            status->Buttons |= 0x01;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BT_A]))
-            status->buffer[316] |= 0x02;
+            status->Buttons |= 0x02;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BT_B]))
-            status->buffer[316] |= 0x04;
+            status->Buttons |= 0x04;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BT_C]))
-            status->buffer[316] |= 0x08;
+            status->Buttons |= 0x08;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BT_D]))
-            status->buffer[316] |= 0x10;
+            status->Buttons |= 0x10;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FX_L]))
-            status->buffer[316] |= 0x20;
+            status->Buttons |= 0x20;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FX_R]))
-            status->buffer[316] |= 0x40;
+            status->Buttons |= 0x40;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]))
-            status->buffer[22] = 0x01;
+            status->Input.bHPDetect = 0x01;
+
+        status->Input.CoinCount += eamuse_coin_get_stock();
+
+        const auto now = get_performance_milliseconds();
 
         // volume left
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Left])) {
+        const auto vol_l_state = socd::socd_clean(0,
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Left]),
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Right]),
+            now);
+        if (vol_l_state == socd::SocdCCW) {
             VOL_L -= ((uint16_t)DIGITAL_KNOB_SENS * 4);
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_L_Right])) {
+        } else if (vol_l_state == socd::SocdCW) {
             VOL_L += ((uint16_t)DIGITAL_KNOB_SENS * 4);
         }
 
         // volume right
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Left])) {
+        const auto vol_r_state = socd::socd_clean(1,
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Left]),
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Right]),
+            now);
+        if (vol_r_state == socd::SocdCCW) {
             VOL_R -= ((uint16_t)DIGITAL_KNOB_SENS * 4);
-        }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::VOL_R_Right])) {
+        } else if (vol_r_state == socd::SocdCW) {
             VOL_R += ((uint16_t)DIGITAL_KNOB_SENS * 4);
         }
 
@@ -189,8 +245,14 @@ namespace games::sdvx {
             vol_right += (uint16_t) (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::VOL_R]) * 65535);
         }
 
-        *((uint16_t*) &status->buffer[312]) = vol_left;
-        *((uint16_t*) &status->buffer[314]) = vol_right;
+        status->AnalogLeft = vol_left;
+        status->AnalogRight = vol_right;
+
+        log_debug(
+            "bi2x_hook",
+            "knobs = {} {}",
+            status->AnalogLeft,
+            status->AnalogRight);
     }
 
     static void __fastcall AIO_IOB2_BI2X_UFC__IoReset(AIO_IOB2_BI2X_UFC *This,
@@ -345,21 +407,21 @@ namespace games::sdvx {
         log_info("bi2x_hook", "AIO_NMGR_IOB::BeginManage");
     }
 
-    static AIO_NMGR_IOB2** __fastcall aioNMgrIob2_Create(AC_HNDLIF *a1, unsigned int a2) {
+    static AIO_NMGR_IOB2* __fastcall aioNMgrIob2_Create(AC_HNDLIF *a1, unsigned int a2) {
         if (aioNmgrIob2 == nullptr) {
-            aioNmgrIob2 = new AIO_NMGR_IOB2;
-            memset(aioNmgrIob2, 0x0, sizeof(AIO_NMGR_IOB2));
-            aioNmgrIob2->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
+            aioNmgrIob2 = new AIO_NMGR_IOB2{};
+            aioNmgrIob2->vptr = new AIO_NMGR_IOB2_VTABLE{};
+            aioNmgrIob2->vptr->pAIO_NMGR_IOB_BeginManage = AIO_NMGR_IOB_BeginManageStub;
         }
-        log_info("bi2x_hook", "aioNMgrIob2_Create");
-        BI2X_INITIALIZED = true;
+        log_info("bi2x_hook", "aioNMgrIob2_Create returned {}, size=0x{:x}, vptr @ {}",
+            fmt::ptr(aioNmgrIob2), sizeof(*aioNmgrIob2), fmt::ptr(aioNmgrIob2->vptr));
 
         // enable hack to make PIN pad work for KFC in BI2X mode
         // this explicit check in the I/O init path is necessary
         // (as opposed to just doing a check for "isValkyrieCabMode?")
         // because there are hex edits that allow you to use legacy (KFC/BIO2) IO while in Valk mode
         acioemu::ICCA_DEVICE_HACK = true;
-        return &aioNmgrIob2;
+        return aioNmgrIob2;
     }
 
     static int64_t __fastcall aioIob2Bi2x_WriteFirmGetState(int64_t a1) {
@@ -411,3 +473,5 @@ namespace games::sdvx {
                 aioNMgrIob2_Create, &aioNMgrIob2_Create_orig);
     }
 }
+
+#endif

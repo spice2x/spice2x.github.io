@@ -107,9 +107,18 @@ std::string games::gitadora::get_buttons_help() {
     // keep to max 100 characters wide
     return
         "guitar:\n"
+        "\n"
         " < R G B Y P --- Pick ] \n"
         "\n"
+        " If you hold your guitar left-handed (frets on the right hand):\n"
+        "   * bind the buttons here as righty and use the in-game option\n"
+        "     to turn on LEFT mode to flip the order of buttons.\n"
+        "   * turn on GitaDora Lefty Guitar option in Options tab so that\n"
+        "     wailing is recognized correctly.\n"
+        "\n"
+        "\n"
         "drums:\n"
+        "\n"
         " LeftCymbal                                RightCymbal\n"
         "         HiHat        HiTom      LowTom \n"
         "                  Snare              FloorTom \n"
@@ -117,10 +126,30 @@ std::string games::gitadora::get_buttons_help() {
         "             Left          Bass\n"
         "             Pedal         Pedal\n"
         "\n"
-        "Drums are NOT velocity-sensitive!\n"
+        " Drums are NOT velocity-sensitive!\n"
         "\n"
-        "For MIDI drums with Open/Closed HiHat configurations, bind variations below. "
-        "v2_drum algorithm might work better for those drums."
+        " For MIDI drums with Open/Closed HiHat configurations or pads with\n"
+        " multiple hit zones, ensure you bind all variation using the Pages\n"
+        " button at the bottom."
+        ;
+}
+std::string games::gitadora::get_analogs_help() {
+    // keep to max 100 characters wide
+    return
+        "guitar:\n"
+        "\n"
+        "X axis: 0% when body is held facing monitor, 50% when flat on a table\n"
+        "Y axis: 50% when held horizontal, 0% when neck is raised, 100% pointing down\n"
+        "Z axis: 50% at rest, 100% when swinging neck toward monitor (only used in XG series)\n"
+        "\n"
+        "You need both X and Y axis for up/down wail to work correctly in-game.\n"
+        "If you only have Y axis, consider using digital wailing instead.\n"
+        "\n"
+        "Ensure you clear all analog bindings if you want to use digital wailing.\n"
+        "\n"
+        "If you hold your guitar left-handed (frets on the right hand),\n"
+        "analog bindings will likely not work as intended.\n"
+        "Consider using digital wailing in Buttons tab."
         ;
 }
 
@@ -211,7 +240,19 @@ std::vector<Light> &games::gitadora::get_lights() {
                 "Guitar Right Speaker Mid Low Right B (DX)",
                 "Guitar Right Speaker Lower R (DX)",
                 "Guitar Right Speaker Lower G (DX)",
-                "Guitar Right Speaker Lower B (DX)"
+                "Guitar Right Speaker Lower B (DX)",
+
+                "Title Average R (Arena)",
+                "Title Average G (Arena)",
+                "Title Average B (Arena)",
+
+                "Woofer R (Arena)",
+                "Woofer G (Arena)",
+                "Woofer B (Arena)",
+
+                "Card Reader R (Arena)",
+                "Card Reader G (Arena)",
+                "Card Reader B (Arena)"
         );
     }
 

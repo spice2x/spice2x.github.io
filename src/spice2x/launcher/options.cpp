@@ -221,9 +221,11 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Full Screen)",
     },
     {
-        .title = "Force Refresh Rate",
+        .title = "Force Monitor Refresh Rate",
         .name = "graphics-force-refresh",
-        .desc = "Force the refresh rate for the primary display adapter; works in both full screen and windowed modes",
+        .desc =
+            "Attempt to change the refresh rate for the primary monitor before the game boots; "
+            "works in both full screen and windowed modes, but known to fail for some games",
         .type = OptionType::Integer,
         .category = "Graphics (Common)",
     },
@@ -242,21 +244,34 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // FullscreenOrientationFlip
-        .title = "Full Screen Orientation Swap",
+        .title = "Full Screen Orientation Swap (EXPERIMENTAL)",
         .name = "forceresswap",
         .desc =
             "Allows you to play portrait games in in landscape (and vice versa) by transposing resolution and applying image scaling.\n\n"
             "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
             "Strongly consider combining this with -forceres option to render at monitor native resolution\n\n"
-            "WARNING: for SDVX, this messes with camera angle for note lanes, causing it to be zoomed out!",
+            "WARNING: for SDVX, this messes with camera angle for note lanes, causing it to be zoomed out, and causes performance issues "
+            "with Live2D!",
         .type = OptionType::Bool,
+        .hidden = true,
+        .category = "Graphics (Full Screen)"
+    },
+    {
+        // FullscreenSubRefreshRate
+        .title = "Force Submonitor Refresh Rate (EXPERIMENTAL)",
+        .name = "graphics-force-refresh-sub",
+        .desc =
+            "Override fullscreen refresh rate requested by the game for second monitor, "
+            "useful if you have a sub monitor that is not quite exactly 60Hz.\n\n"
+            "WARNING: experimental as we have not done extensive testing to see if this causes desyncs",
+        .type = OptionType::Integer,
         .category = "Graphics (Full Screen)"
     },
     {
         // Graphics9On12
         .title = "DirectX 9 on 12 (DEPRECATED - use -dx9on12 instead)",
         .name = "9on12",
-        .desc = "Use D3D9On12 wrapper library, requires Windows 10 Insider Preview 18956 or later. Deprecated - use -dx9on12 instead",
+        .desc = "Use D3D9On12 wrapper library, requires Windows 10. Deprecated - use -dx9on12 instead",
         .type = OptionType::Bool,
         .hidden = true,
         .category = "Graphics (Common)",
@@ -267,7 +282,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sp2x-dx9on12",
         .display_name = "dx9on12",
         .aliases= "dx9on12",
-        .desc = "Use D3D9On12 wrapper library, requires Windows 10 Insider Preview 18956 or later. Has no effect games on that don't use DX9. Can cause some games to crash.\n\n"
+        .desc = "Use D3D9On12 wrapper library, requires Windows 10. Has no effect games on that don't use DX9. Can cause some games to crash.\n\n"
             "Default: auto (use DX9 for most games, but turn on 9on12 for games that require it on non-NVIDIA GPUs)",
         .type = OptionType::Enum,
         .category = "Graphics (Common)",
@@ -383,10 +398,22 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .disabled = true,
     },
     {
+        // DisableOverlay
         .title = "Disable Spice Overlay",
         .name = "overlaydisable",
         .desc = "Disables the in-game overlay",
         .type = OptionType::Bool,
+        .category = "Overlay",
+    },
+    {
+        // OverlayScaling
+        .title = "Spice Overlay UI Scale %",
+        .name = "overlayscale",
+        .desc = "Forces UI scaling for the overlay, "
+            "things can look off since the UI was written for 100% scaling. "
+            "Enter value in percentage, between 10-400, inclusive",
+        .type = OptionType::Integer,
+        .setting_name = "200",
         .category = "Overlay",
     },
     {
@@ -592,7 +619,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "IIDX TDJ Mode (Lightning Model)",
         .name =  "iidxtdj",
-        .desc = "Enables TDJ cabinet mode. Ensure you also set -iidxsounddevice to desired option",
+        .desc = "Enables TDJ mode (Lightning Model cabinet).",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
@@ -608,6 +635,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "(0-255)",
         .game_name = "Beatmania IIDX",
         .category = "Game Options (Advanced)",
+    },
+    {
+        // IIDXDigitalTTSocd
+        .title = "IIDX Digital TT SOCD Cleaner",
+        .name = "iidxsocd",
+        .desc = "SOCD for turntables when using button input; what happens when both directions are pressed.\n\n"
+            "last: most recently pressed direction takes priority\n\n"
+            "first: first pressed direction takes priority\n\n"
+            "neutral (default): TT does not move when both directions are pressed, recommended to avoid excessive POORs",
+        .type = OptionType::Enum,
+        .game_name = "Beatmania IIDX",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"last", ""},
+            {"first", ""},
+            {"neutral", ""},
+        },
     },
     {
         // spice2x_IIDXLDJForce720p
@@ -793,6 +837,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
+        // SDVXDigitalKnobSocd
+        .title = "SDVX Digital Knob SOCD Cleaner",
+        .name = "sdvxsocd",
+        .desc = "SOCD for knobs when using button input; what happens when both directions are pressed.\n\n"
+            "last (default): most recently pressed direction takes priority, recommended to deal with slams\n\n"
+            "first: first pressed direction takes priority\n\n"
+            "neutral: knob does not move when both directions are pressed",
+        .type = OptionType::Enum,
+        .game_name = "Sound Voltex",
+        .category = "Game Options (Advanced)",
+        .elements = {
+            {"last", ""},
+            {"first", ""},
+            {"neutral", ""},
+        },
+    },
+    {
         // spice2x_SDVXAsioDriver
         .title = "SDVX ASIO driver",
         .name = "sp2x-sdvxasio",
@@ -923,6 +984,39 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "gdaonewindow",
         .desc = "For Arena Model, when running in windowed mode, only show the main game window; enables subscreen overlay",
         .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+    },
+    {
+        // GitaDoraLefty
+        .title = "GitaDora Lefty Guitar (for Digital Wailing)",
+        .name = "gdlefty",
+        .desc = "Enables lefty mode, flipping motion sensor directions. Default: off.\n\n"
+            "Without this option, enabling LEFT in the game option will continuously trigger UP wail.\n\n"
+            "Has no effect if you are using analog bindings for X/Y axis; expectation is that your controller "
+            "handles this correctly (most do not, however).\n\n"
+            "As always, remember to restart the game after changing options. If you need to change in the game, "
+            "use the I/O panel overlay window",
+        .type = OptionType::Enum,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+        .elements = {
+            {"off", "both righty"},
+            {"p1", "p1 is lefty"},
+            {"p2", "p2 is lefty"},
+            {"both", "both lefty"},
+        },
+    },
+    {
+        // GitaDoraWailHold
+        .title = "GitaDora Digital Wail Hold",
+        .name = "gdwailhold",
+        .desc = "For digital wail input, how long (in milliseconds) to hold the wail state. Practically, this controls "
+            "how sensitive wailing is.\n\n"
+            "Default: 100 (ms)\n\n"
+            "If set to 0, no hold will occur, which means you need to press the wail button longer to register; "
+            "default value of 100ms will cause the game to trigger wail even on a light tap of the button",
+        .type = OptionType::Integer,
         .game_name = "GitaDora",
         .category = "Game Options",
     },
@@ -2188,7 +2282,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .display_name = "tapeledalgo",
         .aliases= "tapeledalgo",
         .desc = "For games with light arrays, determine the algorithm that is used to translate them into a single light binding in Lights tab. "
-        "Only applies to IIDX, SDVX, and DDR for now. Default: mid",
+            "Default: mid",
         .type = OptionType::Enum,
         .category = "I/O Options",
         .elements = {

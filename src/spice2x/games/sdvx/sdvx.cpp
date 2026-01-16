@@ -2,7 +2,6 @@
 
 #include <external/robin_hood.h>
 
-#include "avs/game.h"
 #include "games/shared/lcdhandle.h"
 #include "games/io.h"
 #include "hooks/audio/audio.h"
@@ -19,6 +18,8 @@
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/sigscan.h"
+#include "util/socd_cleaner.h"
+#include "util/time.h"
 #include "util/libutils.h"
 #include "misc/wintouchemu.h"
 #include "misc/eamuse.h"
@@ -48,7 +49,7 @@ namespace games::sdvx {
     SdvxOverlayPosition OVERLAY_POS = SDVX_OVERLAY_BOTTOM;
     bool ENABLE_COM_PORT_SCAN_HOOK = false;
 
-    std::optional<std::string> SOUND_OUTPUT_DEVICE = std::nullopt;
+    bool USE_ASIO = false;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
 
     // states
@@ -57,13 +58,18 @@ namespace games::sdvx {
     static HKEY real_asio_device_reg_handle = nullptr;
 
     static LONG WINAPI RegOpenKeyA_hook(HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult) {
-        if (lpSubKey != nullptr && phkResult != nullptr) {
-            if (hKey == HKEY_LOCAL_MACHINE &&
-                    ASIO_DRIVER.has_value() &&
-                    _stricmp(lpSubKey, "software\\asio") == 0)
-            {
-                *phkResult = PARENT_ASIO_REG_HANDLE;
+        if (lpSubKey != nullptr &&
+            phkResult != nullptr &&
+            hKey == HKEY_LOCAL_MACHINE &&
+            _stricmp(lpSubKey, "software\\asio") == 0) {
 
+            // prevent the game from randomly picking an ASIO device
+            if (!USE_ASIO) {
+                return ERROR_FILE_NOT_FOUND;
+            }
+            // convince the game to use our hook (so we can swap in the preferred device)
+            if (ASIO_DRIVER.has_value()) {
+                *phkResult = PARENT_ASIO_REG_HANDLE;
                 return RegOpenKeyA_orig(hKey, lpSubKey, &real_asio_reg_handle);
             }
         }
@@ -110,7 +116,7 @@ namespace games::sdvx {
             lpSubKey != nullptr && phkResult != nullptr &&
 	        _stricmp(lpSubKey, "HARDWARE\\DEVICEMAP\\SERIALCOMM") == 0) {
             log_info("sdvx::io", "hook access to HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM to force COM1 ICCA");
-            return 2; // ERROR_FILE_NOT_FOUND
+            return ERROR_FILE_NOT_FOUND;
         }
 
         return RegOpenKeyExA_orig(hKey, lpSubKey, ulOptions, samDesired, phkResult);
@@ -230,6 +236,32 @@ namespace games::sdvx {
         return false;
     }
 
+    void SDVXGame::detect_sound_output_device() {
+        USE_ASIO = false;
+        // if the user specified a value for -sdvxasio, use asio
+        if (ASIO_DRIVER.has_value()) {
+            log_misc(
+                "sdvx",
+                "-sdvxasio is set to \"{}\"", ASIO_DRIVER.value());
+            USE_ASIO = true;
+        } else {
+            // see if XONAR AE is present; if so, use that
+            HKEY subkey;
+            LSTATUS result;
+            result = RegOpenKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\ASIO\\XONAR SOUND CARD(64)", &subkey);
+            if (result == ERROR_SUCCESS) {
+                RegCloseKey(subkey);
+                USE_ASIO = true;
+                log_misc(
+                    "sdvx",
+                    "found HKLM\\SOFTWARE\\ASIO\\XONAR SOUND CARD(64)");
+            }
+        }
+        if (!USE_ASIO) {
+            log_misc("sdvx", "asio not configured");
+        }
+    }
+
     typedef void **(__fastcall *volume_set_t)(uint64_t, uint64_t, uint64_t);
     static volume_set_t volume_set_orig = nullptr;
     static void **__fastcall volume_set_hook(uint64_t vol_sound, uint64_t vol_woofer, uint64_t vol_headphone) {
@@ -296,9 +328,8 @@ namespace games::sdvx {
         }
 
 #ifdef SPICE64 // SDVX5+ specific code
-        this->VALKYRIE_MODEL = avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H';
         // check -monitor + UFC mode
-        if (!GRAPHICS_WINDOWED && D3D9_ADAPTER.has_value() && this->VALKYRIE_MODEL) {
+        if (!GRAPHICS_WINDOWED && D3D9_ADAPTER.has_value() && is_valkyrie_model()) {
             SHOW_VM_MONITOR_WARNING = true;
             log_warning(
                 "sdvx",
@@ -323,6 +354,20 @@ namespace games::sdvx {
         }
 #endif
 
+#ifdef SPICE64
+        this->detect_sound_output_device();
+#endif
+
+        // SOCD
+        auto options = games::get_options(eamuse_get_game());
+        socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
+        if (options->at(launcher::Options::SDVXDigitalKnobSocd).is_active()) {
+            if (options->at(launcher::Options::SDVXDigitalKnobSocd).value_text() == "neutral") {
+                socd::ALGORITHM = socd::SocdAlgorithm::Neutral;
+            } else if (options->at(launcher::Options::SDVXDigitalKnobSocd).value_text() == "last") {
+                socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
+            }
+        }
     }
 
     void SDVXGame::attach() {
@@ -331,7 +376,7 @@ namespace games::sdvx {
 #ifdef SPICE64 // SDVX5+ specific code
 
         // LCD handle
-        if (!this->VALKYRIE_MODEL) {
+        if (!is_valkyrie_model()) {
             devicehook_init();
             devicehook_add(new games::shared::LCDHandle());
         }
@@ -370,7 +415,7 @@ namespace games::sdvx {
                 nvapi_hook::initialize(avs::game::DLL_INSTANCE);
             }
 
-            if (this->VALKYRIE_MODEL) {
+            if (is_valkyrie_model()) {
                 // hook touch window
                 // in windowed mode, game can accept mouse input on the second screen
                 if (!NATIVETOUCH && !GRAPHICS_WINDOWED) {

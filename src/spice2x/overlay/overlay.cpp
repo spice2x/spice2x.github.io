@@ -53,16 +53,26 @@ namespace overlay {
     bool AUTO_SHOW_IOPANEL = false;
     bool AUTO_SHOW_KEYPAD_P1 = false;
     bool AUTO_SHOW_KEYPAD_P2 = false;
-
     bool USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT = false;
-
     bool FPS_SHOULD_FLIP = false;
+    std::optional<uint32_t> UI_SCALE_PERCENT;
 
     // global
     std::mutex OVERLAY_MUTEX;
     std::unique_ptr<overlay::SpiceOverlay> OVERLAY = nullptr;
     ImFont* DSEG_FONT = nullptr;
     bool SHOW_DEBUG_LOG_WINDOW = false;
+
+    ImVec2 apply_scaling_to_vector(float x, float y) {
+        if (!UI_SCALE_PERCENT.has_value()) {
+            return ImVec2(x, y);
+        }
+        return ImVec2(apply_scaling(x), apply_scaling(y));
+    }
+    
+    ImVec2 apply_scaling_to_vector(const ImVec2& input) {
+        return apply_scaling_to_vector(input.x, input.y);
+    }
 }
 
 static void *ImGui_Alloc(size_t sz, void *user_data) {
@@ -172,6 +182,12 @@ void overlay::SpiceOverlay::init() {
         style.WindowRounding = 0;
     }
 
+    if (UI_SCALE_PERCENT.has_value()) {
+        const auto scale = static_cast<float>(UI_SCALE_PERCENT.value()) / 100.f;
+        ImGui::GetStyle().ScaleAllSizes(scale);
+        ImGui::GetIO().FontGlobalScale = scale;
+    }
+
     // red theme based on:
     // https://github.com/ocornut/imgui/issues/707#issuecomment-760220280
     // r, g, b, a
@@ -247,7 +263,6 @@ void overlay::SpiceOverlay::init() {
 
     if (!cfg::CONFIGURATOR_STANDALONE) {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
     if (is_touch_available("SpiceOverlay::init")) {
         io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
@@ -368,7 +383,8 @@ void overlay::SpiceOverlay::init() {
             window_iopanel = new overlay::windows::IIDXIOPanel(this);
         } else if (avs::game::is_model("MDX")) {
             window_iopanel = new overlay::windows::DDRIOPanel(this);
-        } else if (avs::game::is_model({"J32", "J33", "K32", "K33", "L32", "L33", "M32"})) {
+        } else if (avs::game::is_model({"J32", "J33", "K32", "K33", "L32", "L33", "M32"}) &&
+            !games::gitadora::is_arena_model()) {
             window_iopanel = new overlay::windows::GitadoraIOPanel(this);
         } else {
             window_iopanel = new overlay::windows::IOPanel(this);

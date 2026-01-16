@@ -1,5 +1,6 @@
 #include <iomanip>
 #include <sstream>
+#include "external/fmt/include/fmt/chrono.h"
 #include "fps.h"
 
 namespace overlay::windows {
@@ -15,13 +16,17 @@ namespace overlay::windows {
                       | ImGuiWindowFlags_NoNavInputs
                       | ImGuiWindowFlags_NoDocking;
         this->bg_alpha = 0.5f;
-        this->start_time = std::chrono::system_clock::now();
+        this->start_time =
+            std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
     }
 
     void FPS::calculate_initial_window() {
         // width is 114x82 px with window decoration, 98x47 for the content
-        int pos_x = overlay::FPS_SHOULD_FLIP ? 8 : ImGui::GetIO().DisplaySize.x - 122;
-        this->init_pos =  ImVec2(pos_x, 8);
+        int pos_x =
+            overlay::FPS_SHOULD_FLIP ?
+            overlay::apply_scaling(8) :
+            ImGui::GetIO().DisplaySize.x - overlay::apply_scaling(122);
+        this->init_pos =  ImVec2(pos_x, overlay::apply_scaling(8));
     }
 
     void FPS::build_content() {
@@ -31,23 +36,23 @@ namespace overlay::windows {
         ImGui::Text("FPS:  %.1f", io.Framerate);
         // ImGui::Text("FT: %.2fms", 1000 / io.Framerate);
 
-        auto now = std::chrono::system_clock::now();
+        const auto now = std::chrono::system_clock::now();
+        const auto now_s = std::chrono::floor<std::chrono::seconds>(now);
 
         // current time
         {
-            auto now_t = std::chrono::system_clock::to_time_t(now);
-            static CHAR buf[48];
-            std::strftime(buf, sizeof(buf), "Time: %H:%M:%S", std::localtime(&now_t));
-            ImGui::Text(buf);
+            const std::time_t tt = std::chrono::system_clock::to_time_t(now_s);
+            std::tm local_tm{};
+            localtime_s(&local_tm, &tt);
+            ImGui::TextUnformatted(fmt::format("Time: {:%H:%M:%S}", local_tm).c_str());
         }
 
         // elapsed time
         {
-            auto d = now - this->start_time;
-            const auto h = std::chrono::duration_cast<std::chrono::hours>(d);
-            const auto m = std::chrono::duration_cast<std::chrono::minutes>(d - h);
-            const auto s = std::chrono::duration_cast<std::chrono::seconds>(d - h - m);
-            ImGui::Text("Up:   %02d:%02d:%02d", (int)h.count(), (int)m.count(), (int)s.count());
+            const auto uptime = now_s - this->start_time;
+            ImGui::TextUnformatted(
+                fmt::format("Up:   {:%H:%M:%S}",
+                    std::chrono::floor<std::chrono::seconds>(uptime)).c_str());
         }
     }
 }

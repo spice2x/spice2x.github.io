@@ -3,6 +3,7 @@
 #include "launcher/launcher.h"
 #include "games/io.h"
 #include "misc/eamuse.h"
+#include "overlay/imgui/extensions.h"
 
 namespace overlay::windows {
 
@@ -11,7 +12,7 @@ namespace overlay::windows {
         this->flags = ImGuiWindowFlags_AlwaysAutoResize;
 
         this->init_size = ImVec2(
-            80,
+            overlay::apply_scaling(80),
             ImGui::GetFrameHeight() +
                 ImGui::GetStyle().WindowPadding.y * 2 +
                 ImGui::GetFrameHeightWithSpacing() * 3 +
@@ -58,7 +59,7 @@ namespace overlay::windows {
     void IOPanel::build_io_panel() {}
 
     void IOPanel::build_operator_menu() {
-        const ImVec2 wide(60, 0);
+        const ImVec2 wide = overlay::apply_scaling_to_vector(60, 0);
         const float spacing_x = ImGui::GetStyle().ItemSpacing.y;
         const ImVec2 tall(
             ImGui::GetFrameHeight(),
@@ -80,6 +81,9 @@ namespace overlay::windows {
         {
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetFrameHeightWithSpacing());
             this->build_button("+", tall, this->test_button, this->service_button);
+            if (ImGui::IsItemHovered()) {
+                ImGui::HelpTooltip("SERVICE + TEST");
+            }
         }
         ImGui::EndGroup();
 

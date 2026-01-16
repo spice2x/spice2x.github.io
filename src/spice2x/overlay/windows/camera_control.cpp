@@ -21,7 +21,7 @@ namespace overlay::windows {
     CameraControl::CameraControl(SpiceOverlay *overlay) : Window(overlay) {
         this->title = "IIDX Camera Control";
         this->flags |= ImGuiWindowFlags_AlwaysAutoResize;
-        this->init_pos = ImVec2(40, 40);
+        this->init_pos = overlay::apply_scaling_to_vector(40, 40);
         this->toggle_button = games::OverlayButtons::ToggleCameraControl;
     }
 

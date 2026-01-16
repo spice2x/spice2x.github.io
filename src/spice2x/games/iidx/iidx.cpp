@@ -29,6 +29,8 @@
 #include "util/libutils.h"
 #include "util/memutils.h"
 #include "util/sigscan.h"
+#include "util/socd_cleaner.h"
+#include "util/time.h"
 #include "util/utils.h"
 #include "launcher/signal.h"
 
@@ -251,6 +253,8 @@ namespace games::iidx {
         }
     }
 
+#if SPICE64
+
     typedef void* (*aioIob2Bi2x_CreateWriteFirmContext_t)(unsigned int, int);
     static aioIob2Bi2x_CreateWriteFirmContext_t aioIob2Bi2x_CreateWriteFirmContext_orig = nullptr;
 
@@ -268,6 +272,8 @@ namespace games::iidx {
         log_warning("iidx", "CreateWriteFirmContext == nullptr");
         return nullptr;
     }
+
+#endif
 
     IIDXGame::IIDXGame() : Game("Beatmania IIDX") {
         logger::hook_add(log_hook, this);
@@ -318,6 +324,8 @@ namespace games::iidx {
             // IIDX 25+ BIO2 BI2A input device
             devicehook_add(new IIDXFMSerialHandle());
         }
+
+#if SPICE64
 
         // check for new I/O DLL
         auto aio = libutils::try_library("libaio.dll");
@@ -383,6 +391,8 @@ namespace games::iidx {
                 */
             }
         }
+
+#endif
 
         if (hooks::audio::ENABLED) {
             apply_audio_hacks();
@@ -498,6 +508,16 @@ namespace games::iidx {
                 "    recommended fix is to NOT use -monitor and instead set the primary",
                 "    monitor in Windows settings before launching the game"
                 });
+        }
+
+        // socd
+        socd::ALGORITHM = socd::SocdAlgorithm::Neutral;
+        if (options->at(launcher::Options::IIDXDigitalTTSocd).is_active()) {
+            if (options->at(launcher::Options::IIDXDigitalTTSocd).value_text() == "last") {
+                socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
+            } else if (options->at(launcher::Options::IIDXDigitalTTSocd).value_text() == "first") {
+                socd::ALGORITHM = socd::SocdAlgorithm::PreferFirst;
+            }
         }
     }
 
@@ -722,13 +742,12 @@ namespace games::iidx {
         bool ttpm_alt = GameAPI::Buttons::getState(RI_MGR, buttons.at(
                 player != 0 ? Buttons::P2_TTPlusMinusAlt : Buttons::P1_TTPlusMinusAlt));
 
-        // TT+
-        if (ttp)
+        const auto tt_socd = socd::socd_clean(player, ttm, ttp, get_performance_milliseconds());
+        if (tt_socd == socd::SocdCW) {
             IIDXIO_TT_STATE[player] += change;
-
-        // TT-
-        if (ttm)
+        } else if (tt_socd == socd::SocdCCW) {
             IIDXIO_TT_STATE[player] -= change;
+        }
 
         // TT+/-
         bool ttpm_rising_edge = !IIDXIO_TT_PRESSED[player] && ttpm;

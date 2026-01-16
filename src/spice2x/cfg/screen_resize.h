@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <optional>
@@ -51,6 +52,9 @@ namespace cfg {
         bool enable_linear_filter = true;
         fullscreen_setting scene_settings[4];
 
+        // state
+        std::atomic<bool> need_surface_clean = false;
+
         // windowed mode sizing
         // Windows terminology:
         //     window = rectangle including the frame
@@ -69,6 +73,7 @@ namespace cfg {
         uint32_t init_client_height = 0;
         float init_client_aspect_ratio = 1.f;
         uint32_t init_window_style = 0;
+        uint32_t init_window_style_ex = 0;
         uint32_t window_deco_width = 0;
         uint32_t window_deco_height = 0;
 

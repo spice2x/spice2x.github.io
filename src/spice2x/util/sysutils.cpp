@@ -235,6 +235,12 @@ namespace sysutils {
             } else {
                 log_misc("gpuinfo", "EnumDisplaySettingsA failed");
             }
+
+            log_misc(
+                "gpuinfo", "{} {} is primary    : {}",
+                prefix.c_str(),
+                index,
+                (adapter->StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) ? "yes" : "no");
         }
     }
 

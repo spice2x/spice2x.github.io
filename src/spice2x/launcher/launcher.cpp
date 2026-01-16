@@ -107,6 +107,7 @@
 #include "util/libutils.h"
 #include "util/logging.h"
 #include "util/peb.h"
+#include "util/socd_cleaner.h"
 #include "util/sysutils.h"
 #include "util/tapeled.h"
 #include "util/time.h"
@@ -325,6 +326,10 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::GraphicsForceRefresh].is_active()) {
         GRAPHICS_FORCE_REFRESH = options[launcher::Options::GraphicsForceRefresh].value_uint32();
+    }
+    if (options[launcher::Options::FullscreenSubRefreshRate].is_active()) {
+        GRAPHICS_FORCE_REFRESH_SUB =
+            options[launcher::Options::FullscreenSubRefreshRate].value_uint32();
     }
     if (options[launcher::Options::GraphicsForceSingleAdapter].value_bool()) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
@@ -587,6 +592,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraArenaSingleWindow].value_bool() && GRAPHICS_WINDOWED) {
         games::gitadora::ARENA_SINGLE_WINDOW = true;
     }
+    if (options[launcher::Options::GitaDoraWailHold].is_active()) {
+        socd::TILT_HOLD_MS = options[launcher::Options::GitaDoraWailHold].value_uint32();
+    }
     if (options[launcher::Options::LoadNostalgiaModule].value_bool()) {
         attach_nostalgia = true;
     }
@@ -607,6 +615,17 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::GitaDoraTwoChannelAudio].value_bool()) {
         games::gitadora::TWOCHANNEL = true;
+    }
+    if (options[launcher::Options::GitaDoraLefty].is_active()) {
+        const auto text = options[launcher::Options::GitaDoraLefty].value_text();
+        if (text == "p1") {
+            games::gitadora::P1_LEFTY = true;
+        } else if (text == "p2") {
+            games::gitadora::P2_LEFTY = true;
+        } else if (text == "both") {
+            games::gitadora::P1_LEFTY = true;
+            games::gitadora::P2_LEFTY = true;
+        }
     }
     if (options[launcher::Options::LoadDDRModule].value_bool()) {
         attach_ddr = true;
@@ -961,6 +980,12 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::DisableOverlay].value_bool()) {
         overlay::ENABLED = false;
+    }
+    if (options[launcher::Options::OverlayScaling].is_active() && !cfg::CONFIGURATOR_STANDALONE && !cfg_run) {
+        const auto val = options[launcher::Options::OverlayScaling].value_uint32();
+        if (10 <= val && val <= 400 && val != 100) {
+            overlay::UI_SCALE_PERCENT = options[launcher::Options::OverlayScaling].value_uint32();
+        }
     }
     if (options[launcher::Options::DisableAudioHooks].value_bool()) {
         hooks::audio::ENABLED = false;

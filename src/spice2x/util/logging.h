@@ -87,6 +87,9 @@ void show_popup_for_fatal_error(std::string message);
 #define log_warning(module, format_str, ...) logger::push( \
     LOG_FORMAT("W", module, format_str, ## __VA_ARGS__), logger::Style::YELLOW)
 
+#define log_special(module, format_str, ...) logger::push( \
+    LOG_FORMAT("W", module, format_str, ## __VA_ARGS__), logger::Style::SPECIAL)
+
 #define log_fatal(module, format_str, ...) { \
     logger::push(LOG_FORMAT("F", module, format_str, ## __VA_ARGS__), logger::Style::RED); \
     show_popup_for_fatal_error(LOG_FORMAT_POPUP(module, format_str, ## __VA_ARGS__)); \

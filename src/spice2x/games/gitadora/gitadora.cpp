@@ -6,11 +6,13 @@
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/wintouchemu.h"
+#include "overlay/overlay.h"
 #include "util/cpuutils.h"
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
 #include "util/sigscan.h"
+#include "util/socd_cleaner.h"
 #include "hooks/setupapihook.h"
 
 namespace games::gitadora {
@@ -19,6 +21,8 @@ namespace games::gitadora {
     bool TWOCHANNEL = false;
     std::optional<unsigned int> CAB_TYPE = std::nullopt;
     bool ARENA_SINGLE_WINDOW = false;
+    bool P1_LEFTY = false;
+    bool P2_LEFTY = false;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -214,6 +218,16 @@ namespace games::gitadora {
                 log_fatal("gitadora", "Cabinet type 3 (SD2) not supported on XG series");
             }
 #endif
+
+            // arena model launches a tiny window yet backbuffer at 4k, resulting in unusable overlay
+            // force scaling to make things usable
+            if (!overlay::UI_SCALE_PERCENT.has_value() && is_arena_model() &&
+                GRAPHICS_WINDOWED && !cfg::CONFIGURATOR_STANDALONE) {
+                overlay::UI_SCALE_PERCENT = 250;
+            }
+
+             // for guitar wail SOCD cleaning
+            socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
         }
     }
 

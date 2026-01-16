@@ -42,6 +42,15 @@
 #undef min
 #endif
 
+#define D3D9_BACKEND_DEBUG 0
+
+#if D3D9_BACKEND_DEBUG
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
+
 #define CHECK_RESULT(x) \
     do { \
         HRESULT __ret = (x); \
@@ -515,7 +524,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
             if (!modified && games::iidx::is_tdj_fhd() && refresh < 110) {
                 if ((width == 1920 && height == 1080) ||
                     (width == 1280 && height == 720)){
-                    log_misc(
+                    log_debug(
                         "graphics::d3d9", "removing mode {}, {}x{} @ {}Hz (for TDJ FHD)",
                         Mode, width, height, refresh);
                     memset(pMode, 0, sizeof(*pMode));
@@ -528,7 +537,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
             // - skip 75 and 90 Hz entries because LDJ game timing is messed up with it
             //   (TDJ should be fine as it assumes a fixed 60 Hz timing)
             if (!modified && (width == 1360 || width == 1366 || refresh == 75 || refresh == 90)) {
-                log_misc(
+                log_debug(
                     "graphics::d3d9", "removing mode {}, {}x{} @ {}Hz (for LDJ/TDJ)",
                     Mode, width, height, refresh);
                 memset(pMode, 0, sizeof(*pMode));
@@ -536,7 +545,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
             }
 
             if (!modified && !games::iidx::TDJ_MODE && games::iidx::FORCE_720P && (height > 720)) {
-                log_misc(
+                log_debug(
                     "graphics::d3d9", "removing mode {}, {}x{} @ {}Hz (-iidxforce720p)",
                     Mode, width, height, refresh);
                 memset(pMode, 0, sizeof(*pMode));
@@ -804,6 +813,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
             "either use -graphics-force-refresh option or change the desktop resolution beforehand.");
     }
 
+    if (!GRAPHICS_WINDOWED && num_adapters >= 2 && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+        log_info("graphics::d3d9", "force sub refresh rate: {} => {} Hz (-graphics-force-refresh-sub option)",
+                pPresentationParameters[1].FullScreen_RefreshRateInHz,
+                GRAPHICS_FORCE_REFRESH_SUB.value());
+
+        pPresentationParameters[1].FullScreen_RefreshRateInHz = GRAPHICS_FORCE_REFRESH_SUB.value();
+    }
+
     // force single adapter
     if (GRAPHICS_FORCE_SINGLE_ADAPTER) {
         log_info("graphics::d3d9", "disabling adapter group device with force single adapter mode");
@@ -1020,6 +1037,17 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
         if (pFullscreenDisplayMode) {
             pFullscreenDisplayMode->RefreshRate = GRAPHICS_FORCE_REFRESH;
+        }
+    }
+
+    if (!GRAPHICS_WINDOWED && num_adapters >= 2 && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+        log_info("graphics::d3d9", "force sub refresh rate: {} => {} Hz (-graphics-force-refresh-sub option)",
+                pPresentationParameters[1].FullScreen_RefreshRateInHz,
+                GRAPHICS_FORCE_REFRESH_SUB.value());
+
+        pPresentationParameters[1].FullScreen_RefreshRateInHz = GRAPHICS_FORCE_REFRESH_SUB.value();
+        if (pFullscreenDisplayMode) {
+            pFullscreenDisplayMode[1].RefreshRate = GRAPHICS_FORCE_REFRESH_SUB.value();
         }
     }
 
@@ -1360,9 +1388,7 @@ void graphics_d3d9_on_present(
     }
 
     // for IIDX TDJ / SDVX UFC, handle subscreen
-    const bool is_vm = 
-        avs::game::is_model("KFC") &&
-        (avs::game::SPEC[0] == 'G' || avs::game::SPEC[0] == 'H');
+    const bool is_vm = games::sdvx::is_valkyrie_model();
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
     const bool is_gfdm_arena =
         games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW;

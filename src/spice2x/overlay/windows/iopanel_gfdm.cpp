@@ -3,6 +3,7 @@
 #include "games/io.h"
 #include "games/gitadora/gitadora.h"
 #include "games/gitadora/io.h"
+#include "overlay/imgui/extensions.h"
 #include "misc/eamuse.h"
 #include "util/logging.h"
 
@@ -11,6 +12,7 @@ namespace overlay::windows {
     GitadoraIOPanel::GitadoraIOPanel(SpiceOverlay *overlay) : IOPanel(overlay) {
         this->title = "GITADORA IO Panel";
 
+        this->has_menu_controls = true;
         // by default, make a safer assumption that there are two players
         this->two_players = true;
         // by default, enable the extra input only available on DX cabs...
@@ -30,6 +32,12 @@ namespace overlay::windows {
         // disable guitar knobs on known non-DX cabs
         if (games::gitadora::CAB_TYPE.has_value() &&
             (games::gitadora::CAB_TYPE == 2 || games::gitadora::CAB_TYPE == 3)) {
+            this->has_guitar_knobs = false;
+        }
+
+        if (games::gitadora::is_arena_model()) {
+            this->has_menu_controls = false;
+            this->two_players = false;
             this->has_guitar_knobs = false;
         }
 
@@ -68,25 +76,45 @@ namespace overlay::windows {
     }
 
     void GitadoraIOPanel::build_io_panel() {
-        ImGui::Dummy(ImVec2(12, 0));
+        ImGui::Dummy(overlay::apply_scaling_to_vector(12, 0));
 
-        ImGui::SameLine();
-        this->draw_buttons(0);
-        if (this->has_guitar_knobs) {
+        if (this->has_menu_controls) {
             ImGui::SameLine();
-            this->draw_sliders(0);
-        }
-
-        // draw p2 only if guitar freaks
-        if (this->two_players) {
-            ImGui::SameLine();
-            ImGui::Dummy(ImVec2(12, 0));
-            ImGui::SameLine();
-            this->draw_buttons(1);
+            ImGui::PushID("P1");
+            this->draw_buttons(0);
             if (this->has_guitar_knobs) {
                 ImGui::SameLine();
-                this->draw_sliders(1);
+                this->draw_sliders(0);
             }
+            ImGui::PopID();
+
+            // draw p2 only if guitar freaks
+            if (this->two_players) {
+                ImGui::SameLine();
+                ImGui::Dummy(overlay::apply_scaling_to_vector(12, 0));
+                ImGui::SameLine();
+                ImGui::PushID("P2");
+                this->draw_buttons(1);
+                if (this->has_guitar_knobs) {
+                    ImGui::SameLine();
+                    this->draw_sliders(1);
+                }
+                ImGui::PopID();
+            }
+        }
+
+        if (games::gitadora::is_guitar()) {
+            ImGui::SameLine();
+            ImGui::Dummy(overlay::apply_scaling_to_vector(12, 0));
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            {
+                ImGui::Checkbox("P1 Lefty", &games::gitadora::P1_LEFTY);
+                if (this->two_players) {
+                    ImGui::Checkbox("P2 Lefty", &games::gitadora::P2_LEFTY);
+                }
+            }
+            ImGui::EndGroup();
         }
     }
 
@@ -107,6 +135,10 @@ namespace overlay::windows {
         {
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetFrameHeightWithSpacing());
             this->build_button("<", leftright_size, this->left[p], nullptr, this->leftright_light[p]);
+            this->build_button("+", tiny_size, this->help[p], this->start[p], nullptr);
+            if (ImGui::IsItemHovered()) {
+                ImGui::HelpTooltip("HELP + START");
+            }
         }
         ImGui::EndGroup();
 
@@ -135,6 +167,9 @@ namespace overlay::windows {
         ImGui::BeginGroup();
         {
             this->build_button("?", tiny_size, this->help[p], nullptr, this->help_light[p]);
+            if (ImGui::IsItemHovered()) {
+                ImGui::HelpTooltip("HELP");
+            }
             this->build_button(">", leftright_size, this->right[p], nullptr, this->leftright_light[p]);
         }
         ImGui::EndGroup();
@@ -146,7 +181,7 @@ namespace overlay::windows {
             games::gitadora::Analogs::GuitarP1Knob :
             games::gitadora::Analogs::GuitarP2Knob;
 
-        const ImVec2 slider_size(32, get_suggested_height());
+        const ImVec2 slider_size(overlay::apply_scaling(32), get_suggested_height());
 
         // get analog
         const auto analogs = games::get_analogs(eamuse_get_game());
