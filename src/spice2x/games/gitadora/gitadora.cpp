@@ -23,6 +23,7 @@ namespace games::gitadora {
     bool ARENA_SINGLE_WINDOW = false;
     bool P1_LEFTY = false;
     bool P2_LEFTY = false;
+    std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
 
     /*
      * Prevent GitaDora from creating folders on F drive

@@ -2,7 +2,7 @@
 #include "gfdm_sub.h"
 #include "games/gitadora/gitadora.h"
 #include "hooks/graphics/graphics.h"
-#include "touch/touch.h"
+#include "touch/touch.h"    
 
 namespace overlay::windows {
 
@@ -15,7 +15,17 @@ namespace overlay::windows {
 
         this->resize_callback = keep_10_by_16;
 
-        const float size = 0.48f;
+        // medium size - perfect for "layout B" in GW Delta, though in drums it covers the pacemaker
+        float size = 0.64f;
+        if (games::gitadora::SUBSCREEN_OVERLAY_SIZE.has_value()) {
+            if (games::gitadora::SUBSCREEN_OVERLAY_SIZE.value() == "large") {
+                // enough to not cover the FPS overlay
+                size = 0.88f;
+            } else if (games::gitadora::SUBSCREEN_OVERLAY_SIZE.value() == "small") {
+                size = 0.48f;
+            }
+        }
+
         const float height = ImGui::GetIO().DisplaySize.y * size;
         const float width = height * 10 / 16;
         this->init_size = ImVec2(width, height + ImGui::GetFrameHeight());

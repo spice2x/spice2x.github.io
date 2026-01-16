@@ -595,6 +595,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraWailHold].is_active()) {
         socd::TILT_HOLD_MS = options[launcher::Options::GitaDoraWailHold].value_uint32();
     }
+    if (options[launcher::Options::GitaDoraSubOverlaySize].is_active()) {
+        games::gitadora::SUBSCREEN_OVERLAY_SIZE = options[launcher::Options::GitaDoraSubOverlaySize].value_text();
+    }
     if (options[launcher::Options::LoadNostalgiaModule].value_bool()) {
         attach_nostalgia = true;
     }

@@ -1021,6 +1021,20 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // GitaDoraSubOverlaySize
+        .title = "GitaDora Subscreen Overlay Size",
+        .name = "gdsubsize",
+        .desc = "Default size of the subscreen overlay. Default: medium",
+        .type = OptionType::Enum,
+        .game_name = "GitaDora",
+        .category = "Overlay",
+        .elements = {
+            {"small", ""},
+            {"medium", ""},
+            {"large", ""}
+        },
+    },
+    {
         .title = "Force Load Jubeat Module",
         .name = "jb",
         .desc = "Manually enable Jubeat module",
