@@ -100,6 +100,7 @@ static decltype(SetCursor) *SetCursor_orig = nullptr;
 static decltype(SetWindowLongA) *SetWindowLongA_orig = nullptr;
 static decltype(SetWindowLongW) *SetWindowLongW_orig = nullptr;
 static decltype(SetWindowPos) *SetWindowPos_orig = nullptr;
+static decltype(ShowWindow) *ShowWindow_orig = nullptr;
 
 static void reset_window_hook(HWND hWnd) {
     overlay::destroy(hWnd);
@@ -690,6 +691,18 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
     return SetWindowPos_orig(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
+static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
+    if (games::gitadora::is_arena_model() &&
+        games::gitadora::ARENA_SINGLE_WINDOW &&
+        hWnd != GRAPHICS_WINDOW_MAIN) {
+        log_info("graphics", "ShowWindow_hook - hiding sub window 0x{}", fmt::ptr(hWnd));
+        return true;
+    }
+
+    // call original
+    return ShowWindow_orig(hWnd, nCmdShow);
+}
+
 static ATOM WINAPI RegisterClassA_hook(const WNDCLASSA *lpWndClass) {
 
     // check for null
@@ -832,6 +845,7 @@ void graphics_init() {
     SetWindowLongA_orig = detour::iat_try("SetWindowLongA", SetWindowLongA_hook);
     SetWindowLongW_orig = detour::iat_try("SetWindowLongW", SetWindowLongW_hook);
     SetWindowPos_orig = detour::iat_try("SetWindowPos", SetWindowPos_hook);
+    ShowWindow_orig = detour::iat_try("ShowWindow", ShowWindow_hook);
 
     detour::iat_try("MessageBoxA", MessageBoxA_hook);
     detour::iat_try("MessageBoxExA", MessageBoxExA_hook);
