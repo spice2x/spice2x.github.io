@@ -4,7 +4,6 @@
 #include <vector>
 #include <optional>
 #include <cstdint>
-#include <set>
 
 #include <windows.h>
 #include <d3d9.h>
@@ -63,8 +62,7 @@ extern bool GRAPHICS_WSUB_BORDERLESS;
 extern bool GRAPHICS_WSUB_ALWAYS_ON_TOP;
 extern HWND TDJ_SUBSCREEN_WINDOW;
 extern HWND SDVX_SUBSCREEN_WINDOW;
-extern HWND GFDM_SUBSCREEN_WINDOW_SMALL;
-extern std::set<HWND> GFDM_SUBSCREEN_WINDOWS;
+extern HWND GFDM_SUBSCREEN_WINDOW;
 
 extern bool SUBSCREEN_FORCE_REDRAW;
 

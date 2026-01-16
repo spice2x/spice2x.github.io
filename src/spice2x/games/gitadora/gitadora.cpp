@@ -290,7 +290,6 @@ namespace games::gitadora {
 
             // touch hook
             if (ARENA_SINGLE_WINDOW) {
-                // TODO: native touch option?
                 wintouchemu::FORCE = true;
                 wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
                 wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);

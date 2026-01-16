@@ -2,6 +2,8 @@
 
 #include "graphics.h"
 
+#include <set>
+#include <vector>
 #include <mutex>
 #include <condition_variable>
 
@@ -32,11 +34,7 @@ struct CaptureData {
 
 HWND TDJ_SUBSCREEN_WINDOW = nullptr;
 HWND SDVX_SUBSCREEN_WINDOW = nullptr;
-
-// gitadora arena model - small touch window
-HWND GFDM_SUBSCREEN_WINDOW_SMALL = nullptr;
-// gitadora arena model - all sub windows except the main one
-std::set<HWND> GFDM_SUBSCREEN_WINDOWS;
+HWND GFDM_SUBSCREEN_WINDOW = nullptr;
 
 // icon
 static HICON WINDOW_ICON = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(MAINICON));
@@ -378,16 +376,14 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
     bool is_tdj_sub_window = avs::game::is_model("LDJ") && window_name.ends_with(" sub");
     bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
-    bool is_gfdm_sub_window = (games::gitadora::is_arena_model() &&
-        games::gitadora::ARENA_SINGLE_WINDOW && !window_name.empty());
-    bool is_gfdm_sub_window_small = is_gfdm_sub_window && window_name.ends_with("SMALL");
+    bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
 
     // hide maximize button (prevent misaligned touches)
-    if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window || is_gfdm_sub_window_small) {
+    if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window || is_gfdm_sub_window) {
         dwStyle &= ~(WS_MAXIMIZEBOX);
     }
     // mouse clicks become misaligned when resized
-    if (is_gfdm_sub_window_small) {
+    if (is_gfdm_sub_window) {
         dwStyle &= ~(WS_SIZEBOX);
     }
     if ((is_tdj_sub_window || is_sdvx_sub_window) && GRAPHICS_WSUB_BORDERLESS) {
@@ -438,13 +434,10 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         graphics_hook_subscreen_window(SDVX_SUBSCREEN_WINDOW);
     }
 
-    if (is_gfdm_sub_window) {
-        GFDM_SUBSCREEN_WINDOWS.insert(result);
-        // only hook touch window if multiple windows are allowed
-        if (is_gfdm_sub_window_small && !games::gitadora::ARENA_SINGLE_WINDOW) {
-            GFDM_SUBSCREEN_WINDOW_SMALL = result;
-            graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW_SMALL);
-        }
+    // only hook touch window if multiple windows are allowed
+    if (is_gfdm_sub_window && !games::gitadora::ARENA_SINGLE_WINDOW) {
+        GFDM_SUBSCREEN_WINDOW = result;
+        graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
     }
 
     disable_touch_indicators(result);

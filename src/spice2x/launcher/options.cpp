@@ -982,7 +982,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // GitaDoraArenaSingleWindow
         .title = "GitaDora Arena Single Window (EXPERIMENTAL)",
         .name = "gdaonewindow",
-        .desc = "For Arena Model, when running in windowed mode, only show the main game window; enables subscreen overlay",
+        .desc = "For Arena Model, when combined with windowed mode, only show the main game window; enables subscreen overlay",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
