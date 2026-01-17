@@ -589,8 +589,14 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraCabinetType].is_active()) {
         games::gitadora::CAB_TYPE = options[launcher::Options::GitaDoraCabinetType].value_uint32();
     }
+    if (options[launcher::Options::GitaDoraArenaSingleWindow].value_bool() && GRAPHICS_WINDOWED) {
+        games::gitadora::ARENA_SINGLE_WINDOW = true;
+    }
     if (options[launcher::Options::GitaDoraWailHold].is_active()) {
         socd::TILT_HOLD_MS = options[launcher::Options::GitaDoraWailHold].value_uint32();
+    }
+    if (options[launcher::Options::GitaDoraSubOverlaySize].is_active()) {
+        games::gitadora::SUBSCREEN_OVERLAY_SIZE = options[launcher::Options::GitaDoraSubOverlaySize].value_text();
     }
     if (options[launcher::Options::LoadNostalgiaModule].value_bool()) {
         attach_nostalgia = true;

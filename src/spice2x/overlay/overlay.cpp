@@ -29,6 +29,7 @@
 #include "windows/generic_sub.h"
 #include "windows/iidx_seg.h"
 #include "windows/iidx_sub.h"
+#include "windows/gfdm_sub.h"
 #include "windows/drs_dancefloor.h"
 #include "windows/iopanel.h"
 #include "windows/iopanel_ddr.h"
@@ -410,7 +411,10 @@ void overlay::SpiceOverlay::init() {
             window_sub = new overlay::windows::DRSDanceFloorDisplay(this);
         } else if (avs::game::is_model("KFC")) {
             window_sub = new overlay::windows::SDVXSubScreen(this);
+        } else if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
+            window_sub = new overlay::windows::GitaDoraSubScreen(this);
         }
+
         if (window_sub) {
             this->window_add(window_sub);
             if (AUTO_SHOW_SUBSCREEN) {

@@ -98,6 +98,7 @@ static decltype(SetCursor) *SetCursor_orig = nullptr;
 static decltype(SetWindowLongA) *SetWindowLongA_orig = nullptr;
 static decltype(SetWindowLongW) *SetWindowLongW_orig = nullptr;
 static decltype(SetWindowPos) *SetWindowPos_orig = nullptr;
+static decltype(ShowWindow) *ShowWindow_orig = nullptr;
 
 static void reset_window_hook(HWND hWnd) {
     overlay::destroy(hWnd);
@@ -377,7 +378,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
     bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
 
-    // TDJ windowed mode with subscreen: hide maximize button
+    // hide maximize button (prevent misaligned touches)
     if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window || is_gfdm_sub_window) {
         dwStyle &= ~(WS_MAXIMIZEBOX);
     }
@@ -385,7 +386,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     if (is_gfdm_sub_window) {
         dwStyle &= ~(WS_SIZEBOX);
     }
-    if ((is_tdj_sub_window || is_sdvx_sub_window || is_gfdm_sub_window) && GRAPHICS_WSUB_BORDERLESS) {
+    if ((is_tdj_sub_window || is_sdvx_sub_window) && GRAPHICS_WSUB_BORDERLESS) {
         dwStyle &= ~(WS_OVERLAPPEDWINDOW);
     }
 
@@ -433,7 +434,8 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         graphics_hook_subscreen_window(SDVX_SUBSCREEN_WINDOW);
     }
 
-    if (is_gfdm_sub_window) {
+    // only hook touch window if multiple windows are allowed
+    if (is_gfdm_sub_window && !games::gitadora::ARENA_SINGLE_WINDOW) {
         GFDM_SUBSCREEN_WINDOW = result;
         graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
     }
@@ -682,6 +684,18 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
     return SetWindowPos_orig(hWnd, hWndInsertAfter, X, Y, cx, cy, uFlags);
 }
 
+static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
+    if (games::gitadora::is_arena_model() &&
+        games::gitadora::ARENA_SINGLE_WINDOW &&
+        hWnd != GRAPHICS_WINDOW_MAIN) {
+        log_info("graphics", "ShowWindow_hook - hiding sub window 0x{}", fmt::ptr(hWnd));
+        return true;
+    }
+
+    // call original
+    return ShowWindow_orig(hWnd, nCmdShow);
+}
+
 static ATOM WINAPI RegisterClassA_hook(const WNDCLASSA *lpWndClass) {
 
     // check for null
@@ -824,6 +838,7 @@ void graphics_init() {
     SetWindowLongA_orig = detour::iat_try("SetWindowLongA", SetWindowLongA_hook);
     SetWindowLongW_orig = detour::iat_try("SetWindowLongW", SetWindowLongW_hook);
     SetWindowPos_orig = detour::iat_try("SetWindowPos", SetWindowPos_hook);
+    ShowWindow_orig = detour::iat_try("ShowWindow", ShowWindow_hook);
 
     detour::iat_try("MessageBoxA", MessageBoxA_hook);
     detour::iat_try("MessageBoxExA", MessageBoxExA_hook);

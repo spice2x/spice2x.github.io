@@ -13,6 +13,7 @@
 
 #include "avs/game.h"
 #include "cfg/screen_resize.h"
+#include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
 #include "games/sdvx/sdvx.h"
 #include "games/mfc/mfc.h"
@@ -1170,9 +1171,15 @@ IDirect3DSurface9 *graphics_d3d9_ldj_get_sub_screen() {
 }
 
 static void graphics_d3d9_ldj_on_present(IDirect3DDevice9 *wrapped_device) {
+    // iidx/sdvx
+    int swapchain = 1;
+    if (games::gitadora::is_arena_model()) {
+        swapchain = 3;
+    }
+
     if (!ATTEMPTED_SUB_SWAP_CHAIN_ACQUIRE && SUB_SWAP_CHAIN == nullptr) {
         ATTEMPTED_SUB_SWAP_CHAIN_ACQUIRE = true;
-        HRESULT hr = wrapped_device->GetSwapChain(1, &SUB_SWAP_CHAIN);
+        HRESULT hr = wrapped_device->GetSwapChain(swapchain, &SUB_SWAP_CHAIN);
         if (FAILED(hr)) {
             log_warning(
                 "graphics::d3d9",
@@ -1383,7 +1390,9 @@ void graphics_d3d9_on_present(
     // for IIDX TDJ / SDVX UFC, handle subscreen
     const bool is_vm = games::sdvx::is_valkyrie_model();
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
-    if (is_vm || is_tdj) {
+    const bool is_gfdm_arena =
+        games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW;
+    if (is_vm || is_tdj || is_gfdm_arena) {
         graphics_d3d9_ldj_on_present(wrapped_device);
     }
 

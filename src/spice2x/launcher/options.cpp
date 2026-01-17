@@ -979,6 +979,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .elements = {{"1", "DX"}, {"2", "SD"}, {"3", "SD2 - white cab"}},
     },
     {
+        // GitaDoraArenaSingleWindow
+        .title = "GitaDora Arena Single Window (EXPERIMENTAL)",
+        .name = "gdaonewindow",
+        .desc = "For Arena Model, when combined with windowed mode, only show the main game window; enables subscreen overlay",
+        .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+    },
+    {
         // GitaDoraLefty
         .title = "GitaDora Lefty Guitar (for Digital Wailing)",
         .name = "gdlefty",
@@ -1010,6 +1019,20 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Integer,
         .game_name = "GitaDora",
         .category = "Game Options",
+    },
+    {
+        // GitaDoraSubOverlaySize
+        .title = "GitaDora Subscreen Overlay Size",
+        .name = "gdsubsize",
+        .desc = "Default size of the subscreen overlay. Default: medium",
+        .type = OptionType::Enum,
+        .game_name = "GitaDora",
+        .category = "Overlay",
+        .elements = {
+            {"small", ""},
+            {"medium", ""},
+            {"large", ""}
+        },
     },
     {
         .title = "Force Load Jubeat Module",
