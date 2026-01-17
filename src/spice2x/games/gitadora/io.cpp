@@ -138,7 +138,7 @@ std::string games::gitadora::get_analogs_help() {
     return
         "guitar:\n"
         "\n"
-        "X axis: 0% when body is held facing monitor, 50% when facing flat on a table\n"
+        "X axis: 0% when body is held facing monitor, 50% when flat on a table\n"
         "Y axis: 50% when held horizontal, 0% when neck is raised, 100% pointing down\n"
         "Z axis: 50% at rest, 100% when swinging neck toward monitor (only used in XG series)\n"
         "\n"

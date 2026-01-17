@@ -60,9 +60,32 @@ namespace games::sdvx {
     // confirmed in EG final in aioIob2Bi2xUFC_Create
     static_assert(sizeof(AIO_IOB2_BI2X_UFC) == 0x39D8);
 
+    struct AIO_IOB2_BI2X_UFC__INPUT {
+        uint8_t DevIoCounter;
+        uint8_t bExIoAErr;
+        uint8_t bExIoBErr;
+        uint8_t bPcPowerOn;
+        uint8_t bPcPowerCheck;
+        uint8_t CoinCount;
+        uint8_t bTest;
+        uint8_t bService;
+        uint8_t bCoinSw;
+        uint8_t bCoinJam;
+        uint8_t bHPDetect;
+    };
+
     struct AIO_IOB2_BI2X_UFC__DEVSTATUS {
-        // of course you could work with variables here
-        uint8_t buffer[0x19E];
+        uint8_t InputCounter;
+        uint8_t OutputCounter;
+        uint8_t IoResetCounter;
+        uint8_t TapeLedCounter;
+        uint8_t TapeLedRate[8];
+        AIO_IOB2_BI2X_UFC__INPUT Input;
+        uint8_t unk_1[289];
+        uint16_t AnalogLeft;
+        uint16_t AnalogRight;
+        uint8_t Buttons;
+        uint8_t unk_2[97];
     };
 
     /*
@@ -156,8 +179,8 @@ namespace games::sdvx {
             AIO_IOB2_BI2X_UFC__GetDeviceStatus_orig(This, status);
         }
 
-        status->buffer[0] = count;
-        status->buffer[12] = count;
+        status->InputCounter = count;
+        status->Input.DevIoCounter = count;
         count++;
 
         // get buttons
@@ -165,27 +188,29 @@ namespace games::sdvx {
 
         // control buttons
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Test]))
-            status->buffer[18] = 0x01;
+            status->Input.bTest = 0x01;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Service]))
-            status->buffer[19] = 0x01;
+            status->Input.bService = 0x01;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::CoinMech]))
-            status->buffer[20] = 0x01;
+            status->Input.bCoinSw = 0x01;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Start]))
-            status->buffer[316] |= 0x01;
+            status->Buttons |= 0x01;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BT_A]))
-            status->buffer[316] |= 0x02;
+            status->Buttons |= 0x02;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BT_B]))
-            status->buffer[316] |= 0x04;
+            status->Buttons |= 0x04;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BT_C]))
-            status->buffer[316] |= 0x08;
+            status->Buttons |= 0x08;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BT_D]))
-            status->buffer[316] |= 0x10;
+            status->Buttons |= 0x10;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FX_L]))
-            status->buffer[316] |= 0x20;
+            status->Buttons |= 0x20;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FX_R]))
-            status->buffer[316] |= 0x40;
+            status->Buttons |= 0x40;
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]))
-            status->buffer[22] = 0x01;
+            status->Input.bHPDetect = 0x01;
+
+        status->Input.CoinCount += eamuse_coin_get_stock();
 
         const auto now = get_performance_milliseconds();
 
@@ -220,14 +245,14 @@ namespace games::sdvx {
             vol_right += (uint16_t) (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::VOL_R]) * 65535);
         }
 
-        *((uint16_t*) &status->buffer[312]) = vol_left;
-        *((uint16_t*) &status->buffer[314]) = vol_right;
+        status->AnalogLeft = vol_left;
+        status->AnalogRight = vol_right;
 
         log_debug(
             "bi2x_hook",
             "knobs = {} {}",
-            *((uint16_t*) &status->buffer[312]),
-            *((uint16_t*) &status->buffer[314]));
+            status->AnalogLeft,
+            status->AnalogRight);
     }
 
     static void __fastcall AIO_IOB2_BI2X_UFC__IoReset(AIO_IOB2_BI2X_UFC *This,
