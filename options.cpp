@@ -979,39 +979,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .elements = {{"1", "DX"}, {"2", "SD"}, {"3", "SD2 - white cab"}},
     },
     {
-        // GitaDoraLefty
-        .title = "GitaDora Lefty Guitar (for Digital Wailing)",
-        .name = "gdlefty",
-        .desc = "Enables lefty mode, flipping motion sensor directions. Default: off.\n\n"
-            "Without this option, enabling LEFT in the game option will continuously trigger UP wail.\n\n"
-            "Has no effect if you are using analog bindings for X/Y axis; expectation is that your controller "
-            "handles this correctly (most do not, however).\n\n"
-            "As always, remember to restart the game after changing options. If you need to change in the game, "
-            "use the I/O panel overlay window",
-        .type = OptionType::Enum,
-        .game_name = "GitaDora",
-        .category = "Game Options",
-        .elements = {
-            {"off", "both righty"},
-            {"p1", "p1 is lefty"},
-            {"p2", "p2 is lefty"},
-            {"both", "both lefty"},
-        },
-    },
-    {
-        // GitaDoraWailHold
-        .title = "GitaDora Digital Wail Hold",
-        .name = "gdwailhold",
-        .desc = "For digital wail input, how long (in milliseconds) to hold the wail state. Practically, this controls "
-            "how sensitive wailing is.\n\n"
-            "Default: 100 (ms)\n\n"
-            "If set to 0, no hold will occur, which means you need to press the wail button longer to register; "
-            "default value of 100ms will cause the game to trigger wail even on a light tap of the button",
-        .type = OptionType::Integer,
-        .game_name = "GitaDora",
-        .category = "Game Options",
-    },
-    {
         .title = "Force Load Jubeat Module",
         .name = "jb",
         .desc = "Manually enable Jubeat module",

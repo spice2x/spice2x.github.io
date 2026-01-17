@@ -315,6 +315,7 @@ namespace games {
         games.push_back(mfg);
         buttons.insert({ mfg, mfg::get_buttons() });
         buttons_help.insert({ mfg, mfg::get_buttons_help() });
+        lights.insert({ mfg, mfg::get_lights() });
         file_hints[mfg].emplace_back("game/MFGClient_Data");
 
         // Polaris Chord

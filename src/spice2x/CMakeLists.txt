@@ -469,6 +469,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/mfg/mfg.cpp
         games/mfg/io.cpp
         games/mfg/bi2a_hook.cpp
+        games/mfg/bi2x_hook.cpp
         games/pc/pc.cpp
         games/pc/io.cpp
         games/pc/bi2x_hook.cpp

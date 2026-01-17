@@ -9,7 +9,6 @@
 #include "misc/wintouchemu.h"
 #include "hooks/graphics/graphics.h"
 #include "bi2a_hook.h"
-#include "bi2x_hook.h"
 
 namespace games::mfg {
     std::string MFG_INJECT_ARGS = "";
@@ -61,8 +60,6 @@ namespace games::mfg {
             // insert BI2* hooks
             if (MFG_CABINET_TYPE == "UKS") {
                 log_fatal("mfg", "UKS io is not supported");
-            } else if (MFG_CABINET_TYPE == "UJK") {
-                bi2x_hook_init();
             } else {
                 bi2a_hook_init();
             }
