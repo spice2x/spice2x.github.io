@@ -5,8 +5,9 @@
 #include "build/defs.h"
 #include "easrv/easrv.h"
 #include "easrv/smartea.h"
-#include "games/mfc/mfc.h"
+#include "games/gitadora/gitadora.h"
 #include "hooks/avshook.h"
+#include "hooks/graphics/graphics.h"
 #include "util/detour.h"
 #include "util/deferlog.h"
 #include "util/fileutils.h"
@@ -526,6 +527,28 @@ namespace avs {
                     avs::core::property_node_create(app_config, nullptr,
                         avs::core::NODE_TYPE_u8, "/param/pcb_type", PCB_TYPE);
                 }
+            }
+
+            // update -WINDOW in app-config
+            if (games::gitadora::is_arena_model()) {
+                avs::core::property_search_remove_safe(app_config, nullptr, "/param/cmdline");
+                std::string cmdline{};
+                if (games::gitadora::is_drum()) {
+                    if (GRAPHICS_WINDOWED) {
+                        cmdline = "-d -DM -WINDOW";
+                    } else {
+                        cmdline = "-d -DM";
+                    }
+                } else {
+                    if (GRAPHICS_WINDOWED) {
+                        cmdline = "-g -GF -WINDOW";
+                    } else {
+                        cmdline = "-g -GF";
+                    }
+                }
+                log_info("avs-ea3", "using cmdline: `{}`", cmdline);
+                avs::core::property_node_create(app_config, nullptr,
+                        avs::core::NODE_TYPE_str, "/param/cmdline", cmdline.c_str());
             }
 
             auto app_param = avs::core::property_search_safe(app_config, nullptr, "/param");
