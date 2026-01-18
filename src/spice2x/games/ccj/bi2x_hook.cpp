@@ -1,5 +1,7 @@
 #include "bi2x_hook.h"
 
+#if SPICE64
+
 #include <cstdint>
 #include "util/detour.h"
 #include "util/logging.h"
@@ -16,15 +18,19 @@ namespace games::ccj {
      */
 
     struct AIO_SCI_COMM {
+        uint8_t data[0xf8];
     };
 
     struct AIO_NMGR_IOB2 {
+        uint8_t data[0xe30];
     };
 
     struct AIO_IOB2_BI2X_TBS {
+        uint8_t data[0x4680];
     };
 
     struct AIO_IOB2_BI2X_WRFIRM {
+        uint8_t data[0x20f48];
     };
 
     struct AIO_NMGR_IOB__NODEINFO {
@@ -71,6 +77,12 @@ namespace games::ccj {
         AIO_IOB2_BI2X_AC1__INPUTDATA InputData;
         AIO_IOB2_BI2X_AC1__OUTPUTDATA OutputData;
     };
+
+    // checked with UJK-001-2024060400
+    static_assert(sizeof(AIO_SCI_COMM) == 0xf8);
+    static_assert(sizeof(AIO_NMGR_IOB2) == 0xe30);
+    static_assert(sizeof(AIO_IOB2_BI2X_TBS) == 0x4680);
+    static_assert(sizeof(AIO_IOB2_BI2X_WRFIRM) == 0x20f48);
 
     static void write_iccr_led(Lights::ccj_lights_t light, uint8_t value);
 
@@ -622,3 +634,5 @@ namespace games::ccj {
                                aioNodeCtl_IsError, &aioNodeCtl_IsError_orig);
     }
 }
+
+#endif

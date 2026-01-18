@@ -11,6 +11,7 @@ namespace games::pc {
     public:
         PCGame() : Game("Polaris Chord") {}
 
+        virtual void pre_attach() override;
         virtual void attach() override;
         virtual void detach() override;
     };

@@ -86,8 +86,12 @@ namespace games::qks {
         detour::trampoline_try("execexe.dll", MAKEINTRESOURCE(9),
                                execexe_CreateFileA_hook,&execexe_CreateFileA_orig);
 
+#if SPICE64
+
         // insert BI2X hooks
         bi2x_hook_init();
+
+#endif
 
         // add card reader
         acioHandle = new acioemu::ACIOHandle(portName.c_str());

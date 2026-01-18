@@ -1,5 +1,7 @@
 #include "bi2x_hook.h"
 
+#if SPICE64
+
 #include "util/execexe.h"
 #include "util/logging.h"
 #include "rawinput/rawinput.h"
@@ -9,9 +11,10 @@
 #include "util/tapeled.h"
 #include "pc.h"
 #include "util/utils.h"
+#include "util/time.h"
+#include "util/socd_cleaner.h"
 
 namespace games::pc {
-    bool PC_KNOB_MODE = false;
 
     constexpr float RELATIVE_DECAY = 0.02f;
     struct FADER_RELATIVE {
@@ -75,18 +78,22 @@ namespace games::pc {
      */
 
     struct AIO_SCI_COMM {
+        uint8_t data[0xf8];
     };
 
     struct AIO_NMGR_IOB2 {
+        uint8_t data[0xe30];
     };
 
     struct AIO_IOB2_BI2X_AC1 {
+        uint8_t data[0x4538];
     };
 
     struct AIO_IOB2_BI2X_AC1__SETTING {
     };
 
     struct AIO_IOB2_BI2X_WRFIRM {
+        uint8_t data[0x20f48];
     };
 
     struct AIO_IOB2_BI2X_AC1__INPUT
@@ -190,6 +197,12 @@ namespace games::pc {
         AIO_IOB2_BI2X_AC1__OUTPUTDATA OutputData;
         AIO_IOB2_BI2X_AC1__ICNPIN ICnPinHist[20];
     };
+
+    // verified with XIF-2024122300
+    static_assert(sizeof(AIO_SCI_COMM) == 0xf8);
+    static_assert(sizeof(AIO_NMGR_IOB2) == 0xe30);
+    static_assert(sizeof(AIO_IOB2_BI2X_AC1) == 0x4538);
+    static_assert(sizeof(AIO_IOB2_BI2X_WRFIRM) == 0x20f48);
 
     /*
      * typedefs
@@ -338,14 +351,21 @@ namespace games::pc {
                 val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderL]) - 0.5f) * 2;
             }
         }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Left]) &&
-            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Right])) {
-            val = 0.f;
-        } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Left])) {
+
+        const auto now = get_performance_milliseconds();
+
+        const auto fader_l_socd = socd::socd_clean(
+            0, // Fader-L
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Left]),
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Right]),
+            now);
+
+        if (fader_l_socd == socd::SocdCCW) {
             val = -1.0f;
-        } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderL_Right])) {
+        } else if (fader_l_socd == socd::SocdCW) {
             val = +1.0f;
         }
+
         o_DevStatus->Input.CN15_7 = (val < 0.2f) ? 0xFF : 0;
         o_DevStatus->Input.CN15_6 = (val > -0.85f && val < 0.35f) ? 0xFF : 0;
         o_DevStatus->Input.CN15_5 = (val > -0.6f && val < 0.6f) ? 0xFF : 0;
@@ -363,14 +383,19 @@ namespace games::pc {
                 val = (GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::FaderR]) - 0.5f) * 2;
             }
         }
-        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Left]) &&
-            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Right])) {
-            val = 0.f;
-        } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Left])) {
+
+        const auto fader_r_socd = socd::socd_clean(
+            1, // Fader-R
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Left]),
+            GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Right]),
+            now);
+
+        if (fader_r_socd == socd::SocdCCW) {
             val = -1.0f;
-        } else if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::FaderR_Right])) {
+        } else if (fader_r_socd == socd::SocdCW) {
             val = +1.0f;
         }
+
         o_DevStatus->Input.CN11_20 = (val < 0.2f) ? 0xFF : 0;
         o_DevStatus->Input.CN11_19 = (val > -0.85f && val < 0.35f) ? 0xFF : 0;
         o_DevStatus->Input.CN9_10 = (val > -0.6f && val < 0.6f) ? 0xFF : 0;
@@ -737,3 +762,5 @@ namespace games::pc {
     }
 
 }
+
+#endif
