@@ -353,9 +353,12 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         (GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CW ||
          GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CCW);
 
-    // reflec beat - do not auto-rotate for second window (D3DProxyWindow)
-    // KBR (rb1) launches landscape and draws rotated by itself, don't do rotation
-    if (avs::game::is_model({"LBR", "MBR"}) && window_name == "D3DProxyWindow") {
+    // reflec beat
+    if (avs::game::is_model("KBR")) {
+        // KBR (rb1) launches landscape and draws rotated by itself, don't do any rotation
+        adjust_orientation = false;
+    } else if (avs::game::is_model({"LBR", "MBR"}) && window_name == "D3DProxyWindow") {
+        // do not auto-rotate for second window (D3DProxyWindow)
         adjust_orientation = false;
     }
 
