@@ -726,7 +726,7 @@ static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
     if (games::gitadora::is_arena_model() &&
         games::gitadora::ARENA_SINGLE_WINDOW &&
         hWnd != GRAPHICS_WINDOW_MAIN) {
-        log_info("graphics", "ShowWindow_hook - hiding sub window 0x{}", fmt::ptr(hWnd));
+        log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
         return true;
     }
 
