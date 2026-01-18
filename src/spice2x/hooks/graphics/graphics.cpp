@@ -301,6 +301,30 @@ static BOOL WINAPI ClipCursor_hook(const RECT *lpRect) {
     return ClipCursor_orig(lpRect);
 }
 
+static void fix_up_rb_auto_rotate_dimensions(DWORD &w, DWORD &h) {
+    // reflec beat
+    // for whatever reason, rb creates the first window it weird dimensions (774x1389 for reflesia, for example)
+    // so doing ChangeDisplaySettings as-is ends up with DISP_CHANGE_BADMODE
+    // while a second window (with title D3DProxyWindow) does get created with correct dimensions, it's
+    // too late to rotate the window then; as a workaround force the display change now with patched up dimensions
+
+    bool changed = false;
+    if (w == 774) {
+        // LBR, MBR reflesia
+        w = 768;
+        h = 1360;
+        changed = true;
+    } else if (w == 1086) {
+        // MBR (before reflesia)
+        w = 1080;
+        h = 1920;
+        changed = true;
+    }
+    if (changed) {
+        log_misc("graphics", "fix auto-rotate dimensions for reflec beat: w={}, h={}", w, h);
+    }
+}
+
 static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName,
                                         DWORD dwStyle, int x, int y, int nWidth, int nHeight,
                                         HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
@@ -325,9 +349,18 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     // set display orientation and/or refresh rate
     // only set orientation when the target window is portrait
     // (avoid doing this for SDVX subscreen which is in landscape, for example)
-    const auto adjust_orientation =
+    auto adjust_orientation =
         (GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CW ||
          GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CCW);
+
+    // reflec beat
+    if (avs::game::is_model("KBR")) {
+        // KBR (rb1) launches landscape and draws rotated by itself, don't do any rotation
+        adjust_orientation = false;
+    } else if (avs::game::is_model({"LBR", "MBR"}) && window_name == "D3DProxyWindow") {
+        // do not auto-rotate for second window (D3DProxyWindow)
+        adjust_orientation = false;
+    }
 
     if ((nHeight > nWidth && adjust_orientation) || GRAPHICS_FORCE_REFRESH > 0) {
         DEVMODE mode {};
@@ -338,11 +371,16 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
                 DWORD orientation = GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CW ? DMDO_90 : DMDO_270;
                 log_misc(
                     "graphics",
-                    "auto-rotate: call ChangeDisplaySettings and rotate display to DMDO_xx mode {}",
-                    orientation);
+                    "auto-rotate: call ChangeDisplaySettings and rotate display to DMDO_xx mode {}, w={}, h={}",
+                    orientation, nWidth, nHeight);
                 mode.dmPelsWidth = nWidth;
                 mode.dmPelsHeight = nHeight;
                 mode.dmDisplayOrientation = orientation;
+
+                // reflec beat
+                if (avs::game::is_model({"LBR", "MBR"})) {
+                    fix_up_rb_auto_rotate_dimensions(mode.dmPelsWidth, mode.dmPelsHeight);
+                }
             }
 
             if (GRAPHICS_FORCE_REFRESH > 0) {
@@ -357,7 +395,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
             const auto disp_res = ChangeDisplaySettings(&mode, CDS_FULLSCREEN);
             if (disp_res != DISP_CHANGE_SUCCESSFUL) {
-                log_warning("graphics", "failed to change display settings: {}", disp_res);
+                log_warning("graphics", "ChangeDisplaySettings failed: {}", disp_res);
             }
         } else {
             log_warning("graphics", "failed to get display settings");
