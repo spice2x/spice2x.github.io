@@ -31,6 +31,7 @@ namespace games::drs {
     extern std::vector<TouchEvent> TOUCH_EVENTS;
     extern bool DISABLE_TOUCH;
     extern bool TRANSPOSE_TOUCH;
+    extern bool RGB_CAMERA_HOOK;
 
     void fire_touches(drs_touch_t *events, size_t event_count);
     void start_touch();

@@ -1118,6 +1118,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_DRSTransposeTouch].value_bool()) {
         games::drs::TRANSPOSE_TOUCH = true;
     }
+    if (options[launcher::Options::DRSRGBCameraHook].value_bool()) {
+        games::drs::RGB_CAMERA_HOOK = true;
+    }
     if (options[launcher::Options::spice2x_AutoCard].is_active()) {
         const auto text = options[launcher::Options::spice2x_AutoCard].value_text();
         if (text == "p1") {
