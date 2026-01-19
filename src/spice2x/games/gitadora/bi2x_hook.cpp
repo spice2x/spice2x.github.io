@@ -1,5 +1,7 @@
 #include "bi2x_hook.h"
 
+#if SPICE64
+
 #include <optional>
 #include <cstdint>
 #include "util/detour.h"
@@ -18,24 +20,29 @@ namespace games::gitadora {
     //  */
 
     struct AIO_NMGR_IOB2 {
+        uint8_t data[0xe18];
     };
 
     struct AIO_IOB2_BI2X_AC1__SETTING {
     };
 
     struct AIO_NMGR_IOB5 {
+        uint8_t data[0xb10];
     };
 
     struct AIO_SCI_COMM {
+        uint8_t data[0x100];
     };
 
     struct AIO_IOB5_Y32D {
+        uint8_t data[0x2e8];
     };
 
     // struct AIO_IOB5_Y33I {
     // };
 
     struct AIO_IOB2_BI2X_AC1 {
+        uint8_t data[0x4570];
     };
 
     struct AIO_NMGR_IOB__NODEINFO {
@@ -43,6 +50,7 @@ namespace games::gitadora {
     };
 
     struct AIO_IOB2_BI2X_WRFIRM {
+        uint8_t data[0x20f48];
     };
 
     struct AIO_SCI_COMM_T {
@@ -158,6 +166,14 @@ namespace games::gitadora {
     struct AIO_IOB5_Y32D__DEVSTATUS {
         uint8_t unk[0xB1];
     };
+
+    // verified with M32-007-2025092400
+    static_assert(sizeof(AIO_NMGR_IOB2) == 0xe18);
+    static_assert(sizeof(AIO_NMGR_IOB5) == 0xb10);
+    static_assert(sizeof(AIO_SCI_COMM) == 0x100);
+    static_assert(sizeof(AIO_IOB5_Y32D) == 0x2e8);
+    static_assert(sizeof(AIO_IOB2_BI2X_AC1) == 0x4570);
+    static_assert(sizeof(AIO_IOB2_BI2X_WRFIRM) == 0x20f48);
 
      /*
       * typedefs
@@ -702,3 +718,5 @@ namespace games::gitadora {
                                aioNodeCtl_UpdateDevicesStatus, &aioNodeCtl_UpdateDevicesStatus_orig);
     }
 }
+
+#endif

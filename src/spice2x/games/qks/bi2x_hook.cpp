@@ -1,5 +1,7 @@
 #include "bi2x_hook.h"
 
+#if SPICE64
+
 #include "util/detour.h"
 #include "util/logging.h"
 #include "rawinput/rawinput.h"
@@ -15,15 +17,19 @@ namespace games::qks {
      */
 
     struct AIO_SCI_COMM {
+        uint8_t data[0xf8];
     };
 
     struct AIO_NMGR_IOB {
+        uint8_t data[0xa00];
     };
 
     struct AIO_IOB2_BI2X_AC1 {
+        uint8_t data[0x3908];
     };
 
     struct AIO_IOB2_BI2X_WRFIRM {
+        uint8_t data[0x20f48];
     };
 
     struct AIO_NMGR_IOB__NODEINFO {
@@ -173,6 +179,12 @@ namespace games::qks {
         AIO_IOB2_BI2X_AC1__ICNPIN ICnPinHist[17];
         AIO_IOB2_BI2X_AC1__SETTING Setting;
     };
+
+    // verified with UKS-001-2024030600
+    static_assert(sizeof(AIO_IOB2_BI2X_AC1) == 0x3908);
+    static_assert(sizeof(AIO_SCI_COMM) == 0xf8);
+    static_assert(sizeof(AIO_NMGR_IOB) == 0xa00);
+    static_assert(sizeof(AIO_IOB2_BI2X_WRFIRM) == 0x20f48);
 
     /*
      * typedefs
@@ -603,3 +615,5 @@ namespace games::qks {
                                aioNodeCtl_IsError, &aioNodeCtl_IsError_orig);
     }
 }
+
+#endif

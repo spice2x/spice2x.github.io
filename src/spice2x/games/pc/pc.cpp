@@ -12,10 +12,12 @@
 #include "misc/wintouchemu.h"
 #include "hooks/graphics/graphics.h"
 #include "rawinput/rawinput.h"
+#include "util/socd_cleaner.h"
 
 namespace games::pc {
     std::string PC_INJECT_ARGS = "";
     bool PC_NO_IO = false;
+    bool PC_KNOB_MODE = false;
 
     static acioemu::ACIOHandle *acioHandle = nullptr;
     static std::wstring portName = L"COM1";
@@ -61,6 +63,11 @@ namespace games::pc {
         return ERROR_NOT_SUPPORTED;
     }
 
+    void PCGame::pre_attach() {
+        // SOCD
+        socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
+    }
+
     void PCGame::attach() {
         Game::attach();
 
@@ -78,9 +85,14 @@ namespace games::pc {
             execexe::load_library("libaio-iob2_video.dll");
             execexe::load_library("win10actlog.dll");
 
+#if SPICE64
+
             if (!PC_NO_IO) {
                 bi2x_hook_init();
             }
+
+#endif
+
         });
 
         const auto user32Dll = "user32.dll";
