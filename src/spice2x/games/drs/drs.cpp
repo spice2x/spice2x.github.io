@@ -8,6 +8,7 @@
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/memutils.h"
+#include "rgb_cam.h"
 
 #pragma pack(push)
 
@@ -150,6 +151,7 @@ namespace games::drs {
     char DRS_TAPELED[DRS_TAPELED_COLS_TOTAL][3] {};
     bool DISABLE_TOUCH = false;
     bool TRANSPOSE_TOUCH = false;
+    bool RGB_CAMERA_HOOK = false;
 
     std::vector<TouchEvent> TOUCH_EVENTS;
 
@@ -312,6 +314,10 @@ namespace games::drs {
             start_touch();
         } else {
             log_info("drs", "no native input method detected");
+        }
+
+        if (RGB_CAMERA_HOOK) {
+            init_rgb_camera_hook();
         }
     }
 

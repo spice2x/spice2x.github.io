@@ -236,6 +236,7 @@ namespace launcher {
             spice2x_IIDXWindowedTDJ,
             spice2x_DRSDisableTouch,
             spice2x_DRSTransposeTouch,
+            DRSRGBCameraHook,
             spice2x_IIDXNativeTouch,
             spice2x_IIDXNoSub,
             spice2x_IIDXEmulateSubscreenKeypadTouch,

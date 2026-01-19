@@ -441,6 +441,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/scotto/io.cpp
         games/drs/drs.cpp
         games/drs/io.cpp
+        games/drs/rgb_cam.cpp
         games/we/we.cpp
         games/we/io.cpp
         games/we/touchpanel.cpp

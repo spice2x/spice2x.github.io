@@ -2220,6 +2220,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // DRSRGBCameraHook
+        .title = "DRS RGB Camera Hook",
+        .name = "drsrgbcamhook",
+        .desc = "Hook into the RGB camera detection and attempt to use your own non-official webcam. "
+            "Not every webcam will be compatible with this; YMMV.\n\n"
+            "Note: this is NOT for the motion camera - you still need a real RealSense camera for that!",
+        .type = OptionType::Bool,
+        .game_name = "DANCERUSH",
+        .category = "Game Options",
+    },
+    {
         // spice2x_IIDXNativeTouch
         .title = "IIDX Native Touch Handling",
         .name = "sp2x-iidxnativetouch",
