@@ -16,7 +16,6 @@
 #include "avs/game.h"
 #include "cfg/configurator.h"
 #include "hooks/cfgmgr32hook.h"
-#include "hooks/setupapihook.h"
 #include "util/detour.h"
 #include "util/memutils.h"
 #include "util/logging.h"
@@ -162,28 +161,10 @@ namespace games::drs {
     void init_rgb_camera_hook() {
         log_info("drs::rgbcam", "initializing camera hook");
 
+        cfgmgr32hook_init(avs::game::DLL_INSTANCE);
+
         // camera media framework hook
         MFEnumDeviceSources_orig = detour::iat_try(
                 "MFEnumDeviceSources", MFEnumDeviceSources_hook, avs::game::DLL_INSTANCE);
-
-        // camera settings
-        SETUPAPI_SETTINGS settings3 {};
-        settings3.class_guid[0] = 0x00000000;
-        settings3.class_guid[1] = 0x00000000;
-        settings3.class_guid[2] = 0x00000000;
-        settings3.class_guid[3] = 0x00000000;
-        const char property3[] = "USB Composite Device";
-        memcpy(settings3.property_devicedesc, property3, sizeof(property3));
-        settings3.property_address[0] = 1;
-        settings3.property_address[1] = 7;
-        setupapihook_add(settings3);
-
-        // usb hub
-        CFGMGR32_HOOK_SETTING settingcfg {};
-        settingcfg.device_id = "USB\\VEN_8086&DEV_8C2D";
-        settingcfg.device_node_id = "USB\\VEN_8086&DEV_8C2D\\?&????????&?&????";
-        cfgmgr32hook_init(avs::game::DLL_INSTANCE);
-        cfgmgr32hook_add(settingcfg);
     }
-
 }

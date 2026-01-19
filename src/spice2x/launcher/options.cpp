@@ -2223,7 +2223,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // DRSRGBCameraHook
         .title = "DRS RGB Camera Hook",
         .name = "drsrgbcamhook",
-        .desc = "Hook into the RGB camera detection and attempt to use your own non-official webcam.\n\n"
+        .desc = "Hook into the RGB camera detection and attempt to use your own non-official webcam. "
+            "Not every webcam will be compatible with this; YMMV.\n\n"
             "Note: this is NOT for the motion camera - you still need a real RealSense camera for that!",
         .type = OptionType::Bool,
         .game_name = "DANCERUSH",
