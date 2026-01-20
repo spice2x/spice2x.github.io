@@ -143,6 +143,8 @@ namespace overlay::windows {
             std::string pe_identifier_for_patch = "");
 
         void show_patch_tooltip(const PatchData& patch);
+
+        bool is_game_id_wildcard_matched(const std::string& id_from_config);
     };
 
     PatchStatus is_patch_active(PatchData &patch);
