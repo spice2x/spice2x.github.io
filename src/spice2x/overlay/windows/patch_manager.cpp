@@ -930,6 +930,13 @@ namespace overlay::windows {
         }
     }
 
+    // match on model and ext, ignoring dest/spec/rev
+    // sample: LDJ:J:E:A:2025011400
+    bool PatchManager::is_game_id_wildcard_matched(const std::string& id_from_config) {
+        return ((id_from_config.compare(0, 3, avs::game::MODEL) == 0) &&
+                (id_from_config.compare(10, 10, avs::game::EXT) == 0));
+    }
+
     void PatchManager::config_load() {
         log_info("patchmanager", "loading config");
 
@@ -974,9 +981,7 @@ namespace overlay::windows {
                                     "matched auto apply entry by full game identifier: {}",
                                     entry_id);
                             
-                            } else if ((entry_id.compare(0, 3, avs::game::MODEL) == 0) &&
-                                (entry_id.compare(10, 10, avs::game::EXT) == 0)) {
-
+                            } else if (is_game_id_wildcard_matched(entry_id)) {
                                 // match on model and ext, ignoring dest/spec/rev
                                 // sample: LDJ:J:E:A:2025011400
                                 setting_auto_apply = true;
@@ -1082,7 +1087,7 @@ namespace overlay::windows {
         auto game_id = avs::game::get_identifier();
         bool game_id_added = false;
         for (auto &entry : setting_auto_apply_list) {
-            if (entry == game_id) {
+            if (entry == game_id || is_game_id_wildcard_matched(entry)) {
                 if (!setting_auto_apply) {
                     continue;
                 }
