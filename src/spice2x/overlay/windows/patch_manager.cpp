@@ -973,22 +973,24 @@ namespace overlay::windows {
                             // check if this is our game identifier
                             const std::string entry_id = entry.GetString();
 
-                            if (game_id == entry_id) {
-                                // exact match
-                                setting_auto_apply = true;
-                                log_misc(
-                                    "patchmanager",
-                                    "matched auto apply entry by full game identifier: {}",
-                                    entry_id);
-                            
-                            } else if (is_game_id_wildcard_matched(entry_id)) {
-                                // match on model and ext, ignoring dest/spec/rev
-                                // sample: LDJ:J:E:A:2025011400
-                                setting_auto_apply = true;
-                                log_misc(
-                                    "patchmanager",
-                                    "matched auto apply entry by partial game identifier: {}:?:?:?:{}",
-                                    avs::game::MODEL, avs::game::EXT);
+                            if (!setting_auto_apply) {
+                                if (game_id == entry_id) {
+                                    // exact match
+                                    setting_auto_apply = true;
+                                    log_misc(
+                                        "patchmanager",
+                                        "matched auto apply entry by full game identifier: {}",
+                                        entry_id);
+                                
+                                } else if (is_game_id_wildcard_matched(entry_id)) {
+                                    // match on model and ext, ignoring dest/spec/rev
+                                    // sample: LDJ:J:E:A:2025011400
+                                    setting_auto_apply = true;
+                                    log_misc(
+                                        "patchmanager",
+                                        "matched auto apply entry by partial game identifier: {}:?:?:?:{}",
+                                        avs::game::MODEL, avs::game::EXT);
+                                }
                             }
 
                             // move to list
