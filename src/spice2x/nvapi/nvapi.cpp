@@ -236,6 +236,26 @@ namespace nvapi {
         return NvAPI_DRS_SetSetting(h_session, h_profile, &drs_setting);
     }
 
+    NvAPI_Status set_refresh_rate(NvDRSSessionHandle h_session, NvDRSProfileHandle h_profile) {
+        auto drs_setting = NVDRS_SETTING {};
+        drs_setting.version = NVDRS_SETTING_VER;
+        drs_setting.settingId = REFRESH_RATE_OVERRIDE_ID;
+        drs_setting.settingType = NVDRS_DWORD_TYPE;
+        drs_setting.u32PredefinedValue = REFRESH_RATE_OVERRIDE_APPLICATION_CONTROLLED;
+        drs_setting.u32CurrentValue = REFRESH_RATE_OVERRIDE_APPLICATION_CONTROLLED;
+        return NvAPI_DRS_SetSetting(h_session, h_profile, &drs_setting);
+    }
+
+    NvAPI_Status set_max_fps(NvDRSSessionHandle h_session, NvDRSProfileHandle h_profile) {
+        auto drs_setting = NVDRS_SETTING {};
+        drs_setting.version = NVDRS_SETTING_VER;
+        drs_setting.settingId = FRL_FPS_ID;
+        drs_setting.settingType = NVDRS_DWORD_TYPE;
+        drs_setting.u32PredefinedValue = FRL_FPS_DISABLED;
+        drs_setting.u32CurrentValue = FRL_FPS_DISABLED;
+        return NvAPI_DRS_SetSetting(h_session, h_profile, &drs_setting);
+    }
+
     void set_profile_settings() {
         if (!NVAPI_MODULE_LOAD_SUCCEEDED) {
             return;
@@ -266,22 +286,26 @@ namespace nvapi {
         log_info("nvapi", "setting VSync to Application Controlled...");
         if ((status = set_vsync_mode(h_session, h_profile)) != NVAPI_OK) {
             log_warning("nvapi", "could not set VSync mode: {}", get_error_message(status));
-            NvAPI_DRS_DestroySession(h_session);
-            return;
         }
 
         log_info("nvapi", "applying preferred PState to Maximum Performance...");
         if ((status = set_gpu_power_state(h_session, h_profile)) != NVAPI_OK) {
             log_warning("nvapi", "could not set preferred PState: {}", get_error_message(status));
-            NvAPI_DRS_DestroySession(h_session);
-            return;
         }
 
         log_info("nvapi", "disabling G-SYNC...");
         if ((status = set_gsync_mode(h_session, h_profile)) != NVAPI_OK) {
             log_warning("nvapi", "could not set G-Sync mode: {}", get_error_message(status));
-            NvAPI_DRS_DestroySession(h_session);
-            return;
+        }
+
+        log_info("nvapi", "setting preferred refresh rate to Application Controlled...");
+        if ((status = set_refresh_rate(h_session, h_profile)) != NVAPI_OK) {
+            log_warning("nvapi", "could not set preferred refresh rate: {}", get_error_message(status));
+        }
+
+        log_info("nvapi", "disabling max framerate...");
+        if ((status = set_max_fps(h_session, h_profile)) != NVAPI_OK) {
+            log_warning("nvapi", "could not disable max framerate: {}", get_error_message(status));
         }
 
         log_info("nvapi", "saving settings for DRS session...");
