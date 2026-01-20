@@ -955,7 +955,7 @@ namespace overlay::windows {
                 if (auto_apply != doc.MemberEnd() && auto_apply->value.IsArray()) {
 
                     // get game id
-                    auto game_id = avs::game::get_identifier();
+                    const auto game_id = avs::game::get_identifier();
 
                     // iterate entries
                     setting_auto_apply = false;
@@ -964,14 +964,36 @@ namespace overlay::windows {
                         if (entry.IsString()) {
 
                             // check if this is our game identifier
-                            std::string entry_id = entry.GetString();
+                            const std::string entry_id = entry.GetString();
+
                             if (game_id == entry_id) {
+                                // exact match
                                 setting_auto_apply = true;
+                                log_misc(
+                                    "patchmanager",
+                                    "matched auto apply entry by full game identifier: {}",
+                                    entry_id);
+                            
+                            } else if ((entry_id.compare(0, 3, avs::game::MODEL) == 0) &&
+                                (entry_id.compare(10, 10, avs::game::EXT) == 0)) {
+
+                                // match on model and ext, ignoring dest/spec/rev
+                                // sample: LDJ:J:E:A:2025011400
+                                setting_auto_apply = true;
+                                log_misc(
+                                    "patchmanager",
+                                    "matched auto apply entry by partial game identifier: {}:?:?:?:{}",
+                                    avs::game::MODEL, avs::game::EXT);
                             }
 
                             // move to list
                             setting_auto_apply_list.emplace_back(entry_id);
                         }
+                    }
+                    if (!setting_auto_apply) {
+                        log_misc(
+                            "patchmanager",
+                            "no auto apply entry matched, patches will not load automatically");
                     }
                 }
 
