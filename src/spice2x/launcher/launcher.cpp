@@ -1896,7 +1896,7 @@ int main_implementation(int argc, char *argv[]) {
                     "This usually means one of the following:\n\n"
                     "  1. You put spice executables in the wrong place, or\n"
                     "  2. XML files in prop directory are malformed or missing, or\n"
-                    "  3. You passed in invalid options (usually, path overrides like -exec)\n\n"
+                    "  3. You passed in invalid options (do not specify -exec or -modules if you don't know what you're doing)\n\n"
                 );
 
                 log_fatal("launcher", "module auto detection failed, see log.txt for troubleshooting");
