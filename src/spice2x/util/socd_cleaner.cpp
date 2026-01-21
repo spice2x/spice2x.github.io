@@ -137,7 +137,7 @@ namespace socd {
                 result = TiltUp;
             } else if (socd_result == SocdCW) {
                 result = TiltDown;
-            } else {
+            } else if (socd_result == SocdBoth) {
                 result = TiltUp;
             }
         } else if (is_up) {
