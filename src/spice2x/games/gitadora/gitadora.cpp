@@ -24,6 +24,7 @@ namespace games::gitadora {
     bool P1_LEFTY = false;
     bool P2_LEFTY = false;
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
+    bool USE_LEGACY_PICK_ALGORITHM = false;
 
     /*
      * Prevent GitaDora from creating folders on F drive

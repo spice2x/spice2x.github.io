@@ -1021,6 +1021,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // GitaDoraPickAlgo
+        .title = "GitaDora Picking Algorithm",
+        .name = "gdpickalgo",
+        .desc = "Select picking algorithm.\n\n"
+            "socd_recent (default): use SOCD cleaner algorithm that prioritizes recent input\n\n"
+            "legacy: only the rising edge of the pick input is considered; cannot hold pick for menu navigation",
+        .type = OptionType::Enum,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+        .elements = {
+            {"socd_recent", ""},
+            {"legacy", ""},
+        },
+    },
+    {
         // GitaDoraSubOverlaySize
         .title = "GitaDora Subscreen Overlay Size",
         .name = "gdsubsize",

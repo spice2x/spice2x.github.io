@@ -14,6 +14,7 @@ namespace games::gitadora {
     extern bool P1_LEFTY;
     extern bool P2_LEFTY;
     extern std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
+    extern bool USE_LEGACY_PICK_ALGORITHM;
 
     class GitaDoraGame : public games::Game {
     public:

@@ -103,6 +103,7 @@ namespace launcher {
             GitaDoraArenaSingleWindow,
             GitaDoraLefty,
             GitaDoraWailHold,
+            GitaDoraPickAlgo,
             GitaDoraSubOverlaySize,
             LoadJubeatModule,
             LoadReflecBeatModule,

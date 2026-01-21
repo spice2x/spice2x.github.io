@@ -595,6 +595,12 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraWailHold].is_active()) {
         socd::TILT_HOLD_MS = options[launcher::Options::GitaDoraWailHold].value_uint32();
     }
+    if (options[launcher::Options::GitaDoraPickAlgo].is_active()) {
+        const auto text = options[launcher::Options::GitaDoraPickAlgo].value_text();
+        if (text == "legacy") {
+            games::gitadora::USE_LEGACY_PICK_ALGORITHM = true;
+        }
+    }
     if (options[launcher::Options::GitaDoraSubOverlaySize].is_active()) {
         games::gitadora::SUBSCREEN_OVERLAY_SIZE = options[launcher::Options::GitaDoraSubOverlaySize].value_text();
     }

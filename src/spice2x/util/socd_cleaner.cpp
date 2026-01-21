@@ -15,12 +15,12 @@ namespace socd {
 
     SocdAlgorithm ALGORITHM = SocdAlgorithm::Neutral;
    
-    static double last_rising_edge[2][2] = {};
-    static bool last_button_state[2][2] = {};
+    static double last_rising_edge[4][2] = {};
+    static bool last_button_state[4][2] = {};
 
     // this has no locking, use only if you know there is only one i/o thread that will call this
     SocdResult socd_clean(uint8_t device, bool ccw, bool cw, double time_now) {
-        if (device >= 2) {
+        if (device >= 4) {
             log_fatal("socd", "invalid device index in socd_clean: {}", device);
         }
 
@@ -97,7 +97,7 @@ namespace socd {
             log_fatal("socd", "invalid device index in socd_clean: {}", device);
         }
 
-        const auto socd_result = socd_clean(device, up, down, time_now);
+        const auto socd_result = socd_clean(device + 2, up, down, time_now);
 
         if (up) {
             most_recent_active[device][TiltUp] = time_now;
