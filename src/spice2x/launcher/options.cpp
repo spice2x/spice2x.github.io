@@ -1024,15 +1024,19 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // GitaDoraPickAlgo
         .title = "GitaDora Picking Algorithm",
         .name = "gdpickalgo",
-        .desc = "Select picking algorithm.\n\n"
-            "socd_recent (default): use SOCD cleaner algorithm that prioritizes recent input\n\n"
-            "legacy: only the rising edge of the pick input is considered; cannot hold pick for menu navigation",
+        .desc = "Select picking algorithm for guitar.\n\n"
+            "recent (default): use SOCD cleaner algorithm that prioritizes recent input\n\n"
+            "legacy: only the rising edge of the pick input is considered; cannot hold pick for menu navigation\n\n"
+            "neutral: if both up and down are pressed, they cancel out\n\n"
+            "raw: no filtering done by spice; game receives both input as-is, possible to input both up and down at the same time",
         .type = OptionType::Enum,
         .game_name = "GitaDora",
         .category = "Game Options",
         .elements = {
-            {"socd_recent", ""},
+            {"recent", ""},
             {"legacy", ""},
+            {"neutral", ""},
+            {"raw", ""}
         },
     },
     {

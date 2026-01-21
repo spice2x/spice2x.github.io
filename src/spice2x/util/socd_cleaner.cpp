@@ -19,14 +19,19 @@ namespace socd {
     static bool last_button_state[4][2] = {};
 
     // this has no locking, use only if you know there is only one i/o thread that will call this
-    SocdResult socd_clean(uint8_t device, bool ccw, bool cw, double time_now) {
+    SocdResult socd_clean(
+        uint8_t device, bool ccw, bool cw, double time_now,
+        std::optional<SocdAlgorithm> algorithm_override) {
+
         if (device >= 4) {
             log_fatal("socd", "invalid device index in socd_clean: {}", device);
         }
 
-        // SOCD last input algorithm needs to keep track of rising edge times
-        if (ALGORITHM != SocdAlgorithm::Neutral) {
-            // detect rising edges
+        SocdAlgorithm algo =
+            algorithm_override.has_value() ? algorithm_override.value() : ALGORITHM;
+
+        // keep track of rising edge times
+        if (algo == SocdAlgorithm::PreferRecent || algo == SocdAlgorithm::PreferFirst) {
             if (!last_button_state[device][SocdCCW] && ccw) {
                 last_rising_edge[device][SocdCCW] = time_now;
             }
@@ -55,7 +60,7 @@ namespace socd {
         const auto cw_time = last_rising_edge[device][SocdCW];
         log_debug("socd", "ccw={}, cw ={}", ccw_time, cw_time);
 
-        if (ALGORITHM == SocdAlgorithm::PreferRecent) {
+        if (algo == SocdAlgorithm::PreferRecent) {
             // SOCD: prefer last input
             if (ccw_time < cw_time) {
                 // while CCW is being held, CW got pressed
@@ -67,7 +72,7 @@ namespace socd {
                 // it's a tie; instead of none, we'll pick a direction
                 return SocdCW;
             }
-        } else if (ALGORITHM == SocdAlgorithm::PreferFirst) {
+        } else if (algo == SocdAlgorithm::PreferFirst) {
             // SOCD: keep first input
             if (ccw_time < cw_time) {
                 // while CCW is being held, CW got pressed
@@ -79,8 +84,14 @@ namespace socd {
                 // it's a tie; instead of none, we'll pick a direction
                 return SocdCW;
             }
-        } else {
+        } else if (algo == SocdAlgorithm::Neutral) {
             // SOCD: neutral when both are pressed
+            return SocdNone;
+        } else if (algo == SocdAlgorithm::None) {
+            // SOCD: both are pressed
+            return SocdBoth;
+        } else {
+            log_fatal("socd", "invalid SOCD algorithm");
             return SocdNone;
         }
     }
@@ -97,7 +108,8 @@ namespace socd {
             log_fatal("socd", "invalid device index in socd_clean: {}", device);
         }
 
-        const auto socd_result = socd_clean(device + 2, up, down, time_now);
+        const auto socd_result = socd_clean(
+                device + 2, up, down, time_now, SocdAlgorithm::PreferRecent);
 
         if (up) {
             most_recent_active[device][TiltUp] = time_now;

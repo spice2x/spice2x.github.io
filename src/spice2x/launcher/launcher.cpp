@@ -598,7 +598,11 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraPickAlgo].is_active()) {
         const auto text = options[launcher::Options::GitaDoraPickAlgo].value_text();
         if (text == "legacy") {
-            games::gitadora::USE_LEGACY_PICK_ALGORITHM = true;
+            games::gitadora::PICK_ALGO.reset();
+        } else if (text == "neutral") {
+            games::gitadora::PICK_ALGO = socd::SocdAlgorithm::Neutral;
+        } else if (text == "raw") {
+            games::gitadora::PICK_ALGO = socd::SocdAlgorithm::None;
         }
     }
     if (options[launcher::Options::GitaDoraSubOverlaySize].is_active()) {

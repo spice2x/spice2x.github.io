@@ -24,7 +24,7 @@ namespace games::gitadora {
     bool P1_LEFTY = false;
     bool P2_LEFTY = false;
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
-    bool USE_LEGACY_PICK_ALGORITHM = false;
+    std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -228,8 +228,15 @@ namespace games::gitadora {
                 overlay::UI_SCALE_PERCENT = 250;
             }
 
-             // for guitar wail SOCD cleaning
+            // for guitar wail SOCD cleaning
             socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
+
+            // for guitar picking
+            if (PICK_ALGO.has_value()) {
+                log_info("gitadora", "guitar pick SOCD algorithm: {}", static_cast<int>(PICK_ALGO.value()));
+            } else {
+                log_info("gitadora", "guitar pick SOCD algorithm: legacy");
+            }
         }
     }
 

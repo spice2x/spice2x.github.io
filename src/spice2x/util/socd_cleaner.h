@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <cstdint>
 
 namespace socd {
@@ -9,7 +10,8 @@ namespace socd {
     enum class SocdAlgorithm {
         Neutral,
         PreferRecent,
-        PreferFirst
+        PreferFirst,
+        None,
     };
 
     extern SocdAlgorithm ALGORITHM;
@@ -17,10 +19,16 @@ namespace socd {
     typedef enum _SocdResult {
         SocdCCW = 0,
         SocdCW = 1,
-        SocdNone = 2
+        SocdNone = 2,
+        SocdBoth = 3
     } SocdResult;
 
-    SocdResult socd_clean(uint8_t device, bool ccw, bool cw, double time_now);
+    SocdResult socd_clean(
+        uint8_t device,
+        bool ccw,
+        bool cw,
+        double time_now,
+        std::optional<SocdAlgorithm> algorithm = std::nullopt);
 
     // for guitar wail (up/down only)
 

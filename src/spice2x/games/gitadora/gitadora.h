@@ -4,6 +4,7 @@
 
 #include "avs/game.h"
 #include "games/game.h"
+#include "util/socd_cleaner.h"
 
 namespace games::gitadora {
 
@@ -14,7 +15,7 @@ namespace games::gitadora {
     extern bool P1_LEFTY;
     extern bool P2_LEFTY;
     extern std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
-    extern bool USE_LEGACY_PICK_ALGORITHM;
+    extern std::optional<socd::SocdAlgorithm> PICK_ALGO;
 
     class GitaDoraGame : public games::Game {
     public:
