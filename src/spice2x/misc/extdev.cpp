@@ -522,24 +522,42 @@ static long __cdecl gfdm_unit_get_input_p(int device, size_t player) {
     if (games::gitadora::is_guitar()) {
         auto offset = player * 11;
 
-        // pick up
-        if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[3 + offset]))) {
-            if (!GFDM_GF_PICK_STATE_UP[player]) {
-                GFDM_GF_PICK_STATE_UP[player] = true;
-                ret |= 0x80 | 0x20;
+        const auto pick_up = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[3 + offset]));
+        const auto pick_down = Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[4 + offset]));
+        if (!games::gitadora::PICK_ALGO.has_value()) {
+            // legacy behavior (detect rising edges only, input for 1 frame)
+            if (pick_up) {
+                if (!GFDM_GF_PICK_STATE_UP[player]) {
+                    GFDM_GF_PICK_STATE_UP[player] = true;
+                    ret |= 0x80 | 0x20;
+                }
+            } else {
+                GFDM_GF_PICK_STATE_UP[player] = false;
             }
-        } else {
-            GFDM_GF_PICK_STATE_UP[player] = false;
-        }
 
-        // pick down
-        if (Buttons::getState(RI_MGR, buttons.at(gitadora_button_mapping[4 + offset]))) {
-            if (!GFDM_GF_PICK_STATE_DOWN[player]) {
-                GFDM_GF_PICK_STATE_DOWN[player] = true;
-                ret |= 0x100 | 0x20;
+            if (pick_down) {
+                if (!GFDM_GF_PICK_STATE_DOWN[player]) {
+                    GFDM_GF_PICK_STATE_DOWN[player] = true;
+                    ret |= 0x100 | 0x20;
+                }
+            } else {
+                GFDM_GF_PICK_STATE_DOWN[player] = false;
             }
         } else {
-            GFDM_GF_PICK_STATE_DOWN[player] = false;
+            const auto socd = socd::socd_clean(
+                player,
+                pick_up,
+                pick_down,
+                get_performance_milliseconds(),
+                games::gitadora::PICK_ALGO.value()
+            );
+            if (socd == socd::SocdCCW) {
+                ret |= 0x80 | 0x20; // pick up
+            } else if (socd == socd::SocdCW) {
+                ret |= 0x100 | 0x20; // pick down
+            } else if (socd == socd::SocdBoth) {
+                ret |= 0x100 | 0x80 | 0x20; // up and down
+            }
         }
 
         // button R

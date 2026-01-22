@@ -92,22 +92,44 @@ bool games::gitadora::J33ISerialDevice::parse_msg(
                 payload.buttons |= 1 << GUITAR_BTN_P;
             }
 
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickUp])) {
-                if (!GFDM_GF_PICK_STATE_UP) {
-                    GFDM_GF_PICK_STATE_UP = true;
-                    payload.buttons |= 1 << GUITAR_PICK_UP;
+
+            const auto pick_up = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickUp]);
+            const auto pick_down = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickDown]);
+            if (!games::gitadora::PICK_ALGO.has_value()) {
+                // legacy behavior (detect rising edges only, input for 1 frame)
+                if (pick_up) {
+                    if (!GFDM_GF_PICK_STATE_UP) {
+                        GFDM_GF_PICK_STATE_UP = true;
+                        payload.buttons |= 1 << GUITAR_PICK_UP;
+                    }
+                } else {
+                    GFDM_GF_PICK_STATE_UP = false;
+                }
+
+                if (pick_down) {
+                    if (!GFDM_GF_PICK_STATE_DOWN) {
+                        GFDM_GF_PICK_STATE_DOWN = true;
+                        payload.buttons |= 1 << GUITAR_PICK_DOWN;
+                    }
+                } else {
+                    GFDM_GF_PICK_STATE_DOWN = false;
                 }
             } else {
-                GFDM_GF_PICK_STATE_UP = false;
-            }
-
-            if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::GuitarP1PickDown])) {
-                if (!GFDM_GF_PICK_STATE_DOWN) {
-                    GFDM_GF_PICK_STATE_DOWN = true;
+                const auto socd = socd::socd_clean(
+                    0,
+                    pick_up,
+                    pick_down,
+                    get_performance_milliseconds(),
+                    games::gitadora::PICK_ALGO.value()
+                );
+                if (socd == socd::SocdCCW) {
+                    payload.buttons |= 1 << GUITAR_PICK_UP;
+                } else if (socd == socd::SocdCW) {
+                    payload.buttons |= 1 << GUITAR_PICK_DOWN;
+                } else if (socd == socd::SocdBoth) {
+                    payload.buttons |= 1 << GUITAR_PICK_UP;
                     payload.buttons |= 1 << GUITAR_PICK_DOWN;
                 }
-            } else {
-                GFDM_GF_PICK_STATE_DOWN = false;
             }
 
             auto &analogs = get_analogs();
