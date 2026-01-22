@@ -102,4 +102,5 @@ void graphics_update_window_style(HWND hWnd);
 void graphics_update_z_order(HWND hWnd, bool always_on_top);
 void graphics_move_resize_window(HWND hWnd);
 bool graphics_window_change_crashes_game();
+bool graphics_window_resize_breaks_game();
 void graphics_load_windowed_subscreen_parameters();
