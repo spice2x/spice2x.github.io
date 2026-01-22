@@ -27,14 +27,12 @@ namespace overlay::windows {
     }
 
     HWND ScreenResize::get_first_window() {
-        // hack for gitadora arena model which races to create many windows
-        // so [0] is not always the main one
-        if (GRAPHICS_WINDOW_MAIN.has_value()) {
-            return GRAPHICS_WINDOW_MAIN.value();
-        }
+        // this is ideal
         if (GRAPHICS_HOOKED_WINDOW.has_value()) {
             return GRAPHICS_HOOKED_WINDOW.value();
         }
+        // we typically do not want to check GRAPHICS_WINDOWS because it may include
+        // system windows (e.g., CicMarshalWnd)
         if (GRAPHICS_WINDOWS.size() == 0) {
             return NULL;
         }
