@@ -233,6 +233,14 @@ namespace overlay::windows {
         bool changed = false;
         const uint32_t step = 1;
         const uint32_t step_fast = 10;
+
+        if (graphics_window_resize_breaks_game()) {
+            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
+            "GITADORA tends to hang or have graphical\n"
+            "glitches when window is resized; resize\n"
+            "controls are disabled.");
+        }
+        ImGui::BeginDisabled(graphics_window_resize_breaks_game());
         ImGui::BeginDisabled(cfg::SCREENRESIZE->client_keep_aspect_ratio);
         ImGui::InputScalar(
             "Width",
@@ -248,6 +256,7 @@ namespace overlay::windows {
             &cfg::SCREENRESIZE->client_height,
             &step, &step_fast, nullptr);
         changed |= ImGui::IsItemDeactivatedAfterEdit();
+        ImGui::EndDisabled();
 
         ImGui::InputScalar(
             "X Offset",

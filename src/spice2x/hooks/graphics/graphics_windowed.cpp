@@ -1,6 +1,7 @@
 #include "graphics.h"
 
 #include "avs/game.h"
+#include "games/gitadora/gitadora.h"
 #include "cfg/screen_resize.h"
 #include "overlay/overlay.h"
 #include "util/logging.h"
@@ -84,6 +85,12 @@ void graphics_capture_initial_window(HWND hWnd) {
 
     // ensure frame size is captured
     graphics_wm_style_changed(hWnd, false);
+
+    // if the game is not compatible, ignore user-supplied values and keep the current size
+    if (graphics_window_resize_breaks_game()) {
+        cfg::SCREENRESIZE->client_width = client_w;
+        cfg::SCREENRESIZE->client_height = client_h;
+    }
 
     // if there was no user-supplied dimension, seed it with the current size
     // so that the next resize operation will work
@@ -392,6 +399,9 @@ void graphics_update_window_style(HWND hWnd) {
             break;
         case cfg::WindowDecorationMode::ResizableFrame:
             style |= WS_OVERLAPPEDWINDOW;
+            if (graphics_window_resize_breaks_game()) {
+                style &= ~WS_SIZEBOX;
+            }
             break;
         case cfg::WindowDecorationMode::Default:
         default:
@@ -491,5 +501,26 @@ bool graphics_window_change_crashes_game() {
                 "ignoring changes to window style due to incompatibility with this game");
         }
     });
+    return result;
+}
+
+bool graphics_window_resize_breaks_game() {
+    bool is_gitadora = avs::game::is_model({ "J32", "J33", "K32", "K33", "L32", "L33", "M32" });
+    bool is_arena = games::gitadora::is_arena_model();
+    // for whatever reason, gitadora games on dx/sd/sd2 cabs behave poorly when window is resized
+    // (eihter at launch or while it's running)
+    // usually results in: soft lock during scene transtions or really long transitions,
+    // backgrounds of menus not rendering, etc.
+    bool result = is_gitadora && !is_arena;
+
+    static std::once_flag flag;
+    std::call_once(flag, [&result]() {
+        if (result) {
+            log_warning(
+                "graphics-windowed",
+                "ignoring changes to window size due to incompatibility with this game");
+        }
+    });
+
     return result;
 }
