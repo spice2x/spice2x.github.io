@@ -32,6 +32,9 @@ namespace overlay::windows {
         if (GRAPHICS_WINDOW_MAIN.has_value()) {
             return GRAPHICS_WINDOW_MAIN.value();
         }
+        if (GRAPHICS_HOOKED_WINDOW.has_value()) {
+            return GRAPHICS_HOOKED_WINDOW.value();
+        }
         if (GRAPHICS_WINDOWS.size() == 0) {
             return NULL;
         }

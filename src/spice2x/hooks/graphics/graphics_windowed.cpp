@@ -24,6 +24,7 @@ std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_WINDOW_SIZE;
 std::optional<std::string> GRAPHICS_WINDOW_POS;
 bool GRAPHICS_WINDOW_ALWAYS_ON_TOP = false;
 bool GRAPHICS_WINDOW_BACKBUFFER_SCALE = false;
+std::optional<HWND> GRAPHICS_HOOKED_WINDOW;
 
 // IIDX Windowed Subscreen - starts out as false, enabled by IIDX module on pre-attach as needed
 bool GRAPHICS_IIDX_WSUB = false;
@@ -55,6 +56,8 @@ void graphics_capture_initial_window(HWND hWnd) {
     }
 
     graphics_load_windowed_parameters();
+
+    GRAPHICS_HOOKED_WINDOW = hWnd;
 
     cfg::SCREENRESIZE->init_window_style = GetWindowLong(hWnd, GWL_STYLE);
     cfg::SCREENRESIZE->init_window_style_ex = GetWindowLong(hWnd, GWL_EXSTYLE);
