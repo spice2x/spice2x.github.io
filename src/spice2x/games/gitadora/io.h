@@ -66,18 +66,21 @@ namespace games::gitadora {
             DrumHelp,
             DrumButtonExtra1,
             DrumButtonExtra2,
-            // note: this is the order they appear in the test menu
+            // note: this is the order of drums in the default layout
+            DrumLeftCymbal,
             DrumHiHat,
-            DrumHiHatClosed,
-            DrumHiHatHalfOpen,
+            DrumLeftPedal,
             DrumSnare,
             DrumHiTom,
-            DrumLowTom,
-            DrumRightCymbal,
             DrumBassPedal,
-            DrumLeftCymbal,
-            DrumLeftPedal,
-            DrumFloorTom
+            DrumLowTom,
+            DrumFloorTom,
+            DrumRightCymbal,
+
+            // these only exist for back compat
+            // (created before it was possible to map multiple input to a button)
+            DrumHiHatClosed,
+            DrumHiHatHalfOpen
         };
     }
 

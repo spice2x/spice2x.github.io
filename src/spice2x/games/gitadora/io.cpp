@@ -65,17 +65,18 @@ std::vector<Button> &games::gitadora::get_buttons() {
                 "Drum Help",
                 "Drum Button Extra 1",
                 "Drum Button Extra 2",
+
+                "Drum Left Cymbal",
                 "Drum Hi-Hat",
-                "Drum Hi-Hat Closed",
-                "Drum Hi-Hat Half-Open",
+                "Drum Left Pedal",
                 "Drum Snare",
                 "Drum Hi-Tom",
-                "Drum Low-Tom",
-                "Drum Right Cymbal",
                 "Drum Bass Pedal",
-                "Drum Left Cymbal",
-                "Drum Left Pedal",
-                "Drum Floor Tom"
+                "Drum Low-Tom",
+                "Drum Floor Tom",
+                "Drum Right Cymbal",
+                "Drum Hi-Hat Closed",
+                "Drum Hi-Hat Half-Open"
         );
     }
 
@@ -125,8 +126,6 @@ std::string games::gitadora::get_buttons_help() {
         " -------------------------------------------------------\n"
         "             Left          Bass\n"
         "             Pedal         Pedal\n"
-        "\n"
-        " Drums are NOT velocity-sensitive!\n"
         "\n"
         " For MIDI drums with Open/Closed HiHat configurations or pads with\n"
         " multiple hit zones, ensure you bind all variation using the Pages\n"
