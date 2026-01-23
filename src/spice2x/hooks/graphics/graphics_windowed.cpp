@@ -24,6 +24,7 @@ std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_WINDOW_SIZE;
 std::optional<std::string> GRAPHICS_WINDOW_POS;
 bool GRAPHICS_WINDOW_ALWAYS_ON_TOP = false;
 bool GRAPHICS_WINDOW_BACKBUFFER_SCALE = false;
+std::optional<HWND> GRAPHICS_HOOKED_WINDOW;
 
 // IIDX Windowed Subscreen - starts out as false, enabled by IIDX module on pre-attach as needed
 bool GRAPHICS_IIDX_WSUB = false;
@@ -56,6 +57,8 @@ void graphics_capture_initial_window(HWND hWnd) {
 
     graphics_load_windowed_parameters();
 
+    GRAPHICS_HOOKED_WINDOW = hWnd;
+
     cfg::SCREENRESIZE->init_window_style = GetWindowLong(hWnd, GWL_STYLE);
     cfg::SCREENRESIZE->init_window_style_ex = GetWindowLong(hWnd, GWL_EXSTYLE);
 
@@ -67,8 +70,9 @@ void graphics_capture_initial_window(HWND hWnd) {
     RECT rect;
     if (!GetClientRect(hWnd, &rect)) {
         log_warning(
-            "graphics",
-            "graphics_capture_initial_window - GetClientRect failed, GLE: {}",
+            "graphics-windowed",
+            "[{}] graphics_capture_initial_window - GetClientRect failed, GLE: {}",
+            fmt::ptr(hWnd),
             GetLastError());
         return;
     }
@@ -80,7 +84,8 @@ void graphics_capture_initial_window(HWND hWnd) {
     cfg::SCREENRESIZE->init_client_aspect_ratio = (float)client_w / (float)client_h;
     log_debug(
         "graphics-windowed",
-        "graphics_capture_initial_window initial window size {}x{}, ratio {}",
+        "[{}] graphics_capture_initial_window initial window size {}x{}, ratio {}",
+        fmt::ptr(hWnd),
         client_w, client_h, cfg::SCREENRESIZE->init_client_aspect_ratio);
 
     // ensure frame size is captured
@@ -105,7 +110,8 @@ void graphics_capture_initial_window(HWND hWnd) {
     // resize must be done before applying the border
     if (cfg::SCREENRESIZE->enable_window_resize) {
         log_info(
-            "graphics-windowed", "change window rect - window offset: {}x{}, client size: {}x{}",
+            "graphics-windowed", "[{}] change window rect - window offset: {}x{}, client size: {}x{}",
+            fmt::ptr(hWnd),
             cfg::SCREENRESIZE->window_offset_x,
             cfg::SCREENRESIZE->window_offset_y,
             cfg::SCREENRESIZE->client_width,
@@ -115,12 +121,13 @@ void graphics_capture_initial_window(HWND hWnd) {
     // ddr hangs when window frame doesn't have overlapped
     if (cfg::SCREENRESIZE->window_decoration != cfg::WindowDecorationMode::Default) {
         log_info(
-            "graphics-windowed", "change window style - decoration: {}",
+            "graphics-windowed", "[{}] change window style - decoration: {}",
+            fmt::ptr(hWnd),
             cfg::SCREENRESIZE->window_decoration);
         graphics_update_window_style(hWnd);
     }
     if (cfg::SCREENRESIZE->window_always_on_top) {
-        log_info("graphics-windowed", "change window z-order - always on top");
+        log_info("graphics-windowed", "[{}] change window z-order - always on top", fmt::ptr(hWnd));
         graphics_update_z_order(hWnd, true);
     }
 
