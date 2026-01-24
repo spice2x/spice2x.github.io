@@ -96,6 +96,9 @@ void graphics_capture_initial_window(HWND hWnd) {
         cfg::SCREENRESIZE->client_width = client_w;
         cfg::SCREENRESIZE->client_height = client_h;
     }
+    if (graphics_window_move_and_resize_breaks_game()) {
+        cfg::SCREENRESIZE->enable_window_resize = false;
+    }
 
     // if there was no user-supplied dimension, seed it with the current size
     // so that the next resize operation will work
@@ -386,7 +389,7 @@ void graphics_update_window_style(HWND hWnd) {
     if (!GRAPHICS_WINDOWED) {
         return;
     }
-    if (graphics_window_change_crashes_game()) {
+    if (graphics_window_decoration_change_crashes_game()) {
         return;
     }
 
@@ -496,12 +499,19 @@ void graphics_move_resize_window(HWND hWnd) {
     log_debug("graphics-windowed", "graphics_move_resize_window returned");
 }
 
-bool graphics_window_change_crashes_game() {
+bool graphics_window_decoration_change_crashes_game() {
     static std::once_flag flag;
     static bool result = false;
     std::call_once(flag, []() {
         // ddr crashes when frame style changes
         result = avs::game::is_model("MDX");
+
+        // changing window decoration also changes dimensions and position
+        // so this must be prevented
+        if (graphics_window_move_and_resize_breaks_game()) {
+            result = true;
+        }
+
         if (result) {
             log_warning(
                 "graphics-windowed",
@@ -511,14 +521,33 @@ bool graphics_window_change_crashes_game() {
     return result;
 }
 
+bool graphics_window_move_and_resize_breaks_game() {
+    static std::once_flag flag;
+    static bool result = false;
+
+    std::call_once(flag, []() {
+        // games like reflec beat in use spice touch overlay for windowed mode
+        // and mouse input breaks if window is moved as the overlay does not
+        // currently support window moves/resizes
+        result = avs::game::is_model({"KBR", "LBR", "MBR"});
+        if (result) {
+            log_warning(
+                "graphics-windowed",
+                "ignoring changes to window properties due to incompatibility with this game");
+        }
+    });
+    return result;
+}
+
 bool graphics_window_resize_breaks_game() {
-    bool is_gitadora = avs::game::is_model({ "J32", "J33", "K32", "K33", "L32", "L33", "M32" });
-    bool is_arena = games::gitadora::is_arena_model();
     // for whatever reason, gitadora games on dx/sd/sd2 cabs behave poorly when window is resized
     // (eihter at launch or while it's running)
     // usually results in: soft lock during scene transtions or really long transitions,
     // backgrounds of menus not rendering, etc.
-    bool result = is_gitadora && !is_arena;
+    bool is_gitadora = avs::game::is_model({ "J32", "J33", "K32", "K33", "L32", "L33", "M32" });
+    bool is_arena = games::gitadora::is_arena_model();
+
+    bool result = graphics_window_move_and_resize_breaks_game() || (is_gitadora && !is_arena);
 
     static std::once_flag flag;
     std::call_once(flag, [&result]() {
