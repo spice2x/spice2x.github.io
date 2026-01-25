@@ -202,7 +202,7 @@ namespace overlay::windows {
             return;
         }
 
-        ImGui::BeginDisabled(graphics_window_change_crashes_game());
+        ImGui::BeginDisabled(graphics_window_decoration_change_crashes_game());
         if (ImGui::Combo(
                 "Window Style",
                 &cfg::SCREENRESIZE->window_decoration,
@@ -227,51 +227,59 @@ namespace overlay::windows {
             "Reduces pixelated scaling artifacts. Works great on some games, but completely broken on others.\n\n"
             "This can't be changed in-game; instead, set -windowscale option in spicecfg and restart.");
 
-        ImGui::Checkbox("Keep Aspect Ratio", &cfg::SCREENRESIZE->client_keep_aspect_ratio);
-        ImGui::Checkbox("Manual window move/resize", &cfg::SCREENRESIZE->enable_window_resize);
+            
+        ImGui::BeginDisabled(graphics_window_move_and_resize_breaks_game());
+        {
+            ImGui::Checkbox("Keep Aspect Ratio", &cfg::SCREENRESIZE->client_keep_aspect_ratio);
+            ImGui::Checkbox("Manual window move/resize", &cfg::SCREENRESIZE->enable_window_resize);
+        }
+        ImGui::EndDisabled();
+
         ImGui::BeginDisabled(!cfg::SCREENRESIZE->enable_window_resize);
 
         bool changed = false;
         const uint32_t step = 1;
         const uint32_t step_fast = 10;
 
-        if (graphics_window_resize_breaks_game()) {
-            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
-            "GITADORA tends to hang or have graphical\n"
-            "glitches when window is resized; resize\n"
-            "controls are disabled.");
-        }
         ImGui::BeginDisabled(graphics_window_resize_breaks_game());
-        ImGui::BeginDisabled(cfg::SCREENRESIZE->client_keep_aspect_ratio);
-        ImGui::InputScalar(
-            "Width",
-            ImGuiDataType_U32,
-            &cfg::SCREENRESIZE->client_width,
-            &step, &step_fast, nullptr);
-        changed |= ImGui::IsItemDeactivatedAfterEdit();
+        {
+            ImGui::BeginDisabled(cfg::SCREENRESIZE->client_keep_aspect_ratio);
+            {
+                ImGui::InputScalar(
+                    "Width",
+                    ImGuiDataType_U32,
+                    &cfg::SCREENRESIZE->client_width,
+                    &step, &step_fast, nullptr);
+                changed |= ImGui::IsItemDeactivatedAfterEdit();
+            }
+            ImGui::EndDisabled();
+
+            ImGui::InputScalar(
+                "Height",
+                ImGuiDataType_U32,
+                &cfg::SCREENRESIZE->client_height,
+                &step, &step_fast, nullptr);
+            changed |= ImGui::IsItemDeactivatedAfterEdit();
+        }
         ImGui::EndDisabled();
 
-        ImGui::InputScalar(
-            "Height",
-            ImGuiDataType_U32,
-            &cfg::SCREENRESIZE->client_height,
-            &step, &step_fast, nullptr);
-        changed |= ImGui::IsItemDeactivatedAfterEdit();
+        ImGui::BeginDisabled(graphics_window_move_and_resize_breaks_game());
+        {
+            ImGui::InputScalar(
+                "X Offset",
+                ImGuiDataType_S32,
+                &cfg::SCREENRESIZE->window_offset_x,
+                &step, &step_fast, nullptr);
+            changed |= ImGui::IsItemDeactivatedAfterEdit();
+
+            ImGui::InputScalar(
+                "Y Offset",
+                ImGuiDataType_S32,
+                &cfg::SCREENRESIZE->window_offset_y,
+                &step, &step_fast, nullptr);
+            changed |= ImGui::IsItemDeactivatedAfterEdit();
+        }
         ImGui::EndDisabled();
-
-        ImGui::InputScalar(
-            "X Offset",
-            ImGuiDataType_S32,
-            &cfg::SCREENRESIZE->window_offset_x,
-            &step, &step_fast, nullptr);
-        changed |= ImGui::IsItemDeactivatedAfterEdit();
-
-        ImGui::InputScalar(
-            "Y Offset",
-            ImGuiDataType_S32,
-            &cfg::SCREENRESIZE->window_offset_y,
-            &step, &step_fast, nullptr);
-        changed |= ImGui::IsItemDeactivatedAfterEdit();
 
         if (changed) {
             if (cfg::SCREENRESIZE->client_keep_aspect_ratio) {
