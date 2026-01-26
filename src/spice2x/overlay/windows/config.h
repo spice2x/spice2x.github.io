@@ -78,17 +78,23 @@ namespace overlay::windows {
         std::string search_filter = "";
         std::string search_filter_in_lower_case = "";
 
-    public:
-        Config(SpiceOverlay *overlay);
-        ~Config() override;
+        void build_buttons(const std::string &name, std::vector<Button> *buttons, int min = 0, int max = -1);
+        void build_button(const std::string &name, Button *button, const int button_it, const int button_it_max);
+        void bind_button_popup(const std::string &bind_name, Button *button, const int button_it_max);
+        void naive_button_popup(const std::string &naive_string, Button *button, const int button_it_max);
+        void edit_button_popup(
+            const std::string &edit_name,
+            const std::string &button_display,
+            Button *button,
+            const GameAPI::Buttons::State button_state,
+            const float button_velocity);
 
-        void read_card(int player = -1);
-        void write_card(int player);
-        void build_content() override;
-        void build_buttons(const std::string &name, std::vector<Button> *buttons,
-                int min = 0, int max = -1);
         void build_analogs(const std::string &name, std::vector<Analog> *analogs);
+        void edit_analog_popup(Analog &analog);
+
         void build_lights(const std::string &name, std::vector<Light> *lights);
+        void edit_light_popup(Light *light);
+
         void build_cards();
         void build_options(
             std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr);
@@ -96,8 +102,17 @@ namespace overlay::windows {
         void build_launcher();
         void launch_shell(LPCSTR app, LPCSTR file=nullptr);
 
-        static void build_page_selector(int *page);
+        void build_page_selector(int *page);
         void build_menu(int *game_selected);
         void shutdown_system(bool force, bool reboot_instead);
+
+    public:
+        Config(SpiceOverlay *overlay);
+        ~Config() override;
+
+        void read_card(int player = -1);
+        void write_card(int player);
+        void build_content() override;
+
     };
 }
