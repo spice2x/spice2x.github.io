@@ -301,17 +301,17 @@ std::string Button::getDisplayString(rawinput::RawInputManager* manager) {
         switch (device->type) {
             case rawinput::MOUSE: {
                 const char *btn = "Unknown";
-                static const char *MOUSE_NAMES[] = {
-                        "Left Mouse",
-                        "Right Mouse",
-                        "Middle Mouse",
-                        "Mouse 1",
-                        "Mouse 2",
-                        "Mouse 3",
-                        "Mouse 4",
-                        "Mouse 5",
-                };
-                if (vKey < sizeof(MOUSE_NAMES)) {
+                static const std::array<const char *, 8>MOUSE_NAMES = {
+                    "Left Mouse",
+                    "Right Mouse",
+                    "Middle Mouse",
+                    "Mouse 1",
+                    "Mouse 2",
+                    "Mouse 3",
+                    "Mouse 4",
+                    "Mouse 5",
+                    };
+                if (vKey < MOUSE_NAMES.size()) {
                     btn = MOUSE_NAMES[vKey];
                 }
                 return fmt::format("{} ({})", btn, device->desc);
