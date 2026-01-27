@@ -1,5 +1,6 @@
 #include "config.h"
 #include "util/logging.h"
+#include "cfg/button.h"
 
 /*
  * This code absolutely sucks.
@@ -510,8 +511,10 @@ bool Config::updateBinding(const Game &game, const Button &button, int alternati
         return false;
     }
 
+    tinyxml2::XMLElement *gameButtonNode = nullptr;
+
     // iterate button nodes
-    tinyxml2::XMLElement *gameButtonNode = gameButtonsNode->FirstChildElement("button");
+    gameButtonNode = gameButtonsNode->FirstChildElement("button");
     int button_count = 0;
     while (gameButtonNode != nullptr) {
         const char *buttonNodeName = gameButtonNode->Attribute("name");
@@ -571,6 +574,39 @@ bool Config::updateBinding(const Game &game, const Button &button, int alternati
                 }
             }
             gameButtonNode = gameButtonNode->NextSiblingElement("button");
+        }
+    }
+
+    // trim the trailing invalid (unbound) alternatives
+    tinyxml2::XMLElement *to_delete = nullptr;
+    gameButtonNode = gameButtonsNode->LastChildElement("button");
+    while (gameButtonNode != nullptr) {
+        const char *name = gameButtonNode->Attribute("name");
+        const char *devid = gameButtonNode->Attribute("devid");
+        int vkey = INVALID_VKEY;
+        gameButtonNode->QueryIntAttribute("vkey", &vkey);
+
+        // wrong button, ignore and keep iterating backwards
+        if (name == nullptr || std::string(name) != button.getName()) {
+            gameButtonNode = gameButtonNode->PreviousSiblingElement("button");
+            continue;
+        }
+
+        // found a node for this button, which means to_delete is not the first one
+        // delete the node for to_delete
+        if (to_delete != nullptr) {
+            log_misc("cfg", "deleting excessive button binding for {}", name);
+            gameButtonsNode->DeleteChild(to_delete);
+            to_delete = nullptr;
+        }
+
+        if ((devid == nullptr || strlen(devid) == 0) && vkey == INVALID_VKEY) {
+            // unbound button with no device ID, make a note of it so it can be deleted later
+            to_delete = gameButtonNode;
+            gameButtonNode = gameButtonNode->PreviousSiblingElement("button");
+        } else {
+            // valid binding found; stop iterating
+            break;
         }
     }
 
@@ -757,6 +793,37 @@ bool Config::updateBinding(const Game &game, const Light &light, int alternative
             gameLightNode->SetAttribute("index", 0);
             gameLightNode->SetAttribute("devid", "");
             gameLightsNode->InsertEndChild(gameLightNode);
+        }
+    }
+
+    // trim the trailing invalid (unbound) alternatives
+    tinyxml2::XMLElement *to_delete = nullptr;
+    gameLightNode = gameLightsNode->LastChildElement("light");
+    while (gameLightNode != nullptr) {
+        const char *name = gameLightNode->Attribute("name");
+        const char *devid = gameLightNode->Attribute("devid");
+
+        // wrong light, ignore and keep iterating backwards
+        if (name == nullptr || std::string(name) != light.getName()) {
+            gameLightNode = gameLightNode->PreviousSiblingElement("light");
+            continue;
+        }
+
+        // found a node for this button, which means to_delete is not the first one
+        // delete the node for to_delete
+        if (to_delete != nullptr) {
+            log_misc("cfg", "deleting excessive light binding for {}", name);
+            gameLightsNode->DeleteChild(to_delete);
+            to_delete = nullptr;
+        }
+
+        if (devid == nullptr || strlen(devid) == 0) {
+            // unbound light, make a note of it so it can be deleted later
+            to_delete = gameLightNode;
+            gameLightNode = gameLightNode->PreviousSiblingElement("light");
+        } else {
+            // valid binding found; stop iterating
+            break;
         }
     }
 
