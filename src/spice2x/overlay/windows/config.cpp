@@ -39,6 +39,8 @@ namespace overlay::windows {
     const float INDENT = 22.f;
     const auto PROJECT_URL = "https://spice2x.github.io";
 
+    constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
+
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
         this->title = "Configuration";
         this->toggle_button = games::OverlayButtons::ToggleConfig;
@@ -637,9 +639,9 @@ namespace overlay::windows {
         ImGui::AlignTextToFramePadding();
         ImGui::Indent(INDENT);
         if (button_state) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
         }
-        ImGui::Text("%s", button_name.c_str());
+        ImGui::TextUnformatted(button_name.c_str());
         if (button_state) {
             ImGui::PopStyleColor();
         }
@@ -649,11 +651,11 @@ namespace overlay::windows {
         ImGui::TableNextColumn();
         ImGui::AlignTextToFramePadding();
         if (button_state) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
         }
         std::string button_text = ImGui::TruncateText(
             button_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
-        ImGui::Text("%s", button_text.c_str());
+        ImGui::TextUnformatted(button_text.c_str());
         if (button_state) {
             ImGui::PopStyleColor();
         }
@@ -1599,7 +1601,7 @@ namespace overlay::windows {
                     ImGui::SameLine();
                     ImGui::HelpMarker(button_display.c_str());
                 } else {
-                    ImGui::Text("%s", button_display.c_str());
+                    ImGui::TextUnformatted(button_display.c_str());
                 }
                 ImGui::TextUnformatted("\n");
                 if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
@@ -1736,13 +1738,13 @@ namespace overlay::windows {
                     if (analog_display.empty()) {
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
                     }
-                    ImGui::Text("%s", analog_name.c_str());
+                    ImGui::TextUnformatted(analog_name.c_str());
 
                     ImGui::TableNextColumn();
                     ImGui::AlignTextToFramePadding();
                     std::string analog_text = ImGui::TruncateText(
                         analog_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
-                    ImGui::Text("%s", analog_text.c_str());
+                    ImGui::TextUnformatted(analog_text.c_str());
                     if (ImGui::IsItemHovered() && analog_display.size() > 0) {
                         ImGui::SameLine();
                         ImGui::HelpTooltip(analog_display.c_str());
@@ -2199,14 +2201,14 @@ namespace overlay::windows {
                     ImGui::TableNextColumn();
                     ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
                     ImGui::SameLine();
-                    ImGui::Text("%s", light_name.c_str());
+                    ImGui::TextUnformatted(light_name.c_str());
 
                     // binding name
                     ImGui::TableNextColumn();
                     ImGui::AlignTextToFramePadding();
                     std::string light_text = ImGui::TruncateText(
                         light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
-                    ImGui::Text("%s", light_text.c_str());
+                    ImGui::TextUnformatted(light_text.c_str());
                     if (ImGui::IsItemHovered() && light_display.size() > 0) {
                         ImGui::SameLine();
                         ImGui::HelpTooltip(light_display.c_str());
@@ -2786,7 +2788,7 @@ namespace overlay::windows {
                     if (option.disabled || definition.disabled) {
                         ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
                     } else {
-                        ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", definition.title.c_str());
+                        ImGui::TextColored(TEXT_COLOR_GREEN, "%s", definition.title.c_str());
                     }
                 } else if (definition.hidden
                 || (!definition.game_name.empty() && definition.game_name != this->games_selected_name)) {
@@ -2794,7 +2796,7 @@ namespace overlay::windows {
                     ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", definition.title.c_str());
                 } else {
                     // normal text
-                    ImGui::Text("%s", definition.title.c_str());
+                    ImGui::TextUnformatted(definition.title.c_str());
                 }
                 ImGui::Unindent(INDENT);
                 if (ImGui::IsItemHovered()) {
@@ -3153,7 +3155,7 @@ namespace overlay::windows {
 
             ImGui::BeginDisabled();
             if (!avs::game::is_model("000")) {
-                ImGui::Text("%s", avs::game::get_identifier().c_str());
+                ImGui::TextUnformatted(avs::game::get_identifier().c_str());
             }
             ImGui::EndDisabled();
 
