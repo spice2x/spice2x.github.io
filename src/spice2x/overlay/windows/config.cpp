@@ -39,6 +39,8 @@ namespace overlay::windows {
     const float INDENT = 22.f;
     const auto PROJECT_URL = "https://spice2x.github.io";
 
+    constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
+
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
         this->title = "Configuration";
         this->toggle_button = games::OverlayButtons::ToggleConfig;
@@ -583,9 +585,10 @@ namespace overlay::windows {
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "%s Buttons", name.c_str());
         ImGui::Separator();
         if (ImGui::BeginTable("ButtonsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+            // longest column is probably "Toggle Virtual Keypad P1" in Overlay tab
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(220));
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(240));
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(180));
 
             // check if empty
             if (!buttons || buttons->empty()) {
@@ -633,27 +636,44 @@ namespace overlay::windows {
         const auto button_velocity = GameAPI::Buttons::getVelocity(RI_MGR, *button);
 
         // list entry
-        bool style_color = false;
-        if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
-            style_color = true;
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
-        } else if (button_display.empty()) {
-            style_color = true;
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
-        }
         ImGui::AlignTextToFramePadding();
         ImGui::Indent(INDENT);
-        ImGui::Text("%s", button_name.c_str());
-        ImGui::Unindent(INDENT);
-
-        ImGui::TableNextColumn();
-        ImGui::AlignTextToFramePadding();
-        ImGui::Text("%s", button_display.empty() ? "-" : button_display.c_str());
-
-        ImGui::TableNextColumn();
-        if (style_color) {
+        if (button_state) {
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
+        }
+        ImGui::TextUnformatted(button_name.c_str());
+        if (button_state) {
             ImGui::PopStyleColor();
         }
+        ImGui::Unindent(INDENT);
+
+        // column for key binding display
+        ImGui::TableNextColumn();
+        ImGui::AlignTextToFramePadding();
+        if (button_state) {
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
+        }
+        std::string button_text = ImGui::TruncateText(
+            button_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+        ImGui::TextUnformatted(button_text.c_str());
+        if (button_state) {
+            ImGui::PopStyleColor();
+        }
+        if (ImGui::IsItemHovered() && button_display.size() > 0) {
+            ImGui::SameLine();
+            ImGui::HelpTooltip(button_display.c_str());
+        }
+        
+        // clear button
+        if (button_display.size() > 0) {
+            ImGui::SameLine();
+            if (ImGui::DeleteButton("Unbind")) { 
+                clear_button(*button);
+            }
+        }
+
+        // column for actions
+        ImGui::TableNextColumn();
 
         // normal button binding
         std::string bind_name = "Bind " + button_name;
@@ -708,9 +728,7 @@ namespace overlay::windows {
             }
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::HelpTooltip(
-                "Use 'Bind' to bind a button to a device using RawInput.\n"
-                "Use 'Naive' for device independent binding using GetAsyncKeyState.");
+            ImGui::HelpTooltip("Bind a button to a device using Windows RawInput API.");
         }
 
         bind_button_popup(bind_name, button, button_it_max);
@@ -737,8 +755,11 @@ namespace overlay::windows {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::HelpTooltip(
-                "Use 'Bind' to bind a button to a device using RawInput.\n"
-                "Use 'Naive' for device independent binding using GetAsyncKeyState.");
+                "Uses GetAsyncKeyState to check for any keyboard / mouse input. "
+                "For best performance, Bind should be preferred, but this can be used when:\n"
+                "    * you don't care about which device is used\n"
+                "    * you want to use input remapping or automation software\n"
+                "    * if you have NKRO issues with Bind");
         }
 
         naive_button_popup(naive_string, button, button_it_max);
@@ -751,27 +772,23 @@ namespace overlay::windows {
         }
         edit_button_popup(edit_name, button_display, button, button_state, button_velocity);
 
-        // clear button
-        if (button_display.size() > 0) {
-            ImGui::SameLine();
-            if (ImGui::Button("Clear")) {
-                button->setDeviceIdentifier("");
-                button->setVKey(0xFF);
-                button->setAnalogType(BAT_NONE);
-                button->setDebounceUp(0.0);
-                button->setDebounceDown(0.0);
-                button->setVelocityThreshold(0);
-                button->setInvert(false);
-                button->setLastState(GameAPI::Buttons::BUTTON_NOT_PRESSED);
-                button->setLastVelocity(0);
-                ::Config::getInstance().updateBinding(
-                        games_list[games_selected], *button,
-                        buttons_page - 1);
-            }
-        }
-
         // clean up
         ImGui::PopID();
+    }
+
+    void Config::clear_button(Button &button) {
+        button.setDeviceIdentifier("");
+        button.setVKey(0xFF);
+        button.setAnalogType(BAT_NONE);
+        button.setDebounceUp(0.0);
+        button.setDebounceDown(0.0);
+        button.setVelocityThreshold(0);
+        button.setInvert(false);
+        button.setLastState(GameAPI::Buttons::BUTTON_NOT_PRESSED);
+        button.setLastVelocity(0);
+        ::Config::getInstance().updateBinding(
+                games_list[games_selected], button,
+                buttons_page - 1);
     }
 
     void Config::bind_button_popup(const std::string &bind_name, Button *button, const int button_it_max) {
@@ -779,8 +796,15 @@ namespace overlay::windows {
         if (ImGui::BeginPopupModal(bind_name.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 
             // modal content
-            ImGui::Text("Please press any button.");
-            ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Hint: Press ESC to cancel!");
+            ImGui::TextUnformatted("Please press any button.");
+            ImGui::TextUnformatted("");
+            ImGui::TextUnformatted(
+                "Hint: if your controller is refusing to be detected,\n"
+                "      try rebooting Windows. Rare Windows bug can\n"
+                "      cause this.");
+            ImGui::TextUnformatted("");
+            ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Press ESC to cancel!");
+            ImGui::TextUnformatted("");
             if (ImGui::Button("Cancel")) {
                 RI_MGR->devices_midi_freeze(false);
                 buttons_bind_active = false;
@@ -1169,11 +1193,17 @@ namespace overlay::windows {
             buttons_bind_active = true;
 
             // modal content
-            ImGui::Text("Please press any button.");
+            ImGui::TextUnformatted("Please press any button.");
+            ImGui::TextUnformatted("");
             const bool escape_cancels_bind = (this->tab_selected != ConfigTab::CONFIG_TAB_OVERLAY);
             if (escape_cancels_bind) {
-                ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Hint: Press ESC to cancel!");
+                ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Press ESC to cancel!");
+                ImGui::TextUnformatted("");
             }
+            ImGui::TextUnformatted(
+                "Hint: if your remapping/automation software is\n"
+                "      not detected, ensure you run the software\n"
+                "      as administrator.");
             if (ImGui::Button("Cancel")) {
                 buttons_bind_active = false;
                 buttons_many_index = -1;
@@ -1571,7 +1601,7 @@ namespace overlay::windows {
                     ImGui::SameLine();
                     ImGui::HelpMarker(button_display.c_str());
                 } else {
-                    ImGui::Text("%s", button_display.c_str());
+                    ImGui::TextUnformatted(button_display.c_str());
                 }
                 ImGui::TextUnformatted("\n");
                 if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
@@ -1671,9 +1701,10 @@ namespace overlay::windows {
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Analogs");
         ImGui::Separator();
         if (ImGui::BeginTable("AnalogsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(220));
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(240));
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(100));
 
             // check if empty
             if (!analogs || analogs->empty()) {
@@ -1707,11 +1738,28 @@ namespace overlay::windows {
                     if (analog_display.empty()) {
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
                     }
-                    ImGui::Text("%s", analog_name.c_str());
+                    ImGui::TextUnformatted(analog_name.c_str());
 
                     ImGui::TableNextColumn();
                     ImGui::AlignTextToFramePadding();
-                    ImGui::Text("%s", analog_display.empty() ? "-" : analog_display.c_str());
+                    std::string analog_text = ImGui::TruncateText(
+                        analog_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+                    ImGui::TextUnformatted(analog_text.c_str());
+                    if (ImGui::IsItemHovered() && analog_display.size() > 0) {
+                        ImGui::SameLine();
+                        ImGui::HelpTooltip(analog_display.c_str());
+                    }
+
+                    // clear analog
+                    if (analog_display.size() > 0) {
+                        ImGui::SameLine();
+                        if (ImGui::DeleteButton("Remove")) {
+                            analog.clearBindings();
+                            analog.setLastState(0.f);
+                            ::Config::getInstance().updateBinding(
+                                    games_list[games_selected], analog);
+                        }
+                    }
 
                     ImGui::TableNextColumn();
                     if (analog_display.empty()) {
@@ -1719,7 +1767,7 @@ namespace overlay::windows {
                     }
 
                     // analog binding
-                    if (ImGui::Button("Bind")) {
+                    if (ImGui::Button("Set")) {
                         ImGui::OpenPopup("Analog Binding");
 
                         // get devices
@@ -1748,17 +1796,6 @@ namespace overlay::windows {
                     }
 
                     edit_analog_popup(analog);
-
-                    // clear analog
-                    if (analog_display.size() > 0) {
-                        ImGui::SameLine();
-                        if (ImGui::Button("Clear")) {
-                            analog.clearBindings();
-                            analog.setLastState(0.f);
-                            ::Config::getInstance().updateBinding(
-                                    games_list[games_selected], analog);
-                        }
-                    }
 
                     // clean up
                     ImGui::PopID();
@@ -2119,7 +2156,7 @@ namespace overlay::windows {
         if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(240));
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(100));
 
             // check if empty
             if (!lights || lights->empty()) {
@@ -2164,21 +2201,39 @@ namespace overlay::windows {
                     ImGui::TableNextColumn();
                     ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
                     ImGui::SameLine();
-                    ImGui::Text("%s", light_name.c_str());
+                    ImGui::TextUnformatted(light_name.c_str());
 
                     // binding name
                     ImGui::TableNextColumn();
                     ImGui::AlignTextToFramePadding();
-                    ImGui::Text("%s", light_display.empty() ? "-" : light_display.c_str());
+                    std::string light_text = ImGui::TruncateText(
+                        light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+                    ImGui::TextUnformatted(light_text.c_str());
+                    if (ImGui::IsItemHovered() && light_display.size() > 0) {
+                        ImGui::SameLine();
+                        ImGui::HelpTooltip(light_display.c_str());
+                    }
 
-                    // bind / clear buttons
+                    // clear light
+                    if (light_display.size() > 0) {
+                        ImGui::SameLine();
+                        if (ImGui::DeleteButton("Remove")) {
+                            light->setDeviceIdentifier("");
+                            light->setIndex(0xFF);
+                            ::Config::getInstance().updateBinding(
+                                    games_list[games_selected], *light,
+                                    lights_page - 1);
+                        }
+                    }
+
+                    // bind button
                     ImGui::TableNextColumn();
                     if (light_display.empty()) {
                         ImGui::PopStyleColor();
                     }
 
                     // light binding
-                    if (ImGui::Button("Bind")) {
+                    if (ImGui::Button("Set")) {
                         ImGui::OpenPopup("Light Binding");
                         light->override_enabled = true;
 
@@ -2210,18 +2265,6 @@ namespace overlay::windows {
                     }
 
                     edit_light_popup(light);
-
-                    // clear light
-                    if (light_display.size() > 0) {
-                        ImGui::SameLine();
-                        if (ImGui::Button("Clear")) {
-                            light->setDeviceIdentifier("");
-                            light->setIndex(0xFF);
-                            ::Config::getInstance().updateBinding(
-                                    games_list[games_selected], *light,
-                                    lights_page - 1);
-                        }
-                    }
 
                     // clean up
                     ImGui::PopID();
@@ -2734,18 +2777,18 @@ namespace overlay::windows {
                 
                 // list entry
                 ImGui::PushID(&option);
-                ImGui::Indent(INDENT);
                 ImGui::TableNextRow();
 
                 // option name
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
+                ImGui::Indent(INDENT);
                 if (option.is_active()) {
                     // active option
                     if (option.disabled || definition.disabled) {
                         ImGui::TextColored(ImVec4(1.f, 0.4f, 0.f, 1.f), "%s", definition.title.c_str());
                     } else {
-                        ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", definition.title.c_str());
+                        ImGui::TextColored(TEXT_COLOR_GREEN, "%s", definition.title.c_str());
                     }
                 } else if (definition.hidden
                 || (!definition.game_name.empty() && definition.game_name != this->games_selected_name)) {
@@ -2753,8 +2796,9 @@ namespace overlay::windows {
                     ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", definition.title.c_str());
                 } else {
                     // normal text
-                    ImGui::Text("%s", definition.title.c_str());
+                    ImGui::TextUnformatted(definition.title.c_str());
                 }
+                ImGui::Unindent(INDENT);
                 if (ImGui::IsItemHovered()) {
                     ImGui::HelpTooltip(definition.desc.c_str());
                 }
@@ -2785,6 +2829,7 @@ namespace overlay::windows {
 
                 // option widgets
                 ImGui::TableNextColumn();
+                ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.f);
                 if (option.disabled || definition.disabled) {
                     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
@@ -2933,12 +2978,13 @@ namespace overlay::windows {
                 // clear button
                 if (!option.disabled && !definition.disabled && option.is_active() && option.get_definition().type != OptionType::Bool) {
                     ImGui::SameLine();
-                    if (ImGui::Button("Clear")) {
+                    if (ImGui::ClearButton("Reset to default")) {
                         this->options_dirty = true;
                         option.value = "";
                         ::Config::getInstance().updateBinding(games_list[games_selected], option);
                     }
                 }
+                ImGui::PopStyleVar();
 
                 // clean up disabled item flags
                 if (option.disabled || definition.disabled) {
@@ -2956,7 +3002,6 @@ namespace overlay::windows {
 
                 // next item
                 ImGui::PopID();
-                ImGui::Unindent(INDENT);
             }
 
             // check if empty
@@ -3110,7 +3155,7 @@ namespace overlay::windows {
 
             ImGui::BeginDisabled();
             if (!avs::game::is_model("000")) {
-                ImGui::Text("%s", avs::game::get_identifier().c_str());
+                ImGui::TextUnformatted(avs::game::get_identifier().c_str());
             }
             ImGui::EndDisabled();
 

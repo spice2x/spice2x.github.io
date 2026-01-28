@@ -92,4 +92,81 @@ namespace ImGui {
                 ImGui::GetColorU32(ImGuiCol_PlotHistogram),
                 thickness);
     }
+
+
+    std::string TruncateText(const std::string& p_text, float p_truncated_width) {
+        std::string truncated_text = p_text;
+
+        const float text_width =
+                ImGui::CalcTextSize(p_text.c_str(), nullptr, true).x;
+
+        if (text_width > p_truncated_width) {
+            constexpr const char* ELLIPSIS = " ...";
+            const float ellipsis_size = ImGui::CalcTextSize(ELLIPSIS).x;
+
+            int visible_chars = 0;
+            for (size_t i = 0; i < p_text.size(); i++) {
+                const float current_width = ImGui::CalcTextSize(
+                        p_text.substr(0, i).c_str(), nullptr, true)
+                                                    .x;
+                if (current_width + ellipsis_size > p_truncated_width) {
+                    break;
+                }
+
+                visible_chars = i;
+            }
+
+            truncated_text = (p_text.substr(0, visible_chars) + ELLIPSIS).c_str();
+        }
+
+        return truncated_text;
+    }
+
+    bool AddButton(const std::string& tooltip) {
+        ImGui::PushID(tooltip.c_str());
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.4f, 0.1f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.17f, 0.80f, 0.00f, 1.00f));
+        bool clicked = ImGui::SmallButton("+");
+        ImGui::PopStyleColor(4);
+        if (!tooltip.empty() && ImGui::IsItemHovered()) {
+            ImGui::SameLine();
+            ImGui::HelpTooltip(tooltip.c_str());
+        }
+        ImGui::PopID();
+        return clicked;
+    }
+
+    bool DeleteButton(const std::string& tooltip) {
+        ImGui::PushID(tooltip.c_str());
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.1f, 0.1f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.1f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.80f, 0.17f, 0.00f, 1.00f));
+        bool clicked = ImGui::SmallButton("x");
+        ImGui::PopStyleColor(4);
+        if (!tooltip.empty() && ImGui::IsItemHovered()) {
+            ImGui::SameLine();
+            ImGui::HelpTooltip(tooltip.c_str());
+        }
+        ImGui::PopID();
+        return clicked;
+    }
+
+    bool ClearButton(const std::string& tooltip) {
+        ImGui::PushID(tooltip.c_str());
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.5f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.97f, 0.97f, 0.97f, 1.00f));
+        bool clicked = ImGui::Button("x");
+        ImGui::PopStyleColor(4);
+        if (!tooltip.empty() && ImGui::IsItemHovered()) {
+            ImGui::SameLine();
+            ImGui::HelpTooltip(tooltip.c_str());
+        }
+        ImGui::PopID();
+        return clicked;
+    }
 }
