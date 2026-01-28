@@ -586,7 +586,7 @@ namespace overlay::windows {
             // longest column is probably "Toggle Virtual Keypad P1" in Overlay tab
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(220));
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(150));
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(180));
 
             // check if empty
             if (!buttons || buttons->empty()) {
@@ -726,9 +726,7 @@ namespace overlay::windows {
             }
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::HelpTooltip(
-                "Use 'Bind' to bind a button to a device using RawInput.\n"
-                "Use 'Naive' for device independent binding using GetAsyncKeyState.");
+            ImGui::HelpTooltip("Bind a button to a device using Windows RawInput API.");
         }
 
         bind_button_popup(bind_name, button, button_it_max);
@@ -755,8 +753,11 @@ namespace overlay::windows {
         }
         if (ImGui::IsItemHovered()) {
             ImGui::HelpTooltip(
-                "Use 'Bind' to bind a button to a device using RawInput.\n"
-                "Use 'Naive' for device independent binding using GetAsyncKeyState.");
+                "Uses GetAsyncKeyState to check for any keyboard / mouse input. "
+                "For best performance, Bind should be preferred, but this can be used when:\n"
+                "    * you don't care about which device is used\n"
+                "    * you want to use input remapping or automation software\n"
+                "    * if you have NKRO issues with Bind");
         }
 
         naive_button_popup(naive_string, button, button_it_max);
@@ -793,8 +794,15 @@ namespace overlay::windows {
         if (ImGui::BeginPopupModal(bind_name.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 
             // modal content
-            ImGui::Text("Please press any button.");
-            ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Hint: Press ESC to cancel!");
+            ImGui::TextUnformatted("Please press any button.");
+            ImGui::TextUnformatted("");
+            ImGui::TextUnformatted(
+                "If your controller is refusing to be detected,\n"
+                "try rebooting Windows. Rare Windows bug causes\n"
+                "this.");
+            ImGui::TextUnformatted("");
+            ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Press ESC to cancel!");
+            ImGui::TextUnformatted("");
             if (ImGui::Button("Cancel")) {
                 RI_MGR->devices_midi_freeze(false);
                 buttons_bind_active = false;
@@ -1186,7 +1194,7 @@ namespace overlay::windows {
             ImGui::Text("Please press any button.");
             const bool escape_cancels_bind = (this->tab_selected != ConfigTab::CONFIG_TAB_OVERLAY);
             if (escape_cancels_bind) {
-                ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Hint: Press ESC to cancel!");
+                ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Press ESC to cancel!");
             }
             if (ImGui::Button("Cancel")) {
                 buttons_bind_active = false;
@@ -1737,7 +1745,7 @@ namespace overlay::windows {
                     // clear analog
                     if (analog_display.size() > 0) {
                         ImGui::SameLine();
-                        if (ImGui::DeleteButton("Unbind")) {
+                        if (ImGui::DeleteButton("Remove")) {
                             analog.clearBindings();
                             analog.setLastState(0.f);
                             ::Config::getInstance().updateBinding(
@@ -1751,7 +1759,7 @@ namespace overlay::windows {
                     }
 
                     // analog binding
-                    if (ImGui::Button("Bind")) {
+                    if (ImGui::Button("Set")) {
                         ImGui::OpenPopup("Analog Binding");
 
                         // get devices
@@ -2201,7 +2209,7 @@ namespace overlay::windows {
                     // clear light
                     if (light_display.size() > 0) {
                         ImGui::SameLine();
-                        if (ImGui::DeleteButton("Unbind")) {
+                        if (ImGui::DeleteButton("Remove")) {
                             light->setDeviceIdentifier("");
                             light->setIndex(0xFF);
                             ::Config::getInstance().updateBinding(
@@ -2217,7 +2225,7 @@ namespace overlay::windows {
                     }
 
                     // light binding
-                    if (ImGui::Button("Bind")) {
+                    if (ImGui::Button("Set")) {
                         ImGui::OpenPopup("Light Binding");
                         light->override_enabled = true;
 
