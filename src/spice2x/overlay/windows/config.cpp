@@ -797,9 +797,9 @@ namespace overlay::windows {
             ImGui::TextUnformatted("Please press any button.");
             ImGui::TextUnformatted("");
             ImGui::TextUnformatted(
-                "If your controller is refusing to be detected,\n"
-                "try rebooting Windows. Rare Windows bug causes\n"
-                "this.");
+                "Hint: if your controller is refusing to be detected,\n"
+                "      try rebooting Windows. Rare Windows bug can\n"
+                "      cause this.");
             ImGui::TextUnformatted("");
             ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Press ESC to cancel!");
             ImGui::TextUnformatted("");
@@ -1191,11 +1191,17 @@ namespace overlay::windows {
             buttons_bind_active = true;
 
             // modal content
-            ImGui::Text("Please press any button.");
+            ImGui::TextUnformatted("Please press any button.");
+            ImGui::TextUnformatted("");
             const bool escape_cancels_bind = (this->tab_selected != ConfigTab::CONFIG_TAB_OVERLAY);
             if (escape_cancels_bind) {
                 ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Press ESC to cancel!");
+                ImGui::TextUnformatted("");
             }
+            ImGui::TextUnformatted(
+                "Hint: if your remapping/automation software is\n"
+                "      not detected, ensure you run the software\n"
+                "      as administrator.");
             if (ImGui::Button("Cancel")) {
                 buttons_bind_active = false;
                 buttons_many_index = -1;
@@ -2821,7 +2827,7 @@ namespace overlay::windows {
 
                 // option widgets
                 ImGui::TableNextColumn();
-                ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 1.f);
+                ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.f);
                 if (option.disabled || definition.disabled) {
                     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
