@@ -88,7 +88,7 @@ namespace overlay::windows {
             Button *button,
             const GameAPI::Buttons::State button_state,
             const float button_velocity);
-        void clear_button(Button &button);
+        void clear_button(Button *button);
 
         void build_analogs(const std::string &name, std::vector<Analog> *analogs);
         void edit_analog_popup(Analog &analog);
