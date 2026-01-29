@@ -11,6 +11,14 @@
 // settings
 std::string CONFIG_PATH_OVERRIDE = "";
 
+#define CFG_DEBUG_VERBOSE 0
+
+#if CFG_DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
 
 ///////////////////
 /// Constructor ///
@@ -595,7 +603,7 @@ bool Config::updateBinding(const Game &game, const Button &button, int alternati
         // found a node for this button, which means to_delete is not the first one
         // delete the node for to_delete
         if (to_delete != nullptr) {
-            log_misc("cfg", "deleting excessive button binding for {}", name);
+            log_debug("cfg", "deleting excessive button binding for {}", name);
             gameButtonsNode->DeleteChild(to_delete);
             to_delete = nullptr;
         }
@@ -812,7 +820,7 @@ bool Config::updateBinding(const Game &game, const Light &light, int alternative
         // found a node for this button, which means to_delete is not the first one
         // delete the node for to_delete
         if (to_delete != nullptr) {
-            log_misc("cfg", "deleting excessive light binding for {}", name);
+            log_debug("cfg", "deleting excessive light binding for {}", name);
             gameLightsNode->DeleteChild(to_delete);
             to_delete = nullptr;
         }
