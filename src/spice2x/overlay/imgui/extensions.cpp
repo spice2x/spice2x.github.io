@@ -124,11 +124,13 @@ namespace ImGui {
 
     bool AddButton(const std::string& tooltip) {
         ImGui::PushID(tooltip.c_str());
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.4f, 0.1f, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0.1f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.17f, 0.80f, 0.00f, 1.00f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.6f, 0.1f, 0.3f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.6f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.6f, 0.1f, 0.7f));
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 0.97f, 0.00f, 1.00f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.f, 2.f));
         bool clicked = ImGui::SmallButton("+");
+        ImGui::PopStyleVar();
         ImGui::PopStyleColor(4);
         if (!tooltip.empty() && ImGui::IsItemHovered()) {
             ImGui::SameLine();
@@ -140,12 +142,11 @@ namespace ImGui {
 
     bool DeleteButton(const std::string& tooltip) {
         ImGui::PushID(tooltip.c_str());
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.1f, 0.1f, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.1f, 0.1f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.80f, 0.17f, 0.00f, 1.00f));
-        bool clicked = ImGui::SmallButton("x");
-        ImGui::PopStyleColor(4);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_Button, 0.7f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3.f, 2.f));
+        bool clicked = ImGui::SmallButton("\u00D7"); // multiplication sign (×)
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
         if (!tooltip.empty() && ImGui::IsItemHovered()) {
             ImGui::SameLine();
             ImGui::HelpTooltip(tooltip.c_str());
@@ -156,11 +157,12 @@ namespace ImGui {
 
     bool ClearButton(const std::string& tooltip) {
         ImGui::PushID(tooltip.c_str());
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.4f, 0.4f, 0.4f, 0.5f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+        // same colors as a checkbox
+        ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_FrameBg));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImGuiCol_FrameBgHovered));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImGuiCol_FrameBgActive));
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.97f, 0.97f, 0.97f, 1.00f));
-        bool clicked = ImGui::Button("x");
+        bool clicked = ImGui::Button("\u00D7"); // multiplication sign (×)
         ImGui::PopStyleColor(4);
         if (!tooltip.empty() && ImGui::IsItemHovered()) {
             ImGui::SameLine();
