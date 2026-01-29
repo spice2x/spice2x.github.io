@@ -170,8 +170,8 @@ else()
         set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG")
 
         # file prefix map for relative working directory
-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
+        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffile-prefix-map=\"${CMAKE_SOURCE_DIR}=.\"")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffile-prefix-map=\"${CMAKE_SOURCE_DIR}=.\"")
     endif()
 
     # release with debug info flags
