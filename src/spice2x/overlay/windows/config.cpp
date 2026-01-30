@@ -1244,9 +1244,10 @@ namespace overlay::windows {
                     // don't bother checking GetSystemMetrics(SM_SWAPBUTTON), just check both
                     const bool is_mouse_pressed = (vKey == VK_LBUTTON || vKey == VK_RBUTTON);
 
-                    // some key is newly pressed; process it.
+                    // some key is newly pressed; process it here, which will result in a new bind
+                    // or a cancellation
                     if (escape_cancels_bind && vKey == VK_ESCAPE) {
-                        // escape cancles out
+                        // escape cancels out
                         buttons_many_index = -1;
                     } else if (is_mouse_pressed && ImGui::IsItemHovered()) {
                         // left or right mouse click on top of cancel button
