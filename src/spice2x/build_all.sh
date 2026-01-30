@@ -74,7 +74,7 @@ then
 	BUILD_TYPE="Debug"
 	BUILDDIR_32=${BUILDDIR_32_DEBUG}
 	BUILDDIR_64=${BUILDDIR_64_DEBUG}
-	DIST_NAME=$(echo ${DIST_NAME} | sed 's/\.[^.]*$/-dbg&/')
+	DIST_NAME=$(echo "${DIST_NAME}" | sed 's/\.[^.]*$/-dbg&/')
 fi
 
 # determine number of cores
@@ -114,7 +114,7 @@ time (
 	fi
 	mkdir -p ${BUILDDIR_32}
 	pushd ${BUILDDIR_32} > /dev/null
-	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $OLDPWD && ninja ${TARGETS_32}
+	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_32}
 	popd > /dev/null
 
 	# 64 bit
@@ -127,7 +127,7 @@ time (
 	fi
 	mkdir -p ${BUILDDIR_64}
 	pushd ${BUILDDIR_64} > /dev/null
-	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} $OLDPWD && ninja ${TARGETS_64}
+	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_64}
 	popd > /dev/null
 
 	echo ""
@@ -234,7 +234,7 @@ mkdir -p ${OUTDIR}/src
 if ((INCLUDE_SRC > 0))
 then
 	echo "Generating source file archive..."
-	git archive --format tar.gz --prefix=spice2x/ HEAD ./ > ${OUTDIR}/src/spice2x-${GIT_BRANCH}.tar.gz 2>/dev/null || \
+	git archive --format tar.gz --prefix=spice2x/ HEAD ./ > "${OUTDIR}/src/spice2x-${GIT_BRANCH}.tar.gz" 2>/dev/null || \
 		echo "WARNING: Couldn't get git to create the archive. Is this a git repository?"
 fi
 
@@ -249,11 +249,11 @@ if ((DIST_ENABLE > 0))
 then
 	echo "Building dist..."
 	mkdir -p ${DIST_FOLDER}
-	rm -rf ${DIST_FOLDER}/${DIST_NAME}
+	rm -rf "${DIST_FOLDER}/${DIST_NAME}"
 	pushd ${OUTDIR}/.. > /dev/null
-	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME} spice2x -x "spice2x/extras/*" -z <<< "$DIST_COMMENT"
+	zip -qrXT9 "$OLDPWD/${DIST_FOLDER}/${DIST_NAME}" spice2x -x "spice2x/extras/*" -z <<< "$DIST_COMMENT"
 	echo "Building extras..."
-	zip -qrXT9 $OLDPWD/${DIST_FOLDER}/${DIST_NAME_EXTRAS} spice2x -z <<< "$DIST_COMMENT"
+	zip -qrXT9 "$OLDPWD/${DIST_FOLDER}/${DIST_NAME_EXTRAS}" spice2x -z <<< "$DIST_COMMENT"
 	popd > /dev/null
 fi
 
