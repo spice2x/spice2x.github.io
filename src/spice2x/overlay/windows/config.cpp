@@ -1216,6 +1216,8 @@ namespace overlay::windows {
             } else {
 
                 // get new keyboard state
+                // these are async, and some keys generate multiple vKeys (e.g., VK_SHIFT, VK_LSHIFT)
+                // use care when iterating over the result (could result in torn reads)
                 bool keyboard_state_new[sizeof(buttons_keyboard_state)];
                 for (size_t i = 0; i < sizeof(keyboard_state_new); i++) {
                     keyboard_state_new[i] = GetAsyncKeyState(i) != 0;
@@ -1225,33 +1227,43 @@ namespace overlay::windows {
                 for (unsigned short int vKey = 0x01; vKey < sizeof(buttons_keyboard_state); vKey++) {
 
                     // ignore num lock escape sequence
-                    if (vKey != VK_NUMLOCK) {
-
-                        // check for key press
-                        if (keyboard_state_new[vKey] && !buttons_keyboard_state[vKey]) {
-
-                            // ignore escape
-                            if ((!escape_cancels_bind || vKey != VK_ESCAPE) &&
-                                (vKey != VK_LBUTTON || !ImGui::IsItemHovered())) {
-
-                                // bind key
-                                button->setDeviceIdentifier("");
-                                button->setVKey(vKey);
-                                button->setDebounceUp(0.0);
-                                button->setDebounceDown(0.0);
-                                button->setVelocityThreshold(0);
-                                ::Config::getInstance().updateBinding(
-                                        games_list[games_selected], *button,
-                                        buttons_page - 1);
-                                inc_buttons_many_index(button_it_max);
-                            } else {
-                                buttons_many_index = -1;
-                            }
-
-                            buttons_bind_active = false;
-                            ImGui::CloseCurrentPopup();
-                        }
+                    if (vKey == VK_NUMLOCK) {
+                        continue;
                     }
+
+                    // prefer VK_LSHIFT/VK_RSHIFT, VK_LCONTROL/VK_RCONTROL, VK_LMENU/VK_RMENU
+                    if (vKey == VK_SHIFT || vKey == VK_CONTROL || vKey == VK_MENU) {
+                        continue;
+                    }
+
+                    // check if key is newly pressed
+                    if (!(keyboard_state_new[vKey] && !buttons_keyboard_state[vKey])) {
+                        continue;
+                    }
+
+                    // some key is newly pressed; process it.
+                    if (escape_cancels_bind && vKey == VK_ESCAPE) {
+                        // escape cancles out
+                        buttons_many_index = -1;
+                    } else if (vKey == VK_LBUTTON && ImGui::IsItemHovered()) {
+                        // left mouse click on top of cancel button
+                        buttons_many_index = -1;
+                    } else {
+                        // bind key
+                        button->setDeviceIdentifier("");
+                        button->setVKey(vKey);
+                        button->setDebounceUp(0.0);
+                        button->setDebounceDown(0.0);
+                        button->setVelocityThreshold(0);
+                        ::Config::getInstance().updateBinding(
+                                games_list[games_selected], *button,
+                                buttons_page - 1);
+                        inc_buttons_many_index(button_it_max);
+                    }
+
+                    buttons_bind_active = false;
+                    ImGui::CloseCurrentPopup();
+                    break;
                 }
 
                 // clean up

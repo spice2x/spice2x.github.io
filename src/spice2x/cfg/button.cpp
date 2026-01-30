@@ -58,8 +58,28 @@ std::string Button::getVKeyString() {
             return "Pause";
         case 0x14:
             return "Caps Lock";
+        case 0x15:
+            return "IME Kana/Hangul";
+        case 0x16:
+            return "IME On";
+        case 0x17:
+            return "IME Junja";
+        case 0x18:
+            return "IME Final";
+        case 0x19:
+            return "IME Hanja/Kanji";
+        case 0x1A:
+            return "IME Off";
         case 0x1B:
             return "Escape";
+        case 0x1C:
+            return "IME Convert";
+        case 0x1D:
+            return "IME Nonconvert";
+        case 0x1E:
+            return "IME Accept";
+        case 0x1F:
+            return "IME Mode Change";
         case 0x20:
             return "Space";
         case 0x21:
@@ -255,9 +275,9 @@ std::string Button::getVKeyString() {
         case 0xA3:
             return "Right Control";
         case 0xA4:
-            return "Left Menu";
+            return "Left Alt";
         case 0xA5:
-            return "Right Menu";
+            return "Right Alt";
         default:
 
             // check win API
