@@ -2183,103 +2183,109 @@ namespace overlay::windows {
             // check lights
             if (lights) {
                 for (auto &light_in : *lights) {
-
-                    // get light based on page
-                    auto light = &light_in;
-                    auto &light_alternatives = light->getAlternatives();
-                    if (this->lights_page > 0) {
-                        while ((int) light_alternatives.size() < this->lights_page) {
-                            light_alternatives.emplace_back(light->getName());
-                        }
-                        light = &light_alternatives.at(this->lights_page - 1);
-                    }
-
-                    // get light info
-                    auto light_name = light->getName();
-                    auto light_display = light->getDisplayString(RI_MGR.get());
-                    auto light_state = GameAPI::Lights::readLight(RI_MGR, *light);
-
-                    // list entry
-                    ImGui::PushID(light);
-                    ImGui::TableNextRow();
-
-                    // progress bar & light name
-                    ImGui::TableNextColumn();
-                    ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
-                    ImGui::SameLine();
-                    ImGui::TextUnformatted(light_name.c_str());
-
-                    // binding name
-                    ImGui::TableNextColumn();
-                    ImGui::AlignTextToFramePadding();
-                    if (light_display.size() > 0) {
-                        std::string light_text = ImGui::TruncateText(
-                            light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
-                        ImGui::TextUnformatted(light_text.c_str());
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SameLine();
-                            ImGui::HelpTooltip(light_display.c_str());
-                        }
-                    } else {
-                        ImGui::TextDisabled("-");
-                    }
-
-                    // clear light
-                    if (light_display.size() > 0) {
-                        ImGui::SameLine();
-                        if (ImGui::DeleteButton("Remove")) {
-                            light->setDeviceIdentifier("");
-                            light->setIndex(0xFF);
-                            ::Config::getInstance().updateBinding(
-                                    games_list[games_selected], *light,
-                                    lights_page - 1);
-                        }
-                    }
-
-                    // bind button
-                    ImGui::TableNextColumn();
-
-                    // light binding
-                    if (ImGui::Button("Set")) {
-                        ImGui::OpenPopup("Light Binding");
-                        light->override_enabled = true;
-
-                        // get devices
-                        this->lights_devices.clear();
-                        for (auto &device : RI_MGR->devices_get()) {
-                            switch (device.type) {
-                                case rawinput::HID:
-                                    if (!device.hidInfo->button_output_caps_list.empty()
-                                        || !device.hidInfo->value_output_caps_list.empty())
-                                        this->lights_devices.emplace_back(&device);
-                                    break;
-                                case rawinput::SEXTET_OUTPUT:
-                                case rawinput::PIUIO_DEVICE:
-                                case rawinput::SMX_STAGE:
-                                case rawinput::SMX_DEDICAB:
-                                    this->lights_devices.emplace_back(&device);
-                                    break;
-                                default:
-                                    continue;
-                            }
-
-                            // check if this is the current device
-                            if (device.name == light->getDeviceIdentifier()) {
-                                this->lights_devices_selected = (int) this->lights_devices.size() - 1;
-                                this->lights_devices_control_selected = light->getIndex();
-                            }
-                        }
-                    }
-
-                    edit_light_popup(light);
-
-                    // clean up
-                    ImGui::PopID();
+                    build_light(&light_in);
                 }
             }
 
             ImGui::EndTable();
         }
+    }
+
+    void Config::build_light(Light *light) {
+        // get light based on page
+        auto &light_alternatives = light->getAlternatives();
+        if (this->lights_page > 0) {
+            while ((int) light_alternatives.size() < this->lights_page) {
+                light_alternatives.emplace_back(light->getName());
+            }
+            light = &light_alternatives.at(this->lights_page - 1);
+        }
+
+        // get light info
+        auto light_name = light->getName();
+        auto light_display = light->getDisplayString(RI_MGR.get());
+        auto light_state = GameAPI::Lights::readLight(RI_MGR, *light);
+
+        // list entry
+        ImGui::PushID(light);
+        ImGui::TableNextRow();
+
+        // progress bar & light name
+        ImGui::TableNextColumn();
+        ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
+        ImGui::SameLine();
+        ImGui::TextUnformatted(light_name.c_str());
+
+        // binding name
+        ImGui::TableNextColumn();
+        ImGui::AlignTextToFramePadding();
+        if (light_display.size() > 0) {
+            std::string light_text = ImGui::TruncateText(
+                light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+            ImGui::TextUnformatted(light_text.c_str());
+            if (ImGui::IsItemHovered()) {
+                ImGui::SameLine();
+                ImGui::HelpTooltip(light_display.c_str());
+            }
+        } else {
+            ImGui::TextDisabled("-");
+        }
+
+        // clear light
+        if (light_display.size() > 0) {
+            ImGui::SameLine();
+            if (ImGui::DeleteButton("Remove")) {
+                clear_light(light);
+            }
+        }
+
+        // bind button
+        ImGui::TableNextColumn();
+
+        // light binding
+        if (ImGui::Button("Set")) {
+            ImGui::OpenPopup("Light Binding");
+            light->override_enabled = true;
+
+            // get devices
+            this->lights_devices.clear();
+            for (auto &device : RI_MGR->devices_get()) {
+                switch (device.type) {
+                    case rawinput::HID:
+                        if (!device.hidInfo->button_output_caps_list.empty()
+                            || !device.hidInfo->value_output_caps_list.empty())
+                            this->lights_devices.emplace_back(&device);
+                        break;
+                    case rawinput::SEXTET_OUTPUT:
+                    case rawinput::PIUIO_DEVICE:
+                    case rawinput::SMX_STAGE:
+                    case rawinput::SMX_DEDICAB:
+                        this->lights_devices.emplace_back(&device);
+                        break;
+                    default:
+                        continue;
+                }
+
+                // check if this is the current device
+                if (device.name == light->getDeviceIdentifier()) {
+                    this->lights_devices_selected = (int) this->lights_devices.size() - 1;
+                    this->lights_devices_control_selected = light->getIndex();
+                }
+            }
+        }
+
+        edit_light_popup(light);
+
+        // clean up
+        ImGui::PopID();
+    }
+
+    void Config::clear_light(Light *light) {
+        light->setDeviceIdentifier("");
+        light->setIndex(0xFF);
+        ::Config::getInstance().updateBinding(
+                games_list[games_selected], *light,
+                lights_page - 1);
     }
     
     void Config::edit_light_popup(Light *light) {

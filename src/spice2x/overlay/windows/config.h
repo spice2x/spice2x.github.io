@@ -94,6 +94,8 @@ namespace overlay::windows {
         void edit_analog_popup(Analog &analog);
 
         void build_lights(const std::string &name, std::vector<Light> *lights);
+        void build_light(Light *light);
+        void clear_light(Light *light);
         void edit_light_popup(Light *light);
 
         void build_cards();
