@@ -13,6 +13,7 @@ private:
     std::string lightName;
     std::string deviceIdentifier = "";
     unsigned int index = 0;
+    bool is_temporary = false;
 
 public:
     float last_state = 0.f;
@@ -64,5 +65,27 @@ public:
 
     inline void setIndex(unsigned int index) {
         this->index = index;
+    }
+
+    inline bool isTemporary() const {
+        return this->is_temporary;
+    }
+
+    inline void setTemporary(bool is_temporary) {
+        this->is_temporary = is_temporary;
+    }
+
+    inline bool isValid() {
+        // temporarily created by UI
+        if (isTemporary()) {
+            return true;
+        }
+
+        // nothing is set
+        if (getDeviceIdentifier().empty()) {
+            return false;
+        }
+
+        return true;
     }
 };

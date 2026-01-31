@@ -45,6 +45,7 @@ private:
     double debounce_up = 0.0;
     double debounce_down = 0.0;
     bool invert = false;
+    bool is_temporary = false;
 
     GameAPI::Buttons::State last_state = GameAPI::Buttons::BUTTON_NOT_PRESSED;
     float last_velocity = 0.f;
@@ -164,12 +165,34 @@ public:
         this->last_velocity = last_velocity;
     }
 
+    inline bool isTemporary() const {
+        return this->is_temporary;
+    }
+
+    inline void setTemporary(bool is_temporary) {
+        this->is_temporary = is_temporary;
+    }
+
     inline unsigned short getVelocityThreshold() const {
         return this->velocity_threshold;
     }
 
     inline void setVelocityThreshold(unsigned short velocity_threshold) {
         this->velocity_threshold = velocity_threshold;
+    }
+
+    inline bool isValid() {
+        // temporarily created by UI
+        if (isTemporary()) {
+            return true;
+        }
+
+        // nothing is set
+        if (getDeviceIdentifier().empty() && getVKey() == INVALID_VKEY) {
+            return false;
+        }
+
+        return true;
     }
 
     void getMidiVKey(int& channel, int& index);

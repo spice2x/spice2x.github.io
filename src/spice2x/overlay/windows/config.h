@@ -38,7 +38,6 @@ namespace overlay::windows {
         ConfigTab tab_selected = ConfigTab::CONFIG_TAB_INVALID;
 
         // buttons tab
-        int buttons_page = 0;
         bool buttons_keyboard_state[0xFF];
         bool buttons_bind_active = false;
         bool buttons_many_active = false;
@@ -46,6 +45,9 @@ namespace overlay::windows {
         bool buttons_many_naive = false;
         int buttons_many_delay = 0;
         int buttons_many_index = -1;
+        
+        bool io_allow_multi_binding = false;
+        bool io_has_valid_alternatives = false;
 
         void inc_buttons_many_index(int index_max);
 
@@ -55,7 +57,6 @@ namespace overlay::windows {
         int analogs_devices_control_selected = -1;
 
         // lights tab
-        int lights_page = 0;
         std::vector<rawinput::Device *> lights_devices;
         int lights_devices_selected = -1;
         int lights_devices_control_selected = -1;
@@ -79,24 +80,32 @@ namespace overlay::windows {
         std::string search_filter_in_lower_case = "";
 
         void build_buttons(const std::string &name, std::vector<Button> *buttons, int min = 0, int max = -1);
-        void build_button(const std::string &name, Button *button, const int button_it, const int button_it_max);
-        void bind_button_popup(const std::string &bind_name, Button *button, const int button_it_max);
-        void naive_button_popup(const std::string &naive_string, Button *button, const int button_it_max);
+        void build_button(
+            const std::string &name,
+            Button &primary_button,
+            Button *button,
+            const int button_it,
+            const int button_it_max,
+            const int alt_index);
+
+        void bind_button_popup(const std::string &bind_name, Button *button, const int button_it_max, const int alt_index);
+        void naive_button_popup(const std::string &naive_string, Button *button, const int button_it_max, const int alt_index);
         void edit_button_popup(
             const std::string &edit_name,
             const std::string &button_display,
             Button *button,
-            const GameAPI::Buttons::State button_state,
-            const float button_velocity);
-        void clear_button(Button *button);
+            const float button_velocity,
+            const int alt_index);
+        void clear_button(Button *button, const int alt_index);
+        void bind_multiple_checkbox();
 
         void build_analogs(const std::string &name, std::vector<Analog> *analogs);
         void edit_analog_popup(Analog &analog);
 
         void build_lights(const std::string &name, std::vector<Light> *lights);
-        void build_light(Light *light);
-        void clear_light(Light *light);
-        void edit_light_popup(Light *light);
+        void build_light(Light &primary_light, Light *light, const int light_index, const int alt_index);
+        void clear_light(Light *light, const int alt_index);
+        void edit_light_popup(Light &primary_light, Light *light, const int alt_index);
 
         void build_cards();
         void build_options(
@@ -105,9 +114,10 @@ namespace overlay::windows {
         void build_launcher();
         void launch_shell(LPCSTR app, LPCSTR file=nullptr);
 
-        void build_page_selector(int *page);
         void build_menu(int *game_selected);
         void shutdown_system(bool force, bool reboot_instead);
+
+        void set_alternating_row_colors(const int row_index);
 
     public:
         Config(SpiceOverlay *overlay);
