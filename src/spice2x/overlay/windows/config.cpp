@@ -40,7 +40,6 @@ namespace overlay::windows {
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
-    constexpr ImVec4 TEXT_COLOR_GREEN_FADED(0.f, 1.f, 0.f, 0.5f);
 
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
         this->title = "Configuration";
@@ -709,15 +708,13 @@ namespace overlay::windows {
             // alternate button
             ImGui::AlignTextToFramePadding();
             if (button_state) {
-                ImGui::PushStyleColor(ImGuiCol_TextDisabled, TEXT_COLOR_GREEN_FADED);
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
             }
-            ImGui::Indent(INDENT);
             ImGui::BeginDisabled();
             ImGui::TextTruncated(
-                fmt::format("alternate #{}", alt_index),
+                fmt::format("\u00B7 alternate #{}", alt_index),
                 ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
             ImGui::EndDisabled();
-            ImGui::Unindent(INDENT);
             if (button_state) {
                 ImGui::PopStyleColor();
             }
@@ -730,8 +727,15 @@ namespace overlay::windows {
         if (button_state) {
             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
         }
-        ImGui::TextTruncated(
-            button_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+        if (alt_index > 0) {
+            ImGui::BeginDisabled();
+            ImGui::TextTruncated(
+                "\u00B7 " + button_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+            ImGui::EndDisabled();
+        } else {
+            ImGui::TextTruncated(
+                button_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+        }
         if (button_state) {
             ImGui::PopStyleColor();
         }
@@ -2358,18 +2362,24 @@ namespace overlay::windows {
             }
 
         } else {
-            ImGui::SameLine();
             ImGui::AlignTextToFramePadding();
-            ImGui::Indent(INDENT * 2.6f);
-            ImGui::TextDisabled("alternate #%d", alt_index);
-            ImGui::Unindent(INDENT * 2.6f);
+            ImGui::Dummy(ImVec2(32.f, 0));
+            ImGui::SameLine();
+            ImGui::TextDisabled("\u00B7 alternate #%d", alt_index);
         }
 
         // binding name
         ImGui::TableNextColumn();
         ImGui::AlignTextToFramePadding();
-        ImGui::TextTruncated(
-            light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+        if (alt_index > 0) {
+            ImGui::BeginDisabled(alt_index > 0);
+            ImGui::TextTruncated(
+                "\u00B7 " + light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+            ImGui::EndDisabled();
+        } else {
+            ImGui::TextTruncated(
+                light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+        }
 
         // clear light
         if (light_display.size() > 0 || alt_index > 0) {
