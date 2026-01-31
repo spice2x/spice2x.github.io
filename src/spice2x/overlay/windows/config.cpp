@@ -1743,6 +1743,7 @@ namespace overlay::windows {
                     auto analog_name = analog.getName();
                     auto analog_display = analog.getDisplayString(RI_MGR.get());
                     auto analog_state = GameAPI::Analogs::getState(RI_MGR, analog);
+                    analog_state = std::clamp(analog_state, 0.f, 1.f);
 
                     // list entry
                     ImGui::ProgressBar(analog_state, ImVec2(32.f, 0));
