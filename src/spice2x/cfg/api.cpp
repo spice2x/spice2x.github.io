@@ -644,10 +644,12 @@ float GameAPI::Analogs::getState(rawinput::Device *device, Analog &analog) {
         case rawinput::HID: {
 
             // get value
-            if (inverted) {
-                value = 1.f - device->hidInfo->value_states[index];
-            } else {
-                value = device->hidInfo->value_states[index];
+            if (index < device->hidInfo->value_states.size()) {
+                if (inverted) {
+                    value = 1.f - device->hidInfo->value_states[index];
+                } else {
+                    value = device->hidInfo->value_states[index];
+                }
             }
 
             // deadzone
