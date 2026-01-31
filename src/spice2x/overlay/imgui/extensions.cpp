@@ -93,14 +93,14 @@ namespace ImGui {
                 thickness);
     }
 
-
-    std::string TruncateText(const std::string& p_text, float p_truncated_width) {
+    std::string TruncateText(const std::string& p_text, float p_truncated_width, bool &truncated) {
         std::string truncated_text = p_text;
 
         const float text_width =
                 ImGui::CalcTextSize(p_text.c_str(), nullptr, true).x;
 
         if (text_width > p_truncated_width) {
+            truncated = true;
             constexpr const char* ELLIPSIS = " ...";
             const float ellipsis_size = ImGui::CalcTextSize(ELLIPSIS).x;
 
@@ -120,6 +120,18 @@ namespace ImGui {
         }
 
         return truncated_text;
+    }
+
+    void TextTruncated(const std::string& p_text, float p_truncated_width) {
+        if (p_text.empty()) {
+            ImGui::TextDisabled("-");
+            return;
+        }
+        bool truncated = false;
+        ImGui::TextUnformatted(TruncateText(p_text, p_truncated_width, truncated).c_str());
+        if (truncated && ImGui::IsItemHovered()) {
+            ImGui::HelpTooltip(p_text.c_str());
+        }
     }
 
     bool AddButton(const std::string& tooltip) {

@@ -721,7 +721,7 @@ namespace overlay::windows {
                     if (style_color_pushed) {
                         ImGui::PopStyleColor(style_color_pushed);
                     }
-                    if (ImGui::IsItemHovered()) {
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                         show_patch_tooltip(patch);
                     }
 
@@ -762,7 +762,7 @@ namespace overlay::windows {
                         patch.last_status = is_patch_active(patch);
                     }
                     ImGui::EndDisabled();
-                    if (ImGui::IsItemHovered()) {
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                         show_patch_tooltip(patch);
                     }
 
@@ -791,7 +791,7 @@ namespace overlay::windows {
                                     }
                                     ImGui::EndCombo();
                                 }
-                                if (ImGui::IsItemHovered()) {
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                                     show_patch_tooltip(patch);
                                 }
                             } else if (patch.type == PatchType::Integer) {
@@ -807,7 +807,7 @@ namespace overlay::windows {
                                     apply_patch(patch, true);
                                     config_dirty = true;
                                 }
-                                if (ImGui::IsItemHovered()) {
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                                     show_patch_tooltip(patch);
                                 }
                             }
@@ -824,7 +824,7 @@ namespace overlay::windows {
                                 ImGui::InputInt("##dummy_int_input", &patch.patch_number.value);
                             }
                             ImGui::EndDisabled();
-                            if (ImGui::IsItemHovered()) {
+                            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                                 show_patch_tooltip(patch);
                             }
                         }

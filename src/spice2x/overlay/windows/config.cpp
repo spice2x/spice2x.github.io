@@ -294,8 +294,9 @@ namespace overlay::windows {
                     buttons_many_index = -1;
                     buttons_many_delay = 0;
                 }
-                ImGui::SameLine();
-                ImGui::HelpMarker("Immediately query for the next button after binding one.");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::HelpTooltip("Immediately query for the next button after binding one.");
+                }
 
                 ImGui::EndTabItem();
             }
@@ -641,7 +642,7 @@ namespace overlay::windows {
         if (button_state) {
             ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
         }
-        ImGui::TextUnformatted(button_name.c_str());
+        ImGui::TextTruncated(button_name, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
         if (button_state) {
             ImGui::PopStyleColor();
         }
@@ -650,23 +651,13 @@ namespace overlay::windows {
         // column for key binding display
         ImGui::TableNextColumn();
         ImGui::AlignTextToFramePadding();
-        if (button_display.size() > 0) {
-            if (button_state) {
-                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
-            }
-            std::string button_text = ImGui::TruncateText(
-                button_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
-            ImGui::TextUnformatted(button_text.c_str());
-            if (button_state) {
-                ImGui::PopStyleColor();
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SameLine();
-                ImGui::HelpTooltip(button_display.c_str());
-            }
-        } else {
-            // placeholder
-            ImGui::TextDisabled("-");
+        if (button_state) {
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
+        }
+        ImGui::TextTruncated(
+            button_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
+        if (button_state) {
+            ImGui::PopStyleColor();
         }
         
         // clear button
@@ -1759,21 +1750,13 @@ namespace overlay::windows {
                     if (analog_display.empty()) {
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.f));
                     }
-                    ImGui::TextUnformatted(analog_name.c_str());
+                    ImGui::TextTruncated(
+                        analog_name, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
 
                     ImGui::TableNextColumn();
                     ImGui::AlignTextToFramePadding();
-                    if (analog_display.size() > 0) {
-                        std::string analog_text = ImGui::TruncateText(
-                            analog_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
-                        ImGui::TextUnformatted(analog_text.c_str());
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SameLine();
-                            ImGui::HelpTooltip(analog_display.c_str());
-                        }
-                    } else {
-                        ImGui::TextDisabled("-");
-                    }
+                    ImGui::TextTruncated(
+                        analog_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
 
                     // clear analog
                     if (analog_display.size() > 0) {
@@ -2230,22 +2213,13 @@ namespace overlay::windows {
         ImGui::TableNextColumn();
         ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
         ImGui::SameLine();
-        ImGui::TextUnformatted(light_name.c_str());
+        ImGui::TextTruncated(light_name, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
 
         // binding name
         ImGui::TableNextColumn();
         ImGui::AlignTextToFramePadding();
-        if (light_display.size() > 0) {
-            std::string light_text = ImGui::TruncateText(
-                light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
-            ImGui::TextUnformatted(light_text.c_str());
-            if (ImGui::IsItemHovered()) {
-                ImGui::SameLine();
-                ImGui::HelpTooltip(light_display.c_str());
-            }
-        } else {
-            ImGui::TextDisabled("-");
-        }
+        ImGui::TextTruncated(
+            light_display, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
 
         // clear light
         if (light_display.size() > 0) {
@@ -2828,7 +2802,7 @@ namespace overlay::windows {
                     ImGui::TextUnformatted(definition.title.c_str());
                 }
                 ImGui::Unindent(INDENT);
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     ImGui::HelpTooltip(definition.desc.c_str());
                 }
 
@@ -2842,7 +2816,7 @@ namespace overlay::windows {
                     param += definition.display_name;
                 }
                 ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", param.c_str());
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     const auto help =
                         param +
                         "\n\nClick to copy the parameter to the clipboard.\n\n"
@@ -2850,7 +2824,6 @@ namespace overlay::windows {
                         "Example: spice.exe -w -ea\n"
                         "         spice64.exe -api 1337 -apipass changeme";
                     ImGui::HelpTooltip(help.c_str());
-                        
                 }
                 if (ImGui::IsItemClicked()) {
                     clipboard::copy_text(param.c_str());
@@ -2871,7 +2844,7 @@ namespace overlay::windows {
                             option.value = state ? "/ENABLED" : "";
                             ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
-                        if (ImGui::IsItemHovered()) {
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
@@ -2900,7 +2873,7 @@ namespace overlay::windows {
                             option.value = buffer;
                             ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
-                        if (ImGui::IsItemHovered()) {
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
@@ -2936,7 +2909,7 @@ namespace overlay::windows {
                             option.value = buffer;
                             ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
-                        if (ImGui::IsItemHovered()) {
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
@@ -2956,7 +2929,7 @@ namespace overlay::windows {
                             option.value = buffer;
                             ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
-                        if (ImGui::IsItemHovered()) {
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
@@ -2993,7 +2966,7 @@ namespace overlay::windows {
                             }
                             ImGui::EndCombo();
                         }
-                        if (ImGui::IsItemHovered()) {
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
