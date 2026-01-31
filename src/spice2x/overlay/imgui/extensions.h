@@ -1,8 +1,12 @@
 #pragma once
 
 #include <string>
+#include "external/imgui/imgui.h"
 
 namespace ImGui {
+
+    constexpr ImGuiHoveredFlags TOOLTIP_FLAGS =
+        (ImGuiHoveredFlags_ForTooltip | ImGuiHoveredFlags_AllowWhenDisabled);
 
     void HelpTooltip(const char* desc);
     void HelpMarker(const char* desc);

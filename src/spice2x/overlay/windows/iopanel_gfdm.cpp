@@ -136,7 +136,7 @@ namespace overlay::windows {
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ImGui::GetFrameHeightWithSpacing());
             this->build_button("<", leftright_size, this->left[p], nullptr, this->leftright_light[p]);
             this->build_button("+", tiny_size, this->help[p], this->start[p], nullptr);
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                 ImGui::HelpTooltip("HELP + START");
             }
         }
@@ -167,7 +167,7 @@ namespace overlay::windows {
         ImGui::BeginGroup();
         {
             this->build_button("?", tiny_size, this->help[p], nullptr, this->help_light[p]);
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                 ImGui::HelpTooltip("HELP");
             }
             this->build_button(">", leftright_size, this->right[p], nullptr, this->leftright_light[p]);

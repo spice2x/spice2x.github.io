@@ -298,7 +298,7 @@ namespace overlay::windows {
                     buttons_many_index = -1;
                     buttons_many_delay = 0;
                 }
-                if (ImGui::IsItemHovered()) {
+                if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     ImGui::HelpTooltip(
                         "Bind many keys in a row without having to click on Bind or Naive button.");
                 }
@@ -803,7 +803,7 @@ namespace overlay::windows {
                 }
             }
         }
-        if (ImGui::IsItemHovered()) {
+        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
             ImGui::HelpTooltip("Bind a button to a device using Windows RawInput API.");
         }
 
@@ -830,7 +830,7 @@ namespace overlay::windows {
                 buttons_keyboard_state[i] = GetAsyncKeyState(i) != 0;
             }
         }
-        if (ImGui::IsItemHovered()) {
+        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
             ImGui::HelpTooltip(
                 "Uses GetAsyncKeyState to check for any keyboard / mouse input. "
                 "For best performance, Bind should be preferred, but this can be used when:\n"
@@ -881,7 +881,7 @@ namespace overlay::windows {
         }
         ImGui::Checkbox("Allow Multiple Binds", &io_allow_multi_binding);
         ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
             std::string text =
                 "Check this and press the green + button to bind multiple input to the same action.";
             if (io_has_valid_alternatives) {
@@ -2965,7 +2965,7 @@ namespace overlay::windows {
                     ImGui::TextUnformatted(definition.title.c_str());
                 }
                 ImGui::Unindent(INDENT);
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     ImGui::HelpTooltip(definition.desc.c_str());
                 }
 
@@ -2979,7 +2979,7 @@ namespace overlay::windows {
                     param += definition.display_name;
                 }
                 ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", param.c_str());
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     const auto help =
                         param +
                         "\n\nClick to copy the parameter to the clipboard.\n\n"
@@ -3007,7 +3007,7 @@ namespace overlay::windows {
                             option.value = state ? "/ENABLED" : "";
                             ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
@@ -3036,7 +3036,7 @@ namespace overlay::windows {
                             option.value = buffer;
                             ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
@@ -3072,7 +3072,7 @@ namespace overlay::windows {
                             option.value = buffer;
                             ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
@@ -3092,7 +3092,7 @@ namespace overlay::windows {
                             option.value = buffer;
                             ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
@@ -3129,7 +3129,7 @@ namespace overlay::windows {
                             }
                             ImGui::EndCombo();
                         }
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                             ImGui::HelpTooltip(definition.desc.c_str());
                         }
                         break;
