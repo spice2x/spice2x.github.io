@@ -81,7 +81,7 @@ namespace overlay::windows {
         {
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetFrameHeightWithSpacing());
             this->build_button("+", tall, this->test_button, this->service_button);
-            if (ImGui::IsItemHovered()) {
+            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                 ImGui::HelpTooltip("SERVICE + TEST");
             }
         }

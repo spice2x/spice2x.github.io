@@ -26,7 +26,7 @@ namespace ImGui {
 
     void HelpMarker(const char* desc) {
         ImGui::TextDisabled("(?)");
-        if (ImGui::IsItemHovered()) {
+        if (ImGui::IsItemHovered(TOOLTIP_FLAGS)) {
             HelpTooltip(desc);
         }
     }
@@ -59,7 +59,7 @@ namespace ImGui {
         ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImVec4(1.f, 1.f, 0.f, 1.f));
         ImGui::TextDisabled("(!)");
         ImGui::PopStyleColor();
-        if (ImGui::IsItemHovered()) {
+        if (ImGui::IsItemHovered(TOOLTIP_FLAGS)) {
             WarnTooltip(desc, warn);
         }
     }
@@ -129,7 +129,7 @@ namespace ImGui {
         }
         bool truncated = false;
         ImGui::TextUnformatted(TruncateText(p_text, p_truncated_width, truncated).c_str());
-        if (truncated && ImGui::IsItemHovered()) {
+        if (truncated && ImGui::IsItemHovered(TOOLTIP_FLAGS)) {
             ImGui::HelpTooltip(p_text.c_str());
         }
     }
@@ -144,7 +144,7 @@ namespace ImGui {
         bool clicked = ImGui::SmallButton("+");
         ImGui::PopStyleVar();
         ImGui::PopStyleColor(4);
-        if (!tooltip.empty() && ImGui::IsItemHovered()) {
+        if (!tooltip.empty() && ImGui::IsItemHovered(TOOLTIP_FLAGS)) {
             ImGui::SameLine();
             ImGui::HelpTooltip(tooltip.c_str());
         }
@@ -159,7 +159,7 @@ namespace ImGui {
         bool clicked = ImGui::SmallButton("\u00D7"); // multiplication sign (×)
         ImGui::PopStyleVar();
         ImGui::PopStyleColor();
-        if (!tooltip.empty() && ImGui::IsItemHovered()) {
+        if (!tooltip.empty() && ImGui::IsItemHovered(TOOLTIP_FLAGS)) {
             ImGui::SameLine();
             ImGui::HelpTooltip(tooltip.c_str());
         }
@@ -176,7 +176,7 @@ namespace ImGui {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.97f, 0.97f, 0.97f, 1.00f));
         bool clicked = ImGui::Button("\u00D7"); // multiplication sign (×)
         ImGui::PopStyleColor(4);
-        if (!tooltip.empty() && ImGui::IsItemHovered()) {
+        if (!tooltip.empty() && ImGui::IsItemHovered(TOOLTIP_FLAGS)) {
             ImGui::SameLine();
             ImGui::HelpTooltip(tooltip.c_str());
         }
