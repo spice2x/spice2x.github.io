@@ -299,7 +299,8 @@ namespace overlay::windows {
                     buttons_many_delay = 0;
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::HelpTooltip("Immediately query for the next button after binding one.");
+                    ImGui::HelpTooltip(
+                        "Bind many keys in a row without having to click on Bind or Naive button.");
                 }
 
                 ImGui::EndTabItem();
@@ -679,9 +680,8 @@ namespace overlay::windows {
             if (io_allow_multi_binding) {
                 ImGui::SameLine();
                 if (ImGui::AddButton(
-                        "Add an alternate binding for this button (multi-key binding). "
-                        "All of the key bindings are OR'd together. "
-                        "In the past, this was done using multiple pages of this tab.")) {
+                        "Add an alternate binding for this button. "
+                        "All of the key bindings are OR'd together.")) {
                     bool available = false;
                     // try to find one in the list that is not bound
                     for (auto &alt : primary_button.getAlternatives()) {
