@@ -18,7 +18,6 @@ namespace ImGui {
             float pos_x = -1.f, float pos_y = -1.f);
 
     void TextTruncated(const std::string& p_text, float p_truncated_width);
-    bool AddButton(const std::string& tooltip);
     bool DeleteButton(const std::string& tooltip);
     bool ClearButton(const std::string& tooltip);
 }
