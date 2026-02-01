@@ -45,9 +45,6 @@ namespace overlay::windows {
         bool buttons_many_naive = false;
         int buttons_many_delay = 0;
         int buttons_many_index = -1;
-        
-        bool io_allow_multi_binding = false;
-        bool io_has_valid_alternatives = false;
 
         void inc_buttons_many_index(int index_max);
 
@@ -97,7 +94,6 @@ namespace overlay::windows {
             const float button_velocity,
             const int alt_index);
         void clear_button(Button *button, const int alt_index);
-        void bind_multiple_checkbox();
 
         void build_analogs(const std::string &name, std::vector<Analog> *analogs);
         void edit_analog_popup(Analog &analog);

@@ -246,7 +246,7 @@ namespace overlay::windows {
             if (ImGui::BeginTabItem("Buttons")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_BUTTONS;
                 ImGui::BeginChild("Buttons", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset), false);
+                        0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
 
                 // help text for binding buttons, if the game has one
                 const auto help_text = games::get_buttons_help(this->games_selected_name);
@@ -256,10 +256,6 @@ namespace overlay::windows {
                     ImGui::TextWrapped("%s", help_text.c_str());
                     ImGui::TextUnformatted("");
                 }
-
-                // before calling into build_buttons for game/keypads, reset this so that it can
-                // be recalculated
-                io_has_valid_alternatives = false;
 
                 // game buttons
                 this->build_buttons("Game", games::get_buttons(this->games_selected_name));
@@ -288,10 +284,6 @@ namespace overlay::windows {
                 }
 
                 ImGui::EndChild();
-
-                // multi bind
-                bind_multiple_checkbox();
-
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Analogs")) {
@@ -315,16 +307,11 @@ namespace overlay::windows {
             if (ImGui::BeginTabItem("Overlay")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_OVERLAY;
                 ImGui::BeginChild("Overlay", ImVec2(
-                    0, ImGui::GetWindowContentRegionMax().y - page_offset), false);
-
-                io_has_valid_alternatives = false;
+                    0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
 
                 // overlay buttons
                 this->build_buttons("Overlay", games::get_buttons_overlay(this->games_selected_name));
                 ImGui::EndChild();
-
-                // multi bind
-                bind_multiple_checkbox();
 
                 // standalone configurator extras
                 if (cfg::CONFIGURATOR_STANDALONE) {
@@ -337,14 +324,9 @@ namespace overlay::windows {
                 tab_selected_new = ConfigTab::CONFIG_TAB_LIGHTS;
 
                 ImGui::BeginChild("Lights", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset), false);
-                io_has_valid_alternatives = false;
+                        0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
                 this->build_lights("Game", games::get_lights(this->games_selected_name));
                 ImGui::EndChild();
-
-                // multi bind
-                bind_multiple_checkbox();
-
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Cards")) {
@@ -564,7 +546,6 @@ namespace overlay::windows {
             this->tab_selected = tab_selected_new;
             buttons_many_active = false;
             buttons_many_index = -1;
-            io_allow_multi_binding = false;
             ImGui::CloseCurrentPopup();
         }
 
@@ -619,7 +600,6 @@ namespace overlay::windows {
                     for (auto &alt : primary_button.getAlternatives()) {
                         if (alt.isValid()) {
                             build_button(name, primary_button, &alt, button_it, button_it_max, alt_index);
-                            io_has_valid_alternatives = true;
                         }
                         alt_index++;
                     }
@@ -664,10 +644,6 @@ namespace overlay::windows {
                 button_name, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
             if (primary_button_state) {
                 ImGui::PopStyleColor();
-            }
-            
-            if (io_allow_multi_binding) {
-                ImGui::SameLine();
             }
         } else {
             // alternate button
@@ -806,61 +782,49 @@ namespace overlay::windows {
 
         naive_button_popup(naive_string, button, button_it_max, alt_index);
 
-        // edit button
-        ImGui::SameLine();
-        std::string edit_name = "Edit " + button->getName();
-        if (ImGui::Button("Edit")) {
-            if (alt_index > 0) {
-                edit_name += " (alternate #" + std::to_string(alt_index) + ")";
-            } else {
-                edit_name += " (primary)";
-            }
-            ImGui::OpenPopup(edit_name.c_str());
-        }
-        edit_button_popup(edit_name, button_display, button, button_velocity, alt_index);
-
         // ... button
         ImGui::SameLine();
-        if (alt_index == 0) {
-            if (ImGui::Button("...")) {
-                ImGui::OpenPopup("ButtonContextMenu");
+        if (ImGui::Button("..")) {
+            ImGui::OpenPopup("ButtonContextMenu");
+        }
+        bool open_edit = false;
+
+        // context menu for ... button
+        ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 8.f);
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
+        if (ImGui::BeginPopupContextItem("ButtonContextMenu")) {
+
+            // add
+            if (ImGui::Button("Add alternate")) {
+                bool available = false;
+                // try to find one in the list that is not bound
+                for (auto &alt : primary_button.getAlternatives()) {
+                    if (!alt.isValid()) {
+                        alt.setTemporary(true);
+                        available = true;
+                        break;
+                    }
+                }
+                // old pages UI allowed 99 alternatives, which is a little excessive
+                // here, limit to 8 (1 + 7 alts) here as a reasonable upper bound
+                if (!available && primary_button.getAlternatives().size() < 7) {
+                    // add a new one to end of the list
+                    Button temp_button(button->getName());
+                    temp_button.setTemporary(true);
+                    button->getAlternatives().push_back(temp_button);
+                    ::Config::getInstance().updateBinding(
+                            games_list[games_selected], temp_button,
+                            button->getAlternatives().size() - 1);
+                }
+                ImGui::CloseCurrentPopup();
             }
-            // context menu for ... button
+            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                ImGui::HelpTooltip(
+                    "Add an alternate binding for this button. "
+                    "All of the key bindings are OR'd together.");
+            }
 
-            ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 8.f);
-            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.4f, 0.4f, 0.4f, 0.8f));
-            if (ImGui::BeginPopupContextItem("ButtonContextMenu")) {
-
-                // add
-                if (ImGui::Button("Add alternate")) {
-                    bool available = false;
-                    // try to find one in the list that is not bound
-                    for (auto &alt : primary_button.getAlternatives()) {
-                        if (!alt.isValid()) {
-                            alt.setTemporary(true);
-                            available = true;
-                            break;
-                        }
-                    }
-                    // old pages UI allowed 99 alternatives, which is a little excessive
-                    // here, limit to 8 (1 + 7 alts) here as a reasonable upper bound
-                    if (!available && primary_button.getAlternatives().size() < 7) {
-                        // add a new one to end of the list
-                        Button temp_button(button->getName());
-                        temp_button.setTemporary(true);
-                        button->getAlternatives().push_back(temp_button);
-                        ::Config::getInstance().updateBinding(
-                                games_list[games_selected], temp_button,
-                                button->getAlternatives().size() - 1);
-                    }
-                    ImGui::CloseCurrentPopup();
-                }
-                if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-                    ImGui::HelpTooltip(
-                        "Add an alternate binding for this button. "
-                        "All of the key bindings are OR'd together.");
-                }
-
+            if (alt_index == 0) {
                 // Bind Many
                 if (ImGui::Button("Bind (many)")) {
                     buttons_many_active = true;
@@ -886,11 +850,27 @@ namespace overlay::windows {
                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     ImGui::HelpTooltip("Naive bind many buttons in a row, starting with this one.");
                 }
-                ImGui::EndPopup();
             }
-            ImGui::PopStyleColor();
-            ImGui::PopStyleVar();
+
+            if (ImGui::Button("Edit")) {
+                open_edit = true;
+            }
+            ImGui::EndPopup();
         }
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+
+        // edit dialog
+        std::string edit_name = "Edit " + button->getName();
+        if (alt_index > 0) {
+            edit_name += " (alternate #" + std::to_string(alt_index) + ")";
+        } else {
+            edit_name += " (primary)";
+        }
+        if (open_edit) {
+            ImGui::OpenPopup(edit_name.c_str());
+        }
+        edit_button_popup(edit_name, button_display, button, button_velocity, alt_index);
 
         // clean up
         ImGui::PopID();
@@ -910,23 +890,6 @@ namespace overlay::windows {
         ::Config::getInstance().updateBinding(
                 games_list[games_selected], *button,
                 alt_index - 1);
-    }
-
-    void Config::bind_multiple_checkbox() {
-        ImGui::BeginDisabled(io_has_valid_alternatives);
-        if (io_has_valid_alternatives) {
-            io_allow_multi_binding = true;
-        }
-        ImGui::Checkbox("Allow Multiple Binds", &io_allow_multi_binding);
-        ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-            std::string text =
-                "Check this and press the green + button to bind multiple input to the same action.";
-            if (io_has_valid_alternatives) {
-                text += "\n\n(You already have multiple bindings, so this is enabled)";
-            }
-            ImGui::HelpTooltip(text.c_str());
-        }
     }
 
     void Config::bind_button_popup(
@@ -2365,7 +2328,6 @@ namespace overlay::windows {
                     for (auto &alt : light.getAlternatives()) {
                         if (alt.isValid()) {
                             build_light(light, &alt, light_index, alt_index);
-                            io_has_valid_alternatives = true;
                         }
 
                         alt_index++;
@@ -2401,32 +2363,6 @@ namespace overlay::windows {
             ImGui::AlignTextToFramePadding();
             ImGui::TextTruncated(
                 light_name, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
-            if (io_allow_multi_binding) {
-                ImGui::SameLine();
-                if (ImGui::AddButton("Add additional output for this light.")) {
-                    bool available = false;
-                    // try to find one in the list that is not bound
-                    for (auto &alt : primary_light.getAlternatives()) {
-                        if (!alt.isValid()) {
-                            alt.setTemporary(true);
-                            available = true;
-                            break;
-                        }
-                    }
-                    // old pages UI allowed 99 alternatives, which is a little excessive
-                    // here, limit to 16 (1 + 15 alts) here as a reasonable upper bound
-                    if (!available && primary_light.getAlternatives().size() < 7) {
-                        // add a new one to end of the list
-                        Light temp_light(light->getName());
-                        temp_light.setTemporary(true);
-                        primary_light.getAlternatives().push_back(temp_light);
-                        ::Config::getInstance().updateBinding(
-                                games_list[games_selected], temp_light,
-                                primary_light.getAlternatives().size() - 1);
-                    }
-                }
-            }
-
         } else {
             ImGui::AlignTextToFramePadding();
             ImGui::Dummy(ImVec2(32.f, 0));
@@ -2491,6 +2427,33 @@ namespace overlay::windows {
         }
 
         edit_light_popup(primary_light, light, alt_index);
+
+        ImGui::SameLine();
+        if (ImGui::Button("Add alt")) {
+            bool available = false;
+            // try to find one in the list that is not bound
+            for (auto &alt : primary_light.getAlternatives()) {
+                if (!alt.isValid()) {
+                    alt.setTemporary(true);
+                    available = true;
+                    break;
+                }
+            }
+            // old pages UI allowed 99 alternatives, which is a little excessive
+            // here, limit to 16 (1 + 15 alts) here as a reasonable upper bound
+            if (!available && primary_light.getAlternatives().size() < 7) {
+                // add a new one to end of the list
+                Light temp_light(light->getName());
+                temp_light.setTemporary(true);
+                primary_light.getAlternatives().push_back(temp_light);
+                ::Config::getInstance().updateBinding(
+                        games_list[games_selected], temp_light,
+                        primary_light.getAlternatives().size() - 1);
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Add additional output for this light.");
+        }
 
         // clean up
         ImGui::PopID();
