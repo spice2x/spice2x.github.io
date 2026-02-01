@@ -292,17 +292,6 @@ namespace overlay::windows {
                 // multi bind
                 bind_multiple_checkbox();
 
-                // bind many
-                ImGui::SameLine();
-                if (ImGui::Checkbox("Sequential Binding", &buttons_many_active)) {
-                    buttons_many_index = -1;
-                    buttons_many_delay = 0;
-                }
-                if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-                    ImGui::HelpTooltip(
-                        "Bind many keys in a row without having to click on Bind or Naive button.");
-                }
-
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Analogs")) {
@@ -679,30 +668,6 @@ namespace overlay::windows {
             
             if (io_allow_multi_binding) {
                 ImGui::SameLine();
-                if (ImGui::AddButton(
-                        "Add an alternate binding for this button. "
-                        "All of the key bindings are OR'd together.")) {
-                    bool available = false;
-                    // try to find one in the list that is not bound
-                    for (auto &alt : primary_button.getAlternatives()) {
-                        if (!alt.isValid()) {
-                            alt.setTemporary(true);
-                            available = true;
-                            break;
-                        }
-                    }
-                    // old pages UI allowed 99 alternatives, which is a little excessive
-                    // here, limit to 8 (1 + 7 alts) here as a reasonable upper bound
-                    if (!available && primary_button.getAlternatives().size() < 7) {
-                        // add a new one to end of the list
-                        Button temp_button(button->getName());
-                        temp_button.setTemporary(true);
-                        button->getAlternatives().push_back(temp_button);
-                        ::Config::getInstance().updateBinding(
-                                games_list[games_selected], temp_button,
-                                button->getAlternatives().size() - 1);
-                    }
-                }
             }
         } else {
             // alternate button
@@ -844,15 +809,88 @@ namespace overlay::windows {
         // edit button
         ImGui::SameLine();
         std::string edit_name = "Edit " + button->getName();
-        if (alt_index > 0) {
-            edit_name += " (alternate #" + std::to_string(alt_index) + ")";
-        } else {
-            edit_name += " (primary)";
-        }
         if (ImGui::Button("Edit")) {
+            if (alt_index > 0) {
+                edit_name += " (alternate #" + std::to_string(alt_index) + ")";
+            } else {
+                edit_name += " (primary)";
+            }
             ImGui::OpenPopup(edit_name.c_str());
         }
         edit_button_popup(edit_name, button_display, button, button_velocity, alt_index);
+
+        // ... button
+        ImGui::SameLine();
+        if (alt_index == 0) {
+            if (ImGui::Button("...")) {
+                ImGui::OpenPopup("ButtonContextMenu");
+            }
+            // context menu for ... button
+
+            ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 8.f);
+            ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.4f, 0.4f, 0.4f, 0.8f));
+            if (ImGui::BeginPopupContextItem("ButtonContextMenu")) {
+
+                // add
+                if (ImGui::Button("Add alternate")) {
+                    bool available = false;
+                    // try to find one in the list that is not bound
+                    for (auto &alt : primary_button.getAlternatives()) {
+                        if (!alt.isValid()) {
+                            alt.setTemporary(true);
+                            available = true;
+                            break;
+                        }
+                    }
+                    // old pages UI allowed 99 alternatives, which is a little excessive
+                    // here, limit to 8 (1 + 7 alts) here as a reasonable upper bound
+                    if (!available && primary_button.getAlternatives().size() < 7) {
+                        // add a new one to end of the list
+                        Button temp_button(button->getName());
+                        temp_button.setTemporary(true);
+                        button->getAlternatives().push_back(temp_button);
+                        ::Config::getInstance().updateBinding(
+                                games_list[games_selected], temp_button,
+                                button->getAlternatives().size() - 1);
+                    }
+                    ImGui::CloseCurrentPopup();
+                }
+                if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                    ImGui::HelpTooltip(
+                        "Add an alternate binding for this button. "
+                        "All of the key bindings are OR'd together.");
+                }
+
+                // Bind Many
+                if (ImGui::Button("Bind (many)")) {
+                    buttons_many_active = true;
+                    buttons_many_delay = 0;
+                    buttons_many_index = button_it;
+                    buttons_many_naive = false;
+                    buttons_many_active_section = name;
+                    ImGui::CloseCurrentPopup();
+                }
+                if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                    ImGui::HelpTooltip("Bind many buttons in a row, starting with this one.");
+                }
+
+                // Naive Many
+                if (ImGui::Button("Naive (many)")) {
+                    buttons_many_active = true;
+                    buttons_many_index = button_it;
+                    buttons_many_naive = true;
+                    buttons_many_delay = 0;
+                    buttons_many_active_section = name;
+                    ImGui::CloseCurrentPopup();
+                }
+                if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                    ImGui::HelpTooltip("Naive bind many buttons in a row, starting with this one.");
+                }
+                ImGui::EndPopup();
+            }
+            ImGui::PopStyleColor();
+            ImGui::PopStyleVar();
+        }
 
         // clean up
         ImGui::PopID();
@@ -911,7 +949,7 @@ namespace overlay::windows {
             if (ImGui::Button("Cancel")) {
                 RI_MGR->devices_midi_freeze(false);
                 buttons_bind_active = false;
-                buttons_many_index = -1;
+                buttons_many_active = false;
                 check_devices = false;
                 ImGui::CloseCurrentPopup();
             }
@@ -964,6 +1002,7 @@ namespace overlay::windows {
                                         ImGui::CloseCurrentPopup();
                                         buttons_bind_active = false;
                                         buttons_many_index = -1;
+                                        buttons_many_active = false;
                                         RI_MGR->devices_midi_freeze(false);
                                         break;
                                     }
@@ -1324,6 +1363,7 @@ namespace overlay::windows {
             if (ImGui::Button("Cancel")) {
                 buttons_bind_active = false;
                 buttons_many_index = -1;
+                buttons_many_active = false;
                 check_devices = false;
                 ImGui::CloseCurrentPopup();
             }
@@ -1373,6 +1413,8 @@ namespace overlay::windows {
                     if (escape_cancels_bind && vKey == VK_ESCAPE) {
                         // escape cancels out
                         buttons_many_index = -1;
+                        buttons_many_active = false;
+                        buttons_many_active = false;
                     } else {
                         // bind key
                         button->setDeviceIdentifier("");
