@@ -31,6 +31,7 @@ struct WrappedIMMDeviceEnumerator : IMMDeviceEnumerator {
 private:
     IMMDeviceEnumerator *const pReal;
 
-    IMMDevice *get_default_device(EDataFlow dataFlow);
+    IMMDevice *get_default_device();
+    void dump_devices();
     void dump_device_info(IMMDevice *pDevice);
 };

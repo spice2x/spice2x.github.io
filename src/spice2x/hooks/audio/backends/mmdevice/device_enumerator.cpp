@@ -51,36 +51,24 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDeviceEnumerator::EnumAudioEndpoints(
     return hr;
 }
 
-IMMDevice *WrappedIMMDeviceEnumerator::get_default_device(EDataFlow dataFlow) {
+IMMDevice *WrappedIMMDeviceEnumerator::get_default_device() {
     IMMDeviceCollection *ppDevices = nullptr;
     IMMDevice *pDevice = nullptr;
-    const auto hr = pReal->EnumAudioEndpoints(dataFlow, DEVICE_STATE_ACTIVE, &ppDevices);
+
+    const auto hr = pReal->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &ppDevices);
     if (FAILED(hr)) {
         return nullptr;
     }
 
+    // get count
     UINT count = 0;
     ppDevices->GetCount(&count);
     if (FAILED(hr) || count == 0) {
         ppDevices->Release();
         return nullptr;
     }
-    log_info("audio", "found {} active audio devices from EnumAudioEndpoints", count);
 
-    // dump info about devices
-    for (UINT i = 0; i < count; i++) {
-        if (SUCCEEDED(ppDevices->Item(i, &pDevice))) {
-            log_info("audio", "device [{}]:", i);
-            dump_device_info(pDevice);
-            pDevice->Release();
-            pDevice = nullptr;
-        }
-    }
-    log_info(
-        "audio",
-        "if you want to use -defaultaudio option, copy the ID above, NOT the friendly name");
-
-    // match on ID
+    // iterate through devices and match on ID
     for (UINT i = 0; i < count; i++) {
         LPWSTR id = nullptr;
         if (FAILED(ppDevices->Item(i, &pDevice))) {
@@ -114,7 +102,7 @@ IMMDevice *WrappedIMMDeviceEnumerator::get_default_device(EDataFlow dataFlow) {
     if (pDevice == nullptr) {
         log_fatal(
             "audio",
-            "could not find any device matches this ID - {} -"
+            "could not find any device matches this ID {} - "
             "check -defaultaudio option and try again, it should look something like this: "
             "{{0.0.0.00000000}}.{{00000000-0000-0000-0000-000000000000}}",
             hooks::audio::DEFAULT_IMM_DEVICE_ID.value());
@@ -124,7 +112,38 @@ IMMDevice *WrappedIMMDeviceEnumerator::get_default_device(EDataFlow dataFlow) {
     return pDevice;
 }
 
-#include <functiondiscoverykeys_devpkey.h>
+void WrappedIMMDeviceEnumerator::dump_devices() {
+    IMMDeviceCollection *ppDevices = nullptr;
+    
+    const auto hr = pReal->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &ppDevices);
+    if (FAILED(hr)) {
+        return;
+    }
+
+    UINT count = 0;
+    ppDevices->GetCount(&count);
+    if (FAILED(hr) || count == 0) {
+        ppDevices->Release();
+        return;
+    }
+    log_info("audio", "found {} active audio devices from EnumAudioEndpoints", count);
+
+    for (UINT i = 0; i < count; i++) {
+        IMMDevice *pDevice;
+        if (SUCCEEDED(ppDevices->Item(i, &pDevice))) {
+            log_info("audio", "device [{}]:", i);
+            dump_device_info(pDevice);
+            pDevice->Release();
+        }
+    }
+    log_info(
+        "audio",
+        "if you want to use -defaultaudio option, copy the ID above, NOT the friendly name");
+
+    ppDevices->Release();
+    return;
+}
+
 
 void WrappedIMMDeviceEnumerator::dump_device_info(IMMDevice *pDevice) {
     // dump friendly name of audio endpoint
@@ -169,24 +188,26 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDeviceEnumerator::GetDefaultAudioEndpoint(
     IMMDevice **ppEndpoint)
 {
 
-    // user override
-    if (hooks::audio::DEFAULT_IMM_DEVICE_ID.has_value()) {
-        std::lock_guard<std::mutex> lock(hooks::audio::DEFAULT_IMM_DEVICE_MUTEX);
-        if (hooks::audio::DEFAULT_IMM_DEVICE == nullptr) {
-            const auto device = get_default_device(dataFlow);
+    if (dataFlow == eRender && (role == eMultimedia || role == eConsole)) {
+        static std::once_flag printed;
+        std::call_once(printed, [&]() {
+            dump_devices();
+        });
+
+        // user override
+        if (hooks::audio::DEFAULT_IMM_DEVICE_ID.has_value()) {
+            auto device = get_default_device();
             if (device != nullptr) {
                 // wrap interface
-                hooks::audio::DEFAULT_IMM_DEVICE = new WrappedIMMDevice(device);
+                device = new WrappedIMMDevice(device);
+                log_info("audio", "IMMDeviceEnumerator::GetDefaultAudioEndpoint is returning user-preferred device:");
+                dump_device_info(device);
+                *ppEndpoint = device;
+                return S_OK;
             }
+            // if not found, fallthrough to normal behavior and call
+            // the real GetDefaultAudioEndpoint below
         }
-        if (hooks::audio::DEFAULT_IMM_DEVICE != nullptr) {
-            *ppEndpoint = reinterpret_cast<IMMDevice *>(hooks::audio::DEFAULT_IMM_DEVICE);
-            log_info("audio", "IMMDeviceEnumerator::GetDefaultAudioEndpoint is returning user-preferred device:");
-            dump_device_info(*ppEndpoint);
-            return S_OK;
-        }
-        // if not found, fallthrough to normal behavior and call
-        // the real GetDefaultAudioEndpoint below
     }
 
     // call orignal
