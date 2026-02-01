@@ -906,13 +906,26 @@ namespace overlay::windows {
             ImGui::TextUnformatted("");
             ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Press ESC to cancel!");
             ImGui::TextUnformatted("");
+
+            bool check_devices = true;
             if (ImGui::Button("Cancel")) {
                 RI_MGR->devices_midi_freeze(false);
                 buttons_bind_active = false;
                 buttons_many_index = -1;
+                check_devices = false;
                 ImGui::CloseCurrentPopup();
-            } else {
-
+            }
+            if (buttons_many_active) {
+                ImGui::SameLine();
+                if (ImGui::Button("Skip")) {
+                    RI_MGR->devices_midi_freeze(false);
+                    buttons_bind_active = false;
+                    check_devices = false;
+                    inc_buttons_many_index(button_it_max);
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            if (check_devices) {
                 // iterate updated devices
                 auto updated_devices = RI_MGR->devices_get_updated();
                 for (auto device : updated_devices) {
@@ -922,7 +935,7 @@ namespace overlay::windows {
                             auto mouse = device->mouseInfo;
                             for (size_t i = 0; i < sizeof(mouse->key_states_bind); i++) {
                                 if (mouse->key_states[i] && !mouse->key_states_bind[i]
-                                && !ImGui::IsItemHovered()) {
+                                && !ImGui::IsAnyItemHovered()) {
 
                                     // bind key
                                     button->setDeviceIdentifier(device->name);
@@ -1306,12 +1319,25 @@ namespace overlay::windows {
                 "Hint: if your remapping/automation software is\n"
                 "      not detected, ensure you run the software\n"
                 "      as administrator.");
+
+            bool check_devices = true;
             if (ImGui::Button("Cancel")) {
                 buttons_bind_active = false;
                 buttons_many_index = -1;
+                check_devices = false;
                 ImGui::CloseCurrentPopup();
-            } else {
+            }
+            if (buttons_many_active) {
+                ImGui::SameLine();
+                if (ImGui::Button("Skip")) {
+                    buttons_bind_active = false;
+                    check_devices = false;
+                    inc_buttons_many_index(button_it_max);
+                    ImGui::CloseCurrentPopup();
+                }
+            }
 
+            if (check_devices) {
                 // get new keyboard state
                 // these are async, and some keys generate multiple vKeys (e.g., VK_SHIFT, VK_LSHIFT)
                 // use care when iterating over the result (could result in torn reads)
@@ -1338,16 +1364,14 @@ namespace overlay::windows {
                         continue;
                     }
 
-                    // don't bother checking GetSystemMetrics(SM_SWAPBUTTON), just check both
-                    const bool is_mouse_pressed = (vKey == VK_LBUTTON || vKey == VK_RBUTTON);
+                    if (ImGui::IsAnyItemHovered() && (vKey == VK_LBUTTON || vKey == VK_RBUTTON)) {
+                        continue;
+                    }
 
                     // some key is newly pressed; process it here, which will result in a new bind
                     // or a cancellation
                     if (escape_cancels_bind && vKey == VK_ESCAPE) {
                         // escape cancels out
-                        buttons_many_index = -1;
-                    } else if (is_mouse_pressed && ImGui::IsItemHovered()) {
-                        // left or right mouse click on top of cancel button
                         buttons_many_index = -1;
                     } else {
                         // bind key
