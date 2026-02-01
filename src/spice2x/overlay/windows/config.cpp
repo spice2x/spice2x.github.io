@@ -792,8 +792,6 @@ namespace overlay::windows {
         bool open_edit = false;
 
         // context menu for ... button
-        // ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 8.f);
-        // ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));
         if (ImGui::BeginPopupContextItem("ButtonContextMenu")) {
 
             // add
@@ -854,13 +852,11 @@ namespace overlay::windows {
                 }
             }
 
-            if (ImGui::MenuItem("Properties")) {
+            if (ImGui::MenuItem("Edit properties")) {
                 open_edit = true;
             }
             ImGui::EndPopup();
         }
-        // ImGui::PopStyleColor();
-        // ImGui::PopStyleVar();
 
         // edit dialog
         std::string edit_name = "Edit " + button->getName();
