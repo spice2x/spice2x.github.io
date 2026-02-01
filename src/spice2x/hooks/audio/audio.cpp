@@ -45,6 +45,10 @@ namespace hooks::audio {
     size_t ASIO_DRIVER_ID = 0;
     bool ASIO_FORCE_UNLOAD_ON_STOP = false;
 
+    std::optional<std::string> DEFAULT_IMM_DEVICE_ID = std::nullopt;
+    std::mutex DEFAULT_IMM_DEVICE_MUTEX;
+    void *DEFAULT_IMM_DEVICE = nullptr;
+
     // private globals
     IAudioClient *CLIENT = nullptr;
     std::mutex INITIALIZE_LOCK; // for asio

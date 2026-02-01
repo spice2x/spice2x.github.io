@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+#include <mutex>
 #include <optional>
 
 #include <windows.h>
@@ -24,6 +26,10 @@ namespace hooks::audio {
     extern bool ASIO_FORCE_UNLOAD_ON_STOP;
     extern bool LOW_LATENCY_SHARED_WASAPI;
 
+    extern std::optional<std::string> DEFAULT_IMM_DEVICE_ID;
+    extern std::mutex DEFAULT_IMM_DEVICE_MUTEX;
+    extern void *DEFAULT_IMM_DEVICE;
+    
     void init();
     void stop();
 

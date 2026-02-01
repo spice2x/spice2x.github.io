@@ -243,6 +243,7 @@ namespace launcher {
             spice2x_IIDXEmulateSubscreenKeypadTouch,
             spice2x_AutoCard,
             spice2x_LowLatencySharedAudio,
+            DefaultAudioDeviceOverride,
             spice2x_TapeLedAlgorithm,
             spice2x_NoNVAPI,
             spice2x_NoD3D9DeviceHook,

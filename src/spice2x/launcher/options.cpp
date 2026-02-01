@@ -2320,6 +2320,20 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Audio",
     },
     {
+        // DefaultAudioDeviceOverride
+        .title = "WASAPI Default Audio Device ID",
+        .name = "defaultaudio",
+        .desc = "Use a specific audio device as the default audio device instead of what is "
+            "set as the Windows default device.\n\n"
+            "To obtain the device ID, launch the game once, and look for "
+            "'active audio devices from EnumAudioEndpoints', and copy the ID of your device\n\n"
+            "Only works for WASAPI Exclusive or Shared games; for legacy DirectSound games, use "
+            "the Windows volume mixer, for ASIO, use ASIO options",
+        .type = OptionType::Text,
+        .setting_name = "{0.0.0.00000000}.{00000000-0000-0000-0000-000000000000}",
+        .category = "Audio",
+    },
+    {
         // spice2x_TapeLedAlgorithm
         .title = "Tape LED Avg Algorithm",
         .name = "sp2x-tapeledalgo",

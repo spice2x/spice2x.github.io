@@ -1145,6 +1145,10 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_LowLatencySharedAudio].value_bool()) {
         hooks::audio::LOW_LATENCY_SHARED_WASAPI = true;
     }
+    if (options[launcher::Options::DefaultAudioDeviceOverride].is_active()) {
+        hooks::audio::DEFAULT_IMM_DEVICE_ID = strtrim(
+            options[launcher::Options::DefaultAudioDeviceOverride].value_text());
+    }
     if (options[launcher::Options::spice2x_TapeLedAlgorithm].is_active()) {
         const auto text = options[launcher::Options::spice2x_TapeLedAlgorithm].value_text();
         if (text == "off") {
