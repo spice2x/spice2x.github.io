@@ -306,8 +306,11 @@ namespace overlay::windows {
             }
             if (ImGui::BeginTabItem("Overlay")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_OVERLAY;
+
+                const auto offset = cfg::CONFIGURATOR_STANDALONE ? page_offset : page_offset2;
+
                 ImGui::BeginChild("Overlay", ImVec2(
-                    0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
+                    0, ImGui::GetWindowContentRegionMax().y - offset), false);
 
                 // overlay buttons
                 this->build_buttons("Overlay", games::get_buttons_overlay(this->games_selected_name));
@@ -315,7 +318,6 @@ namespace overlay::windows {
 
                 // standalone configurator extras
                 if (cfg::CONFIGURATOR_STANDALONE) {
-                    ImGui::SameLine();
                     ImGui::Checkbox("Enable Overlay in Config", &OVERLAY->hotkeys_enable);
                 }
                 ImGui::EndTabItem();
