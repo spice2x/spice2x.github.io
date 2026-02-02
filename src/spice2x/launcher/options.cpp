@@ -2321,17 +2321,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // DefaultAudioDeviceOverride
-        .title = "WASAPI Default Audio Device ID",
-        .name = "defaultaudio",
+        .title = "WASAPI Default Audio Device",
+        .name = "wasapidefault",
         .desc = "Use a specific audio device as the default audio device instead of what is "
-            "set as the Windows default device.\n\n"
+            "set as the Windows default device. Only works for WASAPI Exclusive or Shared games; "
+            "for legacy DirectSound, use the Windows volume mixer, for ASIO, use ASIO options.\n\n"
+            "You can use the name of the device or the ID. Partial match is allowed. "
+            "If the name contains non-Latin characters, you must use the device ID instead.\n\n"
             "To obtain the device ID, launch the game once, and look for "
             "'active audio devices from EnumAudioEndpoints', and copy the ID of your device. "
-            "If you don't see this, either the game does not use WASAPI, or you disabled audio hooks.\n\n"
-            "Only works for WASAPI Exclusive or Shared games; for legacy DirectSound games, use "
-            "the Windows volume mixer, for ASIO, use ASIO options.",
+            "If you don't see this, either the game does not use WASAPI, or you disabled audio hooks."
+            "",
         .type = OptionType::Text,
-        .setting_name = "{0.0.0.00000000}.{00000000-0000-0000-0000-000000000000}",
         .category = "Audio",
     },
     {

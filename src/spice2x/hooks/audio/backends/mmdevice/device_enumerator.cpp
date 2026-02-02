@@ -70,27 +70,22 @@ IMMDevice *WrappedIMMDeviceEnumerator::get_default_device() {
         return nullptr;
     }
 
-    // iterate through devices and match on ID
+    log_info(
+        "audio",
+        "looking for audio output device that matches `{}` (-defaultaudio)",
+        hooks::audio::DEFAULT_IMM_DEVICE_ID.value());
+
+    // first, iterate through devices and match on intance ID
     for (UINT i = 0; i < count; i++) {
-        LPWSTR id = nullptr;
         if (FAILED(ppDevices->Item(i, &pDevice))) {
             continue;
         }
 
-        // grab the device ID
-        if (FAILED(pDevice->GetId(&id))) {
-            pDevice->Release();
-            pDevice = nullptr;
-            continue;
-        }
-        const std::string device_id = ws2s(std::wstring(id));
-        CoTaskMemFree(id);
-
-        // check for substring match
+        const std::string device_id = get_device_id(pDevice);
         if (device_id.find(hooks::audio::DEFAULT_IMM_DEVICE_ID.value()) != std::string::npos) {
             log_info(
                 "audio",
-                "found matching device for -defaultaudio option: [{}] {}",
+                "found matching device for -defaultaudio option from ID match: [{}] {}",
                 i,
                 device_id);
             break;
@@ -101,12 +96,33 @@ IMMDevice *WrappedIMMDeviceEnumerator::get_default_device() {
         pDevice = nullptr;
     }
 
+    // second, iterate again to match on friendly name 
+    if (pDevice == nullptr) {
+        for (UINT i = 0; i < count; i++) {
+            if (FAILED(ppDevices->Item(i, &pDevice))) {
+                continue;
+            }
+
+            const std::string friendly_name = get_device_friendly_name(pDevice);
+            if (friendly_name.find(hooks::audio::DEFAULT_IMM_DEVICE_ID.value()) != std::string::npos) {
+                log_info(
+                    "audio",
+                    "found matching device for -defaultaudio option from friendly name match: [{}] {}",
+                    i,
+                    friendly_name);
+                break;
+            }
+
+            // not matched, clean up
+            pDevice->Release();
+            pDevice = nullptr;
+        }
+    }
+
     if (pDevice == nullptr) {
         log_fatal(
             "audio",
-            "could not find any device matches this ID {} - "
-            "check -defaultaudio option and try again, it should look something like this: "
-            "{{0.0.0.00000000}}.{{00000000-0000-0000-0000-000000000000}}",
+            "could not find any device matches this ID `{}`; check -defaultaudio option and try again",
             hooks::audio::DEFAULT_IMM_DEVICE_ID.value());
     }
 
@@ -133,21 +149,28 @@ void WrappedIMMDeviceEnumerator::dump_devices() {
     for (UINT i = 0; i < count; i++) {
         IMMDevice *pDevice;
         if (SUCCEEDED(ppDevices->Item(i, &pDevice))) {
-            log_info("audio", "device [{}]:", i);
-            dump_device_info(pDevice);
+            log_info("audio", "    device [{}]:", i);
+            log_info("audio", "        device ID: {}", get_device_id(pDevice));
+            log_info("audio", "        friendly name: {}", get_device_friendly_name(pDevice));
             pDevice->Release();
         }
     }
-    log_info(
-        "audio",
-        "if you want to use -defaultaudio option, copy the ID above, NOT the friendly name");
 
     ppDevices->Release();
     return;
 }
 
+std::string WrappedIMMDeviceEnumerator::get_device_id(IMMDevice *pDevice) {
+    LPWSTR id = nullptr;
+    if (SUCCEEDED(pDevice->GetId(&id))) {
+        std::string result = ws2s(std::wstring(id));
+        CoTaskMemFree(id);
+        return result;
+    }
+    return "";
+}
 
-void WrappedIMMDeviceEnumerator::dump_device_info(IMMDevice *pDevice) {
+std::string WrappedIMMDeviceEnumerator::get_device_friendly_name(IMMDevice *pDevice) {
     // dump friendly name of audio endpoint
     // https://learn.microsoft.com/en-us/windows/win32/coreaudio/device-properties?redirectedfrom=MSDN
     IPropertyStore *pProps = nullptr;
@@ -167,21 +190,17 @@ void WrappedIMMDeviceEnumerator::dump_device_info(IMMDevice *pDevice) {
         PropVariantInit(&varName);
         hr = pProps->GetValue(key, &varName);
         if (SUCCEEDED(hr) && varName.vt != VT_EMPTY) {
-            log_info("audio", "    friendly name: {}", ws2s(varName.pwszVal));
+            std::string result = ws2s(varName.pwszVal);
+            PropVariantClear(&varName);
+            pProps->Release();
+            return result;
         }
         PropVariantClear(&varName);
     }
     if (pProps) {
         pProps->Release();
-        pProps = nullptr;
     }
-
-    // print device instance ID
-    LPWSTR id = nullptr;
-    if (SUCCEEDED(pDevice->GetId(&id))) {
-        log_info("audio", "    ID: {}", ws2s(std::wstring(id)));
-        CoTaskMemFree(id);
-    }
+    return "";
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIMMDeviceEnumerator::GetDefaultAudioEndpoint(
@@ -202,8 +221,11 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDeviceEnumerator::GetDefaultAudioEndpoint(
             if (device != nullptr) {
                 // wrap interface
                 device = new WrappedIMMDevice(device);
-                log_info("audio", "IMMDeviceEnumerator::GetDefaultAudioEndpoint is returning user-preferred device:");
-                dump_device_info(device);
+                log_info(
+                    "audio",
+                    "IMMDeviceEnumerator::GetDefaultAudioEndpoint is returning user-preferred device: {} / {}",
+                    get_device_id(device),
+                    get_device_friendly_name(device));
                 *ppEndpoint = device;
                 return S_OK;
             }
@@ -221,8 +243,11 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDeviceEnumerator::GetDefaultAudioEndpoint(
         return ret;
     }
 
-    log_info("audio", "IMMDeviceEnumerator::GetDefaultAudioEndpoint is returning system default device:");
-    dump_device_info(*ppEndpoint);
+    log_info(
+        "audio",
+        "IMMDeviceEnumerator::GetDefaultAudioEndpoint is returning system default device: {} / {}",
+        get_device_id(*ppEndpoint),
+        get_device_friendly_name(*ppEndpoint));
 
     // wrap interface
     *ppEndpoint = new WrappedIMMDevice(*ppEndpoint);

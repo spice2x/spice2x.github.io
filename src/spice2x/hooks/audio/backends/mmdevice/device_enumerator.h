@@ -33,5 +33,6 @@ private:
 
     IMMDevice *get_default_device();
     void dump_devices();
-    void dump_device_info(IMMDevice *pDevice);
+    std::string get_device_id(IMMDevice *pDevice);
+    std::string get_device_friendly_name(IMMDevice *pDevice);
 };
