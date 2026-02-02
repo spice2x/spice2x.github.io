@@ -1,3 +1,5 @@
+#include <mutex>
+
 #include "device_enumerator.h"
 #include "device_collection.h"
 #include "device.h"
