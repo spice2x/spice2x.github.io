@@ -88,7 +88,7 @@ static bool is_spam_file(const char *file) {
 
 static bool is_ldj_cacheable_file(const char *file) {
     static const char *spam_prefixes[] = {
-        // iidx33: profile background customization, spams on every frame during card entry
+        // iidx33 (Sparkle Shower): profile background customization, spams on every frame during card entry
         "/data/graphic/entry_card",
         // iidx32+: movie thumbnails, spams on every frame during song select
         "/data/graphic/thumbnail/",

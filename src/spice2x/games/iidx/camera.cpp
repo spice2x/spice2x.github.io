@@ -98,7 +98,7 @@ namespace games::iidx {
         // there are three different ways we try to hook the camera entry points
         // 1) user-provided override via cmd line
         // 2) predefined offsets using PE header matching
-        // 3) signature match (should work for most iidx27-33)
+        // 3) signature match (should work for most iidx27+, including iidx33 Sparkle Shower)
 
         // method 1: user provided
         if (TDJ_CAMERA_OVERRIDE.has_value() && parse_cmd_params()) {

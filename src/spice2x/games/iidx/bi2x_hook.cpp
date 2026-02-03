@@ -37,7 +37,7 @@ namespace games::iidx {
         uint8_t dummy[0x9F0];
     };
 
-    // confirmed 0x9F8 in iidx27, iidx32 aioNMgrIob2_Create
+    // confirmed 0x9F8 in iidx27, iidx32, iidx33 aioNMgrIob2_Create
     static_assert(sizeof(AIO_NMGR_IOB2) == 0x9F8);
 
     struct AIO_IOB2_BI2X_TDJ {
@@ -45,7 +45,7 @@ namespace games::iidx {
         uint8_t data[0x13F8];
     };
 
-    // confirmed 0x13F8 in iidx27, iidx32 in aioIob2Bi2xTDJ_Create
+    // confirmed 0x13F8 in iidx27, iidx32, iidx33 in aioIob2Bi2xTDJ_Create
     static_assert(sizeof(AIO_IOB2_BI2X_TDJ) == 0x13F8);
 
     struct AIO_IOB2_BI2X_TDJ__DEVSTATUS {
