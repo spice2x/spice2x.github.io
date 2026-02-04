@@ -185,21 +185,30 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
 }
 
 static BOOL WINAPI SetConsoleCtrlHandler_hook(PHANDLER_ROUTINE pHandlerRoutine, BOOL Add) {
-    log_misc("signal", "SetConsoleCtrlHandler hook hit");
+    static std::once_flag printed;
+    std::call_once(printed, []() {
+        log_misc("signal", "SetConsoleCtrlHandler hook hit (printing once)");
+    });
 
     return TRUE;
 }
 
 static LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter_hook(
-    LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter)
-{
-    log_info("signal", "SetUnhandledExceptionFilter hook hit");
+    LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter) {
+
+    static std::once_flag printed;
+    std::call_once(printed, []() {
+        log_info("signal", "SetUnhandledExceptionFilter hook hit (printing once)");
+    });
 
     return nullptr;
 }
 
 static PVOID WINAPI AddVectoredExceptionHandler_hook(ULONG First, PVECTORED_EXCEPTION_HANDLER Handler) {
-    log_info("signal", "AddVectoredExceptionHandler hook hit");
+    static std::once_flag printed;
+    std::call_once(printed, []() {
+        log_info("signal", "AddVectoredExceptionHandler hook hit (printing once)");
+    });
 
     return launcher::signal::USE_VEH_WORKAROUND ? INVALID_HANDLE_VALUE : nullptr;
 }
