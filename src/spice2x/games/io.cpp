@@ -324,7 +324,7 @@ namespace games {
         buttons_help.insert({ pc, pc::get_buttons_help() });
         analogs.insert({ pc, pc::get_analogs() });
         lights.insert({ pc, pc::get_lights() });
-        file_hints[pc].emplace_back("game/svm_Data");
+        file_hints[pc].emplace_back("game/svm.exe");
     }
 
     const std::vector<std::string> &get_games() {
