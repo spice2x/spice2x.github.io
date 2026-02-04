@@ -1879,7 +1879,7 @@ int main_implementation(int argc, char *argv[]) {
             }
 
             // Polaris Chord
-            if (check_dll("kamunity.dll") && fileutils::dir_exists("game/svm_Data")) {
+            if (check_dll("kamunity.dll") && fileutils::file_exists("game/svm.exe")) {
                 avs::game::DLL_NAME = "kamunity.dll";
                 attach_io = true;
                 attach_pc = true;

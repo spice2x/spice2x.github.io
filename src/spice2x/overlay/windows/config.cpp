@@ -89,10 +89,11 @@ namespace overlay::windows {
 
             // standalone configurator should look for file hints
             if (cfg::CONFIGURATOR_STANDALONE) {
-                auto file_hints = games::get_game_file_hints(game_name);
+                const auto file_hints = games::get_game_file_hints(game_name);
                 if (file_hints) {
                     for (auto &file_hint : *file_hints) {
                         if (fileutils::file_exists(file_hint) ||
+                            fileutils::dir_exists(file_hint) ||
                             fileutils::file_exists(std::filesystem::path("modules") / file_hint) ||
                             fileutils::file_exists(std::filesystem::path("contents") / file_hint) ||
                             fileutils::file_exists(MODULE_PATH / file_hint))
@@ -100,6 +101,7 @@ namespace overlay::windows {
                             this->games_selected = games_list.size() - 1;
                             this->games_selected_name = game_name;
                             eamuse_set_game(game_name);
+                            break;
                         }
                     }
                 }
