@@ -1385,6 +1385,18 @@ int main_implementation(int argc, char *argv[]) {
             );
     }
 
+    if (launcher::signal::DISABLE && !cfg::CONFIGURATOR_STANDALONE) {
+        log_warning(
+            "launcher",
+            "WARNING - user specified -signaldisable option\n\n\n"
+            "!!!                                                              !!!\n"
+            "!!! Using -signaldisable option disables all exception handling, !!!\n"
+            "!!! which means when the game crashes it will likely just vanish !!!\n"
+            "!!! without troubleshooting information in the logs.             !!!\n"
+            "!!!                                                              !!!\n"
+            );
+    }
+
     if (options[launcher::Options::FullscreenResolution].is_active()) {
         std::pair<uint32_t, uint32_t> result;
         if (parse_width_height(options[launcher::Options::FullscreenResolution].value_text(), result)) {
