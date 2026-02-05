@@ -202,7 +202,14 @@ bool eamuse_card_insert_consume(int active_count, int unit_id) {
 
     // bt5api
     if (BT5API_ENABLED) {
-        bt5api_poll_reader_card((uint8_t) index);
+        // some bt5api want to be polled in order.
+        if (eamuse_get_game_keypads() > 1) {
+            bt5api_poll_reader_card(1);
+            bt5api_poll_reader_card(0);
+        }
+        else {
+            bt5api_poll_reader_card((uint8_t) index);
+        }
     }
 
     // auto insert card

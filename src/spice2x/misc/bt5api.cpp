@@ -119,6 +119,7 @@ static std::string EAMIO_DLL_NAME = "eamio.dll";
 static robin_hood::unordered_map<int, std::thread *> BT5API_THREADS;
 static robin_hood::unordered_map<int, int> BT5API_THREAD_RESULTS;
 static uint8_t BT5API_CARD_STATES[] = {0, 0};
+static uint16_t BT5API_KEYPAD_STATES[] = {0, 0};
 
 static void bt5api_log(const char *bt5_module, const char *fmt, ...) {
 
@@ -240,46 +241,77 @@ void bt5api_hook(HINSTANCE module) {
 
 void bt5api_poll_reader_card(uint8_t unit_no) {
 
-    // check if initialized
-    if (!EAMIO_DLL) {
+    // check if initialized or out of bounds
+    if (!EAMIO_DLL || unit_no >= eamuse_get_game_keypads()) {
         return;
     }
 
     // poll
     if (!eam_io_poll(unit_no)) {
-        log_warning("bt5api", "polling bt5api reader {} returned failure",
+        log_warning("bt5api", "polling bt5api reader card {} returned failure",
                 static_cast<int>(unit_no));
+        return;
     }
 
     // get sensor state
     uint8_t sensor_state = eam_io_get_sensor_state(unit_no);
+    
+    // if we have a change in state.
+    if(sensor_state !=  BT5API_CARD_STATES[unit_no]) {
 
-    // check for card in
-    if (sensor_state > BT5API_CARD_STATES[unit_no]) {
-        uint8_t card_id[8];
-        eam_io_read_card(unit_no, card_id, 8);
-        eamuse_card_insert(unit_no, card_id);
+        // card inserted into the back.
+        if(sensor_state & (1 << EAM_IO_SENSOR_BACK)) {
+            uint8_t card_id[8];
+            
+            log_info("bt5api", "card unit {} inserted", static_cast<int>(unit_no));
+            
+            // do the bt5 dance
+            eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_CLOSE);
+            eam_io_poll(unit_no);
+            eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_READ);
+            eam_io_poll(unit_no);
+            
+            // ask the api for the card, then insert it into our engine.
+            eam_io_read_card(unit_no, card_id, 8);
+            eamuse_card_insert(unit_no, card_id);
+        }
+        
+        // if card removed entirely, do another bt5 dance!
+        if(sensor_state == 0) {
+            eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_CLOSE);
+            eam_io_poll(unit_no);
+            eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_OPEN);
+            
+            log_info("bt5api", "card unit {} removed", static_cast<int>(unit_no));
+        }
     }
-
-    // save state
+    
+    // save prev state
     BT5API_CARD_STATES[unit_no] = sensor_state;
 }
-
+    
 void bt5api_poll_reader_keypad(uint8_t unit_no) {
 
-    // check if initialized
-    if (!EAMIO_DLL) {
+    // check if initialized or out of bounds
+    if (!EAMIO_DLL || unit_no >= eamuse_get_game_keypads()) {
         return;
     }
-
-    // poll
-    if (!eam_io_poll(unit_no)) {
-        log_warning("bt5api", "polling bt5api reader {} returned failure",
-                static_cast<int>(unit_no));
+    
+    uint16_t keypad_current = eam_io_get_keypad_state(unit_no);
+    uint16_t keypad_changes = ~BT5API_KEYPAD_STATES[unit_no] & keypad_current;
+    
+    // if user has pressed decimal for the first time, eject the slotted reader.
+    if(keypad_changes & (1 << EAM_IO_KEYPAD_DECIMAL)) {
+        log_info("bt5api", "card unit {} ejecting", static_cast<int>(unit_no));
+        
+        eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_EJECT);
     }
+    
+    // save the last pressed.
+    BT5API_KEYPAD_STATES[unit_no] = keypad_current;
 
-    // get keypad
-    eamuse_set_keypad_overrides_bt5(unit_no, eam_io_get_keypad_state(unit_no));
+    // send off the state to the main engine.
+    eamuse_set_keypad_overrides_bt5(unit_no, keypad_current);
 }
 
 void bt5api_dispose() {
