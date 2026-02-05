@@ -247,24 +247,53 @@ void bt5api_poll_reader_card(uint8_t unit_no) {
 
     // poll
     if (!eam_io_poll(unit_no)) {
-        log_warning("bt5api", "polling bt5api reader {} returned failure",
+        log_warning("bt5api", "polling bt5api reader card {} returned failure",
                 static_cast<int>(unit_no));
+        return;
     }
 
     // get sensor state
     uint8_t sensor_state = eam_io_get_sensor_state(unit_no);
-
-    // check for card in
-    if (sensor_state > BT5API_CARD_STATES[unit_no]) {
-        uint8_t card_id[8];
-        eam_io_read_card(unit_no, card_id, 8);
-        eamuse_card_insert(unit_no, card_id);
+    
+    // log_info("bt5api", "polled {} {}", static_cast<int>(unit_no), static_cast<int>(sensor_state));
+    
+    // if we have a change in state.
+    if(sensor_state !=  BT5API_CARD_STATES[unit_no]) {
+        
+        log_info("bt5api", "!!!! change card state {}", static_cast<int>(sensor_state));
+        
+        // card inserted into the back.
+        if(sensor_state & (1 << EAM_IO_SENSOR_BACK)) {
+            uint8_t card_id[8];
+            
+            log_info("bt5api", "card inserted");
+            
+            // do the bt5 dance
+            eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_CLOSE);
+            eam_io_poll(unit_no);
+            eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_READ);
+            eam_io_poll(unit_no);
+            
+            // ask the api for the card, and insert it into our engine.
+            eam_io_read_card(unit_no, card_id, 8);
+            eamuse_card_insert(unit_no, card_id);
+        }
+        
+        // if card removed entirely
+        if(sensor_state == 0){
+            // another bt5 dance!
+            eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_CLOSE);
+            eam_io_poll(unit_no);
+            eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_OPEN);
+            
+            log_info("bt5api", "card {} removed dance", static_cast<int>(unit_no));
+        }
     }
-
-    // save state
+    
+    // save prev state
     BT5API_CARD_STATES[unit_no] = sensor_state;
 }
-
+    
 void bt5api_poll_reader_keypad(uint8_t unit_no) {
 
     // check if initialized
@@ -272,11 +301,6 @@ void bt5api_poll_reader_keypad(uint8_t unit_no) {
         return;
     }
 
-    // poll
-    if (!eam_io_poll(unit_no)) {
-        log_warning("bt5api", "polling bt5api reader {} returned failure",
-                static_cast<int>(unit_no));
-    }
 
     // get keypad
     eamuse_set_keypad_overrides_bt5(unit_no, eam_io_get_keypad_state(unit_no));

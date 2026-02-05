@@ -202,7 +202,9 @@ bool eamuse_card_insert_consume(int active_count, int unit_id) {
 
     // bt5api
     if (BT5API_ENABLED) {
-        bt5api_poll_reader_card((uint8_t) index);
+        //bt5api_poll_reader_card((uint8_t) index);
+        bt5api_poll_reader_card(1);
+        bt5api_poll_reader_card(0);
     }
 
     // auto insert card
