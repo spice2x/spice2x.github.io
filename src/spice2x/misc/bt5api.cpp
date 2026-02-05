@@ -305,9 +305,6 @@ void bt5api_poll_reader_keypad(uint8_t unit_no) {
         log_info("bt5api", "card unit {} ejecting", static_cast<int>(unit_no));
         
         eam_io_card_slot_cmd(unit_no, EAM_IO_CARD_SLOT_CMD_EJECT);
-        
-        // force a poll afterward using our helper.
-        bt5api_poll_reader_card(unit_no);
     }
     
     // save the last pressed.
