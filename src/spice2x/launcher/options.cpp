@@ -258,11 +258,11 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // FullscreenSubResolution
-        .title = "Force Submonitor Resolution (EXPERIMENTAL)",
-        .name = "graphics-force-subres",
+        .title = "Force FS Subscreen Resolution (EXPERIMENTAL)",
+        .name = "forceressub",
         .desc =
             "Override fullscreen resolution requested by the game for second monitor, "
-            "useful if you have a sub monitor that is not quite exactly 1920x1080.\n\n"
+            "useful if you have a sub monitor that is not quite exactly what the game expects.\n\n"
             "WARNING: experimental as we have not done extensive testing to see if this causes desyncs.",
         .type = OptionType::Text,
         .setting_name = "1280,720",
@@ -270,8 +270,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // FullscreenSubRefreshRate
-        .title = "Force Submonitor Refresh Rate (EXPERIMENTAL)",
-        .name = "forceressub",
+        .title = "Force FS Subscreen Refresh Rate (EXPERIMENTAL)",
+        .name = "graphics-force-refresh-sub",
         .desc =
             "Override fullscreen refresh rate requested by the game for second monitor, "
             "useful if you have a sub monitor that is not quite exactly 60Hz.\n\n"
@@ -826,12 +826,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
-        .title = "SDVX Native Touch Handling",
+        .title = "SDVX FS Subscreen Native Touch Handling",
         .name = "sdvxnativetouch",
         .desc = "Disables touch hooks and lets the game access a touch screen directly. "
                 "Requires a touch screen to be connected as a secondary monitor. "
                 "Touch input must be routed to the primary screen via Windows Tablet PC settings. "
                 "Enable this when you get duplicate touch inputs from an actual touch screen.",
+        .type = OptionType::Bool,
+        .game_name = "Sound Voltex",
+        .category = "Game Options (Advanced)",
+    },
+    {
+        // spice2x_SDVXSubRedraw
+        .title = "SDVX FS Subscreen Force Redraw",
+        .name = "sp2x-sdvxsubredraw",
+        .display_name = "sdvxsubredraw",
+        .aliases= "sdvxsubredraw",
+        .desc = "Check if submonitor in fullscreen mode doesn't update every frame; "
+            "this option forces subscreen to redraw every frame.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Game Options (Advanced)",
@@ -895,18 +907,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"bottomleft", "for landscape"},
             {"bottomright", "for landscape"},
         },
-    },
-    {
-        // spice2x_SDVXSubRedraw
-        .title = "SDVX Subscreen Force Redraw",
-        .name = "sp2x-sdvxsubredraw",
-        .display_name = "sdvxsubredraw",
-        .aliases= "sdvxsubredraw",
-        .desc = "Check if second monitor for subscreen doesn't update every frame; "
-            "forces subscreen to redraw every frame, only needed for newer EG.",
-        .type = OptionType::Bool,
-        .game_name = "Sound Voltex",
-        .category = "Game Options (Advanced)",
     },
     {
         .title = "Force Load DDR Module",
@@ -2263,7 +2263,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // spice2x_IIDXNativeTouch
-        .title = "IIDX Native Touch Handling",
+        .title = "IIDX TDJ Subscreen Native Touch Handling",
         .name = "sp2x-iidxnativetouch",
         .display_name = "iidxnativetouch",
         .aliases= "iidxnativetouch",
