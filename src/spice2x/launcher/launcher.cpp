@@ -1406,6 +1406,15 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
 
+    if (options[launcher::Options::FullscreenSubResolution].is_active()) {
+        std::pair<uint32_t, uint32_t> result;
+        if (parse_width_height(options[launcher::Options::FullscreenSubResolution].value_text(), result)) {
+            GRAPHICS_FS_CUSTOM_RESOLUTION_SUB = result;
+        } else {
+            log_warning("launcher", "failed to parse -forceressub");
+        }
+    }
+
     // SDVXFullscreenLandscape disabled due to it messing with in-game camera angle
     // FullscreenOrientationFlip continues to live on, however.
     if (options[launcher::Options::SDVXFullscreenLandscape].value_bool() && !cfg::CONFIGURATOR_STANDALONE) {

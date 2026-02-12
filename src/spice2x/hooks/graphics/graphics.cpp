@@ -71,6 +71,7 @@ bool GRAPHICS_9_ON_12_REQUESTED_BY_GAME = false;
 bool SUBSCREEN_FORCE_REDRAW = false;
 bool D3D9_DEVICE_HOOK_DISABLE = false;
 std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_FS_CUSTOM_RESOLUTION;
+std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_FS_CUSTOM_RESOLUTION_SUB;
 bool GRAPHICS_FS_ORIENTATION_SWAP = false;
 uint32_t GRAPHICS_FS_ORIGINAL_WIDTH = 0;
 uint32_t GRAPHICS_FS_ORIGINAL_HEIGHT = 0;

@@ -257,9 +257,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Full Screen)"
     },
     {
+        // FullscreenSubResolution
+        .title = "Force Submonitor Resolution (EXPERIMENTAL)",
+        .name = "graphics-force-subres",
+        .desc =
+            "Override fullscreen resolution requested by the game for second monitor, "
+            "useful if you have a sub monitor that is not quite exactly 1920x1080.\n\n"
+            "WARNING: experimental as we have not done extensive testing to see if this causes desyncs.",
+        .type = OptionType::Text,
+        .setting_name = "1280,720",
+        .category = "Graphics (Full Screen)"
+    },
+    {
         // FullscreenSubRefreshRate
         .title = "Force Submonitor Refresh Rate (EXPERIMENTAL)",
-        .name = "graphics-force-refresh-sub",
+        .name = "forceressub",
         .desc =
             "Override fullscreen refresh rate requested by the game for second monitor, "
             "useful if you have a sub monitor that is not quite exactly 60Hz.\n\n"

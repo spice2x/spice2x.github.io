@@ -37,6 +37,7 @@ extern std::optional<int> GRAPHICS_FORCE_VSYNC_BUFFER;
 extern bool GRAPHICS_FORCE_SINGLE_ADAPTER;
 extern bool GRAPHICS_PREVENT_SECONDARY_WINDOW;
 extern std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_FS_CUSTOM_RESOLUTION;
+extern std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_FS_CUSTOM_RESOLUTION_SUB;
 extern bool GRAPHICS_FS_ORIENTATION_SWAP;
 extern uint32_t GRAPHICS_FS_ORIGINAL_WIDTH;
 extern uint32_t GRAPHICS_FS_ORIGINAL_HEIGHT;

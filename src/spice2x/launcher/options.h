@@ -31,6 +31,7 @@ namespace launcher {
             GraphicsForceRefresh,
             FullscreenResolution,
             FullscreenOrientationFlip,
+            FullscreenSubResolution,
             FullscreenSubRefreshRate,
             Graphics9On12,
             spice2x_Dx9On12,
