@@ -946,7 +946,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     for (size_t i = 0; i < num_adapters; i++) {
         auto *params = &pPresentationParameters[i];
         if (!GRAPHICS_WINDOWED){
-            if  (i == 0) {
+            if (i == 0) {
                 GRAPHICS_FS_ORIGINAL_WIDTH = params->BackBufferWidth;
                 GRAPHICS_FS_ORIGINAL_HEIGHT = params->BackBufferHeight;
                 log_misc("graphics::d3d9", "original resolution: {}x{}", GRAPHICS_FS_ORIGINAL_WIDTH, GRAPHICS_FS_ORIGINAL_HEIGHT);
