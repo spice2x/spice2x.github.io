@@ -945,26 +945,37 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
     for (size_t i = 0; i < num_adapters; i++) {
         auto *params = &pPresentationParameters[i];
-        if (!GRAPHICS_WINDOWED && i == 0) {
-            GRAPHICS_FS_ORIGINAL_WIDTH = params->BackBufferWidth;
-            GRAPHICS_FS_ORIGINAL_HEIGHT = params->BackBufferHeight;
-            log_misc("graphics::d3d9", "original resolution: {}x{}", GRAPHICS_FS_ORIGINAL_WIDTH, GRAPHICS_FS_ORIGINAL_HEIGHT);
-            if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+        if (!GRAPHICS_WINDOWED){
+            if (i == 0) {
+                GRAPHICS_FS_ORIGINAL_WIDTH = params->BackBufferWidth;
+                GRAPHICS_FS_ORIGINAL_HEIGHT = params->BackBufferHeight;
+                log_misc("graphics::d3d9", "original resolution: {}x{}", GRAPHICS_FS_ORIGINAL_WIDTH, GRAPHICS_FS_ORIGINAL_HEIGHT);
+                if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+                    log_misc(
+                        "graphics::d3d9",
+                        "use custom resolution {}x{} => {}x{}",
+                        params->BackBufferWidth, params->BackBufferHeight,
+                        GRAPHICS_FS_CUSTOM_RESOLUTION.value().first,
+                        GRAPHICS_FS_CUSTOM_RESOLUTION.value().second);
+                    params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+                    params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+                } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
+                    log_misc(
+                        "graphics::d3d9",
+                        "swap full orientation {}x{} => {}x{}",
+                        params->BackBufferWidth, params->BackBufferHeight,
+                        params->BackBufferHeight, params->BackBufferWidth);
+                    std::swap(params->BackBufferWidth, params->BackBufferHeight);
+                }
+            } else if (i == 1 && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
                 log_misc(
                     "graphics::d3d9",
-                    "use custom resolution {}x{} => {}x{}",
+                    "use custom sub resolution {}x{} => {}x{}",
                     params->BackBufferWidth, params->BackBufferHeight,
-                    GRAPHICS_FS_CUSTOM_RESOLUTION.value().first,
-                    GRAPHICS_FS_CUSTOM_RESOLUTION.value().second);
-                params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
-                params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
-            } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
-                log_misc(
-                    "graphics::d3d9",
-                    "swap full orientation {}x{} => {}x{}",
-                    params->BackBufferWidth, params->BackBufferHeight,
-                    params->BackBufferHeight, params->BackBufferWidth);
-                std::swap(params->BackBufferWidth, params->BackBufferHeight);
+                    GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value().first,
+                    GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value().second);
+                params->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value().first;
+                params->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value().second;
             }
         }
 
@@ -992,12 +1003,17 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         for (size_t i = 0; i < num_adapters; i++) {
             auto *fullscreen_display_mode = &pFullscreenDisplayMode[i];
 
-            if (!GRAPHICS_WINDOWED && i == 0) {
-                if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
-                    fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
-                    fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
-                } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
-                    std::swap(fullscreen_display_mode->Width, fullscreen_display_mode->Height);
+            if (!GRAPHICS_WINDOWED) {
+                if (i == 0) {
+                    if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+                        fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+                        fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+                    } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
+                        std::swap(fullscreen_display_mode->Width, fullscreen_display_mode->Height);
+                    }
+                } else if (i == 1 && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
+                    fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value().first;
+                    fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value().second;
                 }
             }
 
