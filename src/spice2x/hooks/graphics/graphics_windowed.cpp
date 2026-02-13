@@ -202,7 +202,7 @@ void graphics_load_windowed_subscreen_parameters() {
             GRAPHICS_WSUB_WIDTH = result.first;
             GRAPHICS_WSUB_HEIGHT = result.second;
         } else {
-            log_fatal("graphics-windowed", "failed to parse -iidxtdjsubsize / -sdvxwsubsize");
+            log_fatal("graphics-windowed", "failed to parse -iidxwsubsize / -sdvxwsubsize");
         }
     }
 
@@ -216,7 +216,7 @@ void graphics_load_windowed_subscreen_parameters() {
             GRAPHICS_WSUB_X = result.first;
             GRAPHICS_WSUB_Y = result.second;
         } else {
-            log_fatal("graphics-windowed", "failed to parse -iidxsubpos / -sdvxwsubpos");
+            log_fatal("graphics-windowed", "failed to parse -iidxwsubpos / -sdvxwsubpos");
         }
     }
 }

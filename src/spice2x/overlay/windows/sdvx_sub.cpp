@@ -18,7 +18,7 @@ namespace overlay::windows {
             if (GRAPHICS_PREVENT_SECONDARY_WINDOW) {
                 this->disabled_message = "Subscreen has been disabled by the user (-sdvxnosub).";
             } else {
-                this->disabled_message = "Overlay unavailable in windowed mode! Use the second window instead.";
+                this->disabled_message = "Overlay unavailable in windowed mode! Use the second window instead. (ALT+TAB)";
             }
         }
 
