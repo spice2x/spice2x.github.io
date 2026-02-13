@@ -173,7 +173,7 @@ void graphics_load_windowed_parameters() {
             cfg::SCREENRESIZE->window_offset_x = result.first;
             cfg::SCREENRESIZE->window_offset_y = result.second;
         } else {
-            log_warning("graphics-windowed", "failed to parse -windowpos");
+            log_fatal("graphics-windowed", "failed to parse -windowpos");
         }
     }
 
@@ -202,7 +202,7 @@ void graphics_load_windowed_subscreen_parameters() {
             GRAPHICS_WSUB_WIDTH = result.first;
             GRAPHICS_WSUB_HEIGHT = result.second;
         } else {
-            log_warning("graphics-windowed", "failed to parse -wsubsize");
+            log_fatal("graphics-windowed", "failed to parse -iidxtdjsubsize / -sdvxwsubsize");
         }
     }
 
@@ -216,7 +216,7 @@ void graphics_load_windowed_subscreen_parameters() {
             GRAPHICS_WSUB_X = result.first;
             GRAPHICS_WSUB_Y = result.second;
         } else {
-            log_warning("graphics-windowed", "failed to parse -wsubpos");
+            log_fatal("graphics-windowed", "failed to parse -iidxsubpos / -sdvxwsubpos");
         }
     }
 }
