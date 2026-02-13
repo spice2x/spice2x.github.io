@@ -120,7 +120,7 @@ namespace overlay::windows {
             "Lightning Model cabinets (TDJ) do not have any keypads; they use the subscreen.\n\n"
             "Fullscreen mode: bind a key in Overlay tab, and press it in game to show the subscreen, "
             "then use your mouse to click. Page Up button is the default binding.\n\n"
-            "Windowed mode: look for the second window in the taskbar.\n\n"
+            "Windowed mode: look for the second window in the taskbar (or ALT+TAB).\n\n"
             "Windowed mode with -iidxnosub: bring up the subscreen overlay (default Page Up).\n\n"
             );
 

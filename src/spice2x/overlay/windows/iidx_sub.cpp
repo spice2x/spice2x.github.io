@@ -13,7 +13,7 @@ namespace overlay::windows {
 
         if (GRAPHICS_IIDX_WSUB) {
             this->disabled_message =
-                "Close this overlay and use the second window.\n"
+                "Close this overlay and use the second window (ALT+TAB).\n"
                 "If you don't see the window, double check your DLL type and apply TDJ I/O patches as needed.";
         } else if (games::iidx::IIDX_TDJ_MONITOR_WARNING) {
             this->disabled_message = "TDJ mode subscreen overlay is not compatible with -monitor option";

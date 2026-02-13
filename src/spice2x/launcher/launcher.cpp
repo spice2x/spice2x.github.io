@@ -1083,8 +1083,8 @@ int main_implementation(int argc, char *argv[]) {
         std::pair<uint32_t, uint32_t> result;
         if (parse_width_height(options[launcher::Options::spice2x_WindowSize].value_text(), result)) {
             GRAPHICS_WINDOW_SIZE = result;
-        } else {
-            log_warning("launcher", "failed to parse -windowsize");
+        } else if (!cfg_run && !cfg::CONFIGURATOR_STANDALONE) {
+            log_fatal("launcher", "failed to parse -windowsize");
         }
     }
     if (options[launcher::Options::spice2x_WindowPosition].is_active()) {
@@ -1401,8 +1401,8 @@ int main_implementation(int argc, char *argv[]) {
         std::pair<uint32_t, uint32_t> result;
         if (parse_width_height(options[launcher::Options::FullscreenResolution].value_text(), result)) {
             GRAPHICS_FS_CUSTOM_RESOLUTION = result;
-        } else {
-            log_warning("launcher", "failed to parse -forceres");
+        } else if (!cfg_run && !cfg::CONFIGURATOR_STANDALONE) {
+            log_fatal("launcher", "failed to parse -forceres");
         }
     }
 
@@ -1410,8 +1410,8 @@ int main_implementation(int argc, char *argv[]) {
         std::pair<uint32_t, uint32_t> result;
         if (parse_width_height(options[launcher::Options::FullscreenSubResolution].value_text(), result)) {
             GRAPHICS_FS_CUSTOM_RESOLUTION_SUB = result;
-        } else {
-            log_warning("launcher", "failed to parse -forceressub");
+        } else if (!cfg_run && !cfg::CONFIGURATOR_STANDALONE) {
+            log_fatal("launcher", "failed to parse -forceressub");
         }
     }
 
