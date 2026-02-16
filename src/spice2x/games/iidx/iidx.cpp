@@ -82,6 +82,7 @@ namespace games::iidx {
     bool IIDXIO_LED_TICKER_READONLY = false;
     std::mutex IIDX_LED_TICKER_LOCK;
     bool IIDX_TDJ_MONITOR_WARNING = false;
+    iidx_aio_emulation_state CURRENT_IO_EMULATION_STATE = iidx_aio_emulation_state::unknown;
 
     // io
     static bool HAS_LIBAIO; // this is how we detect iidx27+
@@ -453,7 +454,7 @@ namespace games::iidx {
         }
 
         // windowed subscreen, enabled by default, unless turned off by user
-        if (GRAPHICS_WINDOWED && !options->at(launcher::Options::spice2x_IIDXNoSub).value_bool()) {
+        if (GRAPHICS_WINDOWED && !options->at(launcher::Options::spice2x_IIDXNoSub).value_bool() && TDJ_MODE) {
             GRAPHICS_IIDX_WSUB = true;
         }
 
@@ -933,6 +934,8 @@ namespace games::iidx {
         if (avs::game::is_ext(0, 2023101000)) {
             return;
         }
+
+        CURRENT_IO_EMULATION_STATE = state;
 
         // log_warning below could be turned into log_fatal in the future once we gain confidence
         // that this isn't triggering when it's not supposed to

@@ -12,6 +12,7 @@ namespace overlay::windows {
 
     protected:
         void touch_transform(const ImVec2 xy_in, LONG *x_out, LONG *y_out) override;
+        void check_for_errors() override;
     };
 }
 

@@ -11,6 +11,12 @@
 
 namespace games::iidx {
 
+    enum class iidx_aio_emulation_state {
+        unknown,
+        bi2a_com2,
+        bi2x_hook
+    };
+
     // settings
 
     extern bool FLIP_CAMS;
@@ -38,6 +44,7 @@ namespace games::iidx {
     constexpr int IIDX_TAPELED_TOTAL = 17;
     // data mapping
     extern tapeledutils::tape_led TAPELED_MAPPING[IIDX_TAPELED_TOTAL];
+    extern iidx_aio_emulation_state CURRENT_IO_EMULATION_STATE;
 
     class IIDXGame : public games::Game {
     public:
@@ -64,9 +71,5 @@ namespace games::iidx {
     bool is_tdj_fhd();
     void apply_audio_hacks();
 
-    enum class iidx_aio_emulation_state {
-        bi2a_com2,
-        bi2x_hook
-    };
     void update_io_emulation_state(iidx_aio_emulation_state state);
 }

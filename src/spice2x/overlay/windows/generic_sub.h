@@ -31,6 +31,7 @@ namespace overlay::windows {
 
     protected:
         virtual void touch_transform(const ImVec2 xy_in, LONG *x_out, LONG *y_out);
+        virtual void check_for_errors();
         ImVec2 overlay_content_top_left;
         ImVec2 overlay_content_size;
         std::optional<std::string> disabled_message = std::nullopt;

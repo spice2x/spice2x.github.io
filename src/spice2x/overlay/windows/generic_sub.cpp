@@ -85,10 +85,12 @@ namespace overlay::windows {
     }
 
     void GenericSubScreen::touch_transform(const ImVec2 xy_in, LONG *x_out, LONG *y_out) {}
+    void GenericSubScreen::check_for_errors() {}
 
     void GenericSubScreen::build_content() {
         this->flags |= ImGuiWindowFlags_NoBackground;
         
+        check_for_errors();
         if (this->disabled_message.has_value()) {
             this->draws_window = true;
             this->flags &= ~ImGuiWindowFlags_NoBackground;
