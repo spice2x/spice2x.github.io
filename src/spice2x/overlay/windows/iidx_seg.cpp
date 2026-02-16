@@ -14,6 +14,7 @@ namespace overlay::windows {
 
     static const size_t TICKER_SIZE = 9;
     static const ImVec4 DARK_GRAY(0.1f, 0.1f, 0.1f, 1.f);
+    static const ImVec4 YELLOW(1.f, 1.f, 0.f, 1.f);
     static const ImVec4 RED(1.f, 0.f, 0.f, 1.f);
     static const float PADDING_Y = 8.f;
     static const float PADDING_X = 4.f;
@@ -91,6 +92,23 @@ namespace overlay::windows {
     }
 
     void IIDXSegmentDisplay::build_content() {
+
+        // explicitly check if TDJ I/O is enabled to account for the fact that I/O emulation may be
+        // disabled
+        if (games::iidx::CURRENT_IO_EMULATION_STATE == games::iidx::iidx_aio_emulation_state::bi2x_hook) {
+            ImGui::TextUnformatted("");
+            ImGui::TextColored(
+                YELLOW,
+                "%s",
+                "Invalid I/O mode; DLL is configured for TDJ I/O!\n"
+                "Enable -iidxtdj if you want TDJ subscreen overlay.");
+            ImGui::TextUnformatted("");
+            if (ImGui::Button("Close")) {
+                this->set_active(false);
+            }
+            return;
+        }
+
         char input_ticker[TICKER_SIZE];
 
         // get ticker content from game

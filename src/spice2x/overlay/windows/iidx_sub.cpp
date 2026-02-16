@@ -12,11 +12,9 @@ namespace overlay::windows {
         this->title = "IIDX TDJ Subscreen";
 
         if (GRAPHICS_IIDX_WSUB) {
-            this->disabled_message =
-                "Close this overlay and use the second window (ALT+TAB).\n"
-                "If you don't see the window, double check your DLL type and apply TDJ I/O patches as needed.";
+            this->disabled_message = "Close this overlay and use the second window. (try ALT+TAB)";
         } else if (games::iidx::IIDX_TDJ_MONITOR_WARNING) {
-            this->disabled_message = "TDJ mode subscreen overlay is not compatible with -monitor option";
+            this->disabled_message = "TDJ mode subscreen overlay is not compatible with -monitor option.";
         }
 
         float size = 0.5f;
@@ -42,6 +40,18 @@ namespace overlay::windows {
         this->init_pos = ImVec2(
             ImGui::GetIO().DisplaySize.x / 2 - this->init_size.x / 2,
             ImGui::GetIO().DisplaySize.y - this->init_size.y - (ImGui::GetFrameHeight() / 2));
+    }
+
+    void IIDXSubScreen::check_for_errors() {
+        if (games::iidx::CURRENT_IO_EMULATION_STATE ==
+            games::iidx::iidx_aio_emulation_state::bi2a_com2) {
+
+            // explicitly check if LDJ I/O is enabled (as opposed to checking if NOT TDJ I/O)
+            // to account for the fact that I/O emulation may be disabled
+            this->disabled_message =
+                "LDJ I/O detected; TDJ mode subscreen overlay requires TDJ I/O.\n"
+                "Ensure you apply applicable TDJ I/O patches, or run with TDJ DLL.";
+        }
     }
 
     void IIDXSubScreen::touch_transform(const ImVec2 xy_in, LONG *x_out, LONG *y_out) {
