@@ -34,7 +34,7 @@ namespace api::modules {
     void DRS::touch_set(Request &req, Response &res) {
 
         // get all touch points
-        games::drs::drs_touch_t touches[16];
+        auto touches = std::make_unique<games::drs::drs_touch_t[]>(req.params.Size());
         size_t i = 0;
         for (Value &param : req.params.GetArray()) {
 
@@ -86,6 +86,6 @@ namespace api::modules {
         }
 
         // apply touch points
-        games::drs::fire_touches(touches, i);
+        games::drs::fire_touches(touches.get(), i);
     }
 }
