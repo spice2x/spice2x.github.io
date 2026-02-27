@@ -81,7 +81,7 @@ namespace nativetouchhook {
         }
 
         bool flip_values = false;
-        if (avs::game::is_model("KFC") && rawinput::touch::DISPLAY_INITIALIZED && !GRAPHICS_WINDOWED) {
+        if (avs::game::is_model("KFC") && rawinput::touch::DISPLAY_INITIALIZED) {
             log_debug(
                 "touch::native", "DISPLAY_ORIENTATION = {}, DISPLAY_SIZE_X = {}, DISPLAY_SIZE_Y = {}",
                 rawinput::touch::DISPLAY_ORIENTATION,
