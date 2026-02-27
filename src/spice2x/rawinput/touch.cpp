@@ -26,10 +26,10 @@ namespace rawinput::touch {
     bool INVERTED = false;
 
     // state
-    static bool DISPLAY_INITIALIZED = false;
-    static DWORD DISPLAY_ORIENTATION = DMDO_DEFAULT;
-    static long DISPLAY_SIZE_X = 1920L;
-    static long DISPLAY_SIZE_Y = 1080L;
+    DWORD DISPLAY_ORIENTATION = DMDO_DEFAULT;
+    long DISPLAY_SIZE_X = 1920L;
+    long DISPLAY_SIZE_Y = 1080L;
+    bool DISPLAY_INITIALIZED = false;
 
     bool is_touchscreen(Device *device) {
 

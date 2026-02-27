@@ -2,7 +2,10 @@
 // mingw otherwise doesn't load touch stuff
 #define _WIN32_WINNT 0x0601
 
+#include "avs/game.h"
 #include "wintouchemu.h"
+#include "rawinput/touch.h"
+#include "hooks/graphics/graphics.h"
 
 #include "util/detour.h"
 #include "util/logging.h"
@@ -72,9 +75,25 @@ namespace nativetouchhook {
             return result;
         }
 
+        bool flip_values = false;
+        if (avs::game::is_model("KFC") && rawinput::touch::DISPLAY_INITIALIZED && !GRAPHICS_WINDOWED) {
+            log_debug(
+                "touch::native", "DISPLAY_ORIENTATION = {}, DISPLAY_SIZE_X = {}, DISPLAY_SIZE_Y = {}",
+                rawinput::touch::DISPLAY_ORIENTATION,
+                rawinput::touch::DISPLAY_SIZE_X,
+                rawinput::touch::DISPLAY_SIZE_Y);
+            if (cInputs > 0 && rawinput::touch::DISPLAY_ORIENTATION == DMDO_270) {
+                flip_values = true;
+            }
+        }
+
         for (size_t i = 0; i < cInputs; i++) {
             PTOUCHINPUT point = &pInputs[i];
             strip_contact_size(point);
+            if (flip_values) {
+                point->x = rawinput::touch::DISPLAY_SIZE_X * 100 - point->x;
+                point->y = rawinput::touch::DISPLAY_SIZE_Y * 100 - point->y;
+            }
         }
         
         return result;
