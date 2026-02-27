@@ -66,6 +66,11 @@ namespace nativetouchhook {
         point->cyContact = 0;
     }
 
+    static void flip_touch_points(PTOUCHINPUT point) {
+        point->x = rawinput::touch::DISPLAY_SIZE_X * 100 - point->x;
+        point->y = rawinput::touch::DISPLAY_SIZE_Y * 100 - point->y;
+    }
+
     static BOOL WINAPI GetTouchInputInfoHook(
         HTOUCHINPUT hTouchInput, UINT cInputs, PTOUCHINPUT pInputs, int cbSize) {
 
@@ -82,17 +87,20 @@ namespace nativetouchhook {
                 rawinput::touch::DISPLAY_ORIENTATION,
                 rawinput::touch::DISPLAY_SIZE_X,
                 rawinput::touch::DISPLAY_SIZE_Y);
-            if (cInputs > 0 && rawinput::touch::DISPLAY_ORIENTATION == DMDO_270) {
+            if (rawinput::touch::DISPLAY_ORIENTATION == DMDO_270) {
                 flip_values = true;
             }
         }
 
         for (size_t i = 0; i < cInputs; i++) {
             PTOUCHINPUT point = &pInputs[i];
-            strip_contact_size(point);
+
+            if (avs::game::is_model("LDJ")) {
+                strip_contact_size(point);
+            }
+
             if (flip_values) {
-                point->x = rawinput::touch::DISPLAY_SIZE_X * 100 - point->x;
-                point->y = rawinput::touch::DISPLAY_SIZE_Y * 100 - point->y;
+                flip_touch_points(point);
             }
         }
         
