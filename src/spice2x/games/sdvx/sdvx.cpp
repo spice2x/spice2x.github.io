@@ -21,8 +21,9 @@
 #include "util/socd_cleaner.h"
 #include "util/time.h"
 #include "util/libutils.h"
-#include "misc/wintouchemu.h"
 #include "misc/eamuse.h"
+#include "misc/nativetouchhook.h"
+#include "misc/wintouchemu.h"
 #include "bi2x_hook.h"
 #include "camera.h"
 #include "io.h"
@@ -416,9 +417,11 @@ namespace games::sdvx {
             }
 
             if (is_valkyrie_model()) {
-                // hook touch window
-                // in windowed mode, game can accept mouse input on the second screen
-                if (!NATIVETOUCH && !GRAPHICS_WINDOWED) {
+                if (NATIVETOUCH) {
+                    nativetouchhook::hook(avs::game::DLL_INSTANCE);
+                } else if (!NATIVETOUCH && !GRAPHICS_WINDOWED) {
+                    // hook touch window
+                    // in windowed mode, game can accept mouse input on the second screen
                     wintouchemu::FORCE = true;
                     wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
                     wintouchemu::hook_title_ends(
