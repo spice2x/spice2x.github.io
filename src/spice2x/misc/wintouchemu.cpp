@@ -20,6 +20,7 @@
 #include "util/logging.h"
 #include "util/time.h"
 #include "util/utils.h"
+#include "rawinput/touch.h"
 
 #include "avs/game.h"
 
@@ -126,6 +127,11 @@ namespace wintouchemu {
         WINDOW_TITLE_END = window_title_end;
     }
 
+    static void flip_touch_points(PTOUCHINPUT point) {
+        point->x = rawinput::touch::DISPLAY_SIZE_X * 100 - point->x;
+        point->y = rawinput::touch::DISPLAY_SIZE_Y * 100 - point->y;
+    }
+
     static BOOL WINAPI GetTouchInputInfoHook(HANDLE hTouchInput, UINT cInputs, PTOUCHINPUT pInputs, int cbSize) {
 
         // check if original should be called
@@ -219,6 +225,12 @@ namespace wintouchemu {
                 touch_input->dwExtraInfo = 0;
                 touch_input->cxContact = 0;
                 touch_input->cyContact = 0;
+
+                if (avs::game::is_model("KFC") &&
+                    rawinput::touch::DISPLAY_INITIALIZED &&
+                    rawinput::touch::DISPLAY_ORIENTATION == DMDO_270) {
+                    flip_touch_points(touch_input);
+                }
 
             } else if (USE_MOUSE && !mouse_used) {
 
