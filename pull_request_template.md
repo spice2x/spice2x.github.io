@@ -7,7 +7,7 @@
 > 
 > Feel free to remove this section after you have read it.
 
-## Link to GitHub Issue, if one exists
+## Link to GitHub Issue or related Pull Request, if one exists
 #0
 
 ## Description of change
