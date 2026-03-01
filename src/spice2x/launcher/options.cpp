@@ -121,6 +121,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "E004010000000000",
         .category = "Network",
         .sensitive = true,
+        .picker = OptionPickerType::EACard,
     },
     {
         .title = "Player 2 Card",
@@ -130,6 +131,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "E004010000000000",
         .category = "Network",
         .sensitive = true,
+        .picker = OptionPickerType::EACard,
     },
     {
         // Player1PinMacro
@@ -618,6 +620,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
+        .picker = OptionPickerType::AsioDriver,
     },
     {
         .title = "IIDX BIO2 Firmware Update",
@@ -889,6 +892,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .game_name = "Sound Voltex",
         .category = "Game Options",
+        .picker = OptionPickerType::AsioDriver,
     },
     {
         // spice2x_SDVXSubPos
@@ -1774,6 +1778,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Does nothing for games that do not output to exclusive WASAPI.",
         .type = OptionType::Text,
         .category = "Audio",
+        .picker = OptionPickerType::AsioDriver,
     },
     {
         .title = "WASAPI Dummy Context",

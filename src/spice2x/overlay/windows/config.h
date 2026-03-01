@@ -104,6 +104,7 @@ namespace overlay::windows {
         void edit_light_popup(Light &primary_light, Light *light, const int alt_index);
 
         void build_cards();
+        void build_option_value_picker(Option& option);
         void build_options(
             std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr);
         void build_about();

@@ -10,7 +10,9 @@
 #include "build/resource.h"
 #include "cfg/config.h"
 #include "cfg/configurator.h"
+#include "external/asio/asiolist.h"
 #include "external/imgui/imgui_internal.h"
+#include "external/imgui/misc/cpp/imgui_stdlib.h"
 #include "games/io.h"
 #include "avs/core.h"
 #include "avs/ea3.h"
@@ -40,6 +42,8 @@ namespace overlay::windows {
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
+    
+    std::unique_ptr<AsioDriverList> asio_driver_list;
 
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
         this->title = "Configuration";
@@ -2905,6 +2909,37 @@ namespace overlay::windows {
         ImGui::EndDisabled();
     }
 
+    void Config::build_option_value_picker(Option& option) {
+        auto &definition = option.get_definition();
+        if (definition.picker == OptionPickerType::AsioDriver) {
+            if (asio_driver_list == nullptr) {
+                asio_driver_list = std::make_unique<AsioDriverList>();
+            }
+
+            if (asio_driver_list->driver_list.empty()) {
+                ImGui::TextUnformatted("No ASIO drivers found.");
+            } else {
+                ImGui::TextUnformatted("Pick from ASIO drivers:");
+                if (ImGui::BeginListBox("##asiodrivers")) {
+                    for (const auto &driver : asio_driver_list->driver_list) {
+                        const bool is_selected = option.value == std::string(driver.name);
+                        if (ImGui::Selectable(fmt::format("[{}] {}", driver.id, driver.name).c_str(), is_selected)) {
+                            option.value = driver.name;
+                        }
+                    }
+                    ImGui::EndListBox();
+                }
+            }
+        } else if (definition.picker == OptionPickerType::EACard) {
+            ImGui::TextUnformatted("Generate a new card number:");
+            if (ImGui::Button("Generate")) {
+                char new_card[17];
+                generate_ea_card(new_card);
+                option.value = new_card;
+            }
+        }
+    }
+
     void Config::build_options(
         std::vector<Option> *options, const std::string &category, const std::string *filter) {
         int options_count;  
@@ -3183,12 +3218,20 @@ namespace overlay::windows {
                         ::Config::getInstance().updateBinding(games_list[games_selected], option);
                     }
                 }
-                ImGui::PopStyleVar();
+
+                if (definition.picker != OptionPickerType::None && !option.disabled && !definition.disabled) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Pick")) {
+                        ImGui::OpenPopup("Option Helper");
+                    }
+                }
+
+                ImGui::PopStyleVar(); // ImGuiStyleVar_ItemSpacing
 
                 // clean up disabled item flags
                 if (option.disabled || definition.disabled) {
-                    ImGui::PopItemFlag();
-                    ImGui::PopStyleVar();
+                    ImGui::PopItemFlag(); // ImGuiItemFlags_Disabled
+                    ImGui::PopStyleVar(); // ImGuiStyleVar_Alpha
                 }
 
                 // disabled help
@@ -3197,6 +3240,21 @@ namespace overlay::windows {
                     ImGui::HelpMarker(
                         "This option can not be edited because it was overriden by command-line options.\n"
                         "Run spicecfg.exe to configure the options and then run spice(64).exe directly.");
+                }
+
+                // value picker
+                if (ImGui::BeginPopupModal("Option Helper", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "%s", definition.title.c_str());
+                    ImGui::TextUnformatted("");
+                    build_option_value_picker(option);
+                    ImGui::TextUnformatted("");
+                    ImGui::TextUnformatted("Current value:");
+                    ImGui::InputText("", &option.value);
+                    ImGui::TextUnformatted("");
+                    if (ImGui::Button("Close")) {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
                 }
 
                 // next item

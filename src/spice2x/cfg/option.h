@@ -13,6 +13,12 @@ enum class OptionType {
     Hex,
 };
 
+enum class OptionPickerType {
+    None,
+    AsioDriver,
+    EACard,
+};
+
 struct OptionDefinition {
     std::string title;
     // unique identifier used for flag matching but also stored in config files
@@ -32,6 +38,7 @@ struct OptionDefinition {
     bool sensitive = false;
     std::vector<std::pair<std::string, std::string>> elements = {};
     bool disabled = false;
+    OptionPickerType picker = OptionPickerType::None;
 };
 
 class Option {
