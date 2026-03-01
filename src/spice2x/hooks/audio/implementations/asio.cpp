@@ -218,13 +218,40 @@ void AsioBackend::set_thread_state(AsioThreadState state) {
 bool AsioBackend::load_driver() {
     AsioDriverList asio_driver_list;
 
-    for (const auto &driver : asio_driver_list.driver_list) {
-        log_info("audio::asio", "Driver {}", driver.id);
-        log_info("audio::asio", "... Name : {}", driver.name);
-        log_info("audio::asio", "... Path : {}", driver.dll_path);
+    size_t driver_id = 0;
+    std::string driver_name = "";
+    if (hooks::audio::ASIO_DRIVER_ID.has_value()) {
+        driver_id = hooks::audio::ASIO_DRIVER_ID.value();
     }
 
-    const auto driver_id = hooks::audio::ASIO_DRIVER_ID;
+    for (const auto &driver : asio_driver_list.driver_list) {
+        log_info("audio::asio", " Driver ID : {}", driver.id);
+        log_info("audio::asio", " ...  Name : {}", driver.name);
+        log_info("audio::asio", " ...  Path : {}", driver.dll_path);
+
+        if (!hooks::audio::ASIO_DRIVER_NAME.empty()) {
+            // match on driver name
+            if (driver.name == hooks::audio::ASIO_DRIVER_NAME) {
+                driver_id = driver.id;
+                driver_name = driver.name;
+            }
+        } else if (driver.id == driver_id) {
+            // match on driver index (0 for default or user-specified)
+            driver_name = driver.name;
+        }
+    }
+
+    if (driver_name.empty()) {
+        if (!hooks::audio::ASIO_DRIVER_NAME.empty()) {
+            log_warning(
+                "audio::asio",
+                "tried to look for ASIO driver but failed: {}", hooks::audio::ASIO_DRIVER_NAME);
+        }
+        log_fatal(
+            "audio::asio",
+            "could not find ASIO driver to use for conversion, fix your audio options and try again");
+    }
+    log_info("audio::asio", "will attempt to use the following ASIO driver: ID = {}, Name = {}", driver_id, driver_name);
 
     IAsio *driver = nullptr;
     auto ret = asio_driver_list.open_driver(driver_id, reinterpret_cast<void **>(&driver));
