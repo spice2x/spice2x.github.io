@@ -2920,6 +2920,7 @@ namespace overlay::windows {
                 ImGui::TextUnformatted("No ASIO drivers found.");
             } else {
                 ImGui::TextUnformatted("Pick from ASIO drivers:");
+                ImGui::TextUnformatted("");
                 if (ImGui::BeginListBox("##asiodrivers")) {
                     for (const auto &driver : asio_driver_list->driver_list) {
                         const bool is_selected = option.value == std::string(driver.name);
@@ -2932,10 +2933,66 @@ namespace overlay::windows {
             }
         } else if (definition.picker == OptionPickerType::EACard) {
             ImGui::TextUnformatted("Generate a new card number:");
+            ImGui::TextUnformatted("");
             if (ImGui::Button("Generate")) {
                 char new_card[17];
                 generate_ea_card(new_card);
                 option.value = new_card;
+            }
+        } else if (definition.picker == OptionPickerType::CpuAffinity) {
+            ImGui::TextUnformatted("Pick CPU cores to use.");
+            ImGui::TextUnformatted("Requires restart! Showing all procs in Group 0.");
+            ImGui::TextUnformatted("");
+            const uint64_t cpu_count = GetActiveProcessorCount(0);
+            uint64_t affinity = 0;
+            if (!option.value.empty()) {
+                try {
+                    affinity = std::stoull(option.value, nullptr, 16);
+                } catch (const std::exception &ex) {
+                    option.value = "";
+                    affinity = 0;
+                }
+            }
+            ImGui::BeginChild(
+                "##cpuaffinity",
+                ImVec2(
+                    0,
+                    ImGui::GetFrameHeightWithSpacing() * std::clamp(cpu_count / 4, 2ull, 4ull))
+                );
+
+            bool selection_changed = false;
+            uint64_t set_bits = 0;
+            for (uint64_t i = 0; i < cpu_count; i++) {
+                if (i % 4 != 0) {
+                    ImGui::SameLine();
+                }
+
+                bool selected = (affinity & (1ULL << i)) != 0;
+                if (ImGui::Checkbox(fmt::format("CPU {}", i).c_str(), &selected)) {
+                    selection_changed = true;
+                    if (selected) {
+                        affinity |= (1ULL << i);
+                    } else {
+                        affinity &= ~(1ULL << i);
+                    }
+                }
+                if (selected) {
+                    set_bits++;
+                }
+            }
+            if (selection_changed) {
+                if (set_bits == 0) {
+                    option.value = "";
+                } else {
+                    option.value = fmt::format("0x{:X}", affinity);
+                }
+            }
+            
+            ImGui::EndChild();
+            if (option.value.empty()) {
+                ImGui::TextUnformatted("Using all CPUs (option default).");
+            } else {
+                ImGui::TextUnformatted("Using selected CPUs.");
             }
         }
     }
@@ -3250,9 +3307,15 @@ namespace overlay::windows {
                     ImGui::TextUnformatted("");
                     ImGui::TextUnformatted("Current value:");
                     ImGui::InputText("", &option.value);
+                    ImGui::SameLine();
+                    if (ImGui::ClearButton("Reset to default")) {
+                        option.value = "";
+                    }
                     ImGui::TextUnformatted("");
-                    if (ImGui::Button("Close")) {
+                    if (ImGui::Button("Save & Close")) {
                         ImGui::CloseCurrentPopup();
+                        this->options_dirty = true;
+                        ::Config::getInstance().updateBinding(games_list[games_selected], option);  
                     }
                     ImGui::EndPopup();
                 }

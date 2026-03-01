@@ -1674,6 +1674,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "Must provide a hexadecimal mask (e.g., 0x1ff00).",
         .type = OptionType::Hex,
         .category = "Performance",
+        .picker = OptionPickerType::CpuAffinity,
     },
     {
         // spice2x_ProcessorEfficiencyClass
