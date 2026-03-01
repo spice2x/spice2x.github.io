@@ -1011,18 +1011,26 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_DisableVolumeHook].value_bool()) {
         hooks::audio::VOLUME_HOOK_ENABLED = false;
     }
+
     if (options[launcher::Options::AudioBackend].is_active()) {
         auto &name = options[launcher::Options::AudioBackend].value_text();
         auto backend = hooks::audio::name_to_backend(name.c_str());
         if (!backend.has_value() && !cfg::CONFIGURATOR_STANDALONE) {
             log_fatal("launcher", "invalid audio backend: {}", name);
         }
-
         hooks::audio::BACKEND = backend;
     }
+
     if (options[launcher::Options::AsioDriverId].is_active()) {
         hooks::audio::ASIO_DRIVER_ID = options[launcher::Options::AsioDriverId].value_uint32();
     }
+    if (options[launcher::Options::AsioDriverName].is_active()) {
+        hooks::audio::BACKEND = hooks::audio::name_to_backend("asio");
+        hooks::audio::ASIO_DRIVER_NAME = options[launcher::Options::AsioDriverName].value_text();
+        // this new option overrides the old one
+        hooks::audio::ASIO_DRIVER_ID.reset();
+    }
+
     if (options[launcher::Options::AudioDummy].value_bool()) {
         hooks::audio::USE_DUMMY = true;
     }

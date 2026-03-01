@@ -187,6 +187,7 @@ namespace launcher {
             spice2x_DisableVolumeHook,
             AudioBackend,
             AsioDriverId,
+            AsioDriverName,
             AudioDummy,
             DelayBy5Seconds,
             spice2x_DelayByNSeconds,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string>
 
 #include <windows.h>
 #include <mmreg.h>
@@ -20,7 +21,8 @@ namespace hooks::audio {
     extern bool USE_DUMMY;
     extern WAVEFORMATEXTENSIBLE FORMAT;
     extern std::optional<Backend> BACKEND;
-    extern size_t ASIO_DRIVER_ID;
+    extern std::optional<size_t> ASIO_DRIVER_ID;
+    extern std::string ASIO_DRIVER_NAME;
     extern bool ASIO_FORCE_UNLOAD_ON_STOP;
     extern bool LOW_LATENCY_SHARED_WASAPI;
 

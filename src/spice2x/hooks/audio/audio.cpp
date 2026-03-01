@@ -42,7 +42,8 @@ namespace hooks::audio {
     bool USE_DUMMY = false;
     WAVEFORMATEXTENSIBLE FORMAT {};
     std::optional<Backend> BACKEND = std::nullopt;
-    size_t ASIO_DRIVER_ID = 0;
+    std::optional<size_t> ASIO_DRIVER_ID = std::nullopt;
+    std::string ASIO_DRIVER_NAME = "";
     bool ASIO_FORCE_UNLOAD_ON_STOP = false;
 
     // private globals

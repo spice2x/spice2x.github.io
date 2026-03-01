@@ -1742,11 +1742,13 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Audio (Hacks)",
     },
     {
-        .title = "Spice Audio Hook Backend",
+        // AudioBackend
+        .title = "Spice Audio Hook Backend (DEPRECATED - use -asioconvert instead)",
         .name = "audiobackend",
         .desc = "Selects the audio backend to use when spice audio hook is enabled, overriding exclusive WASAPI. "
             "Does nothing for games that do not output to exclusive WASAPI.",
         .type = OptionType::Enum,
+        .hidden = true,
         .category = "Audio",
         .elements = {
             {"asio", "ASIO"},
@@ -1754,10 +1756,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
-        .title = "Spice Audio Hook ASIO Driver ID",
+        // AsioDriverId
+        .title = "Spice Audio Hook ASIO Driver ID (DEPRECATED - use -asioconvert instead)",
         .name = "asiodriverid",
         .desc = "Selects the ASIO driver id to use when Spice Audio Backend is set to ASIO.",
         .type = OptionType::Integer,
+        .hidden = true,
+        .category = "Audio",
+    },
+    {
+        // AsioDriverName
+        .title = "WASAPI Exclusive to ASIO Conversion",
+        .name = "asioconvert",
+        .desc = "Converts WASAPI Exclusive audio output to ASIO. Value here should match registry key under HKLM\\SOFTWARE\\ASIO\\\n\n"
+            "Use this if the game is configured to use WASAPI Exclusive but you want to use your ASIO driver instead.\n\n"
+            "This should only be used as last resort if your audio device does not support WASAPI Exclusive.\n\n"
+            "Does nothing for games that do not output to exclusive WASAPI.",
+        .type = OptionType::Text,
         .category = "Audio",
     },
     {
