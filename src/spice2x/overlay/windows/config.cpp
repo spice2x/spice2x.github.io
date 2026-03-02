@@ -2952,7 +2952,6 @@ namespace overlay::windows {
                 ImGui::TextUnformatted("No ASIO drivers found.");
             } else {
                 ImGui::TextUnformatted("Pick from ASIO drivers:");
-                ImGui::TextUnformatted("");
                 ImGui::SetNextItemWidth(300.f);
                 if (ImGui::BeginListBox("##asiodrivers")) {
                     for (const auto &driver : asio_driver_list->driver_list) {
@@ -2966,16 +2965,15 @@ namespace overlay::windows {
             }
         } else if (definition.picker == OptionPickerType::EACard) {
             ImGui::TextUnformatted("Generate a new card number:");
-            ImGui::TextUnformatted("");
             if (ImGui::Button("Generate")) {
                 char new_card[17];
                 generate_ea_card(new_card);
                 option.value = new_card;
             }
         } else if (definition.picker == OptionPickerType::CpuAffinity) {
-            ImGui::TextUnformatted("Pick CPU cores to use.");
             ImGui::TextUnformatted("Requires restart! Showing all procs in Group 0.");
             ImGui::TextUnformatted("");
+            ImGui::TextUnformatted("Pick CPU cores to use:");
             const uint64_t cpu_count = GetActiveProcessorCount(0);
             uint64_t affinity = 0;
             if (!option.value.empty()) {
@@ -3478,16 +3476,27 @@ namespace overlay::windows {
                         // for min width enforcement
                         ImGui::Dummy(ImVec2(320.f, 0.f));
                         ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "%s", definition.title.c_str());
+
                         ImGui::TextUnformatted("");
-                        build_option_value_picker(option);
-                        ImGui::TextUnformatted("");
+                        
                         ImGui::TextUnformatted("Current value:");
-                        ImGui::InputText("", &option.value);
+                        ImGui::BeginDisabled();
+                        // keeping it read only; if you want to make this editable, we need to refactor the
+                        // input validation logic above (for int/hex) so people don't end up with invalid
+                        // values that can crash spicecfg
+                        ImGui::InputText("", &option.value, ImGuiInputTextFlags_ReadOnly);
+                        ImGui::EndDisabled();
                         ImGui::SameLine();
                         if (ImGui::ClearButton("Reset to default")) {
                             option.value = "";
                         }
+
                         ImGui::TextUnformatted("");
+
+                        build_option_value_picker(option);
+
+                        ImGui::TextUnformatted("");
+
                         if (ImGui::Button("Save & Close")) {
                             ImGui::CloseCurrentPopup();
                             this->options_dirty = true;
