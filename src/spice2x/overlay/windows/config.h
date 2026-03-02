@@ -76,6 +76,10 @@ namespace overlay::windows {
         std::string search_filter = "";
         std::string search_filter_in_lower_case = "";
 
+        std::filesystem::path file_picker_path;
+        std::thread *file_picker_thread = nullptr;
+        bool file_picker_done = false;
+
         void build_buttons(const std::string &name, std::vector<Button> *buttons, int min = 0, int max = -1);
         void build_button(
             const std::string &name,
@@ -104,6 +108,8 @@ namespace overlay::windows {
         void edit_light_popup(Light &primary_light, Light *light, const int alt_index);
 
         void build_cards();
+        std::string build_option_value_picker_title(const OptionDefinition& option);
+        void build_option_value_picker(Option& option);
         void build_options(
             std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr);
         void build_about();

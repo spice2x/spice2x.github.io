@@ -283,7 +283,7 @@ void ImGui_ImplSpice_NewFrame() {
     memset(io.MouseDown, false, sizeof(io.MouseDown));
 
     // early quit if window not in focus
-    if (!superexit::has_focus()) {
+    if (!superexit::has_focus() || rawinput::OS_WINDOW_ACTIVE) {
         return;
     }
 

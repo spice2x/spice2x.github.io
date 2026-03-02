@@ -10,6 +10,7 @@
 
 #include "device.h"
 #include "hotplug.h"
+#include "util/scope_guard.h"
 
 namespace rawinput {
 
@@ -30,6 +31,15 @@ namespace rawinput {
 
     extern bool NAIVE_REQUIRE_FOCUS;
     extern bool RAWINPUT_REQUIRE_FOCUS;
+
+    // while active, prevents overlay from accepting any input
+    // can be used while OS modal dialog is shown on top of overlay/spicecfg
+    // always prefer RAII set_os_window_focus_guard instead of the global bool
+    extern bool OS_WINDOW_ACTIVE;
+    inline scope_guard set_os_window_focus_guard() {
+        rawinput::OS_WINDOW_ACTIVE = true;
+        return scope_guard {[]() { rawinput::OS_WINDOW_ACTIVE = false; }};
+    }
 
     struct DeviceCallback {
         void *data;

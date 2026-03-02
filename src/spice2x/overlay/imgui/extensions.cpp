@@ -142,7 +142,6 @@ namespace ImGui {
         ImGui::PopStyleVar();
         ImGui::PopStyleColor();
         if (!tooltip.empty() && ImGui::IsItemHovered(TOOLTIP_FLAGS)) {
-            ImGui::SameLine();
             ImGui::HelpTooltip(tooltip.c_str());
         }
         ImGui::PopID();
@@ -159,7 +158,6 @@ namespace ImGui {
         bool clicked = ImGui::Button("\u00D7"); // multiplication sign (×)
         ImGui::PopStyleColor(4);
         if (!tooltip.empty() && ImGui::IsItemHovered(TOOLTIP_FLAGS)) {
-            ImGui::SameLine();
             ImGui::HelpTooltip(tooltip.c_str());
         }
         ImGui::PopID();

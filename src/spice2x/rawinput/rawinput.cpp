@@ -38,6 +38,10 @@ namespace rawinput {
     uint32_t MIDI_NOTE_SUSTAIN = 20;
 
     static MidiNoteAlgorithm MIDI_NOTE_ALGORITHM = MidiNoteAlgorithm::V2;
+
+    // the price we pay for making spice overlay consume from raw input
+    // making focus detection a nightmare
+    bool OS_WINDOW_ACTIVE = false;
 }
 
 rawinput::MidiNoteAlgorithm rawinput::get_midi_algorithm() {
