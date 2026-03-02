@@ -4,6 +4,7 @@
 
 #include <windows.h>
 #include <shellapi.h>
+#include <shlobj.h>
 #include <commdlg.h>
 
 #include "build/defs.h"
@@ -34,6 +35,17 @@
 #ifdef min
 #undef min
 #endif
+
+static int CALLBACK BrowseCallbackProc(
+    HWND hwnd,
+    UINT uMsg,
+    LPARAM lParam,
+    LPARAM lpData) {
+    if (uMsg == BFFM_INITIALIZED) {
+        SendMessageW(hwnd, BFFM_SETSELECTIONW, TRUE, lpData);
+    }
+    return 0;
+}
 
 namespace overlay::windows {
 
@@ -2999,25 +3011,49 @@ namespace overlay::windows {
                 ImGui::BeginDisabled();
                 ImGui::TextUnformatted("File browser only works in spicecfg.");
             }
+            // to make the dialog wide enough to show path
+            ImGui::Dummy(ImVec2(320.f, 0.f));
             if (ImGui::Button("Select File...")) {
                 // run in separate thread otherwise we get a crash
                 if (!file_picker_thread) {
                     file_picker_done = false;
-                    file_picker_thread = new std::thread([this] {
+                    file_picker_path = "";
+                    file_picker_thread = new std::thread([this, &definition] {
 
-                        const auto spice_bin_path =
-                            libutils::module_file_name(nullptr).parent_path().wstring();
+                        std::wstring extensions;
+                        if (!definition.file_extension.empty()) {
+                            const std::wstring ext = s2ws(definition.file_extension);
+                            // filter to file extension preferred by the option (e.g., DLL)
+                            extensions = ext + L" Files (*." + ext + L")";
+                            extensions.push_back(L'\0');
+                            extensions += L"*." + ext;
+                            extensions.push_back(L'\0');
+                            // also add "All files" filter
+                            extensions += L"All Files (*.*)";
+                            extensions.push_back(L'\0');
+                            extensions += L"*.*";
+                            extensions.push_back(L'\0');
+                            // eol
+                            extensions.push_back(L'\0');
+                        } else {
+                            extensions = L"All Files (*.*)";
+                            extensions.push_back(L'\0');
+                            extensions += L"*.*";
+                            extensions.push_back(L'\0');
+                            extensions.push_back(L'\0');
+                        }
 
                         // open dialog to get path
                         auto ofn_path = std::make_unique<wchar_t[]>(512);
                         ofn_path[0] = L'\0';
                         OPENFILENAMEW ofn{};
                         ofn.lStructSize = sizeof(ofn);
-                        ofn.lpstrFilter = L"All Files\0*.*\0";
+                        ofn.lpstrFilter = extensions.c_str();
                         ofn.lpstrFile = ofn_path.get();
                         ofn.nMaxFile = 512;
-                        ofn.Flags = OFN_EXPLORER;
-                        ofn.lpstrInitialDir = spice_bin_path.c_str();
+                        ofn.nFilterIndex = 1;
+                        ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR;
+                        ofn.lpstrInitialDir = L".";
 
                         // check for success
                         if (GetSaveFileNameW(&ofn)) {
@@ -3035,11 +3071,73 @@ namespace overlay::windows {
                 file_picker_thread->join();
                 delete file_picker_thread;
                 file_picker_thread = nullptr;
-                option.value = file_picker_path.string();
+                if (!file_picker_path.empty()) {
+                    option.value = file_picker_path.string();
+                }
             }
 
             if (!cfg::CONFIGURATOR_STANDALONE) {
                 ImGui::EndDisabled();
+                ImGui::TextUnformatted("File browser only works in spicecfg.");
+            }
+        } else if (definition.picker == OptionPickerType::DirectoryPath) {
+            if (!cfg::CONFIGURATOR_STANDALONE) {
+                ImGui::BeginDisabled();
+                ImGui::TextUnformatted("File browser only works in spicecfg.");
+            }
+            // to make the dialog wide enough to show path
+            ImGui::Dummy(ImVec2(320.f, 0.f));
+            if (ImGui::Button("Browse...")) {
+                // run in separate thread otherwise we get a crash
+                if (!file_picker_thread) {
+                    file_picker_done = false;
+                    file_picker_path = "";
+                    file_picker_thread = new std::thread([this] {
+                        CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
+                        const auto spice_bin_path =
+                            libutils::module_file_name(nullptr).parent_path().wstring();
+
+                        // SHBrowseForFolderW sucks, but the alternatives are:
+                        // 1. Use IFileDialog, which requires pulling in more Windows dependencies
+                        // 2. use ImGui::FileBrowser
+                        // both are acceptable but sticking to legacy UI for now for simplicity
+                        BROWSEINFOW info{};
+                        info.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+                        info.lpfn = BrowseCallbackProc;
+                        info.lParam = reinterpret_cast<LPARAM>(spice_bin_path.c_str());
+                        auto pidl = SHBrowseForFolderW(&info);
+                        if (pidl) {
+                            wchar_t path[MAX_PATH];
+                            std::filesystem::path result;
+                            if (SHGetPathFromIDListW(pidl, path)) {
+                                file_picker_path = path;
+                            }
+                            CoTaskMemFree(pidl);
+                        } else {
+                            file_picker_path = "";
+                        }
+
+                        // clean up
+                        file_picker_done = true;
+                        CoUninitialize();
+                    });
+                }
+            }
+
+            if (file_picker_done) {
+                file_picker_done = false;
+                file_picker_thread->join();
+                delete file_picker_thread;
+                file_picker_thread = nullptr;
+                if (!file_picker_path.empty()) {
+                    option.value = file_picker_path.string();
+                }
+            }
+
+            if (!cfg::CONFIGURATOR_STANDALONE) {
+                ImGui::EndDisabled();
+                ImGui::TextUnformatted("File browser only works in spicecfg.");
             }
 
         } else {

@@ -19,6 +19,7 @@ enum class OptionPickerType {
     EACard,
     CpuAffinity,
     FilePath,
+    DirectoryPath,
 };
 
 struct OptionDefinition {
@@ -41,6 +42,9 @@ struct OptionDefinition {
     std::vector<std::pair<std::string, std::string>> elements = {};
     bool disabled = false;
     OptionPickerType picker = OptionPickerType::None;
+
+    // for OptionPickerType::FilePath
+    std::string file_extension = "";
 };
 
 class Option {

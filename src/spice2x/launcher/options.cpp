@@ -72,6 +72,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "*.dll",
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
+        .file_extension = "DLL",
     },
     {
         .title = "Open Configurator",
@@ -782,6 +783,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .game_name = "Sound Voltex",
         .category = "Game Options (Advanced)",
+        .picker = OptionPickerType::DirectoryPath,
     },
     {
         .title = "SDVX Printer Output Clear",
@@ -1289,6 +1291,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to the modules folder.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::DirectoryPath,
     },
     {
         .title = "Screenshot Folder Override",
@@ -1296,6 +1299,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to the screenshots folder.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::DirectoryPath,
     },
     {
         .title = "Configuration Path Override",
@@ -1316,6 +1320,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
+        .file_extension = "JSON",
     },
     {
         // PatchManagerConfigPath
@@ -1326,6 +1331,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
+        .file_extension = "JSON",
     },
     {
         .title = "Intel SDE",
@@ -1333,6 +1339,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Path to Intel SDE kit path for automatic attaching.",
         .type = OptionType::Text,
         .category = "Development",
+        .picker = OptionPickerType::DirectoryPath
     },
     {
         .title = "ea3-config.xml Override",
@@ -1341,6 +1348,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
+        .file_extension = "XML",
     },
     {
         .title = "app-config.xml Override",
@@ -1349,6 +1357,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
+        .file_extension = "XML",
     },
     {
         .title = "avs-config.xml Override",
@@ -1357,6 +1366,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
+        .file_extension = "XML",
     },
     {
         .title = "bootstrap.xml Override",
@@ -1365,6 +1375,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
+        .file_extension = "XML",
     },
     {
         .title = "log.txt Override",
@@ -1373,6 +1384,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
+        .file_extension = "txt",
     },
     {
         .title = "API TCP Port",
@@ -2621,6 +2633,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .game_name = "LovePlus",
         .category = "Game Options (Advanced)",
+        .picker = OptionPickerType::DirectoryPath,
     },
     {
         .title = "LovePlus Printer Output Clear",
