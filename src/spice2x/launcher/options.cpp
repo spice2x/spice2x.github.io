@@ -1383,7 +1383,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .category = "Path Overrides",
         .picker = OptionPickerType::FilePath,
-        .file_extension = "txt",
+        .file_extension = "TXT",
     },
     {
         .title = "API TCP Port",
