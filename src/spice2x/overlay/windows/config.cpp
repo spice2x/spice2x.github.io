@@ -29,6 +29,7 @@
 #include "util/fileutils.h"
 #include "util/logging.h"
 #include "util/resutils.h"
+#include "util/scope_guard.h"
 #include "util/time.h"
 #include "util/utils.h"
 
@@ -2723,17 +2724,17 @@ namespace overlay::windows {
 
                         // open dialog to get path
                         auto ofn_path = std::make_unique<wchar_t[]>(512);
+                        ofn_path[0] = L'\0';
                         OPENFILENAMEW ofn {};
-                        memset(&ofn, 0, sizeof(ofn));
                         ofn.lStructSize = sizeof(ofn);
-                        ofn.hwndOwner = nullptr;
-                        ofn.lpstrFilter = L"";
                         ofn.lpstrFile = ofn_path.get();
                         ofn.nMaxFile = 512;
-                        ofn.Flags = OFN_EXPLORER;
+                        ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR;
                         ofn.lpstrDefExt = L"txt";
+                        ofn.lpstrInitialDir = L".";
 
                         // check for success
+                        auto guard = rawinput::set_os_window_focus_guard();
                         if (GetSaveFileNameW(&ofn)) {
 
                             // update card path
@@ -2921,6 +2922,25 @@ namespace overlay::windows {
         ImGui::EndDisabled();
     }
 
+    std::string Config::build_option_value_picker_title(const OptionDefinition& definition) {
+        // need to make these all unique since they are also used as ID
+        // if not unique, append ## per ImGui rules to create unique ones
+        switch (definition.picker) {
+            case OptionPickerType::AsioDriver:
+                return "ASIO Driver Picker";
+            case OptionPickerType::EACard:
+                return "EA Card Picker";
+            case OptionPickerType::CpuAffinity:
+                return "CPU Affinity Picker";
+            case OptionPickerType::FilePath:
+                return "File Picker";
+            case OptionPickerType::DirectoryPath:
+                return "Folder Picker";
+            default:
+                return "Unknown Picker";
+        };
+    }
+
     void Config::build_option_value_picker(Option& option) {
         auto &definition = option.get_definition();
         if (definition.picker == OptionPickerType::AsioDriver) {
@@ -2933,6 +2953,7 @@ namespace overlay::windows {
             } else {
                 ImGui::TextUnformatted("Pick from ASIO drivers:");
                 ImGui::TextUnformatted("");
+                ImGui::SetNextItemWidth(300.f);
                 if (ImGui::BeginListBox("##asiodrivers")) {
                     for (const auto &driver : asio_driver_list->driver_list) {
                         const bool is_selected = option.value == std::string(driver.name);
@@ -3011,8 +3032,6 @@ namespace overlay::windows {
                 ImGui::BeginDisabled();
                 ImGui::TextUnformatted("File browser only works in spicecfg.");
             }
-            // to make the dialog wide enough to show path
-            ImGui::Dummy(ImVec2(320.f, 0.f));
             if (ImGui::Button("Select File...")) {
                 // run in separate thread otherwise we get a crash
                 if (!file_picker_thread) {
@@ -3056,6 +3075,7 @@ namespace overlay::windows {
                         ofn.lpstrInitialDir = L".";
 
                         // check for success
+                        auto guard = rawinput::set_os_window_focus_guard();
                         if (GetSaveFileNameW(&ofn)) {
                             file_picker_path = std::filesystem::path(ofn_path.get());
                         }
@@ -3085,8 +3105,6 @@ namespace overlay::windows {
                 ImGui::BeginDisabled();
                 ImGui::TextUnformatted("File browser only works in spicecfg.");
             }
-            // to make the dialog wide enough to show path
-            ImGui::Dummy(ImVec2(320.f, 0.f));
             if (ImGui::Button("Browse...")) {
                 // run in separate thread otherwise we get a crash
                 if (!file_picker_thread) {
@@ -3106,6 +3124,7 @@ namespace overlay::windows {
                         info.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
                         info.lpfn = BrowseCallbackProc;
                         info.lParam = reinterpret_cast<LPARAM>(spice_bin_path.c_str());
+                        auto guard = rawinput::set_os_window_focus_guard();
                         auto pidl = SHBrowseForFolderW(&info);
                         if (pidl) {
                             wchar_t path[MAX_PATH];
@@ -3424,10 +3443,14 @@ namespace overlay::windows {
                     }
                 }
 
+                const std::string option_popup_id = build_option_value_picker_title(definition);
                 if (definition.picker != OptionPickerType::None && !option.disabled && !definition.disabled) {
                     ImGui::SameLine();
                     if (ImGui::Button("Pick")) {
-                        ImGui::OpenPopup("Option Helper");
+                        ImGui::OpenPopup(option_popup_id.c_str());
+                    }
+                    if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                        ImGui::HelpTooltip(definition.desc.c_str());
                     }
                 }
 
@@ -3448,24 +3471,30 @@ namespace overlay::windows {
                 }
 
                 // value picker
-                if (ImGui::BeginPopupModal("Option Helper", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "%s", definition.title.c_str());
-                    ImGui::TextUnformatted("");
-                    build_option_value_picker(option);
-                    ImGui::TextUnformatted("");
-                    ImGui::TextUnformatted("Current value:");
-                    ImGui::InputText("", &option.value);
-                    ImGui::SameLine();
-                    if (ImGui::ClearButton("Reset to default")) {
-                        option.value = "";
+                if (definition.picker != OptionPickerType::None &&
+                    !option.disabled && !definition.disabled) {
+                    if (ImGui::BeginPopupModal(option_popup_id.c_str(),
+                            nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                        // for min width enforcement
+                        ImGui::Dummy(ImVec2(320.f, 0.f));
+                        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "%s", definition.title.c_str());
+                        ImGui::TextUnformatted("");
+                        build_option_value_picker(option);
+                        ImGui::TextUnformatted("");
+                        ImGui::TextUnformatted("Current value:");
+                        ImGui::InputText("", &option.value);
+                        ImGui::SameLine();
+                        if (ImGui::ClearButton("Reset to default")) {
+                            option.value = "";
+                        }
+                        ImGui::TextUnformatted("");
+                        if (ImGui::Button("Save & Close")) {
+                            ImGui::CloseCurrentPopup();
+                            this->options_dirty = true;
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);  
+                        }
+                        ImGui::EndPopup();
                     }
-                    ImGui::TextUnformatted("");
-                    if (ImGui::Button("Save & Close")) {
-                        ImGui::CloseCurrentPopup();
-                        this->options_dirty = true;
-                        ::Config::getInstance().updateBinding(games_list[games_selected], option);  
-                    }
-                    ImGui::EndPopup();
                 }
 
                 // next item

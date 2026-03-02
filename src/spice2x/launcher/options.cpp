@@ -71,8 +71,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "*.dll",
         .category = "Path Overrides",
-        .picker = OptionPickerType::FilePath,
-        .file_extension = "DLL",
+        // intentionally not setting a file picker here to discourage people setting this without a good reason
     },
     {
         .title = "Open Configurator",
@@ -1291,7 +1290,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to the modules folder.",
         .type = OptionType::Text,
         .category = "Path Overrides",
-        .picker = OptionPickerType::DirectoryPath,
+        // intentionally not setting a folder picker here to discourage people setting this without a good reason
     },
     {
         .title = "Screenshot Folder Override",
