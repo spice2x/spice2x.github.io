@@ -2994,6 +2994,56 @@ namespace overlay::windows {
             } else {
                 ImGui::TextUnformatted("Using selected CPUs.");
             }
+        } else if (definition.picker == OptionPickerType::FilePath) {
+            if (!cfg::CONFIGURATOR_STANDALONE) {
+                ImGui::BeginDisabled();
+                ImGui::TextUnformatted("File browser only works in spicecfg.");
+            }
+            if (ImGui::Button("Select File...")) {
+                // run in separate thread otherwise we get a crash
+                if (!file_picker_thread) {
+                    file_picker_done = false;
+                    file_picker_thread = new std::thread([this] {
+
+                        const auto spice_bin_path =
+                            libutils::module_file_name(nullptr).parent_path().wstring();
+
+                        // open dialog to get path
+                        auto ofn_path = std::make_unique<wchar_t[]>(512);
+                        ofn_path[0] = L'\0';
+                        OPENFILENAMEW ofn{};
+                        ofn.lStructSize = sizeof(ofn);
+                        ofn.lpstrFilter = L"All Files\0*.*\0";
+                        ofn.lpstrFile = ofn_path.get();
+                        ofn.nMaxFile = 512;
+                        ofn.Flags = OFN_EXPLORER;
+                        ofn.lpstrInitialDir = spice_bin_path.c_str();
+
+                        // check for success
+                        if (GetSaveFileNameW(&ofn)) {
+                            file_picker_path = std::filesystem::path(ofn_path.get());
+                        }
+
+                        // clean up
+                        file_picker_done = true;
+                    });
+                }
+            }
+
+            if (file_picker_done) {
+                file_picker_done = false;
+                file_picker_thread->join();
+                delete file_picker_thread;
+                file_picker_thread = nullptr;
+                option.value = file_picker_path.string();
+            }
+
+            if (!cfg::CONFIGURATOR_STANDALONE) {
+                ImGui::EndDisabled();
+            }
+
+        } else {
+            ImGui::TextUnformatted("No picker available for this option. How did you get here?");
         }
     }
 

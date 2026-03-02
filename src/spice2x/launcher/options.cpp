@@ -71,6 +71,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "*.dll",
         .category = "Path Overrides",
+        .picker = OptionPickerType::FilePath,
     },
     {
         .title = "Open Configurator",
@@ -1314,6 +1315,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "If left empty, %appdata%\\spice2x\\spicetools_screen_resize.json will be used.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::FilePath,
     },
     {
         // PatchManagerConfigPath
@@ -1323,6 +1325,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "If left empty, %appdata%\\spice2x\\spicetools_patch_manager.json will be used.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::FilePath,
     },
     {
         .title = "Intel SDE",
@@ -1337,6 +1340,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to ea3-config.xml.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::FilePath,
     },
     {
         .title = "app-config.xml Override",
@@ -1344,6 +1348,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to app-config.xml.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::FilePath,
     },
     {
         .title = "avs-config.xml Override",
@@ -1351,6 +1356,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to avs-config.xml.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::FilePath,
     },
     {
         .title = "bootstrap.xml Override",
@@ -1358,6 +1364,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to bootstrap.xml.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::FilePath,
     },
     {
         .title = "log.txt Override",
@@ -1365,6 +1372,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Sets a custom path to log.txt.",
         .type = OptionType::Text,
         .category = "Path Overrides",
+        .picker = OptionPickerType::FilePath,
     },
     {
         .title = "API TCP Port",

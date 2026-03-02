@@ -18,6 +18,7 @@ enum class OptionPickerType {
     AsioDriver,
     EACard,
     CpuAffinity,
+    FilePath,
 };
 
 struct OptionDefinition {
