@@ -3096,7 +3096,6 @@ namespace overlay::windows {
 
             if (!cfg::CONFIGURATOR_STANDALONE) {
                 ImGui::EndDisabled();
-                ImGui::TextUnformatted("File browser only works in spicecfg.");
             }
         } else if (definition.picker == OptionPickerType::DirectoryPath) {
             if (!cfg::CONFIGURATOR_STANDALONE) {
@@ -3154,7 +3153,6 @@ namespace overlay::windows {
 
             if (!cfg::CONFIGURATOR_STANDALONE) {
                 ImGui::EndDisabled();
-                ImGui::TextUnformatted("File browser only works in spicecfg.");
             }
 
         } else {
