@@ -889,7 +889,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .display_name = "sdvxasio",
         .aliases= "sdvxasio",
         .desc = "ASIO driver name to use, replacing XONAR SOUND CARD(64). "
-            "String should match registry key under HLKM\\SOFTWARE\\ASIO\\ \n\n"
+            "String should match registry key under HKLM\\SOFTWARE\\ASIO\\ \n\n"
             "SDVX is EXTREMELY picky about ASIO devices it can support!",
         .type = OptionType::Text,
         .game_name = "Sound Voltex",

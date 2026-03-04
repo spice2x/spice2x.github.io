@@ -2948,6 +2948,17 @@ namespace overlay::windows {
                 asio_driver_list = std::make_unique<AsioDriverList>();
             }
 
+            ImGui::TextUnformatted("If your ASIO driver is not shown here, close this");
+            ImGui::TextUnformatted("popup and enter the driver name manually.");
+            ImGui::SameLine();
+            ImGui::HelpMarker(
+                "This list is populated by scanning the registry for ASIO drivers.\n\n"
+                "If your driver is not showing up, it may be because it is not properly registered in the system.\n\n"
+                "For 64-bit games, check in HKLM\\SOFTWARE\\ASIO\\.\n\n"
+                "For 32-bit games on 64-bit Windows, check in HKLM\\SOFTWARE\\WOW6432Node\\ASIO\\.\n\n"
+                "spicecfg runs in 32-bit, so it may not see 64-bit-only drivers.");
+
+            ImGui::TextUnformatted("");
             if (asio_driver_list->driver_list.empty()) {
                 ImGui::TextUnformatted("No ASIO drivers found.");
             } else {
