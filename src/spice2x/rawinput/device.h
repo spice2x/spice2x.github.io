@@ -4,6 +4,7 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <map>
 
 #include <windows.h>
 
@@ -120,9 +121,15 @@ namespace rawinput {
         std::vector<std::string> value_caps_names;
         std::vector<HIDP_VALUE_CAPS> value_output_caps_list;
         std::vector<std::string> value_output_caps_names;
+
         std::vector<std::vector<bool>> button_states;
         std::vector<std::vector<double>> button_up, button_down;
         std::vector<std::vector<bool>> button_output_states;
+
+        // key: usage page, link collection
+        // value: number of buttons for that key (combine ranges and nonranges)
+        std::map<std::pair<USAGE, ULONG>, ULONG> button_usage_pages;
+
         std::vector<float> value_states;
         std::vector<LONG> value_states_raw;
         std::vector<float> value_output_states;

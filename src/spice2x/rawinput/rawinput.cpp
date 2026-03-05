@@ -405,6 +405,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
             std::vector<std::string> button_caps_names;
             std::vector<std::vector<bool>> button_states;
             std::vector<std::vector<double>> button_up, button_down;
+            std::map<std::pair<USAGE, ULONG>, ULONG> button_usage_pages;
             for (int button_cap_num = 0; button_cap_num < button_cap_length; button_cap_num++) {
                 auto &button_caps = button_cap_data[button_cap_num];
 
@@ -436,6 +437,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
                 button_states.emplace_back(std::vector<bool>(static_cast<unsigned int>(button_count), false));
                 button_up.emplace_back(std::vector<double>(static_cast<unsigned int>(button_count), 0.0));
                 button_down.emplace_back(std::vector<double>(static_cast<unsigned int>(button_count), 0.0));
+                button_usage_pages[std::make_pair(button_caps.UsagePage, button_caps.LinkCollection)] += button_count;
 
                 // names
                 for (USAGE usg = button_caps.Range.UsageMin; usg <= button_caps.Range.UsageMax; usg++) {
@@ -757,6 +759,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
             new_device.hidInfo->button_up = std::move(button_up);
             new_device.hidInfo->button_down = std::move(button_down);
             new_device.hidInfo->button_output_states = std::move(button_output_states);
+            new_device.hidInfo->button_usage_pages = std::move(button_usage_pages);
             new_device.hidInfo->value_states = std::move(value_states);
             new_device.hidInfo->value_states_raw = std::move(value_states_raw);
             new_device.hidInfo->value_output_states = std::move(value_output_states);
@@ -1713,53 +1716,86 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                         // get HID data
                         auto &data_hid = data->data.hid;
 
-                        // buttons
-                        for (size_t cap_num = 0; cap_num < device.hidInfo->button_caps_list.size(); cap_num++) {
-                            auto &button_caps = device.hidInfo->button_caps_list[cap_num];
-                            auto &button_states = device.hidInfo->button_states[cap_num];
-                            auto &button_down = device.hidInfo->button_down[cap_num];
-                            auto &button_up = device.hidInfo->button_up[cap_num];
+                        // parse reports
+                        for (const auto &pair : device.hidInfo->button_usage_pages) {
+                            const auto usage_page = pair.first.first;
+                            const auto link_collection = pair.first.second;
+                            const auto button_count = pair.second;
 
-                            // get button count
-                            int button_count = button_caps.Range.UsageMax - button_caps.Range.UsageMin + 1;
-                            if (button_count <= 0) {
-                                continue;
-                            }
-
-                            // get usages
-                            auto usages_length = static_cast<ULONG>(button_count);
+                            ULONG usages_length = button_count;
                             std::vector<USAGE> usages(static_cast<size_t>(usages_length));
                             if (HidP_GetUsages(
                                     HidP_Input,
-                                    button_caps.UsagePage,
-                                    button_caps.LinkCollection,
+                                    usage_page,
+                                    link_collection,
                                     usages.data(),
                                     &usages_length,
                                     reinterpret_cast<PHIDP_PREPARSED_DATA>(device.hidInfo->preparsed_data.get()),
                                     reinterpret_cast<PCHAR>(data_hid.bRawData),
                                     data_hid.dwSizeHid) != HIDP_STATUS_SUCCESS) {
+
+                                // log_warning(
+                                //     "rawinput",
+                                //     "failed to get usages for device {}, usage page {:x} and link collection {:x}",
+                                //     device.desc,
+                                //     usage_page, link_collection);
                                 continue;
                             }
 
-                            // update buttons
-                            std::vector<bool> new_states(button_count);
-                            for (ULONG usage_num = 0; usage_num < usages_length; usage_num++) {
-                                USAGE usage = usages[usage_num] - button_caps.Range.UsageMin;
-
-                                // guard against some buggy device sending an event for a usage below `UsageMin`
-                                if (usage < button_count) {
-                                    new_states[usage] = true;
-                                }
+                            // how many buttons?
+                            if (usages_length == 0) {
+                                continue;
                             }
-                            for (int button_num = 0; button_num < button_count; button_num++) {
-                                if (!new_states[button_num] && button_states[button_num]) {
-                                    device.updated = true;
-                                    button_states[button_num] = new_states[button_num];
-                                    button_down[button_num] = input_time;
-                                } else if (new_states[button_num] && !button_states[button_num]) {
-                                    device.updated = true;
-                                    button_states[button_num] = new_states[button_num];
-                                    button_up[button_num] = input_time;
+
+                            // log_info(
+                            //     "rawinput",
+                            //     "processing HID input for device {}, usage page {:x} and link collection {:x} with {} buttons, got {} reports",
+                            //     device.desc,
+                            //     usage_page, link_collection, button_count, usages_length);
+
+                            // buttons
+                            for (size_t cap_num = 0; cap_num < device.hidInfo->button_caps_list.size(); cap_num++) {
+                                auto &button_caps = device.hidInfo->button_caps_list[cap_num];
+                                auto &button_states = device.hidInfo->button_states[cap_num];
+                                auto &button_down = device.hidInfo->button_down[cap_num];
+                                auto &button_up = device.hidInfo->button_up[cap_num];
+
+                                // is this the right usage page and link collection?
+                                if (button_caps.UsagePage != usage_page || button_caps.LinkCollection != link_collection) {
+                                    continue;
+                                }
+
+                                // get button count
+                                int button_count = button_caps.Range.UsageMax - button_caps.Range.UsageMin + 1;
+                                if (button_count <= 0) {
+                                    continue;
+                                }
+
+                                // update buttons
+                                std::vector<bool> new_states(button_count);
+                                for (ULONG usage_num = 0; usage_num < usages_length; usage_num++) {
+                                    if (usages[usage_num] < button_caps.Range.UsageMin ||
+                                        usages[usage_num] > button_caps.Range.UsageMax) {
+                                        continue;
+                                    }
+
+                                    USAGE usage = usages[usage_num] - button_caps.Range.UsageMin;
+
+                                    // guard against some buggy device sending an event for a usage below `UsageMin`
+                                    if (usage < button_count) {
+                                        new_states[usage] = true;
+                                    }
+                                }
+                                for (int button_num = 0; button_num < button_count; button_num++) {
+                                    if (!new_states[button_num] && button_states[button_num]) {
+                                        device.updated = true;
+                                        button_states[button_num] = new_states[button_num];
+                                        button_down[button_num] = input_time;
+                                    } else if (new_states[button_num] && !button_states[button_num]) {
+                                        device.updated = true;
+                                        button_states[button_num] = new_states[button_num];
+                                        button_up[button_num] = input_time;
+                                    }
                                 }
                             }
                         }
