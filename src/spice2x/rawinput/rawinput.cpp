@@ -1742,11 +1742,6 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                                 continue;
                             }
 
-                            // how many buttons?
-                            if (usages_length == 0) {
-                                continue;
-                            }
-
                             // log_info(
                             //     "rawinput",
                             //     "processing HID input for device {}, usage page {:x} and link collection {:x} with {} buttons, got {} reports",
