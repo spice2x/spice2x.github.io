@@ -41,8 +41,8 @@ done
 # settings
 GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2> /dev/null || echo "none")
 GIT_HEAD=$(git rev-parse HEAD || echo "none")
-TOOLCHAIN_32="/usr/share/mingw/toolchain-i686-w64-mingw32.cmake"
-TOOLCHAIN_64="/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake"
+TOOLCHAIN_32="${TOOLCHAIN_32:-"/usr/share/mingw/toolchain-i686-w64-mingw32.cmake"}"
+TOOLCHAIN_64="${TOOLCHAIN_64:-"/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake"}"
 BUILDDIR_32_RELEASE="./cmake-build-release-32"
 BUILDDIR_32_DEBUG="./cmake-build-debug-32"
 BUILDDIR_64_RELEASE="./cmake-build-release-64"
