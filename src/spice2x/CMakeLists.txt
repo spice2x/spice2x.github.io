@@ -109,6 +109,12 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # RapidJSON does this
     add_compile_definitions(_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING)
 
+    add_compile_options("-Wno-nontrivial-memcall") # imgui, rapidjson
+    add_compile_options("-Wno-deprecated-builtins") # robin_hood
+    add_compile_options("-Wno-deprecated-declarations") # rapidjson
+    add_compile_options("-Wno-inconsistent-missing-override") # headsocket
+    add_compile_options("-Wno-microsoft-exception-spec") # gcc/clang have different noexcept specifiers on d3d9 COM interfaces
+
     # warnings
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunknown-warning-option")
 
