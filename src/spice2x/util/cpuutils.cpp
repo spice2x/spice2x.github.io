@@ -1,3 +1,6 @@
+// GetCurrentProcessorNumberEx
+#define _WIN32_WINNT 0x0601
+
 #include "cpuutils.h"
 
 #include <thread>
@@ -98,7 +101,7 @@ namespace cpuutils {
         log_misc("cpuutils", "detected {} processors", PROCESSOR_COUNT);
 
         done = true;
-        
+
         // init processor states
         get_load();
     }
@@ -144,11 +147,11 @@ namespace cpuutils {
         // dump cpu id
         log_misc("cpuinfo", "{}, {} ({})",
             cpu.vendor,
-            cpu.brand_string, 
+            cpu.brand_string,
             GetX86MicroarchitectureName(GetX86Microarchitecture(&cpu)));
         log_misc("cpuinfo", "family 0x{:x}, model 0x{:x}, stepping 0x{:x}", cpu.family, cpu.model, cpu.stepping);
 
-        // dump features        
+        // dump features
         std::string features = "";
         for (size_t i = 0; i < X86_LAST_; ++i) {
             if (GetX86FeaturesEnumValue(&cpu.features, static_cast<X86FeaturesEnum>(i))) {
@@ -253,7 +256,7 @@ namespace cpuutils {
         if (GetLogicalProcessorInformationEx == nullptr) {
             return;
         }
-        
+
         // determine buffer size
         returned_length = 0;
         result = GetLogicalProcessorInformationEx(

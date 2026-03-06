@@ -1,3 +1,6 @@
+// QueryDisplayConfig
+#define _WIN32_WINNT 0x0601
+
 #include "pc.h"
 
 #include <format>
@@ -32,10 +35,10 @@ namespace games::pc {
         if (pRawInputDevices &&
             (uiNumDevices > 0) &&
             (pRawInputDevices[0].hwndTarget == RI_MGR->input_hwnd)) {
-            
+
             return RegisterRawInputDevices_orig(pRawInputDevices, uiNumDevices, cbSize);
         }
-        
+
         // otherwise, it must be the game; prevent the game from registering for raw input
         // and hijacking WM_INPUT messages.
         SetLastError(0xDEADBEEF);
@@ -58,7 +61,7 @@ namespace games::pc {
     }
 
     LONG WINAPI QueryDisplayConfig_hook(UINT32, UINT32*, DISPLAYCONFIG_PATH_INFO*, UINT32*, DISPLAYCONFIG_MODE_INFO*, DISPLAYCONFIG_TOPOLOGY_ID*) {
-        // make unity fallback to EnumDisplaySettingsW as I don't 
+        // make unity fallback to EnumDisplaySettingsW as I don't
         // want to deal with this api which is way more complex
         return ERROR_NOT_SUPPORTED;
     }
@@ -98,9 +101,9 @@ namespace games::pc {
         const auto user32Dll = "user32.dll";
         detour::trampoline_try(user32Dll, "RegisterRawInputDevices",
                                RegisterRawInputDevices_hook, &RegisterRawInputDevices_orig);
-        detour::trampoline_try(user32Dll, "QueryDisplayConfig", 
+        detour::trampoline_try(user32Dll, "QueryDisplayConfig",
                                QueryDisplayConfig_hook, &QueryDisplayConfig_orig);
-        detour::trampoline_try(user32Dll, "EnumDisplaySettingsW", 
+        detour::trampoline_try(user32Dll, "EnumDisplaySettingsW",
                                EnumDisplaySettingsW_hook, &EnumDisplaySettingsW_orig);
 
         if (GRAPHICS_SHOW_CURSOR) {
