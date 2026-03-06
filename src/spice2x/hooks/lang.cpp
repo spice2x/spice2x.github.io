@@ -1,3 +1,6 @@
+// GetLocaleInfoEx
+#define _WIN32_WINNT 0x0600
+
 #include "lang.h"
 
 #define WIN32_NO_STATUS

@@ -1,3 +1,6 @@
+// DisplayConfigSetDeviceInfo
+#define _WIN32_WINNT 0x0601
+
 #include "winuser.h"
 
 #include "util/detour.h"
