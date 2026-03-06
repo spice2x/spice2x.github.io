@@ -10,8 +10,8 @@ namespace overlay::windows {
         ~ScreenResize() override;
 
         void build_content() override;
-        void update();
-        
+        void update() override;
+
     private:
         size_t toggle_screen_resize = ~0u;
         bool toggle_screen_resize_state = false;

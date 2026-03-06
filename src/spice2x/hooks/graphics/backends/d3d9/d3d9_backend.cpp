@@ -278,7 +278,7 @@ static bool is_dx9_on_12_enabled() {
     }
 
     if (GRAPHICS_9_ON_12_STATE == DX9ON12_FORCE_ON) {
-        if (avs::game::is_model("LDJ") && avs::game::is_ext(2023091500, MAXINT)) {
+        if (avs::game::is_model("LDJ") && avs::game::is_ext(2023091500, INT_MAX)) {
             deferredlogs::defer_error_messages({
                 "dx9on12 was force enabled by user (-dx9on12)",
                 "    IIDX31+ is known to be incompatible with DX 9on12, leading to blank screen or crashes",

@@ -473,7 +473,7 @@ namespace games::iidx {
                 "!!! please do the following instead:                              !!!\n"
                 "!!!                                                               !!!\n"
                 "!!! Revert your changes to XML file so it says                    !!!\n"
-                "!!!     <model __type=\"str\">LDJ</model>                         !!!\n" 
+                "!!!     <model __type=\"str\">LDJ</model>                         !!!\n"
                 "!!!                                                               !!!\n"
                 "!!! In SpiceCfg, enable 'IIDX TDJ Mode' or provide -iidxtdj flag  !!!\n"
                 "!!! in command line                                               !!!\n"
@@ -818,7 +818,7 @@ namespace games::iidx {
     }
 
     bool is_tdj_fhd() {
-        return TDJ_MODE && avs::game::is_ext(2022101900, MAXINT);
+        return TDJ_MODE && avs::game::is_ext(2022101900, INT_MAX);
     }
 
     void apply_audio_hacks() {
@@ -884,12 +884,12 @@ namespace games::iidx {
 
         // patch iidx32+ for asio compatibility
         // only do this if NOT wasapi (as opposed to checking if it's asio)
-        // the patch is only really needed for (some) non-XONAR devices but since people sometimes disguise 
+        // the patch is only really needed for (some) non-XONAR devices but since people sometimes disguise
         // other devices as a XONAR, don't check for the exact string (common ASIO workaround for INF)
-        if (avs::game::is_ext(2024090100, MAXINT) &&
+        if (avs::game::is_ext(2024090100, INT_MAX) &&
             !(SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() &&
               SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi")) {
-                
+
             // in iidx32 final:
             // ff 50 08      call   QWORD PTR [rax+0x8]     ; ASIO instance AddRef
             // 48 8b 4b 08   mov    rcx,QWORD PTR [rbx+0x8]

@@ -6,24 +6,20 @@
 #include <windows.h>
 #include "option.h"
 
+#include "button.h"
+#include "analog.h"
+#include "light.h"
+
 namespace rawinput {
     class RawInputManager;
     struct Device;
 }
 
-class Button;
-class Analog;
-class Light;
 class Game;
 class Option;
 
 namespace GameAPI {
     namespace Buttons {
-        enum State {
-            BUTTON_PRESSED = true,
-            BUTTON_NOT_PRESSED = false
-        };
-
         /**
          * Parses the config and returns the buttons set by the user.
          *
@@ -152,7 +148,3 @@ namespace GameAPI {
         void sortOptions(std::vector<Option> &, const std::vector<OptionDefinition> &);
     }
 }
-
-#include "button.h"
-#include "analog.h"
-#include "light.h"

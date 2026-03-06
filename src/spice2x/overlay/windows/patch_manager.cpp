@@ -235,9 +235,9 @@ namespace overlay::windows {
 #ifdef _MSC_VER
                 static_cast<PLDR_DLL_NOTIFICATION_FUNCTION>([]
 #else
-                                                            [] CALLBACK
+                                                            []
 #endif
-            (ULONG reason, PCLDR_DLL_NOTIFICATION_DATA data, PVOID ctx) {
+            (ULONG reason, PCLDR_DLL_NOTIFICATION_DATA data, PVOID ctx) CALLBACK {
                 if (reason == LDR_DLL_NOTIFICATION_REASON_LOADED) {
                     auto const dll = strtolower(std::filesystem::path({
                         data->Loaded.FullDllName->Buffer,
@@ -432,7 +432,7 @@ namespace overlay::windows {
                 }
             }
         }
-        
+
         bool url_entered = false;
         bool is_valid_url = false;
         bool patches_imported = false;
@@ -635,7 +635,7 @@ namespace overlay::windows {
                 const auto search_str_in_lower = strtolower(patch_name_filter);
                 size_t patches_shown = 0;
                 for (auto &patch : patches) {
-                    
+
                     // get patch status
                     PatchStatus patch_status = is_patch_active(patch);
                     patch.last_status = patch_status;
@@ -836,7 +836,7 @@ namespace overlay::windows {
                     }
                     ImGui::PopID();
                 }
-                
+
                 if (patches_shown == 0) {
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
@@ -981,7 +981,7 @@ namespace overlay::windows {
                                         "patchmanager",
                                         "matched auto apply entry by full game identifier: {}",
                                         entry_id);
-                                
+
                                 } else if (is_game_id_wildcard_matched(entry_id)) {
                                     // match on model and ext, ignoring dest/spec/rev
                                     // sample: LDJ:J:E:A:2025011400
@@ -1208,7 +1208,7 @@ namespace overlay::windows {
                 identifier,
                 time);
         }
-        
+
         return identifier;
     }
 
@@ -2000,7 +2000,7 @@ namespace overlay::windows {
                     };
 
                     // get data offset
-                    memory_patch_data.data_offset = 
+                    memory_patch_data.data_offset =
                         parse_json_data_offset(patch_data.name, memory_patch);
                     if (memory_patch_data.data_offset == 0) {
                         continue;
@@ -2155,7 +2155,7 @@ namespace overlay::windows {
                     }
 
                     // get offset
-                    uint64_t union_offset = 
+                    uint64_t union_offset =
                         parse_json_data_offset(patch_data.name, union_patch_it->value);
                     if (union_offset == 0) {
                         continue;
@@ -2193,7 +2193,7 @@ namespace overlay::windows {
                     // move to list
                     patch_data.patches_union.emplace_back(union_patch_data);
                 }
-                
+
                 if (setting_union_patches_enabled.contains(patch_data.hash)) {
                     patch_data.selected_union_name = setting_union_patches_enabled[patch_data.hash];
                 }
@@ -2742,7 +2742,7 @@ namespace overlay::windows {
                             union_patch.data_len);
                 }
             }
-            
+
             if (union_patch.data_offset_ptr == nullptr) {
                 return false;
             }
