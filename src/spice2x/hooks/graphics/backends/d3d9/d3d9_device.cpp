@@ -74,7 +74,7 @@ std::string pool2s(D3DPOOL Pool) {
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::QueryInterface(
         REFIID riid,
-        void **ppvObj)
+        void **ppvObj) noexcept
 {
     if (ppvObj == nullptr) {
         return E_POINTER;
@@ -112,13 +112,13 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::QueryInterface(
     return pReal->QueryInterface(riid, ppvObj);
 }
 
-ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::AddRef() {
+ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::AddRef() noexcept {
     this->refs++;
 
     return pReal->AddRef();
 }
 
-ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() {
+ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() noexcept {
 
     // get what this thread thinks the reference count is
     auto local_refs = --this->refs;
@@ -174,30 +174,30 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() {
  * IDirect3DDevice9
  */
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::TestCooperativeLevel() {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::TestCooperativeLevel() noexcept {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->TestCooperativeLevel());
 }
 
-UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetAvailableTextureMem() {
+UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetAvailableTextureMem() noexcept {
     WRAP_DEBUG;
     return pReal->GetAvailableTextureMem();
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EvictManagedResources() {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EvictManagedResources() noexcept {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->EvictManagedResources());
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDirect3D(
-        IDirect3D9 **ppD3D9)
+        IDirect3D9 **ppD3D9) noexcept
 {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->GetDirect3D(ppD3D9));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDeviceCaps(
-        D3DCAPS9 *pCaps)
+        D3DCAPS9 *pCaps) noexcept
 {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->GetDeviceCaps(pCaps));
@@ -205,14 +205,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDeviceCaps(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDisplayMode(
         UINT iSwapChain,
-        D3DDISPLAYMODE *pMode)
+        D3DDISPLAYMODE *pMode) noexcept
 {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->GetDisplayMode(iSwapChain, pMode));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetCreationParameters(
-        D3DDEVICE_CREATION_PARAMETERS *pParameters)
+        D3DDEVICE_CREATION_PARAMETERS *pParameters) noexcept
 {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->GetCreationParameters(pParameters));
@@ -221,7 +221,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetCreationParameters(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetCursorProperties(
         UINT XHotSpot,
         UINT YHotSpot,
-        IDirect3DSurface9 *pCursorBitmap)
+        IDirect3DSurface9 *pCursorBitmap) noexcept
 {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->SetCursorProperties(XHotSpot, YHotSpot, pCursorBitmap));
@@ -230,14 +230,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetCursorProperties(
 void STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetCursorPosition(
         int X,
         int Y,
-        DWORD Flags)
+        DWORD Flags) noexcept
 {
     WRAP_VERBOSE;
     return pReal->SetCursorPosition(X, Y, Flags);
 }
 
 BOOL STDMETHODCALLTYPE WrappedIDirect3DDevice9::ShowCursor(
-        BOOL bShow)
+        BOOL bShow) noexcept
 {
     WRAP_VERBOSE;
     return pReal->ShowCursor(bShow);
@@ -245,7 +245,7 @@ BOOL STDMETHODCALLTYPE WrappedIDirect3DDevice9::ShowCursor(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
         D3DPRESENT_PARAMETERS *pPresentationParameters,
-        IDirect3DSwapChain9 **ppSwapChain)
+        IDirect3DSwapChain9 **ppSwapChain) noexcept
 {
     WRAP_VERBOSE;
 
@@ -281,7 +281,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
         UINT iSwapChain,
-        IDirect3DSwapChain9 **ppSwapChain)
+        IDirect3DSwapChain9 **ppSwapChain) noexcept
 {
     WRAP_VERBOSE_FMT("GetSwapChain({})", iSwapChain);
 
@@ -339,7 +339,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
     return ret;
 }
 
-UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
+UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() noexcept {
     WRAP_VERBOSE;
 
     UINT n = pReal->GetNumberOfSwapChains();
@@ -352,7 +352,7 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
-        D3DPRESENT_PARAMETERS *pPresentationParameters)
+        D3DPRESENT_PARAMETERS *pPresentationParameters) noexcept
 {
     log_misc("graphics::d3d9", "WrappedIDirect3DDevice9::Reset");
 
@@ -384,7 +384,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Present(
         const RECT *pSourceRect,
         const RECT *pDestRect,
         HWND hDestWindowOverride,
-        const RGNDATA *pDirtyRegion)
+        const RGNDATA *pDirtyRegion) noexcept
 {
     WRAP_DEBUG;
 
@@ -402,7 +402,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetBackBuffer(
         UINT iSwapChain,
         UINT iBackBuffer,
         D3DBACKBUFFER_TYPE Type,
-        IDirect3DSurface9 **ppBackBuffer)
+        IDirect3DSurface9 **ppBackBuffer) noexcept
 {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->GetBackBuffer(iSwapChain, iBackBuffer, Type, ppBackBuffer));
@@ -410,14 +410,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetBackBuffer(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetRasterStatus(
         UINT iSwapChain,
-        D3DRASTER_STATUS *pRasterStatus)
+        D3DRASTER_STATUS *pRasterStatus) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetRasterStatus(iSwapChain, pRasterStatus));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetDialogBoxMode(
-        BOOL bEnableDialogs)
+        BOOL bEnableDialogs) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetDialogBoxMode(bEnableDialogs));
@@ -426,7 +426,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetDialogBoxMode(
 void STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetGammaRamp(
         UINT iSwapChain,
         DWORD Flags,
-        const D3DGAMMARAMP *pRamp)
+        const D3DGAMMARAMP *pRamp) noexcept
 {
     WRAP_DEBUG;
     pReal->SetGammaRamp(iSwapChain, Flags, pRamp);
@@ -434,7 +434,7 @@ void STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetGammaRamp(
 
 void STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetGammaRamp(
         UINT iSwapChain,
-        D3DGAMMARAMP *pRamp)
+        D3DGAMMARAMP *pRamp) noexcept
 {
     WRAP_DEBUG;
     pReal->GetGammaRamp(iSwapChain, pRamp);
@@ -448,7 +448,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateTexture(
         D3DFORMAT Format,
         D3DPOOL Pool,
         IDirect3DTexture9 **ppTexture,
-        HANDLE *pSharedHandle)
+        HANDLE *pSharedHandle) noexcept
 {
     WRAP_VERBOSE_FMT("CreateTexture({}, {}, {}, {}, {}, {})",
             Width, Height, Levels, usage2s(Usage), Format, pool2s(Pool));
@@ -497,7 +497,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateVolumeTexture(
         D3DFORMAT Format,
         D3DPOOL Pool,
         IDirect3DVolumeTexture9 **ppVolumeTexture,
-        HANDLE *pSharedHandle)
+        HANDLE *pSharedHandle) noexcept
 {
     WRAP_VERBOSE_FMT("CreateVolumeTexture({}, {}, {}, {}, {}, {}, {})",
             Width, Height, Depth, Levels, usage2s(Usage), Format, pool2s(Pool));
@@ -513,7 +513,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateCubeTexture(
         D3DFORMAT Format,
         D3DPOOL Pool,
         IDirect3DCubeTexture9 **ppCubeTexture,
-        HANDLE *pSharedHandle)
+        HANDLE *pSharedHandle) noexcept
 {
     WRAP_VERBOSE_FMT("CreateCubeTexture({}, {}, {}, {}, {})",
             EdgeLength, Levels, usage2s(Usage), Format, pool2s(Pool));
@@ -527,7 +527,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateVertexBuffer(
         DWORD FVF,
         D3DPOOL Pool,
         IDirect3DVertexBuffer9 **ppVertexBuffer,
-        HANDLE *pSharedHandle)
+        HANDLE *pSharedHandle) noexcept
 {
     WRAP_VERBOSE_FMT("CreateVertexBuffer({}, {}, {}, {})", Length, usage2s(Usage), FVF, pool2s(Pool));
     CHECK_RESULT(pReal->CreateVertexBuffer(Length, Usage, FVF, Pool, ppVertexBuffer, pSharedHandle));
@@ -539,7 +539,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateIndexBuffer(
         D3DFORMAT Format,
         D3DPOOL Pool,
         IDirect3DIndexBuffer9 **ppIndexBuffer,
-        HANDLE *pSharedHandle)
+        HANDLE *pSharedHandle) noexcept
 {
     WRAP_VERBOSE_FMT("CreateIndexBuffer({}, {}, {}, {})", Length, usage2s(Usage), Format, pool2s(Pool));
     CHECK_RESULT(pReal->CreateIndexBuffer(Length, Usage, Format, Pool, ppIndexBuffer, pSharedHandle));
@@ -553,7 +553,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateRenderTarget(
         DWORD MultisampleQuality,
         BOOL Lockable,
         IDirect3DSurface9 **ppSurface,
-        HANDLE *pSharedHandle)
+        HANDLE *pSharedHandle) noexcept
 {
     WRAP_VERBOSE_FMT("CreateRenderTarget({}, {}, {}, {}, {}, {})",
             Width, Height, Format, MultiSample, MultisampleQuality, Lockable);
@@ -569,7 +569,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateDepthStencilSurface(
         DWORD MultisampleQuality,
         BOOL Discard,
         IDirect3DSurface9 **ppSurface,
-        HANDLE *pSharedHandle)
+        HANDLE *pSharedHandle) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->CreateDepthStencilSurface(Width, Height, Format,
@@ -580,7 +580,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::UpdateSurface(
         IDirect3DSurface9 *pSourceSurface,
         const RECT *pSourceRect,
         IDirect3DSurface9 *pDestinationSurface,
-        const POINT *pDestPoint)
+        const POINT *pDestPoint) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->UpdateSurface(pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint));
@@ -588,7 +588,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::UpdateSurface(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::UpdateTexture(
         IDirect3DBaseTexture9 *pSourceTexture,
-        IDirect3DBaseTexture9 *pDestinationTexture)
+        IDirect3DBaseTexture9 *pDestinationTexture) noexcept
 {
     WRAP_DEBUG;
 
@@ -626,7 +626,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::UpdateTexture(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetRenderTargetData(
         IDirect3DSurface9 *pRenderTarget,
-        IDirect3DSurface9 *pDestSurface)
+        IDirect3DSurface9 *pDestSurface) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetRenderTargetData(pRenderTarget, pDestSurface));
@@ -634,7 +634,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetRenderTargetData(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetFrontBufferData(
         UINT iSwapChain,
-        IDirect3DSurface9 *pDestSurface)
+        IDirect3DSurface9 *pDestSurface) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetFrontBufferData(iSwapChain, pDestSurface));
@@ -645,7 +645,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::StretchRect(
         const RECT *pSourceRect,
         IDirect3DSurface9 *pDestSurface,
         const RECT *pDestRect,
-        D3DTEXTUREFILTERTYPE Filter)
+        D3DTEXTUREFILTERTYPE Filter) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->StretchRect(pSourceSurface, pSourceRect, pDestSurface, pDestRect, Filter));
@@ -654,7 +654,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::StretchRect(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ColorFill(
         IDirect3DSurface9 *pSurface,
         const RECT *pRect,
-        D3DCOLOR color)
+        D3DCOLOR color) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->ColorFill(pSurface, pRect, color));
@@ -666,7 +666,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateOffscreenPlainSurface(
         D3DFORMAT Format,
         D3DPOOL Pool,
         IDirect3DSurface9 **ppSurface,
-        HANDLE *pSharedHandle)
+        HANDLE *pSharedHandle) noexcept
 {
     WRAP_VERBOSE_FMT("CreateOffscreenPlainSurface({}, {}, {}, {})",
             Width, Height, Format, pool2s(Pool));
@@ -676,7 +676,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateOffscreenPlainSurface(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetRenderTarget(
         DWORD RenderTargetIndex,
-        IDirect3DSurface9 *pRenderTarget)
+        IDirect3DSurface9 *pRenderTarget) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetRenderTarget(RenderTargetIndex, pRenderTarget));
@@ -684,27 +684,27 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetRenderTarget(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetRenderTarget(
         DWORD RenderTargetIndex,
-        IDirect3DSurface9 **ppRenderTarget)
+        IDirect3DSurface9 **ppRenderTarget) noexcept
 {
     WRAP_DEBUG;
     return pReal->GetRenderTarget(RenderTargetIndex, ppRenderTarget);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetDepthStencilSurface(
-        IDirect3DSurface9 *pNewZStencil)
+        IDirect3DSurface9 *pNewZStencil) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetDepthStencilSurface(pNewZStencil));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDepthStencilSurface(
-        IDirect3DSurface9 **ppZStencilSurface)
+        IDirect3DSurface9 **ppZStencilSurface) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetDepthStencilSurface(ppZStencilSurface));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::BeginScene() {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::BeginScene() noexcept {
     WRAP_DEBUG;
 
     static std::once_flag printed;
@@ -927,7 +927,7 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     }
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EndScene() {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EndScene() noexcept {
     WRAP_DEBUG;
 
     if (cfg::SCREENRESIZE->enable_screen_resize || GRAPHICS_FS_ORIENTATION_SWAP) {
@@ -948,7 +948,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Clear(
         DWORD Flags,
         D3DCOLOR Color,
         float Z,
-        DWORD Stencil)
+        DWORD Stencil) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->Clear(Count, pRects, Flags, Color, Z, Stencil));
@@ -956,7 +956,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Clear(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetTransform(
         D3DTRANSFORMSTATETYPE State,
-        const D3DMATRIX *pMatrix)
+        const D3DMATRIX *pMatrix) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetTransform(State, pMatrix));
@@ -964,7 +964,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetTransform(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetTransform(
         D3DTRANSFORMSTATETYPE State,
-        D3DMATRIX *pMatrix)
+        D3DMATRIX *pMatrix) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetTransform(State, pMatrix));
@@ -972,14 +972,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetTransform(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::MultiplyTransform(
         D3DTRANSFORMSTATETYPE State,
-        const D3DMATRIX *pMatrix)
+        const D3DMATRIX *pMatrix) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->MultiplyTransform(State, pMatrix));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetViewport(
-        const D3DVIEWPORT9 *pViewport)
+        const D3DVIEWPORT9 *pViewport) noexcept
 {
     WRAP_DEBUG;
 
@@ -996,21 +996,21 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetViewport(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetViewport(
-        D3DVIEWPORT9 *pViewport)
+        D3DVIEWPORT9 *pViewport) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetViewport(pViewport));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetMaterial(
-        const D3DMATERIAL9 *pMaterial)
+        const D3DMATERIAL9 *pMaterial) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetMaterial(pMaterial));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetMaterial(
-        D3DMATERIAL9 *pMaterial)
+        D3DMATERIAL9 *pMaterial) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetMaterial(pMaterial));
@@ -1018,7 +1018,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetMaterial(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetLight(
         DWORD Index,
-        const D3DLIGHT9 *pLight)
+        const D3DLIGHT9 *pLight) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetLight(Index, pLight));
@@ -1026,7 +1026,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetLight(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetLight(
         DWORD Index,
-        D3DLIGHT9 *pLight)
+        D3DLIGHT9 *pLight) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetLight(Index, pLight));
@@ -1034,7 +1034,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetLight(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::LightEnable(
         DWORD Index,
-        BOOL Enable)
+        BOOL Enable) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->LightEnable(Index, Enable));
@@ -1042,7 +1042,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::LightEnable(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetLightEnable(
         DWORD Index,
-        BOOL *pEnable)
+        BOOL *pEnable) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetLightEnable(Index, pEnable));
@@ -1050,7 +1050,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetLightEnable(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetClipPlane(
         DWORD Index,
-        const float *pPlane)
+        const float *pPlane) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetClipPlane(Index, pPlane));
@@ -1058,7 +1058,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetClipPlane(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetClipPlane(
         DWORD Index,
-        float *pPlane)
+        float *pPlane) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetClipPlane(Index, pPlane));
@@ -1066,7 +1066,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetClipPlane(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetRenderState(
         D3DRENDERSTATETYPE State,
-        DWORD Value)
+        DWORD Value) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetRenderState(State, Value));
@@ -1074,7 +1074,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetRenderState(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetRenderState(
         D3DRENDERSTATETYPE State,
-        DWORD *pValue)
+        DWORD *pValue) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetRenderState(State, pValue));
@@ -1082,33 +1082,33 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetRenderState(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateStateBlock(
         D3DSTATEBLOCKTYPE Type,
-        IDirect3DStateBlock9 **ppSB)
+        IDirect3DStateBlock9 **ppSB) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->CreateStateBlock(Type, ppSB));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::BeginStateBlock() {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::BeginStateBlock() noexcept {
     WRAP_DEBUG;
     return pReal->BeginStateBlock();
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EndStateBlock(
-        IDirect3DStateBlock9 **ppSB)
+        IDirect3DStateBlock9 **ppSB) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->EndStateBlock(ppSB));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetClipStatus(
-        const D3DCLIPSTATUS9 *pClipStatus)
+        const D3DCLIPSTATUS9 *pClipStatus) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetClipStatus(pClipStatus));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetClipStatus(
-        D3DCLIPSTATUS9 *pClipStatus)
+        D3DCLIPSTATUS9 *pClipStatus) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetClipStatus(pClipStatus));
@@ -1116,7 +1116,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetClipStatus(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetTexture(
         DWORD Stage,
-        IDirect3DBaseTexture9 **ppTexture)
+        IDirect3DBaseTexture9 **ppTexture) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetTexture(Stage, ppTexture));
@@ -1124,7 +1124,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetTexture(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetTexture(
         DWORD Stage,
-        IDirect3DBaseTexture9 *pTexture)
+        IDirect3DBaseTexture9 *pTexture) noexcept
 {
     WRAP_DEBUG_FMT("SetTexture({}, {})", Stage, fmt::ptr(pTexture));
 
@@ -1144,7 +1144,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetTexture(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetTextureStageState(
         DWORD Stage,
         D3DTEXTURESTAGESTATETYPE Type,
-        DWORD *pValue)
+        DWORD *pValue) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetTextureStageState(Stage, Type, pValue));
@@ -1153,7 +1153,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetTextureStageState(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetTextureStageState(
         DWORD Stage,
         D3DTEXTURESTAGESTATETYPE Type,
-        DWORD Value)
+        DWORD Value) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetTextureStageState(Stage, Type, Value));
@@ -1162,7 +1162,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetTextureStageState(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSamplerState(
         DWORD Sampler,
         D3DSAMPLERSTATETYPE Type,
-        DWORD *pValue)
+        DWORD *pValue) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetSamplerState(Sampler, Type, pValue));
@@ -1171,14 +1171,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSamplerState(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetSamplerState(
         DWORD Sampler,
         D3DSAMPLERSTATETYPE Type,
-        DWORD Value)
+        DWORD Value) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetSamplerState(Sampler, Type, Value));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ValidateDevice(
-        DWORD *pNumPasses)
+        DWORD *pNumPasses) noexcept
 {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->ValidateDevice(pNumPasses));
@@ -1186,7 +1186,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ValidateDevice(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPaletteEntries(
         UINT PaletteNumber,
-        const PALETTEENTRY *pEntries)
+        const PALETTEENTRY *pEntries) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetPaletteEntries(PaletteNumber, pEntries));
@@ -1194,58 +1194,58 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPaletteEntries(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPaletteEntries(
         UINT PaletteNumber,
-        PALETTEENTRY *pEntries)
+        PALETTEENTRY *pEntries) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetPaletteEntries(PaletteNumber, pEntries));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetCurrentTexturePalette(
-        UINT PaletteNumber)
+        UINT PaletteNumber) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetCurrentTexturePalette(PaletteNumber));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetCurrentTexturePalette(
-        UINT *PaletteNumber)
+        UINT *PaletteNumber) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetCurrentTexturePalette(PaletteNumber));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetScissorRect(
-        const RECT *pRect)
+        const RECT *pRect) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetScissorRect(pRect));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetScissorRect(
-        RECT *pRect)
+        RECT *pRect) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetScissorRect(pRect));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetSoftwareVertexProcessing(
-        BOOL bSoftware)
+        BOOL bSoftware) noexcept
 {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->SetSoftwareVertexProcessing(bSoftware));
 }
 
-BOOL STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSoftwareVertexProcessing() {
+BOOL STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSoftwareVertexProcessing() noexcept {
     WRAP_VERBOSE;
     return pReal->GetSoftwareVertexProcessing();
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetNPatchMode(float nSegments) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetNPatchMode(float nSegments) noexcept {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetNPatchMode(nSegments));
 }
 
-float STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNPatchMode() {
+float STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNPatchMode() noexcept {
     WRAP_DEBUG;
     return pReal->GetNPatchMode();
 }
@@ -1253,7 +1253,7 @@ float STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNPatchMode() {
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawPrimitive(
         D3DPRIMITIVETYPE PrimitiveType,
         UINT StartVertex,
-        UINT PrimitiveCount)
+        UINT PrimitiveCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount));
@@ -1265,7 +1265,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawIndexedPrimitive(
         UINT MinVertexIndex,
         UINT NumVertices,
         UINT StartIndex,
-        UINT PrimitiveCount)
+        UINT PrimitiveCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->DrawIndexedPrimitive(
@@ -1278,7 +1278,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawPrimitiveUP(
         D3DPRIMITIVETYPE PrimitiveType,
         UINT PrimitiveCount,
         const void *pVertexStreamZeroData,
-        UINT VertexStreamZeroStride)
+        UINT VertexStreamZeroStride) noexcept
 {
     WRAP_DEBUG_FMT("DrawPrimitiveUP({}, {}, {}, {})",
             PrimitiveType, PrimitiveCount,
@@ -1296,7 +1296,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawIndexedPrimitiveUP(
         const void *pIndexData,
         D3DFORMAT IndexDataFormat,
         const void *pVertexStreamZeroData,
-        UINT VertexStreamZeroStride)
+        UINT VertexStreamZeroStride) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->DrawIndexedPrimitiveUP(
@@ -1310,7 +1310,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ProcessVertices(
         UINT VertexCount,
         IDirect3DVertexBuffer9 *pDestBuffer,
         IDirect3DVertexDeclaration9 *pVertexDecl,
-        DWORD Flags)
+        DWORD Flags) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->ProcessVertices(SrcStartIndex, DestIndex,
@@ -1319,35 +1319,35 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ProcessVertices(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateVertexDeclaration(
         const D3DVERTEXELEMENT9 *pVertexElements,
-        IDirect3DVertexDeclaration9 **ppDecl)
+        IDirect3DVertexDeclaration9 **ppDecl) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->CreateVertexDeclaration(pVertexElements, ppDecl));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexDeclaration(
-        IDirect3DVertexDeclaration9 *pDecl)
+        IDirect3DVertexDeclaration9 *pDecl) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetVertexDeclaration(pDecl));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetVertexDeclaration(
-        IDirect3DVertexDeclaration9 **ppDecl)
+        IDirect3DVertexDeclaration9 **ppDecl) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetVertexDeclaration(ppDecl));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetFVF(
-        DWORD FVF)
+        DWORD FVF) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetFVF(FVF));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetFVF(
-        DWORD *pFVF)
+        DWORD *pFVF) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetFVF(pFVF));
@@ -1355,14 +1355,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetFVF(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateVertexShader(
         const DWORD *pFunction,
-        IDirect3DVertexShader9 **ppShader)
+        IDirect3DVertexShader9 **ppShader) noexcept
 {
     WRAP_VERBOSE_FMT("CreateVertexShader({})", fmt::ptr(pFunction));
     CHECK_RESULT(pReal->CreateVertexShader(pFunction, ppShader));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShader(
-        IDirect3DVertexShader9 *pShader)
+        IDirect3DVertexShader9 *pShader) noexcept
 {
     WRAP_DEBUG_FMT("SetVertexShader({})", fmt::ptr(pShader));
 
@@ -1389,7 +1389,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShader(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetVertexShader(
-        IDirect3DVertexShader9 **ppShader)
+        IDirect3DVertexShader9 **ppShader) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetVertexShader(ppShader));
@@ -1398,7 +1398,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetVertexShader(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShaderConstantF(
         UINT StartRegister,
         const float *pConstantData,
-        UINT Vector4fCount)
+        UINT Vector4fCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetVertexShaderConstantF(
@@ -1408,7 +1408,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShaderConstantF(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetVertexShaderConstantF(
         UINT StartRegister,
         float *pConstantData,
-        UINT Vector4fCount)
+        UINT Vector4fCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetVertexShaderConstantF(
@@ -1418,7 +1418,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetVertexShaderConstantF(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShaderConstantI(
         UINT StartRegister,
         const int *pConstantData,
-        UINT Vector4iCount)
+        UINT Vector4iCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetVertexShaderConstantI(
@@ -1428,7 +1428,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShaderConstantI(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetVertexShaderConstantI(
         UINT StartRegister,
         int *pConstantData,
-        UINT Vector4iCount)
+        UINT Vector4iCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetVertexShaderConstantI(
@@ -1438,7 +1438,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetVertexShaderConstantI(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShaderConstantB(
         UINT StartRegister,
         const BOOL *pConstantData,
-        UINT BoolCount)
+        UINT BoolCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetVertexShaderConstantB(
@@ -1448,7 +1448,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShaderConstantB(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetVertexShaderConstantB(
         UINT StartRegister,
         BOOL *pConstantData,
-        UINT BoolCount)
+        UINT BoolCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetVertexShaderConstantB(
@@ -1459,7 +1459,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetStreamSource(
         UINT StreamNumber,
         IDirect3DVertexBuffer9 *pStreamData,
         UINT OffsetInBytes,
-        UINT Stride)
+        UINT Stride) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetStreamSource(
@@ -1470,7 +1470,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetStreamSource(
         UINT StreamNumber,
         IDirect3DVertexBuffer9 **ppStreamData,
         UINT *OffsetInBytes,
-        UINT *pStride)
+        UINT *pStride) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetStreamSource(
@@ -1479,7 +1479,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetStreamSource(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetStreamSourceFreq(
         UINT StreamNumber,
-        UINT Divider)
+        UINT Divider) noexcept
 {
     WRAP_DEBUG;
     return pReal->SetStreamSourceFreq(StreamNumber, Divider);
@@ -1487,21 +1487,21 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetStreamSourceFreq(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetStreamSourceFreq(
         UINT StreamNumber,
-        UINT *Divider)
+        UINT *Divider) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetStreamSourceFreq(StreamNumber, Divider));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetIndices(
-        IDirect3DIndexBuffer9 *pIndexData)
+        IDirect3DIndexBuffer9 *pIndexData) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetIndices(pIndexData));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetIndices(
-        IDirect3DIndexBuffer9 **ppIndexData)
+        IDirect3DIndexBuffer9 **ppIndexData) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetIndices(ppIndexData));
@@ -1509,21 +1509,21 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetIndices(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreatePixelShader(
         const DWORD *pFunction,
-        IDirect3DPixelShader9 **ppShader)
+        IDirect3DPixelShader9 **ppShader) noexcept
 {
     WRAP_VERBOSE_FMT("CreatePixelShader({})", fmt::ptr(pFunction));
     CHECK_RESULT(pReal->CreatePixelShader(pFunction, ppShader));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPixelShader(
-        IDirect3DPixelShader9 *pShader)
+        IDirect3DPixelShader9 *pShader) noexcept
 {
     WRAP_DEBUG_FMT("SetPixelShader({})", fmt::ptr(pShader));
     CHECK_RESULT(pReal->SetPixelShader(pShader));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPixelShader(
-        IDirect3DPixelShader9 **ppShader)
+        IDirect3DPixelShader9 **ppShader) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetPixelShader(ppShader));
@@ -1532,7 +1532,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPixelShader(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPixelShaderConstantF(
         UINT StartRegister,
         const float *pConstantData,
-        UINT Vector4fCount)
+        UINT Vector4fCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetPixelShaderConstantF(
@@ -1542,7 +1542,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPixelShaderConstantF(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPixelShaderConstantF(
         UINT StartRegister,
         float *pConstantData,
-        UINT Vector4fCount)
+        UINT Vector4fCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetPixelShaderConstantF(
@@ -1552,7 +1552,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPixelShaderConstantF(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPixelShaderConstantI(
         UINT StartRegister,
         const int *pConstantData,
-        UINT Vector4iCount)
+        UINT Vector4iCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetPixelShaderConstantI(
@@ -1562,7 +1562,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPixelShaderConstantI(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPixelShaderConstantI(
         UINT StartRegister,
         int *pConstantData,
-        UINT Vector4iCount)
+        UINT Vector4iCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetPixelShaderConstantI(
@@ -1572,7 +1572,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPixelShaderConstantI(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPixelShaderConstantB(
         UINT StartRegister,
         const BOOL *pConstantData,
-        UINT BoolCount)
+        UINT BoolCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->SetPixelShaderConstantB(
@@ -1582,7 +1582,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPixelShaderConstantB(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPixelShaderConstantB(
         UINT StartRegister,
         BOOL *pConstantData,
-        UINT BoolCount)
+        UINT BoolCount) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->GetPixelShaderConstantB(
@@ -1592,7 +1592,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetPixelShaderConstantB(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawRectPatch(
         UINT Handle,
         const float *pNumSegs,
-        const D3DRECTPATCH_INFO *pRectPatchInfo)
+        const D3DRECTPATCH_INFO *pRectPatchInfo) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->DrawRectPatch(Handle, pNumSegs, pRectPatchInfo));
@@ -1601,20 +1601,20 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawRectPatch(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawTriPatch(
         UINT Handle,
         const float *pNumSegs,
-        const D3DTRIPATCH_INFO *pTriPatchInfo)
+        const D3DTRIPATCH_INFO *pTriPatchInfo) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->DrawTriPatch(Handle, pNumSegs, pTriPatchInfo));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DeletePatch(UINT Handle) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DeletePatch(UINT Handle) noexcept {
     WRAP_VERBOSE;
     CHECK_RESULT(pReal->DeletePatch(Handle));
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateQuery(
         D3DQUERYTYPE Type,
-        IDirect3DQuery9 **ppQuery)
+        IDirect3DQuery9 **ppQuery) noexcept
 {
     WRAP_DEBUG;
     CHECK_RESULT(pReal->CreateQuery(Type, ppQuery));
@@ -1628,7 +1628,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetConvolutionMonoKernel(
         UINT width,
         UINT height,
         float *rows,
-        float *columns)
+        float *columns) noexcept
 {
     WRAP_DEBUG;
 
@@ -1645,7 +1645,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ComposeRects(
         IDirect3DVertexBuffer9 *pDstRectDescs,
         D3DCOMPOSERECTSOP Operation,
         int Xoffset,
-        int Yoffset)
+        int Yoffset) noexcept
 {
     WRAP_DEBUG;
     assert(is_d3d9ex);
@@ -1660,7 +1660,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::PresentEx(
         const RECT *pDestRect,
         HWND hDestWindowOverride,
         const RGNDATA *pDirtyRegion,
-        DWORD dwFlags)
+        DWORD dwFlags) noexcept
 {
     WRAP_DEBUG;
     assert(is_d3d9ex);
@@ -1677,7 +1677,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::PresentEx(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetGPUThreadPriority(
-        INT *pPriority)
+        INT *pPriority) noexcept
 {
     WRAP_DEBUG;
 
@@ -1686,7 +1686,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetGPUThreadPriority(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetGPUThreadPriority(
-        INT Priority)
+        INT Priority) noexcept
 {
     WRAP_DEBUG;
 
@@ -1695,7 +1695,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetGPUThreadPriority(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::WaitForVBlank(
-        UINT iSwapChain)
+        UINT iSwapChain) noexcept
 {
     WRAP_DEBUG;
 
@@ -1705,7 +1705,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::WaitForVBlank(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CheckResourceResidency(
         IDirect3DResource9 **pResourceArray,
-        UINT32 NumResources)
+        UINT32 NumResources) noexcept
 {
     WRAP_DEBUG;
 
@@ -1715,7 +1715,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CheckResourceResidency(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetMaximumFrameLatency(
-        UINT MaxLatency)
+        UINT MaxLatency) noexcept
 {
     WRAP_DEBUG;
 
@@ -1724,7 +1724,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetMaximumFrameLatency(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetMaximumFrameLatency(
-        UINT *pMaxLatency)
+        UINT *pMaxLatency) noexcept
 {
     WRAP_DEBUG;
 
@@ -1732,7 +1732,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetMaximumFrameLatency(
     CHECK_RESULT(static_cast<IDirect3DDevice9Ex *>(pReal)->GetMaximumFrameLatency(pMaxLatency));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CheckDeviceState(HWND hDestinationWindow) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CheckDeviceState(HWND hDestinationWindow) noexcept {
     WRAP_DEBUG;
 
     assert(is_d3d9ex);
@@ -1748,7 +1748,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateRenderTargetEx(
         BOOL Lockable,
         IDirect3DSurface9 **ppSurface,
         HANDLE *pSharedHandle,
-        DWORD Usage)
+        DWORD Usage) noexcept
 {
     WRAP_DEBUG;
 
@@ -1765,7 +1765,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateOffscreenPlainSurfaceEx
         D3DPOOL Pool,
         IDirect3DSurface9 **ppSurface,
         HANDLE *pSharedHandle,
-        DWORD Usage)
+        DWORD Usage) noexcept
 {
     WRAP_DEBUG;
 
@@ -1783,7 +1783,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateDepthStencilSurfaceEx(
         BOOL Discard,
         IDirect3DSurface9 **ppSurface,
         HANDLE *pSharedHandle,
-        DWORD Usage)
+        DWORD Usage) noexcept
 {
     WRAP_DEBUG;
 
@@ -1795,7 +1795,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateDepthStencilSurfaceEx(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
         D3DPRESENT_PARAMETERS *pPresentationParameters,
-        D3DDISPLAYMODEEX *pFullscreenDisplayMode)
+        D3DDISPLAYMODEEX *pFullscreenDisplayMode) noexcept
 {
     WRAP_DEBUG;
 
@@ -1838,7 +1838,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDisplayModeEx(
         UINT iSwapChain,
         D3DDISPLAYMODEEX *pMode,
-        D3DDISPLAYROTATION *pRotation)
+        D3DDISPLAYROTATION *pRotation) noexcept
 {
     WRAP_DEBUG;
 

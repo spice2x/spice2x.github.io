@@ -20,37 +20,37 @@ struct WrappedIDirect3DTexture9 : IDirect3DTexture9 {
     virtual ~WrappedIDirect3DTexture9() = default;
 
 #pragma region IUnknown
-    virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObj) override;
-    virtual ULONG STDMETHODCALLTYPE AddRef(void) override;
-    virtual ULONG STDMETHODCALLTYPE Release(void) override;
+    virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObj) noexcept override;
+    virtual ULONG STDMETHODCALLTYPE AddRef(void) noexcept override;
+    virtual ULONG STDMETHODCALLTYPE Release(void) noexcept override;
 #pragma endregion
 
 #pragma region IDirect3DResource9
-    virtual HRESULT STDMETHODCALLTYPE GetDevice(IDirect3DDevice9 **ppDevice) override;
-    virtual HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID refguid, const void *pData, DWORD SizeOfData, DWORD Flags) override;
-    virtual HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID refguid, void *pData, DWORD* pSizeOfData) override;
-    virtual HRESULT STDMETHODCALLTYPE FreePrivateData(REFGUID refguid) override;
-    virtual DWORD STDMETHODCALLTYPE SetPriority(DWORD PriorityNew) override;
-    virtual DWORD STDMETHODCALLTYPE GetPriority(void) override;
-    virtual void STDMETHODCALLTYPE PreLoad(void) override;
-    virtual D3DRESOURCETYPE STDMETHODCALLTYPE GetType(void) override;
+    virtual HRESULT STDMETHODCALLTYPE GetDevice(IDirect3DDevice9 **ppDevice) noexcept override;
+    virtual HRESULT STDMETHODCALLTYPE SetPrivateData(REFGUID refguid, const void *pData, DWORD SizeOfData, DWORD Flags) noexcept override;
+    virtual HRESULT STDMETHODCALLTYPE GetPrivateData(REFGUID refguid, void *pData, DWORD* pSizeOfData) noexcept override;
+    virtual HRESULT STDMETHODCALLTYPE FreePrivateData(REFGUID refguid) noexcept override;
+    virtual DWORD STDMETHODCALLTYPE SetPriority(DWORD PriorityNew) noexcept override;
+    virtual DWORD STDMETHODCALLTYPE GetPriority(void) noexcept override;
+    virtual void STDMETHODCALLTYPE PreLoad(void) noexcept override;
+    virtual D3DRESOURCETYPE STDMETHODCALLTYPE GetType(void) noexcept override;
 #pragma endregion
 
 #pragma region IDirect3DBaseTexture9
-    virtual DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) override;
-    virtual DWORD STDMETHODCALLTYPE GetLOD(void) override;
-    virtual DWORD STDMETHODCALLTYPE GetLevelCount(void) override;
-    virtual HRESULT STDMETHODCALLTYPE SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) override;
-    virtual D3DTEXTUREFILTERTYPE STDMETHODCALLTYPE GetAutoGenFilterType(void) override;
-    virtual void STDMETHODCALLTYPE GenerateMipSubLevels(void) override;
+    virtual DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) noexcept override;
+    virtual DWORD STDMETHODCALLTYPE GetLOD(void) noexcept override;
+    virtual DWORD STDMETHODCALLTYPE GetLevelCount(void) noexcept override;
+    virtual HRESULT STDMETHODCALLTYPE SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) noexcept override;
+    virtual D3DTEXTUREFILTERTYPE STDMETHODCALLTYPE GetAutoGenFilterType(void) noexcept override;
+    virtual void STDMETHODCALLTYPE GenerateMipSubLevels(void) noexcept override;
 #pragma endregion
 
 #pragma region IDirect3DTexture9
-    virtual HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc) override;
-    virtual HRESULT STDMETHODCALLTYPE GetSurfaceLevel(UINT Level, IDirect3DSurface9 **ppSurfaceLevel) override;
-    virtual HRESULT STDMETHODCALLTYPE LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT *pRect, DWORD Flags) override;
-    virtual HRESULT STDMETHODCALLTYPE UnlockRect(UINT Level) override;
-    virtual HRESULT STDMETHODCALLTYPE AddDirtyRect(const RECT *pDirtyRect) override;
+    virtual HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc) noexcept override;
+    virtual HRESULT STDMETHODCALLTYPE GetSurfaceLevel(UINT Level, IDirect3DSurface9 **ppSurfaceLevel) noexcept override;
+    virtual HRESULT STDMETHODCALLTYPE LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT *pRect, DWORD Flags) noexcept override;
+    virtual HRESULT STDMETHODCALLTYPE UnlockRect(UINT Level) noexcept override;
+    virtual HRESULT STDMETHODCALLTYPE AddDirtyRect(const RECT *pDirtyRect) noexcept override;
 #pragma endregion
 
     IDirect3DDevice9 *const pDev;

@@ -400,7 +400,7 @@ void graphics_d3d9_init() {
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::QueryInterface(
         REFIID riid,
-        void **ppvObj)
+        void **ppvObj) noexcept
 {
     if (ppvObj == nullptr) {
         return E_POINTER;
@@ -439,11 +439,11 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::QueryInterface(
     return pReal->QueryInterface(riid, ppvObj);
 }
 
-ULONG STDMETHODCALLTYPE WrappedIDirect3D9::AddRef() {
+ULONG STDMETHODCALLTYPE WrappedIDirect3D9::AddRef() noexcept {
     return pReal->AddRef();
 }
 
-ULONG STDMETHODCALLTYPE WrappedIDirect3D9::Release() {
+ULONG STDMETHODCALLTYPE WrappedIDirect3D9::Release() noexcept {
     ULONG refs = this->pReal != nullptr ? this->pReal->Release() : 0;
 
     if (refs == 0) {
@@ -457,23 +457,23 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3D9::Release() {
  * IDirect3D9
  */
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::RegisterSoftwareDevice(void *pInitializeFunction) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::RegisterSoftwareDevice(void *pInitializeFunction) noexcept {
     CHECK_RESULT(pReal->RegisterSoftwareDevice(pInitializeFunction));
 }
 
-UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterCount() {
+UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterCount() noexcept {
     return pReal->GetAdapterCount();
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterIdentifier(
         UINT Adapter,
         DWORD Flags,
-        D3DADAPTER_IDENTIFIER9 *pIdentifier)
+        D3DADAPTER_IDENTIFIER9 *pIdentifier) noexcept
 {
     CHECK_RESULT(pReal->GetAdapterIdentifier(Adapter, Flags, pIdentifier));
 }
 
-UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterModeCount(UINT Adapter, D3DFORMAT Format) {
+UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterModeCount(UINT Adapter, D3DFORMAT Format) noexcept {
     return pReal->GetAdapterModeCount(Adapter, Format);
 }
 
@@ -481,7 +481,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
         UINT Adapter,
         D3DFORMAT Format,
         UINT Mode,
-        D3DDISPLAYMODE *pMode)
+        D3DDISPLAYMODE *pMode) noexcept
 {
     HRESULT ret = pReal->EnumAdapterModes(Adapter, Format, Mode, pMode);
 
@@ -569,7 +569,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
     CHECK_RESULT(ret);
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE *pMode) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE *pMode) noexcept {
     CHECK_RESULT(pReal->GetAdapterDisplayMode(Adapter, pMode));
 }
 
@@ -578,7 +578,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDeviceType(
         D3DDEVTYPE DevType,
         D3DFORMAT DisplayFormat,
         D3DFORMAT BackBufferFormat,
-        BOOL bWindowed)
+        BOOL bWindowed) noexcept
 {
     CHECK_RESULT(pReal->CheckDeviceType(iAdapter, DevType, DisplayFormat, BackBufferFormat, bWindowed));
 }
@@ -589,7 +589,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDeviceFormat(
         D3DFORMAT AdapterFormat,
         DWORD Usage,
         D3DRESOURCETYPE RType,
-        D3DFORMAT CheckFormat)
+        D3DFORMAT CheckFormat) noexcept
 {
     CHECK_RESULT(pReal->CheckDeviceFormat(Adapter, DeviceType, AdapterFormat, Usage, RType, CheckFormat));
 }
@@ -600,7 +600,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDeviceMultiSampleType(
         D3DFORMAT SurfaceFormat,
         BOOL Windowed,
         D3DMULTISAMPLE_TYPE MultiSampleType,
-        DWORD *pQualityLevels)
+        DWORD *pQualityLevels) noexcept
 {
     CHECK_RESULT(pReal->CheckDeviceMultiSampleType(
             Adapter,
@@ -616,7 +616,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDepthStencilMatch(
         D3DDEVTYPE DeviceType,
         D3DFORMAT AdapterFormat,
         D3DFORMAT RenderTargetFormat,
-        D3DFORMAT DepthStencilFormat)
+        D3DFORMAT DepthStencilFormat) noexcept
 {
     CHECK_RESULT(pReal->CheckDepthStencilMatch(
             Adapter,
@@ -630,12 +630,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDeviceFormatConversion(
         UINT Adapter,
         D3DDEVTYPE DeviceType,
         D3DFORMAT SourceFormat,
-        D3DFORMAT TargetFormat)
+        D3DFORMAT TargetFormat) noexcept
 {
     CHECK_RESULT(pReal->CheckDeviceFormatConversion(Adapter, DeviceType, SourceFormat, TargetFormat));
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetDeviceCaps(UINT Adapter, D3DDEVTYPE DeviceType, D3DCAPS9 *pCaps) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetDeviceCaps(UINT Adapter, D3DDEVTYPE DeviceType, D3DCAPS9 *pCaps) noexcept {
     log_misc("graphics::d3d9", "IDirect3D9::GetDeviceCaps hook hit");
 
     if (!pCaps) {
@@ -692,7 +692,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetDeviceCaps(UINT Adapter, D3DDEVT
     return ret;
 }
 
-HMONITOR STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterMonitor(UINT Adapter) {
+HMONITOR STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterMonitor(UINT Adapter) noexcept {
     return pReal->GetAdapterMonitor(Adapter);
 }
 
@@ -702,7 +702,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
         HWND hFocusWindow,
         DWORD BehaviorFlags,
         D3DPRESENT_PARAMETERS *pPresentationParameters,
-        IDirect3DDevice9 **ppReturnedDeviceInterface)
+        IDirect3DDevice9 **ppReturnedDeviceInterface) noexcept
 {
     log_misc("graphics::d3d9", "IDirect3D9::CreateDevice hook hit ({}, {}, {}, {}, {}, {})",
             Adapter,
@@ -865,7 +865,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
  * IDirect3D9Ex
  */
 
-UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterModeCountEx(UINT Adapter, const D3DDISPLAYMODEFILTER *pFilter) {
+UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterModeCountEx(UINT Adapter, const D3DDISPLAYMODEFILTER *pFilter) noexcept {
     assert(is_d3d9ex);
 
     return static_cast<IDirect3D9Ex *>(pReal)->GetAdapterModeCountEx(Adapter, pFilter);
@@ -875,7 +875,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModesEx(
         UINT Adapter,
         const D3DDISPLAYMODEFILTER *pFilter,
         UINT Mode,
-        D3DDISPLAYMODEEX *pMode)
+        D3DDISPLAYMODEEX *pMode) noexcept
 {
     assert(is_d3d9ex);
     CHECK_RESULT(static_cast<IDirect3D9Ex *>(pReal)->EnumAdapterModesEx(Adapter, pFilter, Mode, pMode));
@@ -884,7 +884,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModesEx(
 HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterDisplayModeEx(
         UINT Adapter,
         D3DDISPLAYMODEEX *pMode,
-        D3DDISPLAYROTATION *pRotation)
+        D3DDISPLAYROTATION *pRotation) noexcept
 {
     assert(is_d3d9ex);
     CHECK_RESULT(static_cast<IDirect3D9Ex *>(pReal)->GetAdapterDisplayModeEx(Adapter, pMode, pRotation));
@@ -897,7 +897,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         DWORD BehaviorFlags,
         D3DPRESENT_PARAMETERS *pPresentationParameters,
         D3DDISPLAYMODEEX *pFullscreenDisplayMode,
-        IDirect3DDevice9Ex **ppReturnedDeviceInterface)
+        IDirect3DDevice9Ex **ppReturnedDeviceInterface) noexcept
 {
     assert(is_d3d9ex);
 
@@ -1113,7 +1113,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     return result;
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterLUID(UINT Adapter, LUID *pLUID) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterLUID(UINT Adapter, LUID *pLUID) noexcept {
     assert(is_d3d9ex);
     CHECK_RESULT(static_cast<IDirect3D9Ex *>(pReal)->GetAdapterLUID(Adapter, pLUID));
 }

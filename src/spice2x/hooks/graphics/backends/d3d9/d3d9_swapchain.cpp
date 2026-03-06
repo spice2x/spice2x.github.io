@@ -21,7 +21,7 @@
     } \
     return ret
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::QueryInterface(REFIID riid, void **ppvObj) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::QueryInterface(REFIID riid, void **ppvObj) noexcept {
     if (ppvObj == nullptr) {
         return E_POINTER;
     }
@@ -53,10 +53,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::QueryInterface(REFIID riid
     return pReal->QueryInterface(riid, ppvObj);
 }
 
-ULONG STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::AddRef(void) {
+ULONG STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::AddRef(void) noexcept {
     return pReal->AddRef();
 }
-ULONG STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Release(void) {
+ULONG STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Release(void) noexcept {
     ULONG refs = pReal != nullptr ? pReal->Release() : 0;
 
     if (refs == 0) {
@@ -78,7 +78,7 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Release(void) {
  */
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourceRect, const RECT *pDestRect,
-        HWND hDestWindowOverride, const RGNDATA *pDirtyRegion, DWORD dwFlags)
+        HWND hDestWindowOverride, const RGNDATA *pDirtyRegion, DWORD dwFlags) noexcept
 {
     static std::once_flag printed;
     std::call_once(printed, []() {
@@ -91,21 +91,21 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
 
     CHECK_RESULT(pReal->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetFrontBufferData(IDirect3DSurface9 *pDestSurface) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetFrontBufferData(IDirect3DSurface9 *pDestSurface) noexcept {
     CHECK_RESULT(pReal->GetFrontBufferData(pDestSurface));
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetBackBuffer(UINT iBackBuffer, D3DBACKBUFFER_TYPE Type,
-        IDirect3DSurface9 **ppBackBuffer)
+        IDirect3DSurface9 **ppBackBuffer) noexcept
 {
     CHECK_RESULT(pReal->GetBackBuffer(iBackBuffer, Type, ppBackBuffer));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_STATUS *pRasterStatus) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_STATUS *pRasterStatus) noexcept {
     CHECK_RESULT(pReal->GetRasterStatus(pRasterStatus));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDisplayMode(D3DDISPLAYMODE *pMode) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDisplayMode(D3DDISPLAYMODE *pMode) noexcept {
     CHECK_RESULT(pReal->GetDisplayMode(pMode));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDevice(IDirect3DDevice9 **ppDevice) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDevice(IDirect3DDevice9 **ppDevice) noexcept {
     if (ppDevice == nullptr) {
         return D3DERR_INVALIDCALL;
     }
@@ -116,7 +116,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDevice(IDirect3DDevice9
     return D3D_OK;
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetPresentParameters(
-        D3DPRESENT_PARAMETERS *pPresentationParameters)
+        D3DPRESENT_PARAMETERS *pPresentationParameters) noexcept
 {
     CHECK_RESULT(pReal->GetPresentParameters(pPresentationParameters));
 }
@@ -125,16 +125,16 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetPresentParameters(
  * IDirect3DSwapChain9Ex
  */
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetLastPresentCount(UINT *pLastPresentCount) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetLastPresentCount(UINT *pLastPresentCount) noexcept {
     assert(is_d3d9ex);
     CHECK_RESULT(static_cast<IDirect3DSwapChain9Ex *>(pReal)->GetLastPresentCount(pLastPresentCount));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetPresentStats(D3DPRESENTSTATS *pPresentationStatistics) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetPresentStats(D3DPRESENTSTATS *pPresentationStatistics) noexcept {
     assert(is_d3d9ex);
     CHECK_RESULT(static_cast<IDirect3DSwapChain9Ex *>(pReal)->GetPresentStats(pPresentationStatistics));
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDisplayModeEx(D3DDISPLAYMODEEX *pMode,
-        D3DDISPLAYROTATION *pRotation)
+        D3DDISPLAYROTATION *pRotation) noexcept
 {
     assert(is_d3d9ex);
     CHECK_RESULT(static_cast<IDirect3DSwapChain9Ex *>(pReal)->GetDisplayModeEx(pMode, pRotation));

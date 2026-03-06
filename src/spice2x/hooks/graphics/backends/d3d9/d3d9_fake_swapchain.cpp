@@ -14,7 +14,7 @@
 #endif
 
 // IDirect3DSwapChain9
-HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::QueryInterface(REFIID riid, void **ppvObj) {
+HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::QueryInterface(REFIID riid, void **ppvObj) noexcept {
     if (ppvObj == nullptr) {
         return E_POINTER;
     }
@@ -38,10 +38,10 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::QueryInterface(REFIID riid, v
     return E_NOINTERFACE;
 }
 
-ULONG STDMETHODCALLTYPE FakeIDirect3DSwapChain9::AddRef(void) {
+ULONG STDMETHODCALLTYPE FakeIDirect3DSwapChain9::AddRef(void) noexcept {
     return ++this->ref_cnt;
 }
-ULONG STDMETHODCALLTYPE FakeIDirect3DSwapChain9::Release(void) {
+ULONG STDMETHODCALLTYPE FakeIDirect3DSwapChain9::Release(void) noexcept {
     ULONG refs = --this->ref_cnt;
 
     if (refs == 0) {
@@ -52,7 +52,7 @@ ULONG STDMETHODCALLTYPE FakeIDirect3DSwapChain9::Release(void) {
 }
 
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::Present(const RECT *pSourceRect, const RECT *pDestRect,
-        HWND hDestWindowOverride, const RGNDATA *pDirtyRegion, DWORD dwFlags)
+        HWND hDestWindowOverride, const RGNDATA *pDirtyRegion, DWORD dwFlags) noexcept
 {
     static std::once_flag printed;
     std::call_once(printed, []() {
@@ -61,12 +61,12 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::Present(const RECT *pSourceRe
 
     return D3DERR_INVALIDCALL;
 }
-HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetFrontBufferData(IDirect3DSurface9 *pDestSurface) {
+HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetFrontBufferData(IDirect3DSurface9 *pDestSurface) noexcept {
     WRAP_VERBOSE;
     return D3DERR_INVALIDCALL;
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetBackBuffer(UINT iBackBuffer, D3DBACKBUFFER_TYPE Type,
-        IDirect3DSurface9 **ppBackBuffer)
+        IDirect3DSurface9 **ppBackBuffer) noexcept
 {
     static std::once_flag printed;
     std::call_once(printed, []() {
@@ -84,15 +84,15 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetBackBuffer(UINT iBackBuffe
 
     return D3D_OK;
 }
-HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_STATUS *pRasterStatus) {
+HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_STATUS *pRasterStatus) noexcept {
     WRAP_VERBOSE;
     return D3DERR_INVALIDCALL;
 }
-HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDisplayMode(D3DDISPLAYMODE *pMode) {
+HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDisplayMode(D3DDISPLAYMODE *pMode) noexcept {
     WRAP_VERBOSE;
     return D3DERR_INVALIDCALL;
 }
-HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDevice(IDirect3DDevice9 **ppDevice) {
+HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDevice(IDirect3DDevice9 **ppDevice) noexcept {
     WRAP_VERBOSE;
 
     if (ppDevice == nullptr) {
@@ -105,23 +105,23 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDevice(IDirect3DDevice9 **
     return D3D_OK;
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetPresentParameters(
-        D3DPRESENT_PARAMETERS *pPresentationParameters)
+        D3DPRESENT_PARAMETERS *pPresentationParameters) noexcept
 {
     WRAP_VERBOSE;
     return D3DERR_INVALIDCALL;
 }
 
 // IDirect3DSwapChain9Ex
-HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetLastPresentCount(UINT *pLastPresentCount) {
+HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetLastPresentCount(UINT *pLastPresentCount) noexcept {
     assert(is_d3d9ex);
     return D3DERR_INVALIDCALL;
 }
-HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetPresentStats(D3DPRESENTSTATS *pPresentationStatistics) {
+HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetPresentStats(D3DPRESENTSTATS *pPresentationStatistics) noexcept {
     assert(is_d3d9ex);
     return D3DERR_INVALIDCALL;
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDisplayModeEx(D3DDISPLAYMODEEX *pMode,
-        D3DDISPLAYROTATION *pRotation)
+        D3DDISPLAYROTATION *pRotation) noexcept
 {
     WRAP_VERBOSE;
 

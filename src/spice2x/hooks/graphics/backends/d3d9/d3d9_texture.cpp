@@ -19,7 +19,7 @@
     } \
     return ret;
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::QueryInterface(REFIID riid, void **ppvObj) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::QueryInterface(REFIID riid, void **ppvObj) noexcept {
 #ifndef __GNUC__
 
     // fast path without incrementing the reference count for texture updates
@@ -48,10 +48,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::QueryInterface(REFIID riid, 
     return pReal->QueryInterface(riid, ppvObj);
 }
 
-ULONG STDMETHODCALLTYPE WrappedIDirect3DTexture9::AddRef(void) {
+ULONG STDMETHODCALLTYPE WrappedIDirect3DTexture9::AddRef(void) noexcept {
     return pReal->AddRef();
 }
-ULONG STDMETHODCALLTYPE WrappedIDirect3DTexture9::Release(void) {
+ULONG STDMETHODCALLTYPE WrappedIDirect3DTexture9::Release(void) noexcept {
     ULONG refs = (pReal != nullptr) ? pReal->Release() : 0;
 
     if (refs == 0) {
@@ -62,66 +62,66 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DTexture9::Release(void) {
 }
 
 // IDirect3DResource9 methods
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetDevice(IDirect3DDevice9 **ppDevice) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetDevice(IDirect3DDevice9 **ppDevice) noexcept {
     CHECK_RESULT(pReal->GetDevice(ppDevice));
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::SetPrivateData(REFGUID refguid, const void *pData, DWORD SizeOfData,
-        DWORD Flags)
+        DWORD Flags) noexcept
 {
     CHECK_RESULT(pReal->SetPrivateData(refguid, pData, SizeOfData, Flags));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetPrivateData(REFGUID refguid, void *pData, DWORD* pSizeOfData) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetPrivateData(REFGUID refguid, void *pData, DWORD* pSizeOfData) noexcept {
     CHECK_RESULT(pReal->GetPrivateData(refguid, pData, pSizeOfData));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::FreePrivateData(REFGUID refguid) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::FreePrivateData(REFGUID refguid) noexcept {
     CHECK_RESULT(pReal->FreePrivateData(refguid));
 }
-DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::SetPriority(DWORD PriorityNew) {
+DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::SetPriority(DWORD PriorityNew) noexcept {
     return pReal->SetPriority(PriorityNew);
 }
-DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetPriority(void) {
+DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetPriority(void) noexcept {
     return pReal->GetPriority();
 }
-void STDMETHODCALLTYPE WrappedIDirect3DTexture9::PreLoad(void) {
+void STDMETHODCALLTYPE WrappedIDirect3DTexture9::PreLoad(void) noexcept {
     return pReal->PreLoad();
 }
-D3DRESOURCETYPE STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetType(void) {
+D3DRESOURCETYPE STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetType(void) noexcept {
     return pReal->GetType();
 }
 
 // IDirect3DBaseTexture9 methods
-DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::SetLOD(DWORD LODNew) {
+DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::SetLOD(DWORD LODNew) noexcept {
     return pReal->SetLOD(LODNew);
 }
-DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetLOD(void) {
+DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetLOD(void) noexcept {
     return pReal->GetLOD();
 }
-DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetLevelCount(void) {
+DWORD STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetLevelCount(void) noexcept {
     return pReal->GetLevelCount();
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) noexcept {
     CHECK_RESULT(pReal->SetAutoGenFilterType(FilterType));
 }
-D3DTEXTUREFILTERTYPE STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetAutoGenFilterType(void) {
+D3DTEXTUREFILTERTYPE STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetAutoGenFilterType(void) noexcept {
     return pReal->GetAutoGenFilterType();
 }
-void STDMETHODCALLTYPE WrappedIDirect3DTexture9::GenerateMipSubLevels(void) {
+void STDMETHODCALLTYPE WrappedIDirect3DTexture9::GenerateMipSubLevels(void) noexcept {
     return pReal->GenerateMipSubLevels();
 }
 
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc) noexcept {
     CHECK_RESULT(pReal->GetLevelDesc(Level, pDesc));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetSurfaceLevel(UINT Level, IDirect3DSurface9 **ppSurfaceLevel) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetSurfaceLevel(UINT Level, IDirect3DSurface9 **ppSurfaceLevel) noexcept {
     CHECK_RESULT(pReal->GetSurfaceLevel(Level, ppSurfaceLevel));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT *pRect, DWORD Flags) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::LockRect(UINT Level, D3DLOCKED_RECT *pLockedRect, const RECT *pRect, DWORD Flags) noexcept {
     WRAP_DEBUG_FMT("LockRect({}, {}, {}, 0x{:x})", Level, fmt::ptr(pLockedRect), fmt::ptr(pRect), Flags);
     CHECK_RESULT(pReal->LockRect(Level, pLockedRect, pRect, Flags));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::UnlockRect(UINT Level) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::UnlockRect(UINT Level) noexcept {
     CHECK_RESULT(pReal->UnlockRect(Level));
 }
-HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::AddDirtyRect(const RECT *pDirtyRect) {
+HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::AddDirtyRect(const RECT *pDirtyRect) noexcept {
     CHECK_RESULT(pReal->AddDirtyRect(pDirtyRect));
 }

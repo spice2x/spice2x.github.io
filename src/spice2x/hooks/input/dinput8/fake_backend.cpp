@@ -10,7 +10,7 @@
 
 HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::QueryInterface(
         REFIID riid,
-        void **ppvObj)
+        void **ppvObj) noexcept
 {
     if (ppvObj == nullptr) {
         return E_POINTER;
@@ -27,10 +27,10 @@ HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::QueryInterface(
 
     return E_NOINTERFACE;
 }
-ULONG STDMETHODCALLTYPE FakeIDirectInput8W::AddRef() {
+ULONG STDMETHODCALLTYPE FakeIDirectInput8W::AddRef() noexcept {
     return ++this->ref_count;
 }
-ULONG STDMETHODCALLTYPE FakeIDirectInput8W::Release() {
+ULONG STDMETHODCALLTYPE FakeIDirectInput8W::Release() noexcept {
     ULONG refs = --this->ref_count;
 
     if (refs == 0) {
@@ -43,7 +43,7 @@ ULONG STDMETHODCALLTYPE FakeIDirectInput8W::Release() {
 HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::CreateDevice(
         REFGUID rguid,
         LPDIRECTINPUTDEVICE8W *lplpDirectInputDevice,
-        LPUNKNOWN pUnkOuter)
+        LPUNKNOWN pUnkOuter) noexcept
 {
     log_misc("input::dinput8", "IDirectInput8::CreateDevice hook hit");
 
@@ -67,19 +67,19 @@ HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::EnumDevices(
         DWORD dwDevType,
         LPDIENUMDEVICESCALLBACKW lpCallback,
         LPVOID pvRef,
-        DWORD dwFlags)
+        DWORD dwFlags) noexcept
 {
     log_misc("input::dinput8", "IDirectInput8::EnumDevices hook hit");
 
     return DI_OK;
 }
-HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::GetDeviceStatus(REFGUID rguidInstance) {
+HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::GetDeviceStatus(REFGUID rguidInstance) noexcept {
     return DIERR_GENERIC;
 }
-HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::RunControlPanel(HWND hwndOwner, DWORD dwFlags) {
+HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::RunControlPanel(HWND hwndOwner, DWORD dwFlags) noexcept {
     return DIERR_GENERIC;
 }
-HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::Initialize(HINSTANCE hinst, DWORD dwVersion) {
+HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::Initialize(HINSTANCE hinst, DWORD dwVersion) noexcept {
     log_misc("input::dinput8", "IDirectInput8::Initialize({}, 0x{:x})",
             fmt::ptr(hinst),
             dwVersion);
@@ -89,7 +89,7 @@ HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::Initialize(HINSTANCE hinst, DWORD 
 HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::FindDevice(
         REFGUID rguid,
         LPCWSTR pszName,
-        LPGUID pguidInstance)
+        LPGUID pguidInstance) noexcept
 {
     return DIERR_GENERIC;
 }
@@ -98,7 +98,7 @@ HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::EnumDevicesBySemantics(
         LPDIACTIONFORMATW lpdiActionFormat,
         LPDIENUMDEVICESBYSEMANTICSCBW lpCallback,
         LPVOID pvRef,
-        DWORD dwFlags)
+        DWORD dwFlags) noexcept
 {
     return DIERR_GENERIC;
 }
@@ -106,7 +106,7 @@ HRESULT STDMETHODCALLTYPE FakeIDirectInput8W::ConfigureDevices(
         LPDICONFIGUREDEVICESCALLBACK lpdiCallback,
         LPDICONFIGUREDEVICESPARAMSW lpdiCDParams,
         DWORD dwFlags,
-        LPVOID pvRefData)
+        LPVOID pvRefData) noexcept
 {
     return DIERR_GENERIC;
 }
