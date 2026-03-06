@@ -3182,7 +3182,7 @@ namespace overlay::windows {
         } else if (filter != nullptr) {
             cat = "Search results";
         }
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), cat.c_str());
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "%s", cat.c_str());
         ImGui::Separator();
 
         // render table

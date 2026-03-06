@@ -89,7 +89,7 @@ namespace games::iidx {
     protected:
         virtual ~IIDXLocalCamera() {};
 
-        ULONG m_nRefCount;
+        LONG m_nRefCount;
         CRITICAL_SECTION m_critsec;
 
         std::string m_name;

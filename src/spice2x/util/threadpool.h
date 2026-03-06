@@ -56,8 +56,8 @@ public:
 
     template<class T, class... Args>
     auto add(T&& func, Args&&... args)
-    -> std::future<typename std::result_of<T(Args...)>::type> {
-        using ret_t = typename std::result_of<T(Args...)>::type;
+    -> std::future<typename std::invoke_result<T, Args...>::type> {
+        using ret_t = typename std::invoke_result<T, Args...>::type;
         auto task = std::make_shared<std::packaged_task<ret_t()>>(
                 std::bind(std::forward<T>(func), std::forward<Args>(args)...));
         std::future<ret_t> fut = task->get_future();

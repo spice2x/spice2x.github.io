@@ -2,6 +2,7 @@
 
 #include "overlay/window.h"
 #include "cfg/button.h"
+#include "cfg/light.h"
 
 namespace overlay::windows {
 

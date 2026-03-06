@@ -1,13 +1,21 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "api.h"
-
 namespace rawinput {
     class RawInputManager;
+}
+
+namespace GameAPI {
+    namespace Buttons {
+        enum State {
+            BUTTON_PRESSED = true,
+            BUTTON_NOT_PRESSED = false
+        };
+    }
 }
 
 enum ButtonAnalogType {

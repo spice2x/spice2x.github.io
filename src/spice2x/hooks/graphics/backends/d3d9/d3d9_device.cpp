@@ -593,7 +593,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::UpdateTexture(
     WRAP_DEBUG;
 
     if (CUSTOM_RESET) {
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
 
         // Do a pointer compare rather than `QueryInterface` because it is a lot cheaper than incrementing
         // the reference count
@@ -768,7 +768,7 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
         pReal->ColorFill(topSurface, nullptr, D3DCOLOR_XRGB(0, 0, 0));
         cfg::SCREENRESIZE->need_surface_clean = false;
     }
-    
+
     D3DLOCKED_RECT rect;
     HRESULT hr;
     topSurface->LockRect(&rect, NULL, D3DLOCK_DONOTWAIT);
