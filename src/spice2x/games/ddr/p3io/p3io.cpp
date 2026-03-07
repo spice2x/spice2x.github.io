@@ -282,7 +282,7 @@ int games::ddr::DDRP3IOHandle::write(LPCVOID lpBuffer, DWORD nNumberOfBytesToWri
                 }
 
                 // use both sat spots for a neon pulse
-                float value_neon = (light_bits & hd_mapping_bits[0] && hd_mapping_bits[1]) ? 1.f : 0.f;
+                float value_neon = (light_bits & hd_mapping_bits[0] && light_bits & hd_mapping_bits[1]) ? 1.f : 0.f;
                 GameAPI::Lights::writeLight(RI_MGR, lights[Lights::NEON], value_neon);
             }
 
