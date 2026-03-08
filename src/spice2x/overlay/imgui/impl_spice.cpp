@@ -31,6 +31,7 @@ static INT64 g_Time = 0;
 static INT64 g_TicksPerSecond = 0;
 static ImGuiMouseCursor g_LastMouseCursor = ImGuiMouseCursor_COUNT;
 static double g_LastMouseMovement = 0.f;
+static bool g_MouseCursorAutoHide = false;
 
 bool ImGui_ImplSpice_Init(HWND hWnd) {
     log_misc("imgui_impl_spice", "init");
@@ -84,6 +85,12 @@ bool ImGui_ImplSpice_Init(HWND hWnd) {
 
     // get display size
     ImGui_ImplSpice_UpdateDisplaySize();
+
+    // only enable mouse cursor auto hiding if we want ImGui to draw the cursor
+    // (if OS is drawing it, we don't auto-hide)
+    if (io.MouseDrawCursor && !cfg::CONFIGURATOR_STANDALONE) {
+        g_MouseCursorAutoHide = true;
+    }
 
     // return success
     return true;
@@ -387,7 +394,7 @@ void ImGui_ImplSpice_NewFrame() {
     const auto new_mouse_pos = io.MousePos;
 
     // automatically hide cursor
-    if (!cfg::CONFIGURATOR_STANDALONE) {
+    if (g_MouseCursorAutoHide) {
         if (old_mouse_pos.x != new_mouse_pos.x ||
             old_mouse_pos.y != new_mouse_pos.y ||
             wheel_diff != 0 ||
