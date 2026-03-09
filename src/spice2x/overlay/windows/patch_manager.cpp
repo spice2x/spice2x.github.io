@@ -150,9 +150,17 @@ namespace overlay::windows {
             const auto gle = GetLastError();
             log_warning("patchmanager", "WinHttpSendRequest failed: {}", gle);
             url_fetch_errors += fmt::format("WinHttpSendRequest failed: {}\n", gle);
-            if (gle == 12175) {
-                url_fetch_errors += "\nThis is ERROR_WINHTTP_SECURE_FAILURE - most likely TLS 1.1 / TLS 1.2 error on old OS versions.\n\n";
+            if (gle == ERROR_WINHTTP_SECURE_FAILURE) {
+                url_fetch_errors += "\nERROR_WINHTTP_SECURE_FAILURE\n\n";
+                url_fetch_errors += "Most likely TLS 1.1 / TLS 1.2 error on old OS versions.\n\n";
                 url_fetch_errors += "Look up MSDN article on 'Update to enable TLS 1.1 and TLS 1.2 as default secure protocols in WinHTTP in Windows' for a fix.\n";
+            } else if (gle == ERROR_WINHTTP_NAME_NOT_RESOLVED) {
+                url_fetch_errors += "\nERROR_WINHTTP_NAME_NOT_RESOLVED\n\n";
+                url_fetch_errors += "The server name could not be resolved.\n\n";
+                url_fetch_errors += "Website is offline, or your internet connection is down.";
+            } else if (gle == ERROR_WINHTTP_TIMEOUT) {
+                url_fetch_errors += "\nERROR_WINHTTP_TIMEOUT\n\n";
+                url_fetch_errors += "The request timed out.";
             }
             return result;
         }
@@ -459,7 +467,7 @@ namespace overlay::windows {
                     &patch_url,
                     ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_AutoSelectAll);
 
-                if (ImGui::Button("Paste")) {
+                if (ImGui::Button("Paste from clipboard")) {
                     auto clipboard_url = clipboard::paste_text();
                     if (!clipboard_url.empty()) {
                         strreplace(clipboard_url, "\r\n", "");
@@ -534,7 +542,9 @@ namespace overlay::windows {
                     }
                     this->config_save();
                 }
-                reload_local_patches();
+                // import_remote_patches_to_disk clears out old patches, so regardless of result,
+                // reload patches from disk
+                reload_local_patches(true);
                 ImGui::CloseCurrentPopup();
             }
             ImGui::SameLine();
