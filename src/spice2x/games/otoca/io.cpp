@@ -23,6 +23,11 @@ std::vector<Button> &games::otoca::get_buttons() {
     return buttons;
 }
 
+std::string games::otoca::get_buttons_help() {
+    // keep to max 100 characters wide
+    return "    BT_Left   Lever   BT_Right";
+}
+
 std::vector<Light> &games::otoca::get_lights() {
     static std::vector<Light> lights;
 
