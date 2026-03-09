@@ -334,7 +334,7 @@ namespace games::shared {
             image_data[index + 2] = tmp;
         }
 
-        if (avs::game::is_model({"KLP", "KFC"})) {
+        if (avs::game::is_model({"KLP", "KFC", "NCG"})) {
             // rotate image clockwise
             log_misc("printer", "rotate clockwise...");
             auto rotated = new uint8_t[image_width * image_height * 3];

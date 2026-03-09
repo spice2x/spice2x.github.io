@@ -256,6 +256,7 @@ namespace games {
         const std::string otoca("Otoca D'or");
         games.push_back(otoca);
         buttons.insert({ otoca, otoca::get_buttons() });
+        buttons_help.insert({ otoca, otoca::get_buttons_help() });
         file_hints[otoca].emplace_back("arkkep.dll");
 
         // winning eleven

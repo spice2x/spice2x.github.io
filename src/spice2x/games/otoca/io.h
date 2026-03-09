@@ -30,5 +30,6 @@ namespace games::otoca {
 
     // getters
     std::vector<Button> &get_buttons();
+    std::string get_buttons_help();
     std::vector<Light> &get_lights();
 }
