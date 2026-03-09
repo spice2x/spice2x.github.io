@@ -559,6 +559,10 @@ int main_implementation(int argc, char *argv[]) {
         nvenc_hook::FORCE_DISABLE = true;
     }
 #endif
+    if (options[launcher::Options::OtocaCamHook].value_bool()) {
+        games::otoca::BYPASS_CAMERA = true;
+    }
+
     if (options[launcher::Options::LoadJubeatModule].value_bool()) {
         attach_jb = true;
     }
