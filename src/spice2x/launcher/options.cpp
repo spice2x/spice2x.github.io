@@ -2684,7 +2684,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Otoca Camera Check Bypass",
         .name = "otocacamhook",
         .desc =
-            "This game REQUIRES a (compatible) webcam to save progress. If you don't have any, check this"
+            "This game REQUIRES a (compatible) webcam to save progress. If you don't have any, check this "
             "option to bypass camera error during boot, allowing you to try out the game.",
         .type = OptionType::Bool,
         .game_name = "Otoca D'or",
