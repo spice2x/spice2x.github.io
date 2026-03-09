@@ -11,6 +11,7 @@
 #include "rawinput/rawinput.h"
 #include "touch/touch.h"
 #include "util/logging.h"
+#include "util/time.h"
 #include "util/utils.h"
 #include "hooks/graphics/graphics.h"
 
@@ -29,6 +30,8 @@ static HWND g_hWnd = nullptr;
 static INT64 g_Time = 0;
 static INT64 g_TicksPerSecond = 0;
 static ImGuiMouseCursor g_LastMouseCursor = ImGuiMouseCursor_COUNT;
+static double g_LastMouseMovement = 0.f;
+static bool g_MouseCursorAutoHide = false;
 
 bool ImGui_ImplSpice_Init(HWND hWnd) {
     log_misc("imgui_impl_spice", "init");
@@ -82,6 +85,12 @@ bool ImGui_ImplSpice_Init(HWND hWnd) {
 
     // get display size
     ImGui_ImplSpice_UpdateDisplaySize();
+
+    // only enable mouse cursor auto hiding if we want ImGui to draw the cursor
+    // (if OS is drawing it, we don't auto-hide)
+    if (io.MouseDrawCursor && !cfg::CONFIGURATOR_STANDALONE) {
+        g_MouseCursorAutoHide = true;
+    }
 
     // return success
     return true;
@@ -375,12 +384,31 @@ void ImGui_ImplSpice_NewFrame() {
     }
 
     // set mouse wheel
-    auto mouse_diff = mouse_wheel - mouse_wheel_last;
+    auto wheel_diff = mouse_wheel - mouse_wheel_last;
     mouse_wheel_last = mouse_wheel;
-    io.MouseWheel = mouse_diff;
+    io.MouseWheel = wheel_diff;
 
     // update OS mouse position
+    const auto old_mouse_pos = io.MousePos;
     ImGui_ImplSpice_UpdateMousePos();
+    const auto new_mouse_pos = io.MousePos;
+
+    // automatically hide cursor
+    if (g_MouseCursorAutoHide) {
+        if (old_mouse_pos.x != new_mouse_pos.x ||
+            old_mouse_pos.y != new_mouse_pos.y ||
+            wheel_diff != 0 ||
+            io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2]) {
+
+            // mouse moved, update time and show the cursor
+            g_LastMouseMovement = get_performance_milliseconds();
+            io.MouseDrawCursor = true;
+
+        } else if ((get_performance_milliseconds() -  g_LastMouseMovement) > 2000) {
+            // mouse idle for more than 2 seconds, hide the cursor
+            io.MouseDrawCursor = false;
+        }
+    }
 
     if (cfg::CONFIGURATOR_STANDALONE) {
         // if cursor is inside the client area, always set the OS cursor to what ImGui wants
