@@ -31,8 +31,8 @@ namespace games::otoca {
     static void __cdecl LibCameraInit_hook() {
         if (CAMLIB_CALL_ORIGINAL) {
             LibCameraInit_orig();
+            log_debug("otoca::cam", "LibCameraInit returned");
         }
-        log_debug("otoca::cam", "LibCameraInit returned");
     }
 
     typedef int (__cdecl *LibCameraOpen_t)(double, int, int);
@@ -42,8 +42,8 @@ namespace games::otoca {
         if (CAMLIB_CALL_ORIGINAL) {
             // with webcam, (15, 2, 0) returned 0
             ret = LibCameraOpen_orig(a1, a2, a3);
+            log_debug("otoca::cam", "LibCameraOpen({}, {}, {}) returned {}", a1, a2, a3, ret);
         }
-        log_debug("otoca::cam", "LibCameraOpen({}, {}, {}) returned {}", a1, a2, a3, ret);
         return ret;
     }
 
@@ -54,8 +54,8 @@ namespace games::otoca {
         if (CAMLIB_CALL_ORIGINAL) {
             // with webcam,
             ret = LibCameraStop_orig(a1);
+            log_debug("otoca::cam", "LibCameraStop({}) returned {}", a1, ret);
         }
-        log_debug("otoca::cam", "LibCameraStop({}) returned {}", a1, ret);
         return ret;
     }
 
@@ -64,8 +64,8 @@ namespace games::otoca {
     static void __cdecl LibCameraGetCameraNr_hook() {
         if (CAMLIB_CALL_ORIGINAL) {
             LibCameraGetCameraNr_orig();
+            log_debug("otoca::cam", "LibCameraGetCameraNr returned");
         }
-        log_debug("otoca::cam", "LibCameraGetCameraNr returned");
     }
 
     typedef int (__cdecl *LibCameraRun_t)(int);
@@ -75,8 +75,8 @@ namespace games::otoca {
         if (CAMLIB_CALL_ORIGINAL) {
             // with webcam, (0) returned 0
             ret = LibCameraRun_orig(a1);
+            log_debug("otoca::cam", "LibCameraRun({}) returned {}", a1, ret);
         }
-        log_debug("otoca::cam", "LibCameraRun({}) returned {}", a1, ret);
         return ret;
     }
 
@@ -87,8 +87,8 @@ namespace games::otoca {
         if (CAMLIB_CALL_ORIGINAL) {
             // not sure if this is called
             ret = LibCameraGetImage_orig(a1, a2);
+            log_debug("otoca::cam", "LibCameraGetImage({}, {}) returned {}", a1, fmt::ptr(a2), ret);
         }
-        log_debug("otoca::cam", "LibCameraGetImage({}, {}) returned {}", a1, fmt::ptr(a2), ret);
         return ret;
     }
 
@@ -111,8 +111,8 @@ namespace games::otoca {
         if (CAMLIB_CALL_ORIGINAL) {
             // with webcam, (ptr, ptr, 0) returned 0
             ret = LibCameraGetBrightnessRange_orig(a1, a2, a3);
+            log_debug("otoca::cam", "LibCameraGetBrightnessRange({}, {}, {}) returned {}", fmt::ptr(a1), fmt::ptr(a2), a3, ret);
         }
-        log_debug("otoca::cam", "LibCameraGetBrightnessRange({}, {}, {}) returned {}", fmt::ptr(a1), fmt::ptr(a2), a3, ret);
         return ret;
     }
 
