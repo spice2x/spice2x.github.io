@@ -72,6 +72,8 @@ namespace overlay::windows {
         std::chrono::steady_clock::time_point auto_match_test_time;
         std::string auto_match_test_device;
         unsigned int auto_match_test_control = 0;
+        std::chrono::steady_clock::time_point auto_match_copy_time;
+        bool auto_match_copied = false;
 
         // keypads tab
         int keypads_selected[2] {};
@@ -117,6 +119,8 @@ namespace overlay::windows {
         void build_analogs(const std::string &name, std::vector<Analog> *analogs);
         void edit_analog_popup(Analog &analog);
 
+        void update() override;
+        void stop_lights_test();
         void build_lights(const std::string &name, std::vector<Light> *lights);
         void build_light(Light &primary_light, Light *light, const int light_index, const int alt_index);
         void clear_light(Light *light, const int alt_index);

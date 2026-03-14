@@ -565,6 +565,9 @@ namespace overlay::windows {
 
         // did tab selection change?
         if (this->tab_selected != tab_selected_new) {
+
+            stop_lights_test();
+
             this->tab_selected = tab_selected_new;
             buttons_many_active = false;
             buttons_many_index = -1;
@@ -2316,6 +2319,40 @@ namespace overlay::windows {
         }
     }
 
+    void Config::stop_lights_test() {
+        if (!lights_testing) {
+            return;
+        }
+        auto *lights = games::get_lights(
+            this->games_selected_name);
+        if (lights) {
+            std::vector<int> bound;
+            for (int i = 0; i < (int) lights->size(); i++) {
+                if ((*lights)[i].isSet()) {
+                    bound.push_back(i);
+                }
+            }
+            if (lights_test_current >= 0
+                    && lights_test_current
+                        < (int) bound.size()) {
+                auto &cur = (*lights)[
+                    bound[lights_test_current]];
+                GameAPI::Lights::writeLight(
+                    RI_MGR, cur, 0.f);
+                RI_MGR->devices_flush_output();
+            }
+        }
+        lights_testing = false;
+        lights_test_current = -1;
+    }
+
+    void Config::update() {
+        Window::update();
+        if (lights_testing && !this->active) {
+            stop_lights_test();
+        }
+    }
+
     void Config::build_lights(const std::string &name, std::vector<Light> *lights) {
         if (lights && !lights->empty()) {
             ImGui::AlignTextToFramePadding();
@@ -2350,7 +2387,7 @@ namespace overlay::windows {
                 auto elapsed = std::chrono::duration_cast<
                     std::chrono::milliseconds>(
                         now - lights_test_time).count();
-                if (elapsed >= 250) {
+                if (elapsed >= 500) {
                     if (lights_test_current >= 0
                             && lights_test_current
                                 < (int) bound.size()) {
@@ -2363,16 +2400,14 @@ namespace overlay::windows {
                     lights_test_current++;
                     if (lights_test_current
                             >= (int) bound.size()) {
-                        lights_testing = false;
-                        lights_test_current = -1;
-                    } else {
-                        lights_test_time = now;
-                        auto &next = (*lights)[
-                            bound[lights_test_current]];
-                        GameAPI::Lights::writeLight(
-                            RI_MGR, next, 1.f);
-                        RI_MGR->devices_flush_output();
+                        lights_test_current = 0;
                     }
+                    lights_test_time = now;
+                    auto &next = (*lights)[
+                        bound[lights_test_current]];
+                    GameAPI::Lights::writeLight(
+                        RI_MGR, next, 1.f);
+                    RI_MGR->devices_flush_output();
                 }
             }
 
@@ -2989,7 +3024,7 @@ namespace overlay::windows {
         }
 
         // device selector
-        ImGui::Text("Select a device:");
+        ImGui::Text("Select device:");
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
         bool device_changed = ImGui::Combo("##AutoMatchDevice",
                 &this->auto_match_device_selected,
@@ -3024,9 +3059,9 @@ namespace overlay::windows {
             });
         }
 
+        std::vector<std::string> raw_names;
         if (has_device) {
             // build output name list
-            std::vector<std::string> raw_names;
             switch (device->type) {
                 case rawinput::HID: {
                     for (auto &n : device->hidInfo->button_output_caps_names) {
@@ -3069,12 +3104,13 @@ namespace overlay::windows {
                     break;
             }
 
-            // match by name
+            // match by name (case insensitive)
             std::vector<bool> device_matched(raw_names.size(), false);
             for (auto &entry : matched) {
+                auto game_lower = strtolower(entry.game_name);
                 for (int ci = 0; ci < (int) raw_names.size(); ci++) {
                     if (!device_matched[ci]
-                            && entry.game_name == raw_names[ci]) {
+                            && game_lower == strtolower(raw_names[ci])) {
                         entry.device_name = raw_names[ci];
                         entry.control_index = ci;
                         device_matched[ci] = true;
@@ -3084,7 +3120,8 @@ namespace overlay::windows {
             }
 
             for (int ci = 0; ci < (int) raw_names.size(); ci++) {
-                if (!device_matched[ci]) {
+                if (!device_matched[ci]
+                        && strtolower(raw_names[ci]) != "null") {
                     unmatched.push_back({
                         "", raw_names[ci], -1, ci
                     });
@@ -3096,6 +3133,14 @@ namespace overlay::windows {
             [](const MatchEntry &e) {
                 return e.control_index >= 0;
             });
+
+        // remove unmatched game lights
+        matched.erase(
+            std::remove_if(matched.begin(), matched.end(),
+                [](const MatchEntry &e) {
+                    return e.control_index < 0;
+                }),
+            matched.end());
 
         // testable entries
         std::vector<int> testable;
@@ -3136,6 +3181,7 @@ namespace overlay::windows {
 
         if (device_changed) {
             stop_test();
+            auto_match_copied = false;
         }
 
         // test sequence
@@ -3144,16 +3190,14 @@ namespace overlay::windows {
             auto elapsed = std::chrono::duration_cast<
                 std::chrono::milliseconds>(
                     now - auto_match_test_time).count();
-            if (elapsed >= 250) {
+            if (elapsed >= 500) {
                 write_test_light(auto_match_test_current, 0.f);
                 auto_match_test_current++;
                 if (auto_match_test_current >= (int) testable.size()) {
-                    auto_match_testing = false;
-                    auto_match_test_current = -1;
-                } else {
-                    auto_match_test_time = now;
-                    write_test_light(auto_match_test_current, 1.f);
+                    auto_match_test_current = 0;
                 }
+                auto_match_test_time = now;
+                write_test_light(auto_match_test_current, 1.f);
             }
         }
 
@@ -3208,11 +3252,11 @@ namespace overlay::windows {
                 | ImGuiTableFlags_RowBg
                 | ImGuiTableFlags_ScrollY,
                 ImVec2(0, table_h))) {
-            ImGui::TableSetupColumn("Game Light",
+            ImGui::TableSetupColumn("Device Light",
                 ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("",
-                ImGuiTableColumnFlags_WidthFixed, 20.f);
-            ImGui::TableSetupColumn("Device Output",
+                ImGuiTableColumnFlags_WidthFixed, 30.f);
+            ImGui::TableSetupColumn("Game Light",
                 ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupScrollFreeze(0, 1);
             ImGui::TableHeadersRow();
@@ -3231,27 +3275,23 @@ namespace overlay::windows {
                         ImVec4(1.f, 0.2f, 0.2f, 1.f));
                 }
 
+                // device light
                 ImGui::TableNextColumn();
-                if (entry.control_index >= 0) {
-                    ImGui::Text("%s", entry.game_name.c_str());
-                } else {
-                    ImGui::TextDisabled("%s",
-                        entry.game_name.c_str());
-                }
+                ImGui::Text("%s", entry.device_name.c_str());
 
+                // arrow (centered)
                 ImGui::TableNextColumn();
-                if (entry.control_index >= 0) {
-                    ImGui::TextUnformatted("=");
-                } else {
-                    ImGui::TextDisabled("-");
-                }
+                float arrow_w = ImGui::CalcTextSize(
+                    "->").x;
+                float col_w = ImGui::GetColumnWidth();
+                ImGui::SetCursorPosX(
+                    ImGui::GetCursorPosX()
+                    + (col_w - arrow_w) * 0.5f);
+                ImGui::TextUnformatted("->");
 
+                // game light
                 ImGui::TableNextColumn();
-                if (entry.control_index >= 0) {
-                    ImGui::Text("%s", entry.device_name.c_str());
-                } else {
-                    ImGui::TextDisabled("(no match)");
-                }
+                ImGui::Text("%s", entry.game_name.c_str());
 
                 if (is_active_test) {
                     ImGui::PopStyleColor();
@@ -3261,12 +3301,10 @@ namespace overlay::windows {
             for (auto &entry : unmatched) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextDisabled("-");
-                ImGui::TableNextColumn();
-                ImGui::TextDisabled("%s", "");
-                ImGui::TableNextColumn();
                 ImGui::TextDisabled("%s",
                     entry.device_name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TableNextColumn();
             }
 
             ImGui::EndTable();
@@ -3278,7 +3316,7 @@ namespace overlay::windows {
         ImGui::Spacing();
 
         ImGui::BeginDisabled(match_count == 0);
-        if (ImGui::Button("Apply")) {
+        if (ImGui::Button("Save")) {
             stop_test();
             for (auto &entry : matched) {
                 if (entry.control_index < 0) {
@@ -3293,11 +3331,61 @@ namespace overlay::windows {
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+            ImGui::SetTooltip(
+                "Save and apply matched light outputs.");
+        }
 
         ImGui::SameLine();
         if (ImGui::Button("Cancel")) {
             stop_test();
             ImGui::CloseCurrentPopup();
+        }
+
+        // copy list (right-justified)
+        if (auto_match_copied) {
+            auto elapsed = std::chrono::duration_cast<
+                std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now()
+                    - auto_match_copy_time).count();
+            if (elapsed >= 2000) {
+                auto_match_copied = false;
+            }
+        }
+        {
+            const char *copy_label = auto_match_copied
+                ? "Copied" : "Copy List";
+            float copy_w = ImGui::CalcTextSize(copy_label).x
+                + ImGui::GetStyle().FramePadding.x * 2;
+            ImGui::SameLine(ImGui::GetWindowWidth() - copy_w
+                - ImGui::GetStyle().WindowPadding.x);
+            ImGui::BeginDisabled(
+                raw_names.empty() || auto_match_copied);
+            if (ImGui::Button(copy_label)) {
+                std::string list;
+                for (int i = 0; i < (int) raw_names.size(); i++) {
+                    if (!list.empty()) {
+                        list += "\n";
+                    }
+                    char addr[16];
+                    if (i > 0xFF) {
+                        snprintf(addr, sizeof(addr), "0x%04X", i);
+                    } else {
+                        snprintf(addr, sizeof(addr), "0x%02X", i);
+                    }
+                    list += raw_names[i] + " (" + addr + ")";
+                }
+                clipboard::copy_text(list);
+                auto_match_copied = true;
+                auto_match_copy_time =
+                    std::chrono::steady_clock::now();
+            }
+            ImGui::EndDisabled();
+        }
+        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+            ImGui::SetTooltip(
+                "Copy full list of device lights"
+                " for development.");
         }
 
         ImGui::EndPopup();
