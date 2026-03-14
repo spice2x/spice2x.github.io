@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <optional>
 
 #include "cfg/game.h"
@@ -58,6 +59,20 @@ namespace overlay::windows {
         int lights_devices_selected = -1;
         int lights_devices_control_selected = -1;
 
+        // lights test all
+        bool lights_testing = false;
+        int lights_test_current = -1;
+        std::chrono::steady_clock::time_point lights_test_time;
+
+        // lights auto match
+        std::vector<rawinput::Device *> auto_match_devices;
+        int auto_match_device_selected = -1;
+        bool auto_match_testing = false;
+        int auto_match_test_current = -1;
+        std::chrono::steady_clock::time_point auto_match_test_time;
+        std::string auto_match_test_device;
+        unsigned int auto_match_test_control = 0;
+
         // keypads tab
         int keypads_selected[2] {};
         char keypads_card_path[2][1024] {};
@@ -106,6 +121,7 @@ namespace overlay::windows {
         void build_light(Light &primary_light, Light *light, const int light_index, const int alt_index);
         void clear_light(Light *light, const int alt_index);
         void edit_light_popup(Light &primary_light, Light *light, const int alt_index);
+        void auto_match_lights_popup(std::vector<Light> *lights);
 
         void build_cards();
         std::string build_option_value_picker_title(const OptionDefinition& option);
