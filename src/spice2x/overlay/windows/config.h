@@ -26,6 +26,14 @@ namespace overlay::windows {
         CONFIG_TAB_SEARCH,
     };
 
+    struct MatchEntry {
+        std::string game_name;
+        std::string device_name;
+        int light_index;
+        int control_index;
+        bool soft;
+    };
+
     class Config : public Window {
     private:
 
@@ -128,6 +136,13 @@ namespace overlay::windows {
         void clear_light(Light *light, const int alt_index);
         void edit_light_popup(Light &primary_light, Light *light, const int alt_index);
         void auto_match_lights_popup(std::vector<Light> *lights);
+
+        std::string match_lights(
+            rawinput::Device *device,
+            std::vector<Light> *lights,
+            std::vector<std::string> &raw_names,
+            std::vector<MatchEntry> &matched,
+            std::vector<MatchEntry> &unmatched);
 
         void build_cards();
         std::string build_option_value_picker_title(const OptionDefinition& option);
