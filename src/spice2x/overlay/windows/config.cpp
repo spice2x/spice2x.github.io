@@ -3056,8 +3056,7 @@ namespace overlay::windows {
 
             // match by name (hard match, case insensitive, with P1/P2 prefix fallback)
             std::vector<bool> device_matched(raw_names.size(), false);
-            const std::string player_prefix = auto_match_p2 ? "P2 " : "P1 ";
-            const auto player_prefix_lower = auto_match_p2 ? "p2 " : "p1 ";
+            const std::string player_prefix = auto_match_p2 ? "p2 " : "p1 ";
 
             for (auto &entry : matched) {
                 const auto game_lower = strtolower(entry.game_name);
@@ -3070,7 +3069,7 @@ namespace overlay::windows {
 
                     const auto dev_lower = strtolower(raw_names[ci]);
                     if (game_lower == dev_lower ||
-                        game_lower == player_prefix_lower + dev_lower) {
+                        game_lower == player_prefix + dev_lower) {
 
                         entry.device_name = raw_names[ci];
                         entry.control_index = ci;
@@ -3092,7 +3091,7 @@ namespace overlay::windows {
                     strreplace(dev_stripped, " ", "");
 
                     if (game_lower == dev_stripped ||
-                        game_lower == player_prefix_lower + dev_stripped) {
+                        game_lower == player_prefix + dev_stripped) {
 
                         entry.device_name = raw_names[ci];
                         entry.control_index = ci;
