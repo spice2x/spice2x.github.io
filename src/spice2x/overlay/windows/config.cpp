@@ -3054,12 +3054,18 @@ namespace overlay::windows {
                     break;
             }
 
-            // match by name (case insensitive)
+            // match by name (hard match, case insensitive, with P1/P2 prefix fallback)
             std::vector<bool> device_matched(raw_names.size(), false);
+            std::string player_prefix = auto_match_p2 ? "P2 " : "P1 ";
+            auto player_prefix_lower = strtolower(player_prefix);
             for (auto &entry : matched) {
                 auto game_lower = strtolower(entry.game_name);
                 for (int ci = 0; ci < (int) raw_names.size(); ci++) {
-                    if (!device_matched[ci] && game_lower == strtolower(raw_names[ci])) {
+                    if (device_matched[ci]) {
+                        continue;
+                    }
+                    auto dev_lower = strtolower(raw_names[ci]);
+                    if (game_lower == dev_lower || game_lower == player_prefix_lower + dev_lower) {
                         entry.device_name = raw_names[ci];
                         entry.control_index = ci;
                         device_matched[ci] = true;
@@ -3071,7 +3077,6 @@ namespace overlay::windows {
             // soft matching
             bool is_valkyrie_mode = games::sdvx::is_valkyrie_model();
             static const char *RGB[] = {" R", " G", " B"};
-            std::string player_prefix = auto_match_p2 ? "P2 " : "P1 ";
 
             // try to match a game light name, first as-is, then with P1/P2 prefix
             auto try_match = [&](const std::string &game_target, int ci, const char *controller) -> bool {
