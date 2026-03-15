@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <algorithm>
 #include <thread>
 
 #include <windows.h>
@@ -15,9 +16,11 @@
 #include "external/imgui/imgui_internal.h"
 #include "external/imgui/misc/cpp/imgui_stdlib.h"
 #include "games/io.h"
+#include "games/sdvx/sdvx.h"
 #include "avs/core.h"
 #include "avs/ea3.h"
 #include "avs/game.h"
+#include "light_match_map.h"
 #include "launcher/launcher.h"
 #include "launcher/options.h"
 #include "misc/eamuse.h"
@@ -564,6 +567,9 @@ namespace overlay::windows {
 
         // did tab selection change?
         if (this->tab_selected != tab_selected_new) {
+
+            stop_lights_test();
+
             this->tab_selected = tab_selected_new;
             buttons_many_active = false;
             buttons_many_index = -1;
@@ -2315,16 +2321,218 @@ namespace overlay::windows {
         }
     }
 
-    void Config::build_lights(const std::string &name, std::vector<Light> *lights) {
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Lights");
-        ImGui::Separator();
-        if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(140));
+    void Config::stop_lights_test() {
+        if (!lights_testing) {
+            return;
+        }
+        auto *lights = games::get_lights(this->games_selected_name);
+        if (lights) {
+            std::vector<int> bound;
+            for (int i = 0; i < (int) lights->size(); i++) {
+                if ((*lights)[i].isSet()) {
+                    bound.push_back(i);
+                }
+            }
+            if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                auto &cur = (*lights)[bound[lights_test_current]];
+                GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
+                RI_MGR->devices_flush_output();
+            }
+        }
+        lights_testing = false;
+        lights_test_current = -1;
+    }
 
-            // check if empty
-            if (!lights || lights->empty()) {
+    void Config::update() {
+        Window::update();
+        if (lights_testing && !this->active) {
+            stop_lights_test();
+        }
+    }
+
+    void Config::build_lights(const std::string &name, std::vector<Light> *lights) {
+        if (lights && !lights->empty()) {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Lights");
+
+            // auto match popup cleanup
+            if (auto_match_testing && !ImGui::IsPopupOpen("Auto Match Lights")) {
+                if (!auto_match_test_device.empty()) {
+                    Light temp("cleanup");
+                    temp.setDeviceIdentifier(auto_match_test_device);
+                    temp.setIndex(auto_match_test_control);
+                    GameAPI::Lights::writeLight(RI_MGR, temp, 0.f);
+                    RI_MGR->devices_flush_output();
+                }
+                auto_match_testing = false;
+                auto_match_test_current = -1;
+                auto_match_test_device.clear();
+            }
+
+            // bound lights for test all
+            std::vector<int> bound;
+            for (int i = 0; i < (int) lights->size(); i++) {
+                if ((*lights)[i].isSet()) {
+                    bound.push_back(i);
+                }
+            }
+
+            // test all sequence
+            if (lights_testing && !bound.empty()) {
+                auto now = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - lights_test_time).count();
+                if (elapsed >= 500) {
+                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                        auto &prev = (*lights)[bound[lights_test_current]];
+                        GameAPI::Lights::writeLight(RI_MGR, prev, 0.f);
+                        RI_MGR->devices_flush_output();
+                    }
+                    lights_test_current++;
+                    if (lights_test_current >= (int) bound.size()) {
+                        lights_test_current = 0;
+                    }
+                    lights_test_time = now;
+                    auto &next = (*lights)[bound[lights_test_current]];
+                    GameAPI::Lights::writeLight(RI_MGR, next, 1.f);
+                    RI_MGR->devices_flush_output();
+                }
+            }
+
+            // button row
+            const char *test_label = lights_testing ? "Stop Testing" : "Test All";
+            float match_w = ImGui::CalcTextSize("Auto Match Lights").x
+                + ImGui::GetStyle().FramePadding.x * 2;
+            float test_w = ImGui::CalcTextSize(test_label).x
+                + ImGui::GetStyle().FramePadding.x * 2;
+            float clear_w = ImGui::CalcTextSize("Clear All").x
+                + ImGui::GetStyle().FramePadding.x * 2;
+            float spacing = ImGui::GetStyle().ItemSpacing.x;
+            float total_w = clear_w + spacing + test_w + spacing + match_w;
+            ImGui::SameLine();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX()
+                + ImGui::GetContentRegionAvail().x - total_w);
+
+            // clear all
+            ImGui::BeginDisabled(bound.empty());
+            if (ImGui::Button("Clear All")) {
+                if (lights_testing) {
+                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                        auto &cur = (*lights)[bound[lights_test_current]];
+                        GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
+                        RI_MGR->devices_flush_output();
+                    }
+                    lights_testing = false;
+                    lights_test_current = -1;
+                }
+                for (auto &light : *lights) {
+                    if (!light.isSet()) {
+                        continue;
+                    }
+                    clear_light(&light, 0);
+                    for (int ai = 0; ai < (int) light.getAlternatives().size(); ai++) {
+                        clear_light(&light.getAlternatives()[ai], ai + 1);
+                    }
+                }
+            }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                ImGui::SetTooltip("Unbind all lights.");
+            }
+
+            // test all
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!lights_testing && bound.empty());
+            if (ImGui::Button(test_label)) {
+                if (lights_testing) {
+                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                        auto &cur = (*lights)[bound[lights_test_current]];
+                        GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
+                        RI_MGR->devices_flush_output();
+                    }
+                    lights_testing = false;
+                    lights_test_current = -1;
+                } else {
+                    lights_testing = true;
+                    lights_test_current = 0;
+                    lights_test_time = std::chrono::steady_clock::now();
+                    auto &first = (*lights)[bound[0]];
+                    GameAPI::Lights::writeLight(RI_MGR, first, 1.f);
+                    RI_MGR->devices_flush_output();
+                }
+            }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                ImGui::SetTooltip("Cycle through bound lights sequentially.");
+            }
+
+            // auto match lights
+            ImGui::SameLine();
+            if (ImGui::Button("Auto Match Lights")) {
+                ImGui::OpenPopup("Auto Match Lights");
+
+                if (lights_testing) {
+                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                        auto &cur = (*lights)[bound[lights_test_current]];
+                        GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
+                        RI_MGR->devices_flush_output();
+                    }
+                    lights_testing = false;
+                    lights_test_current = -1;
+                }
+
+                this->auto_match_devices.clear();
+                this->auto_match_device_selected = -1;
+                this->auto_match_testing = false;
+                this->auto_match_test_current = -1;
+                this->auto_match_test_device.clear();
+                this->auto_match_soft_enabled = true;
+                this->auto_match_copied = false;
+                this->auto_match_p2 = false;
+
+                for (auto &device : RI_MGR->devices_get()) {
+                    switch (device.type) {
+                        case rawinput::HID:
+                            if (!device.hidInfo->button_output_caps_list.empty()
+                                || !device.hidInfo->value_output_caps_list.empty()) {
+                                this->auto_match_devices.emplace_back(&device);
+                            }
+                            break;
+                        case rawinput::SEXTET_OUTPUT:
+                        case rawinput::PIUIO_DEVICE:
+                        case rawinput::SMX_STAGE:
+                        case rawinput::SMX_DEDICAB:
+                            this->auto_match_devices.emplace_back(&device);
+                            break;
+                        default:
+                            continue;
+                    }
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Auto match game lights to device outputs by name.");
+            }
+
+            auto_match_lights_popup(lights);
+        } else {
+            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Lights");
+        }
+        ImGui::Separator();
+
+        auto begin_lights_table = [&]() -> bool {
+            if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed,
+                    overlay::apply_scaling(140));
+                return true;
+            }
+            return false;
+        };
+
+        // check if empty
+        if (!lights || lights->empty()) {
+            if (begin_lights_table()) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 ImGui::Indent(INDENT);
@@ -2334,30 +2542,122 @@ namespace overlay::windows {
                 ImGui::TextDisabled("-");
                 ImGui::TableNextColumn();
                 ImGui::TextDisabled("-");
+                ImGui::EndTable();
             }
+            return;
+        }
 
-            // check lights
-            if (lights) {
-                int light_index = 0;
-                for (auto &light : *lights) {
-                    // primary
-                    build_light(light, &light, light_index, 0);
+        bool is_sdvx = (this->games_selected_name == "Sound Voltex");
+        bool is_valkyrie = games::sdvx::is_valkyrie_model();
 
-                    // alternatives
-                    int alt_index = 1; // 0 is primary
-                    for (auto &alt : light.getAlternatives()) {
-                        if (alt.isValid()) {
-                            build_light(light, &alt, light_index, alt_index);
-                        }
-
-                        alt_index++;
+        auto render_lights = [&](int start, int end) {
+            if (!begin_lights_table()) {
+                return;
+            }
+            for (int i = start; i < end; i++) {
+                auto &light = lights->at(i);
+                build_light(light, &light, i, 0);
+                int alt_index = 1;
+                for (auto &alt : light.getAlternatives()) {
+                    if (alt.isValid()) {
+                        build_light(light, &alt, i, alt_index);
                     }
+                    alt_index++;
+                }
+            }
+            ImGui::EndTable();
+        };
 
-                    light_index++;
+        // render a section header with optional tooltip
+        auto render_section_header = [](const char *name, const char *tooltip) {
+            float pad = ImGui::GetTextLineHeight() * 0.5f;
+            ImGui::Dummy(ImVec2(0, pad));
+            ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "%s", name);
+            if (tooltip) {
+                ImGui::SameLine();
+                ImGui::HelpMarker(tooltip);
+            }
+            ImGui::Separator();
+        };
+
+        if (is_sdvx) {
+            // find section boundaries
+            int total = (int)lights->size();
+            int idx_buttons = -1, idx_nemsys = -1;
+            int idx_valkyrie = -1, idx_others = -1;
+            for (int i = 0; i < total; i++) {
+                auto &ln = lights->at(i).getName();
+                if (ln == "BT-A") {
+                    idx_buttons = i;
+                } else if (ln == "Wing Left Up R") {
+                    idx_nemsys = i;
+                } else if (ln == "IC Card Reader R") {
+                    idx_valkyrie = i;
+                } else if (ln == "Volume Sound") {
+                    idx_others = i;
                 }
             }
 
-            ImGui::EndTable();
+            // compute end index for each section
+            auto next_boundary = [&](int after) -> int {
+                int result = total;
+                for (int c : {idx_buttons, idx_nemsys,
+                        idx_valkyrie, idx_others}) {
+                    if (c > after && c < result) {
+                        result = c;
+                    }
+                }
+                return result;
+            };
+
+            // buttons always first
+            if (idx_buttons >= 0) {
+                render_section_header("Buttons", nullptr);
+                render_lights(idx_buttons,
+                    next_boundary(idx_buttons));
+            }
+
+            // swap valkyrie and nemsys lights depending on spec
+            struct Section {
+                const char *name;
+                const char *tooltip;
+                int start;
+                int end;
+            };
+            Section valkyrie = {
+                "Valkyrie Lights",
+                "Valkyrie (G/H spec) / BI2X ONLY.\nWon't work in Nemsys mode.",
+                idx_valkyrie,
+                (idx_valkyrie >= 0) ? next_boundary(idx_valkyrie) : 0
+            };
+            Section nemsys = {
+                "Nemsys Lights",
+                "Nemsys (F spec) / BI2A ONLY.\nWon't work in Valkyrie mode.",
+                idx_nemsys,
+                (idx_nemsys >= 0) ? next_boundary(idx_nemsys) : 0
+            };
+
+            Section first = nemsys, second = valkyrie;
+            if (is_valkyrie) {
+                first = valkyrie;
+                second = nemsys;
+            }
+            if (first.start >= 0) {
+                render_section_header(first.name, first.tooltip);
+                render_lights(first.start, first.end);
+            }
+            if (second.start >= 0) {
+                render_section_header(second.name, second.tooltip);
+                render_lights(second.start, second.end);
+            }
+
+            // others always last
+            if (idx_others >= 0) {
+                render_section_header("Others", nullptr);
+                render_lights(idx_others, next_boundary(idx_others));
+            }
+        } else {
+            render_lights(0, (int)lights->size());
         }
     }
 
@@ -2664,6 +2964,593 @@ namespace overlay::windows {
             // clean up
             ImGui::EndPopup();
         }
+    }
+
+    void Config::auto_match_lights_popup(std::vector<Light> *lights) {
+        ImGui::SetNextWindowSize(ImVec2(480.f, 400.f), ImGuiCond_Appearing);
+        if (!ImGui::BeginPopupModal("Auto Match Lights", nullptr, 0)) {
+            return;
+        }
+
+        // device selector
+        ImGui::Text("Select device:");
+        ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+        bool device_changed = ImGui::Combo("##AutoMatchDevice",
+                &this->auto_match_device_selected,
+                [] (void* data, int i, const char **item) {
+                    auto *devs = (std::vector<rawinput::Device*>*) data;
+                    *item = devs->at(i)->desc.c_str();
+                    return true;
+                },
+                &this->auto_match_devices,
+                (int) this->auto_match_devices.size());
+
+        rawinput::Device *device = nullptr;
+        bool has_device = auto_match_device_selected >= 0
+            && auto_match_device_selected < (int) auto_match_devices.size();
+        if (has_device) {
+            device = auto_match_devices[auto_match_device_selected];
+        }
+
+        struct MatchEntry {
+            std::string game_name;
+            std::string device_name;
+            int light_index;
+            int control_index;
+            bool soft;
+        };
+        std::vector<MatchEntry> matched;
+        std::vector<MatchEntry> unmatched;
+
+        for (int li = 0; li < (int) lights->size(); li++) {
+            matched.push_back({
+                (*lights)[li].getName(), "", li, -1, false
+            });
+        }
+
+        std::vector<std::string> raw_names;
+        std::string detected_controller;
+        if (has_device) {
+            // build output name list
+            switch (device->type) {
+                case rawinput::HID: {
+                    for (auto &n : device->hidInfo->button_output_caps_names) {
+                        raw_names.push_back(n);
+                    }
+                    for (auto &n : device->hidInfo->value_output_caps_names) {
+                        raw_names.push_back(n);
+                    }
+                    break;
+                }
+                case rawinput::SEXTET_OUTPUT: {
+                    for (int i = 0; i < rawinput::SextetDevice::LIGHT_COUNT; i++) {
+                        raw_names.emplace_back(
+                            rawinput::SextetDevice::LIGHT_NAMES[i]);
+                    }
+                    break;
+                }
+                case rawinput::PIUIO_DEVICE: {
+                    for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_LIGHTS; i++) {
+                        raw_names.emplace_back(
+                            rawinput::PIUIO::LIGHT_NAMES[i]);
+                    }
+                    break;
+                }
+                case rawinput::SMX_STAGE: {
+                    for (int i = 0; i < rawinput::SmxStageDevice::TOTAL_LIGHT_COUNT; i++) {
+                        raw_names.push_back(
+                            rawinput::SmxStageDevice::GetLightNameByIndex(i));
+                    }
+                    break;
+                }
+                case rawinput::SMX_DEDICAB: {
+                    for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
+                        raw_names.push_back(
+                            rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+
+            // match by name (hard match, case insensitive, with P1/P2 prefix fallback)
+            std::vector<bool> device_matched(raw_names.size(), false);
+            std::string player_prefix = auto_match_p2 ? "P2 " : "P1 ";
+            auto player_prefix_lower = strtolower(player_prefix);
+            for (auto &entry : matched) {
+                auto game_lower = strtolower(entry.game_name);
+                for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                    if (device_matched[ci]) {
+                        continue;
+                    }
+                    auto dev_lower = strtolower(raw_names[ci]);
+                    if (game_lower == dev_lower || game_lower == player_prefix_lower + dev_lower) {
+                        entry.device_name = raw_names[ci];
+                        entry.control_index = ci;
+                        device_matched[ci] = true;
+                        break;
+                    }
+                }
+            }
+
+            // soft matching
+            bool is_valkyrie_mode = games::sdvx::is_valkyrie_model();
+            static const char *RGB[] = {" R", " G", " B"};
+
+            // try to match a game light name, first as-is, then with P1/P2 prefix
+            auto try_match = [&](const std::string &game_target, int ci, const char *controller) -> bool {
+                auto target = strtolower(game_target);
+                auto target_player = strtolower(player_prefix + game_target);
+                for (auto &entry : matched) {
+                    if (entry.control_index >= 0) {
+                        continue;
+                    }
+                    auto entry_lower = strtolower(entry.game_name);
+                    if (entry_lower != target && entry_lower != target_player) {
+                        continue;
+                    }
+                    entry.device_name = raw_names[ci];
+                    entry.control_index = ci;
+                    entry.soft = true;
+                    device_matched[ci] = true;
+                    if (detected_controller.empty()) {
+                        detected_controller = controller;
+                    }
+                    return true;
+                }
+                return false;
+            };
+
+            for (int ri = 0; ri < LIGHT_MATCH_MAP_COUNT; ri++) {
+                auto &rule = LIGHT_MATCH_MAP[ri];
+                if (*rule.game && this->games_selected_name != rule.game) {
+                    continue;
+                }
+                if (rule.vid && device->hidInfo
+                        && (device->hidInfo->attributes.VendorID != rule.vid
+                            || device->hidInfo->attributes.ProductID != rule.pid)) {
+                    continue;
+                }
+
+                if (*rule.address) {
+                    // address mode: match device light at specific index
+                    int ci = (int) strtol(rule.address, nullptr, 0);
+                    if (ci >= (int) raw_names.size() || device_matched[ci]) {
+                        continue;
+                    }
+                    if (strtolower(raw_names[ci]) != strtolower(std::string(rule.device_light))) {
+                        continue;
+                    }
+                    try_match(rule.game_light, ci, rule.controller);
+                } else if (rule.rgb) {
+                    // RGB mode: expand device_light + " R/G/B" + device_suffix
+                    const char *game_base = (is_valkyrie_mode && *rule.game_light_alt)
+                        ? rule.game_light_alt : rule.game_light;
+                    if (!*game_base) {
+                        continue;
+                    }
+                    for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                        if (device_matched[ci]) {
+                            continue;
+                        }
+                        auto dev_lower = strtolower(raw_names[ci]);
+                        for (int rgb = 0; rgb < 3; rgb++) {
+                            auto expected = strtolower(
+                                std::string(rule.device_light) + RGB[rgb] + rule.device_suffix);
+                            if (dev_lower != expected) {
+                                continue;
+                            }
+                            try_match(std::string(game_base) + RGB[rgb], ci, rule.controller);
+                            break;
+                        }
+                    }
+                } else {
+                    // name mode: direct 1:1 device_light → game_light
+                    const char *game_base = (is_valkyrie_mode && *rule.game_light_alt)
+                        ? rule.game_light_alt : rule.game_light;
+                    if (!*game_base) {
+                        continue;
+                    }
+                    for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                        if (device_matched[ci]) {
+                            continue;
+                        }
+                        if (strtolower(raw_names[ci]) != strtolower(std::string(rule.device_light))) {
+                            continue;
+                        }
+                        if (try_match(game_base, ci, rule.controller)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // unmatched device lights
+            for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                if (!device_matched[ci] && strtolower(raw_names[ci]) != "null") {
+                    unmatched.push_back({"", raw_names[ci], -1, ci, false});
+                }
+            }
+        }
+
+        // partition: matches first, then hard before soft
+        std::stable_partition(matched.begin(), matched.end(),
+            [](const MatchEntry &e) {
+                return e.control_index >= 0;
+            });
+        matched.erase(
+            std::remove_if(matched.begin(), matched.end(),
+                [](const MatchEntry &e) {
+                    return e.control_index < 0;
+                }),
+            matched.end());
+        std::stable_partition(matched.begin(), matched.end(),
+            [](const MatchEntry &e) {
+                return !e.soft;
+            });
+
+        // check for soft matches
+        bool has_soft = false;
+        for (auto &entry : matched) {
+            if (entry.soft) {
+                has_soft = true;
+                break;
+            }
+        }
+
+        // testable entries
+        std::vector<int> testable;
+        for (int i = 0; i < (int) matched.size(); i++) {
+            if (matched[i].control_index >= 0 && (!matched[i].soft || auto_match_soft_enabled)) {
+                testable.push_back(i);
+            }
+        }
+        int match_count = (int) testable.size();
+
+        auto write_test_light = [&](int test_idx, float value) {
+            if (!device || test_idx < 0 || test_idx >= (int) testable.size()) {
+                return;
+            }
+            auto &entry = matched[testable[test_idx]];
+            Light temp(entry.game_name);
+            temp.setDeviceIdentifier(device->name);
+            temp.setIndex(entry.control_index);
+            GameAPI::Lights::writeLight(RI_MGR, temp, value);
+            RI_MGR->devices_flush_output();
+            if (value > 0.f) {
+                auto_match_test_device = device->name;
+                auto_match_test_control = entry.control_index;
+            } else {
+                auto_match_test_device.clear();
+            }
+        };
+
+        auto stop_test = [&]() {
+            if (!auto_match_testing) {
+                return;
+            }
+            write_test_light(auto_match_test_current, 0.f);
+            auto_match_testing = false;
+            auto_match_test_current = -1;
+        };
+
+        if (device_changed) {
+            stop_test();
+            auto_match_copied = false;
+
+            // auto-detect P1/P2 from existing button bindings
+            auto_match_p2 = false;
+            if (device) {
+                auto *buttons = games::get_buttons(this->games_selected_name);
+                if (buttons) {
+                    int p1_count = 0, p2_count = 0;
+                    for (auto &btn : *buttons) {
+                        if (btn.getDeviceIdentifier() != device->name) {
+                            continue;
+                        }
+                        auto &bn = btn.getName();
+                        if (bn.substr(0, 3) == "P1 ") {
+                            p1_count++;
+                        } else if (bn.substr(0, 3) == "P2 ") {
+                            p2_count++;
+                        }
+                    }
+                    if (p2_count > p1_count) {
+                        auto_match_p2 = true;
+                    }
+                }
+            }
+        }
+
+        // test sequence
+        if (auto_match_testing && !testable.empty()) {
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - auto_match_test_time).count();
+            if (elapsed >= 500) {
+                write_test_light(auto_match_test_current, 0.f);
+                auto_match_test_current++;
+                if (auto_match_test_current >= (int) testable.size()) {
+                    auto_match_test_current = 0;
+                }
+                auto_match_test_time = now;
+                write_test_light(auto_match_test_current, 1.f);
+            }
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (!detected_controller.empty()) {
+            ImGui::TextColored(ImVec4(1.f, 0.9f, 0.3f, 1.f),
+                "%s detected", detected_controller.c_str());
+            if (has_soft) {
+                float help_w = ImGui::CalcTextSize("(?)").x;
+                float text_w = ImGui::CalcTextSize("Include suggested matches").x;
+                float cb_w = ImGui::GetFrameHeight();
+                float spacing = ImGui::GetStyle().ItemSpacing.x;
+                float total = help_w + spacing + text_w + spacing + cb_w;
+                ImGui::SameLine(ImGui::GetWindowWidth() - total
+                    - ImGui::GetStyle().WindowPadding.x);
+                ImGui::HelpMarker(
+                    "Include suggested device/game light matches\n"
+                    "(based on common/known controller lights)");
+                ImGui::SameLine();
+                ImGui::TextUnformatted("Include suggested matches");
+                ImGui::SameLine();
+                ImGui::Checkbox("##soft_match", &auto_match_soft_enabled);
+            }
+        }
+
+        if (has_device) {
+            ImGui::AlignTextToFramePadding();
+            ImGui::Text("Matched: %d lights", match_count);
+        } else {
+            ImGui::AlignTextToFramePadding();
+            ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
+        }
+
+        // P1/P2 toggle + test lights button (right-aligned)
+        {
+            bool has_players = false;
+            for (auto &light : *lights) {
+                auto &ln = light.getName();
+                if (ln.substr(0, 3) == "P1 " || ln.substr(0, 3) == "P2 ") {
+                    has_players = true;
+                    break;
+                }
+            }
+
+            const char *test_label = auto_match_testing ? "Stop Testing" : "Test Lights";
+            float test_w = ImGui::CalcTextSize(test_label).x
+                + ImGui::GetStyle().FramePadding.x * 2;
+            float total_w = test_w;
+
+            const char *p_label = auto_match_p2 ? "P2" : "P1";
+            float p_w = 0;
+            if (has_players) {
+                p_w = ImGui::CalcTextSize(p_label).x
+                    + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
+                total_w += p_w;
+            }
+
+            ImGui::SameLine(ImGui::GetWindowWidth() - total_w
+                - ImGui::GetStyle().WindowPadding.x);
+
+            if (has_players) {
+                if (ImGui::Button(p_label)) {
+                    stop_test();
+                    auto_match_p2 = !auto_match_p2;
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Toggle between P1 and P2 light mappings.\n"
+                        "Auto-detected from button bindings.");
+                }
+                ImGui::SameLine();
+            }
+
+            ImGui::BeginDisabled(!auto_match_testing && match_count == 0);
+            if (ImGui::Button(test_label)) {
+                if (auto_match_testing) {
+                    stop_test();
+                } else {
+                    auto_match_testing = true;
+                    auto_match_test_current = 0;
+                    auto_match_test_time = std::chrono::steady_clock::now();
+                    write_test_light(0, 1.f);
+                }
+            }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                ImGui::SetTooltip("Cycle through matched lights sequentially.");
+            }
+        }
+
+        // match table
+        ImGui::Spacing();
+        float footer_h = ImGui::GetStyle().ItemSpacing.y
+            + ImGui::GetFrameHeightWithSpacing() * 2 + ImGui::GetStyle().WindowPadding.y;
+        float table_h = ImGui::GetContentRegionAvail().y - footer_h;
+        if (ImGui::BeginTable("##AutoMatchTable", 3,
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
+                ImVec2(0, table_h))) {
+            ImGui::TableSetupColumn("Device Light", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 30.f);
+            ImGui::TableSetupColumn("Game Light", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupScrollFreeze(0, 1);
+            ImGui::TableHeadersRow();
+
+            for (int i = 0; i < (int) matched.size(); i++) {
+                auto &entry = matched[i];
+                bool is_active_test = auto_match_testing
+                    && auto_match_test_current >= 0
+                    && auto_match_test_current < (int) testable.size()
+                    && testable[auto_match_test_current] == i;
+                bool soft_inactive = entry.soft && !auto_match_soft_enabled;
+
+                ImGui::TableNextRow();
+
+                if (is_active_test) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.2f, 0.2f, 1.f));
+                } else if (soft_inactive) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.f));
+                } else if (entry.soft) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.9f, 0.3f, 1.f));
+                } else {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 1.f, 0.5f, 1.f));
+                }
+
+                // device light
+                ImGui::TableNextColumn();
+                ImGui::Text("%s", entry.device_name.c_str());
+
+                // arrow (centered)
+                ImGui::TableNextColumn();
+                float arrow_w = ImGui::CalcTextSize("->").x;
+                float col_w = ImGui::GetColumnWidth();
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (col_w - arrow_w) * 0.5f);
+                ImGui::TextUnformatted("->");
+
+                // game light
+                ImGui::TableNextColumn();
+                ImGui::Text("%s", entry.game_name.c_str());
+
+                ImGui::PopStyleColor();
+            }
+
+            for (auto &entry : unmatched) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextDisabled("%s", entry.device_name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TableNextColumn();
+            }
+
+            ImGui::EndTable();
+        }
+
+        // apply / cancel
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::BeginDisabled(match_count == 0);
+        if (ImGui::Button("Save")) {
+            stop_test();
+
+            // look up current device desc for same-controller detection
+            auto get_device_desc = [&](const std::string &identifier) -> std::string {
+                for (auto &d : RI_MGR->devices_get()) {
+                    if (d.name == identifier) {
+                        return d.desc;
+                    }
+                }
+                return "";
+            };
+
+            for (auto &entry : matched) {
+                if (entry.control_index < 0) {
+                    continue;
+                }
+                if (entry.soft && !auto_match_soft_enabled) {
+                    continue;
+                }
+                auto &light = (*lights)[entry.light_index];
+
+                // if primary is already bound to a different unit of the same
+                // controller type, add as alternative instead of overwriting
+                bool use_alt = false;
+                if (!light.getDeviceIdentifier().empty()
+                        && light.getDeviceIdentifier() != device->name
+                        && get_device_desc(light.getDeviceIdentifier()) == device->desc) {
+                    use_alt = true;
+                }
+
+                if (use_alt) {
+                    // find or create an alternative slot
+                    Light *alt = nullptr;
+                    for (auto &a : light.getAlternatives()) {
+                        if (!a.isValid() || a.getDeviceIdentifier() == device->name) {
+                            alt = &a;
+                            break;
+                        }
+                    }
+                    if (!alt && light.getAlternatives().size() < 7) {
+                        Light temp(light.getName());
+                        temp.setTemporary(true);
+                        light.getAlternatives().push_back(temp);
+                        alt = &light.getAlternatives().back();
+                    }
+                    if (alt) {
+                        alt->setDeviceIdentifier(device->name);
+                        alt->setIndex(entry.control_index);
+                        int alt_idx = (int)(&*alt - &light.getAlternatives()[0]);
+                        ::Config::getInstance().updateBinding(
+                            games_list[games_selected], *alt, alt_idx);
+                    }
+                } else {
+                    light.setDeviceIdentifier(device->name);
+                    light.setIndex(entry.control_index);
+                    ::Config::getInstance().updateBinding(
+                        games_list[games_selected], light, -1);
+                }
+            }
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+            ImGui::SetTooltip("Save and apply matched light outputs.");
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            stop_test();
+            ImGui::CloseCurrentPopup();
+        }
+
+        // copy list (right-justified)
+        if (auto_match_copied) {
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - auto_match_copy_time).count();
+            if (elapsed >= 2000) {
+                auto_match_copied = false;
+            }
+        }
+        {
+            const char *copy_label = auto_match_copied ? "Copied" : "Copy List";
+            float copy_w = ImGui::CalcTextSize(copy_label).x
+                + ImGui::GetStyle().FramePadding.x * 2;
+            ImGui::SameLine(ImGui::GetWindowWidth() - copy_w
+                - ImGui::GetStyle().WindowPadding.x);
+            ImGui::BeginDisabled(raw_names.empty() || auto_match_copied);
+            if (ImGui::Button(copy_label)) {
+                std::string list;
+                for (int i = 0; i < (int) raw_names.size(); i++) {
+                    if (!list.empty()) {
+                        list += "\n";
+                    }
+                    char addr[16];
+                    if (i > 0xFF) {
+                        snprintf(addr, sizeof(addr), "0x%04X", i);
+                    } else {
+                        snprintf(addr, sizeof(addr), "0x%02X", i);
+                    }
+                    list += raw_names[i] + " (" + addr + ")";
+                }
+                clipboard::copy_text(list);
+                auto_match_copied = true;
+                auto_match_copy_time = std::chrono::steady_clock::now();
+            }
+            ImGui::EndDisabled();
+        }
+        if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+            ImGui::SetTooltip("Copy full list of device lights (for development).");
+        }
+
+        ImGui::EndPopup();
     }
 
     void Config::build_cards() {
