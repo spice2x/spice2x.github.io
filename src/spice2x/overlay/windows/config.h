@@ -74,6 +74,8 @@ namespace overlay::windows {
         unsigned int auto_match_test_control = 0;
         std::chrono::steady_clock::time_point auto_match_copy_time;
         bool auto_match_copied = false;
+        bool auto_match_soft_enabled = true;
+        bool auto_match_p2 = false;
 
         // keypads tab
         int keypads_selected[2] {};

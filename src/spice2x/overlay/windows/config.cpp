@@ -16,9 +16,11 @@
 #include "external/imgui/imgui_internal.h"
 #include "external/imgui/misc/cpp/imgui_stdlib.h"
 #include "games/io.h"
+#include "games/sdvx/sdvx.h"
 #include "avs/core.h"
 #include "avs/ea3.h"
 #include "avs/game.h"
+#include "light_match_map.h"
 #include "launcher/launcher.h"
 #include "launcher/options.h"
 #include "misc/eamuse.h"
@@ -2323,8 +2325,7 @@ namespace overlay::windows {
         if (!lights_testing) {
             return;
         }
-        auto *lights = games::get_lights(
-            this->games_selected_name);
+        auto *lights = games::get_lights(this->games_selected_name);
         if (lights) {
             std::vector<int> bound;
             for (int i = 0; i < (int) lights->size(); i++) {
@@ -2332,13 +2333,9 @@ namespace overlay::windows {
                     bound.push_back(i);
                 }
             }
-            if (lights_test_current >= 0
-                    && lights_test_current
-                        < (int) bound.size()) {
-                auto &cur = (*lights)[
-                    bound[lights_test_current]];
-                GameAPI::Lights::writeLight(
-                    RI_MGR, cur, 0.f);
+            if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                auto &cur = (*lights)[bound[lights_test_current]];
+                GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
                 RI_MGR->devices_flush_output();
             }
         }
@@ -2359,8 +2356,7 @@ namespace overlay::windows {
             ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Lights");
 
             // auto match popup cleanup
-            if (auto_match_testing
-                    && !ImGui::IsPopupOpen("Auto Match Lights")) {
+            if (auto_match_testing && !ImGui::IsPopupOpen("Auto Match Lights")) {
                 if (!auto_match_test_device.empty()) {
                     Light temp("cleanup");
                     temp.setDeviceIdentifier(auto_match_test_device);
@@ -2384,62 +2380,46 @@ namespace overlay::windows {
             // test all sequence
             if (lights_testing && !bound.empty()) {
                 auto now = std::chrono::steady_clock::now();
-                auto elapsed = std::chrono::duration_cast<
-                    std::chrono::milliseconds>(
-                        now - lights_test_time).count();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - lights_test_time).count();
                 if (elapsed >= 500) {
-                    if (lights_test_current >= 0
-                            && lights_test_current
-                                < (int) bound.size()) {
-                        auto &prev = (*lights)[
-                            bound[lights_test_current]];
-                        GameAPI::Lights::writeLight(
-                            RI_MGR, prev, 0.f);
+                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                        auto &prev = (*lights)[bound[lights_test_current]];
+                        GameAPI::Lights::writeLight(RI_MGR, prev, 0.f);
                         RI_MGR->devices_flush_output();
                     }
                     lights_test_current++;
-                    if (lights_test_current
-                            >= (int) bound.size()) {
+                    if (lights_test_current >= (int) bound.size()) {
                         lights_test_current = 0;
                     }
                     lights_test_time = now;
-                    auto &next = (*lights)[
-                        bound[lights_test_current]];
-                    GameAPI::Lights::writeLight(
-                        RI_MGR, next, 1.f);
+                    auto &next = (*lights)[bound[lights_test_current]];
+                    GameAPI::Lights::writeLight(RI_MGR, next, 1.f);
                     RI_MGR->devices_flush_output();
                 }
             }
 
             // button row
-            const char *test_label = lights_testing
-                ? "Stop Testing" : "Test All";
-            float match_w = ImGui::CalcTextSize(
-                    "Auto Match Lights").x
+            const char *test_label = lights_testing ? "Stop Testing" : "Test All";
+            float match_w = ImGui::CalcTextSize("Auto Match Lights").x
                 + ImGui::GetStyle().FramePadding.x * 2;
             float test_w = ImGui::CalcTextSize(test_label).x
                 + ImGui::GetStyle().FramePadding.x * 2;
             float clear_w = ImGui::CalcTextSize("Clear All").x
                 + ImGui::GetStyle().FramePadding.x * 2;
             float spacing = ImGui::GetStyle().ItemSpacing.x;
-            float total_w = clear_w + spacing
-                + test_w + spacing + match_w;
+            float total_w = clear_w + spacing + test_w + spacing + match_w;
             ImGui::SameLine();
-            ImGui::SetCursorPosX(
-                ImGui::GetCursorPosX()
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX()
                 + ImGui::GetContentRegionAvail().x - total_w);
 
             // clear all
             ImGui::BeginDisabled(bound.empty());
             if (ImGui::Button("Clear All")) {
                 if (lights_testing) {
-                    if (lights_test_current >= 0
-                            && lights_test_current
-                                < (int) bound.size()) {
-                        auto &cur = (*lights)[
-                            bound[lights_test_current]];
-                        GameAPI::Lights::writeLight(
-                            RI_MGR, cur, 0.f);
+                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                        auto &cur = (*lights)[bound[lights_test_current]];
+                        GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
                         RI_MGR->devices_flush_output();
                     }
                     lights_testing = false;
@@ -2450,11 +2430,8 @@ namespace overlay::windows {
                         continue;
                     }
                     clear_light(&light, 0);
-                    for (int ai = 0;
-                            ai < (int) light.getAlternatives().size();
-                            ai++) {
-                        clear_light(
-                            &light.getAlternatives()[ai], ai + 1);
+                    for (int ai = 0; ai < (int) light.getAlternatives().size(); ai++) {
+                        clear_light(&light.getAlternatives()[ai], ai + 1);
                     }
                 }
             }
@@ -2465,17 +2442,12 @@ namespace overlay::windows {
 
             // test all
             ImGui::SameLine();
-            ImGui::BeginDisabled(
-                !lights_testing && bound.empty());
+            ImGui::BeginDisabled(!lights_testing && bound.empty());
             if (ImGui::Button(test_label)) {
                 if (lights_testing) {
-                    if (lights_test_current >= 0
-                            && lights_test_current
-                                < (int) bound.size()) {
-                        auto &cur = (*lights)[
-                            bound[lights_test_current]];
-                        GameAPI::Lights::writeLight(
-                            RI_MGR, cur, 0.f);
+                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                        auto &cur = (*lights)[bound[lights_test_current]];
+                        GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
                         RI_MGR->devices_flush_output();
                     }
                     lights_testing = false;
@@ -2483,18 +2455,15 @@ namespace overlay::windows {
                 } else {
                     lights_testing = true;
                     lights_test_current = 0;
-                    lights_test_time =
-                        std::chrono::steady_clock::now();
+                    lights_test_time = std::chrono::steady_clock::now();
                     auto &first = (*lights)[bound[0]];
-                    GameAPI::Lights::writeLight(
-                        RI_MGR, first, 1.f);
+                    GameAPI::Lights::writeLight(RI_MGR, first, 1.f);
                     RI_MGR->devices_flush_output();
                 }
             }
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-                ImGui::SetTooltip(
-                    "Cycle through bound lights sequentially.");
+                ImGui::SetTooltip("Cycle through bound lights sequentially.");
             }
 
             // auto match lights
@@ -2503,13 +2472,9 @@ namespace overlay::windows {
                 ImGui::OpenPopup("Auto Match Lights");
 
                 if (lights_testing) {
-                    if (lights_test_current >= 0
-                            && lights_test_current
-                                < (int) bound.size()) {
-                        auto &cur = (*lights)[
-                            bound[lights_test_current]];
-                        GameAPI::Lights::writeLight(
-                            RI_MGR, cur, 0.f);
+                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                        auto &cur = (*lights)[bound[lights_test_current]];
+                        GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
                         RI_MGR->devices_flush_output();
                     }
                     lights_testing = false;
@@ -2521,6 +2486,9 @@ namespace overlay::windows {
                 this->auto_match_testing = false;
                 this->auto_match_test_current = -1;
                 this->auto_match_test_device.clear();
+                this->auto_match_soft_enabled = true;
+                this->auto_match_copied = false;
+                this->auto_match_p2 = false;
 
                 for (auto &device : RI_MGR->devices_get()) {
                     switch (device.type) {
@@ -2542,8 +2510,7 @@ namespace overlay::windows {
                 }
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Auto match game lights to device outputs by name.");
+                ImGui::SetTooltip("Auto match game lights to device outputs by name.");
             }
 
             auto_match_lights_popup(lights);
@@ -2553,14 +2520,10 @@ namespace overlay::windows {
         ImGui::Separator();
 
         auto begin_lights_table = [&]() -> bool {
-            if (ImGui::BeginTable("LightsTable", 3,
-                    ImGuiTableFlags_Resizable)) {
-                ImGui::TableSetupColumn("Name",
-                    ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Binding",
-                    ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Actions",
-                    ImGuiTableColumnFlags_WidthFixed,
+            if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed,
                     overlay::apply_scaling(140));
                 return true;
             }
@@ -2584,11 +2547,8 @@ namespace overlay::windows {
             return;
         }
 
-        bool is_sdvx = (this->games_selected_name
-            == "Sound Voltex");
-        bool is_valkyrie = is_sdvx
-            && (avs::game::SPEC[0] == 'G'
-                || avs::game::SPEC[0] == 'H');
+        bool is_sdvx = (this->games_selected_name == "Sound Voltex");
+        bool is_valkyrie = games::sdvx::is_valkyrie_model();
 
         auto render_lights = [&](int start, int end) {
             if (!begin_lights_table()) {
@@ -2609,13 +2569,10 @@ namespace overlay::windows {
         };
 
         // render a section header with optional tooltip
-        auto render_section_header = [](
-                const char *name, const char *tooltip) {
+        auto render_section_header = [](const char *name, const char *tooltip) {
             float pad = ImGui::GetTextLineHeight() * 0.5f;
             ImGui::Dummy(ImVec2(0, pad));
-            ImGui::TextColored(
-                ImVec4(1.f, 0.7f, 0, 1),
-                "%s", name);
+            ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "%s", name);
             if (tooltip) {
                 ImGui::SameLine();
                 ImGui::HelpMarker(tooltip);
@@ -2669,19 +2626,15 @@ namespace overlay::windows {
             };
             Section valkyrie = {
                 "Valkyrie Lights",
-                "Valkyrie (G/H spec) / BI2X ONLY."
-                    "\nWon't work in Nemsys mode.",
+                "Valkyrie (G/H spec) / BI2X ONLY.\nWon't work in Nemsys mode.",
                 idx_valkyrie,
-                (idx_valkyrie >= 0)
-                    ? next_boundary(idx_valkyrie) : 0
+                (idx_valkyrie >= 0) ? next_boundary(idx_valkyrie) : 0
             };
             Section nemsys = {
                 "Nemsys Lights",
-                "Nemsys (F spec) / BI2A ONLY."
-                    "\nWon't work in Valkyrie mode.",
+                "Nemsys (F spec) / BI2A ONLY.\nWon't work in Valkyrie mode.",
                 idx_nemsys,
-                (idx_nemsys >= 0)
-                    ? next_boundary(idx_nemsys) : 0
+                (idx_nemsys >= 0) ? next_boundary(idx_nemsys) : 0
             };
 
             Section first = nemsys, second = valkyrie;
@@ -2690,21 +2643,18 @@ namespace overlay::windows {
                 second = nemsys;
             }
             if (first.start >= 0) {
-                render_section_header(
-                    first.name, first.tooltip);
+                render_section_header(first.name, first.tooltip);
                 render_lights(first.start, first.end);
             }
             if (second.start >= 0) {
-                render_section_header(
-                    second.name, second.tooltip);
+                render_section_header(second.name, second.tooltip);
                 render_lights(second.start, second.end);
             }
 
             // others always last
             if (idx_others >= 0) {
                 render_section_header("Others", nullptr);
-                render_lights(idx_others,
-                    next_boundary(idx_others));
+                render_lights(idx_others, next_boundary(idx_others));
             }
         } else {
             render_lights(0, (int)lights->size());
@@ -3018,8 +2968,7 @@ namespace overlay::windows {
 
     void Config::auto_match_lights_popup(std::vector<Light> *lights) {
         ImGui::SetNextWindowSize(ImVec2(480.f, 400.f), ImGuiCond_Appearing);
-        if (!ImGui::BeginPopupModal(
-                "Auto Match Lights", nullptr, 0)) {
+        if (!ImGui::BeginPopupModal("Auto Match Lights", nullptr, 0)) {
             return;
         }
 
@@ -3038,8 +2987,7 @@ namespace overlay::windows {
 
         rawinput::Device *device = nullptr;
         bool has_device = auto_match_device_selected >= 0
-            && auto_match_device_selected
-                < (int) auto_match_devices.size();
+            && auto_match_device_selected < (int) auto_match_devices.size();
         if (has_device) {
             device = auto_match_devices[auto_match_device_selected];
         }
@@ -3049,17 +2997,19 @@ namespace overlay::windows {
             std::string device_name;
             int light_index;
             int control_index;
+            bool soft;
         };
         std::vector<MatchEntry> matched;
         std::vector<MatchEntry> unmatched;
 
         for (int li = 0; li < (int) lights->size(); li++) {
             matched.push_back({
-                (*lights)[li].getName(), "", li, -1
+                (*lights)[li].getName(), "", li, -1, false
             });
         }
 
         std::vector<std::string> raw_names;
+        std::string detected_controller;
         if (has_device) {
             // build output name list
             switch (device->type) {
@@ -3109,8 +3059,7 @@ namespace overlay::windows {
             for (auto &entry : matched) {
                 auto game_lower = strtolower(entry.game_name);
                 for (int ci = 0; ci < (int) raw_names.size(); ci++) {
-                    if (!device_matched[ci]
-                            && game_lower == strtolower(raw_names[ci])) {
+                    if (!device_matched[ci] && game_lower == strtolower(raw_names[ci])) {
                         entry.device_name = raw_names[ci];
                         entry.control_index = ci;
                         device_matched[ci] = true;
@@ -3119,41 +3068,143 @@ namespace overlay::windows {
                 }
             }
 
+            // soft matching
+            bool is_valkyrie_mode = games::sdvx::is_valkyrie_model();
+            static const char *RGB[] = {" R", " G", " B"};
+            std::string player_prefix = auto_match_p2 ? "P2 " : "P1 ";
+
+            // try to match a game light name, first as-is, then with P1/P2 prefix
+            auto try_match = [&](const std::string &game_target, int ci, const char *controller) -> bool {
+                auto target = strtolower(game_target);
+                auto target_player = strtolower(player_prefix + game_target);
+                for (auto &entry : matched) {
+                    if (entry.control_index >= 0) {
+                        continue;
+                    }
+                    auto entry_lower = strtolower(entry.game_name);
+                    if (entry_lower != target && entry_lower != target_player) {
+                        continue;
+                    }
+                    entry.device_name = raw_names[ci];
+                    entry.control_index = ci;
+                    entry.soft = true;
+                    device_matched[ci] = true;
+                    if (detected_controller.empty()) {
+                        detected_controller = controller;
+                    }
+                    return true;
+                }
+                return false;
+            };
+
+            for (int ri = 0; ri < LIGHT_MATCH_MAP_COUNT; ri++) {
+                auto &rule = LIGHT_MATCH_MAP[ri];
+                if (*rule.game && this->games_selected_name != rule.game) {
+                    continue;
+                }
+                if (rule.vid && device->hidInfo
+                        && (device->hidInfo->attributes.VendorID != rule.vid
+                            || device->hidInfo->attributes.ProductID != rule.pid)) {
+                    continue;
+                }
+
+                if (*rule.address) {
+                    // address mode: match device light at specific index
+                    int ci = (int) strtol(rule.address, nullptr, 0);
+                    if (ci >= (int) raw_names.size() || device_matched[ci]) {
+                        continue;
+                    }
+                    if (strtolower(raw_names[ci]) != strtolower(std::string(rule.device_light))) {
+                        continue;
+                    }
+                    try_match(rule.game_light, ci, rule.controller);
+                } else if (rule.rgb) {
+                    // RGB mode: expand device_light + " R/G/B" + device_suffix
+                    const char *game_base = (is_valkyrie_mode && *rule.game_light_alt)
+                        ? rule.game_light_alt : rule.game_light;
+                    if (!*game_base) {
+                        continue;
+                    }
+                    for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                        if (device_matched[ci]) {
+                            continue;
+                        }
+                        auto dev_lower = strtolower(raw_names[ci]);
+                        for (int rgb = 0; rgb < 3; rgb++) {
+                            auto expected = strtolower(
+                                std::string(rule.device_light) + RGB[rgb] + rule.device_suffix);
+                            if (dev_lower != expected) {
+                                continue;
+                            }
+                            try_match(std::string(game_base) + RGB[rgb], ci, rule.controller);
+                            break;
+                        }
+                    }
+                } else {
+                    // name mode: direct 1:1 device_light → game_light
+                    const char *game_base = (is_valkyrie_mode && *rule.game_light_alt)
+                        ? rule.game_light_alt : rule.game_light;
+                    if (!*game_base) {
+                        continue;
+                    }
+                    for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                        if (device_matched[ci]) {
+                            continue;
+                        }
+                        if (strtolower(raw_names[ci]) != strtolower(std::string(rule.device_light))) {
+                            continue;
+                        }
+                        if (try_match(game_base, ci, rule.controller)) {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // unmatched device lights
             for (int ci = 0; ci < (int) raw_names.size(); ci++) {
-                if (!device_matched[ci]
-                        && strtolower(raw_names[ci]) != "null") {
-                    unmatched.push_back({
-                        "", raw_names[ci], -1, ci
-                    });
+                if (!device_matched[ci] && strtolower(raw_names[ci]) != "null") {
+                    unmatched.push_back({"", raw_names[ci], -1, ci, false});
                 }
             }
         }
 
+        // partition: matches first, then hard before soft
         std::stable_partition(matched.begin(), matched.end(),
             [](const MatchEntry &e) {
                 return e.control_index >= 0;
             });
-
-        // remove unmatched game lights
         matched.erase(
             std::remove_if(matched.begin(), matched.end(),
                 [](const MatchEntry &e) {
                     return e.control_index < 0;
                 }),
             matched.end());
+        std::stable_partition(matched.begin(), matched.end(),
+            [](const MatchEntry &e) {
+                return !e.soft;
+            });
+
+        // check for soft matches
+        bool has_soft = false;
+        for (auto &entry : matched) {
+            if (entry.soft) {
+                has_soft = true;
+                break;
+            }
+        }
 
         // testable entries
         std::vector<int> testable;
         for (int i = 0; i < (int) matched.size(); i++) {
-            if (matched[i].control_index >= 0) {
+            if (matched[i].control_index >= 0 && (!matched[i].soft || auto_match_soft_enabled)) {
                 testable.push_back(i);
             }
         }
         int match_count = (int) testable.size();
 
         auto write_test_light = [&](int test_idx, float value) {
-            if (!device || test_idx < 0
-                    || test_idx >= (int) testable.size()) {
+            if (!device || test_idx < 0 || test_idx >= (int) testable.size()) {
                 return;
             }
             auto &entry = matched[testable[test_idx]];
@@ -3182,14 +3233,36 @@ namespace overlay::windows {
         if (device_changed) {
             stop_test();
             auto_match_copied = false;
+
+            // auto-detect P1/P2 from existing button bindings
+            auto_match_p2 = false;
+            if (device) {
+                auto *buttons = games::get_buttons(this->games_selected_name);
+                if (buttons) {
+                    int p1_count = 0, p2_count = 0;
+                    for (auto &btn : *buttons) {
+                        if (btn.getDeviceIdentifier() != device->name) {
+                            continue;
+                        }
+                        auto &bn = btn.getName();
+                        if (bn.substr(0, 3) == "P1 ") {
+                            p1_count++;
+                        } else if (bn.substr(0, 3) == "P2 ") {
+                            p2_count++;
+                        }
+                    }
+                    if (p2_count > p1_count) {
+                        auto_match_p2 = true;
+                    }
+                }
+            }
         }
 
         // test sequence
         if (auto_match_testing && !testable.empty()) {
             auto now = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<
-                std::chrono::milliseconds>(
-                    now - auto_match_test_time).count();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - auto_match_test_time).count();
             if (elapsed >= 500) {
                 write_test_light(auto_match_test_current, 0.f);
                 auto_match_test_current++;
@@ -3205,6 +3278,27 @@ namespace overlay::windows {
         ImGui::Separator();
         ImGui::Spacing();
 
+        if (!detected_controller.empty()) {
+            ImGui::TextColored(ImVec4(1.f, 0.9f, 0.3f, 1.f),
+                "%s detected", detected_controller.c_str());
+            if (has_soft) {
+                float help_w = ImGui::CalcTextSize("(?)").x;
+                float text_w = ImGui::CalcTextSize("Include suggested matches").x;
+                float cb_w = ImGui::GetFrameHeight();
+                float spacing = ImGui::GetStyle().ItemSpacing.x;
+                float total = help_w + spacing + text_w + spacing + cb_w;
+                ImGui::SameLine(ImGui::GetWindowWidth() - total
+                    - ImGui::GetStyle().WindowPadding.x);
+                ImGui::HelpMarker(
+                    "Include suggested device/game light matches\n"
+                    "(based on common/known controller lights)");
+                ImGui::SameLine();
+                ImGui::TextUnformatted("Include suggested matches");
+                ImGui::SameLine();
+                ImGui::Checkbox("##soft_match", &auto_match_soft_enabled);
+            }
+        }
+
         if (has_device) {
             ImGui::AlignTextToFramePadding();
             ImGui::Text("Matched: %d lights", match_count);
@@ -3213,51 +3307,74 @@ namespace overlay::windows {
             ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
         }
 
-        // test lights button
+        // P1/P2 toggle + test lights button (right-aligned)
         {
-            const char *test_label = auto_match_testing
-                ? "Stop Testing" : "Test Lights";
-            float btn_w = ImGui::CalcTextSize(test_label).x
+            bool has_players = false;
+            for (auto &light : *lights) {
+                auto &ln = light.getName();
+                if (ln.substr(0, 3) == "P1 " || ln.substr(0, 3) == "P2 ") {
+                    has_players = true;
+                    break;
+                }
+            }
+
+            const char *test_label = auto_match_testing ? "Stop Testing" : "Test Lights";
+            float test_w = ImGui::CalcTextSize(test_label).x
                 + ImGui::GetStyle().FramePadding.x * 2;
-            ImGui::SameLine(ImGui::GetWindowWidth() - btn_w
+            float total_w = test_w;
+
+            const char *p_label = auto_match_p2 ? "P2" : "P1";
+            float p_w = 0;
+            if (has_players) {
+                p_w = ImGui::CalcTextSize(p_label).x
+                    + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
+                total_w += p_w;
+            }
+
+            ImGui::SameLine(ImGui::GetWindowWidth() - total_w
                 - ImGui::GetStyle().WindowPadding.x);
-            ImGui::BeginDisabled(
-                !auto_match_testing && match_count == 0);
+
+            if (has_players) {
+                if (ImGui::Button(p_label)) {
+                    stop_test();
+                    auto_match_p2 = !auto_match_p2;
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "Toggle between P1 and P2 light mappings.\n"
+                        "Auto-detected from button bindings.");
+                }
+                ImGui::SameLine();
+            }
+
+            ImGui::BeginDisabled(!auto_match_testing && match_count == 0);
             if (ImGui::Button(test_label)) {
                 if (auto_match_testing) {
                     stop_test();
                 } else {
                     auto_match_testing = true;
                     auto_match_test_current = 0;
-                    auto_match_test_time =
-                        std::chrono::steady_clock::now();
+                    auto_match_test_time = std::chrono::steady_clock::now();
                     write_test_light(0, 1.f);
                 }
             }
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-                ImGui::SetTooltip(
-                    "Cycle through matched lights sequentially.");
+                ImGui::SetTooltip("Cycle through matched lights sequentially.");
             }
         }
 
         // match table
         ImGui::Spacing();
         float footer_h = ImGui::GetStyle().ItemSpacing.y
-            + ImGui::GetFrameHeightWithSpacing() * 2
-            + ImGui::GetStyle().WindowPadding.y;
+            + ImGui::GetFrameHeightWithSpacing() * 2 + ImGui::GetStyle().WindowPadding.y;
         float table_h = ImGui::GetContentRegionAvail().y - footer_h;
         if (ImGui::BeginTable("##AutoMatchTable", 3,
-                ImGuiTableFlags_Borders
-                | ImGuiTableFlags_RowBg
-                | ImGuiTableFlags_ScrollY,
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
                 ImVec2(0, table_h))) {
-            ImGui::TableSetupColumn("Device Light",
-                ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("",
-                ImGuiTableColumnFlags_WidthFixed, 30.f);
-            ImGui::TableSetupColumn("Game Light",
-                ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Device Light", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 30.f);
+            ImGui::TableSetupColumn("Game Light", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupScrollFreeze(0, 1);
             ImGui::TableHeadersRow();
 
@@ -3267,12 +3384,18 @@ namespace overlay::windows {
                     && auto_match_test_current >= 0
                     && auto_match_test_current < (int) testable.size()
                     && testable[auto_match_test_current] == i;
+                bool soft_inactive = entry.soft && !auto_match_soft_enabled;
 
                 ImGui::TableNextRow();
 
                 if (is_active_test) {
-                    ImGui::PushStyleColor(ImGuiCol_Text,
-                        ImVec4(1.f, 0.2f, 0.2f, 1.f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.2f, 0.2f, 1.f));
+                } else if (soft_inactive) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.f));
+                } else if (entry.soft) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.9f, 0.3f, 1.f));
+                } else {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 1.f, 0.5f, 1.f));
                 }
 
                 // device light
@@ -3281,28 +3404,22 @@ namespace overlay::windows {
 
                 // arrow (centered)
                 ImGui::TableNextColumn();
-                float arrow_w = ImGui::CalcTextSize(
-                    "->").x;
+                float arrow_w = ImGui::CalcTextSize("->").x;
                 float col_w = ImGui::GetColumnWidth();
-                ImGui::SetCursorPosX(
-                    ImGui::GetCursorPosX()
-                    + (col_w - arrow_w) * 0.5f);
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (col_w - arrow_w) * 0.5f);
                 ImGui::TextUnformatted("->");
 
                 // game light
                 ImGui::TableNextColumn();
                 ImGui::Text("%s", entry.game_name.c_str());
 
-                if (is_active_test) {
-                    ImGui::PopStyleColor();
-                }
+                ImGui::PopStyleColor();
             }
 
             for (auto &entry : unmatched) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextDisabled("%s",
-                    entry.device_name.c_str());
+                ImGui::TextDisabled("%s", entry.device_name.c_str());
                 ImGui::TableNextColumn();
                 ImGui::TableNextColumn();
             }
@@ -3318,22 +3435,69 @@ namespace overlay::windows {
         ImGui::BeginDisabled(match_count == 0);
         if (ImGui::Button("Save")) {
             stop_test();
+
+            // look up current device desc for same-controller detection
+            auto get_device_desc = [&](const std::string &identifier) -> std::string {
+                for (auto &d : RI_MGR->devices_get()) {
+                    if (d.name == identifier) {
+                        return d.desc;
+                    }
+                }
+                return "";
+            };
+
             for (auto &entry : matched) {
                 if (entry.control_index < 0) {
                     continue;
                 }
+                if (entry.soft && !auto_match_soft_enabled) {
+                    continue;
+                }
                 auto &light = (*lights)[entry.light_index];
-                light.setDeviceIdentifier(device->name);
-                light.setIndex(entry.control_index);
-                ::Config::getInstance().updateBinding(
-                    games_list[games_selected], light, -1);
+
+                // if primary is already bound to a different unit of the same
+                // controller type, add as alternative instead of overwriting
+                bool use_alt = false;
+                if (!light.getDeviceIdentifier().empty()
+                        && light.getDeviceIdentifier() != device->name
+                        && get_device_desc(light.getDeviceIdentifier()) == device->desc) {
+                    use_alt = true;
+                }
+
+                if (use_alt) {
+                    // find or create an alternative slot
+                    Light *alt = nullptr;
+                    for (auto &a : light.getAlternatives()) {
+                        if (!a.isValid() || a.getDeviceIdentifier() == device->name) {
+                            alt = &a;
+                            break;
+                        }
+                    }
+                    if (!alt && light.getAlternatives().size() < 7) {
+                        Light temp(light.getName());
+                        temp.setTemporary(true);
+                        light.getAlternatives().push_back(temp);
+                        alt = &light.getAlternatives().back();
+                    }
+                    if (alt) {
+                        alt->setDeviceIdentifier(device->name);
+                        alt->setIndex(entry.control_index);
+                        int alt_idx = (int)(&*alt - &light.getAlternatives()[0]);
+                        ::Config::getInstance().updateBinding(
+                            games_list[games_selected], *alt, alt_idx);
+                    }
+                } else {
+                    light.setDeviceIdentifier(device->name);
+                    light.setIndex(entry.control_index);
+                    ::Config::getInstance().updateBinding(
+                        games_list[games_selected], light, -1);
+                }
             }
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndDisabled();
         if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-            ImGui::SetTooltip(
-                "Save and apply matched light outputs.");
+            ImGui::SetTooltip("Save and apply matched light outputs.");
         }
 
         ImGui::SameLine();
@@ -3344,23 +3508,19 @@ namespace overlay::windows {
 
         // copy list (right-justified)
         if (auto_match_copied) {
-            auto elapsed = std::chrono::duration_cast<
-                std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now()
-                    - auto_match_copy_time).count();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - auto_match_copy_time).count();
             if (elapsed >= 2000) {
                 auto_match_copied = false;
             }
         }
         {
-            const char *copy_label = auto_match_copied
-                ? "Copied" : "Copy List";
+            const char *copy_label = auto_match_copied ? "Copied" : "Copy List";
             float copy_w = ImGui::CalcTextSize(copy_label).x
                 + ImGui::GetStyle().FramePadding.x * 2;
             ImGui::SameLine(ImGui::GetWindowWidth() - copy_w
                 - ImGui::GetStyle().WindowPadding.x);
-            ImGui::BeginDisabled(
-                raw_names.empty() || auto_match_copied);
+            ImGui::BeginDisabled(raw_names.empty() || auto_match_copied);
             if (ImGui::Button(copy_label)) {
                 std::string list;
                 for (int i = 0; i < (int) raw_names.size(); i++) {
@@ -3377,15 +3537,12 @@ namespace overlay::windows {
                 }
                 clipboard::copy_text(list);
                 auto_match_copied = true;
-                auto_match_copy_time =
-                    std::chrono::steady_clock::now();
+                auto_match_copy_time = std::chrono::steady_clock::now();
             }
             ImGui::EndDisabled();
         }
         if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-            ImGui::SetTooltip(
-                "Copy full list of device lights"
-                " for development.");
+            ImGui::SetTooltip("Copy full list of device lights (for development).");
         }
 
         ImGui::EndPopup();
