@@ -3056,16 +3056,44 @@ namespace overlay::windows {
 
             // match by name (hard match, case insensitive, with P1/P2 prefix fallback)
             std::vector<bool> device_matched(raw_names.size(), false);
-            std::string player_prefix = auto_match_p2 ? "P2 " : "P1 ";
-            auto player_prefix_lower = strtolower(player_prefix);
+            const std::string player_prefix = auto_match_p2 ? "P2 " : "P1 ";
+            const auto player_prefix_lower = auto_match_p2 ? "p2 " : "p1 ";
+
             for (auto &entry : matched) {
-                auto game_lower = strtolower(entry.game_name);
+                const auto game_lower = strtolower(entry.game_name);
+
+                // match on exact name
                 for (int ci = 0; ci < (int) raw_names.size(); ci++) {
                     if (device_matched[ci]) {
                         continue;
                     }
-                    auto dev_lower = strtolower(raw_names[ci]);
-                    if (game_lower == dev_lower || game_lower == player_prefix_lower + dev_lower) {
+
+                    const auto dev_lower = strtolower(raw_names[ci]);
+                    if (game_lower == dev_lower ||
+                        game_lower == player_prefix_lower + dev_lower) {
+
+                        entry.device_name = raw_names[ci];
+                        entry.control_index = ci;
+                        device_matched[ci] = true;
+                        break;
+                    }
+                }
+
+                // raw device name, but stripped of a few common strings, and spaces
+                for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                    if (device_matched[ci]) {
+                        continue;
+                    }
+
+                    auto dev_stripped = strtolower(raw_names[ci]);;
+                    strreplace(dev_stripped, "button", "");
+                    strreplace(dev_stripped, "led", "");
+                    strreplace(dev_stripped, "light", "");
+                    strreplace(dev_stripped, " ", "");
+
+                    if (game_lower == dev_stripped ||
+                        game_lower == player_prefix_lower + dev_stripped) {
+
                         entry.device_name = raw_names[ci];
                         entry.control_index = ci;
                         device_matched[ci] = true;
@@ -3075,8 +3103,8 @@ namespace overlay::windows {
             }
 
             // soft matching
-            bool is_valkyrie_mode = games::sdvx::is_valkyrie_model();
-            static const char *RGB[] = {" R", " G", " B"};
+            const bool is_valkyrie_mode = games::sdvx::is_valkyrie_model();
+            static const char *RGB[] = {"R", "G", "B"};
 
             // try to match a game light name, first as-is, then with P1/P2 prefix
             auto try_match = [&](const std::string &game_target, int ci, const char *controller) -> bool {
@@ -3136,13 +3164,20 @@ namespace overlay::windows {
                         }
                         auto dev_lower = strtolower(raw_names[ci]);
                         for (int rgb = 0; rgb < 3; rgb++) {
+                            // try light name, plus space, plus R/G/B
                             auto expected = strtolower(
-                                std::string(rule.device_light) + RGB[rgb] + rule.device_suffix);
-                            if (dev_lower != expected) {
-                                continue;
+                                std::string(rule.device_light) + " " + RGB[rgb] + rule.device_suffix);
+                            if (dev_lower == expected) {
+                                try_match(std::string(game_base) + " " + RGB[rgb], ci, rule.controller);
+                                break;
                             }
-                            try_match(std::string(game_base) + RGB[rgb], ci, rule.controller);
-                            break;
+                            // try light name, plus R/G/B
+                            auto expected2 = strtolower(
+                                std::string(rule.device_light) + RGB[rgb] + rule.device_suffix);
+                            if (dev_lower == expected2) {
+                                try_match(std::string(game_base) + " " + RGB[rgb], ci, rule.controller);
+                                break;
+                            }
                         }
                     }
                 } else {

@@ -40,6 +40,40 @@ namespace overlay::windows {
         {"PHOENIXWAN", "Beatmania IIDX", 0x034C, 0x0368, "Generic Indicator", "", "0x04", false, "5", ""},
         {"PHOENIXWAN", "Beatmania IIDX", 0x034C, 0x0368, "Generic Indicator", "", "0x05", false, "6", ""},
         {"PHOENIXWAN", "Beatmania IIDX", 0x034C, 0x0368, "Generic Indicator", "", "0x06", false, "7", ""},
+
+        // Nostroller VID_0E8F&PID_1212&MI_03 (Lights 01-14) (RGB)
+        // The lights are named "LED_01R" "LED_01G" "LED_01B" and so on.
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_01", "", "", true, "Key 1", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_02", "", "", true, "Key 2", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_03", "", "", true, "Key 3", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_04", "", "", true, "Key 4", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_05", "", "", true, "Key 5", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_06", "", "", true, "Key 6", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_07", "", "", true, "Key 7", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_08", "", "", true, "Key 8", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_09", "", "", true, "Key 9", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_10", "", "", true, "Key 10", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_11", "", "", true, "Key 11", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_12", "", "", true, "Key 12", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_13", "", "", true, "Key 13", ""},
+        {"Nostroller (Lights 01-14)", "Nostalgia", 0, 0, "LED_14", "", "", true, "Key 14", ""},
+
+        // Nostroller VID_0E8F&PID_1212&MI_02 (Lights 15-28) (RGB)
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_15", "", "", true, "Key 15", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_16", "", "", true, "Key 16", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_17", "", "", true, "Key 17", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_18", "", "", true, "Key 18", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_19", "", "", true, "Key 19", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_20", "", "", true, "Key 20", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_21", "", "", true, "Key 21", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_22", "", "", true, "Key 22", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_23", "", "", true, "Key 23", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_24", "", "", true, "Key 24", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_25", "", "", true, "Key 25", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_26", "", "", true, "Key 26", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_27", "", "", true, "Key 27", ""},
+        {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_28", "", "", true, "Key 28", ""},
+
     };
 
     static const int LIGHT_MATCH_MAP_COUNT =
