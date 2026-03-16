@@ -234,6 +234,27 @@ namespace games::sdvx {
             });
             return false;
         }
+
+        static bool logged_missing_layer_error = false;
+        // this is raw SHIFT-JIS text for
+        // W:BM2D: CreateLayer() 指定したレイヤーは存在しません
+        if (!logged_missing_layer_error &&
+            data.find(
+                "\x57\x3A\x42\x4D\x32\x44\x3A\x20\x43\x72\x65\x61\x74\x65\x4C\x61\x79\x65\x72\x28\x29\x20"
+                "\x8E\x77\x92\xE8\x82\xB5\x82\xBD\x83\x8C\x83\x43\x83\x84\x81\x5B\x82\xCD\x91\xB6\x8D\xDD"
+                "\x82\xB5\x82\xDC\x82\xB9\x82\xF1") != std::string::npos) {
+
+            logged_missing_layer_error = true;
+            deferredlogs::defer_error_messages({
+                "sdvx game engine detected missing or corrupt file(s); raw SHIFT-JIS error was:",
+                std::string("    ") +  data,
+                "    this will almost certainly cause your game to crash",
+                "    this is often caused by mismatched game DLLs or missing resources from game updates",
+                "    double check the integrity of your game data and try again"
+            });
+            return false;
+        }
+
         return false;
     }
 
