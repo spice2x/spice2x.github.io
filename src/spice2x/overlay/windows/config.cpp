@@ -2416,28 +2416,43 @@ namespace overlay::windows {
             // clear all
             ImGui::BeginDisabled(bound.empty());
             if (ImGui::Button("Clear All")) {
-                if (lights_testing) {
-                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
-                        auto &cur = (*lights)[bound[lights_test_current]];
-                        GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
-                        RI_MGR->devices_flush_output();
-                    }
-                    lights_testing = false;
-                    lights_test_current = -1;
-                }
-                for (auto &light : *lights) {
-                    if (!light.isSet()) {
-                        continue;
-                    }
-                    clear_light(&light, 0);
-                    for (int ai = 0; ai < (int) light.getAlternatives().size(); ai++) {
-                        clear_light(&light.getAlternatives()[ai], ai + 1);
-                    }
-                }
+                ImGui::OpenPopup("Clear all light bindings");
             }
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                 ImGui::SetTooltip("Unbind all lights.");
+            }
+            if (ImGui::BeginPopupModal("Clear all light bindings", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextUnformatted("Are you sure? This can't be undone.");
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                if (ImGui::Button("Yes")) {
+                    if (lights_testing) {
+                        if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                            auto &cur = (*lights)[bound[lights_test_current]];
+                            GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
+                            RI_MGR->devices_flush_output();
+                        }
+                        lights_testing = false;
+                        lights_test_current = -1;
+                    }
+                    for (auto &light : *lights) {
+                        if (!light.isSet()) {
+                            continue;
+                        }
+                        clear_light(&light, 0);
+                        for (int ai = 0; ai < (int) light.getAlternatives().size(); ai++) {
+                            clear_light(&light.getAlternatives()[ai], ai + 1);
+                        }
+                    }
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel")) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
             }
 
             // test all
@@ -2992,186 +3007,18 @@ namespace overlay::windows {
             device = auto_match_devices[auto_match_device_selected];
         }
 
-        struct MatchEntry {
-            std::string game_name;
-            std::string device_name;
-            int light_index;
-            int control_index;
-            bool soft;
-        };
         std::vector<MatchEntry> matched;
-        std::vector<MatchEntry> unmatched;
-
         for (int li = 0; li < (int) lights->size(); li++) {
             matched.push_back({
                 (*lights)[li].getName(), "", li, -1, false
             });
         }
 
+        std::vector<MatchEntry> unmatched;
         std::vector<std::string> raw_names;
         std::string detected_controller;
         if (has_device) {
-            // build output name list
-            switch (device->type) {
-                case rawinput::HID: {
-                    for (auto &n : device->hidInfo->button_output_caps_names) {
-                        raw_names.push_back(n);
-                    }
-                    for (auto &n : device->hidInfo->value_output_caps_names) {
-                        raw_names.push_back(n);
-                    }
-                    break;
-                }
-                case rawinput::SEXTET_OUTPUT: {
-                    for (int i = 0; i < rawinput::SextetDevice::LIGHT_COUNT; i++) {
-                        raw_names.emplace_back(
-                            rawinput::SextetDevice::LIGHT_NAMES[i]);
-                    }
-                    break;
-                }
-                case rawinput::PIUIO_DEVICE: {
-                    for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_LIGHTS; i++) {
-                        raw_names.emplace_back(
-                            rawinput::PIUIO::LIGHT_NAMES[i]);
-                    }
-                    break;
-                }
-                case rawinput::SMX_STAGE: {
-                    for (int i = 0; i < rawinput::SmxStageDevice::TOTAL_LIGHT_COUNT; i++) {
-                        raw_names.push_back(
-                            rawinput::SmxStageDevice::GetLightNameByIndex(i));
-                    }
-                    break;
-                }
-                case rawinput::SMX_DEDICAB: {
-                    for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
-                        raw_names.push_back(
-                            rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
-                    }
-                    break;
-                }
-                default:
-                    break;
-            }
-
-            // match by name (hard match, case insensitive, with P1/P2 prefix fallback)
-            std::vector<bool> device_matched(raw_names.size(), false);
-            std::string player_prefix = auto_match_p2 ? "P2 " : "P1 ";
-            auto player_prefix_lower = strtolower(player_prefix);
-            for (auto &entry : matched) {
-                auto game_lower = strtolower(entry.game_name);
-                for (int ci = 0; ci < (int) raw_names.size(); ci++) {
-                    if (device_matched[ci]) {
-                        continue;
-                    }
-                    auto dev_lower = strtolower(raw_names[ci]);
-                    if (game_lower == dev_lower || game_lower == player_prefix_lower + dev_lower) {
-                        entry.device_name = raw_names[ci];
-                        entry.control_index = ci;
-                        device_matched[ci] = true;
-                        break;
-                    }
-                }
-            }
-
-            // soft matching
-            bool is_valkyrie_mode = games::sdvx::is_valkyrie_model();
-            static const char *RGB[] = {" R", " G", " B"};
-
-            // try to match a game light name, first as-is, then with P1/P2 prefix
-            auto try_match = [&](const std::string &game_target, int ci, const char *controller) -> bool {
-                auto target = strtolower(game_target);
-                auto target_player = strtolower(player_prefix + game_target);
-                for (auto &entry : matched) {
-                    if (entry.control_index >= 0) {
-                        continue;
-                    }
-                    auto entry_lower = strtolower(entry.game_name);
-                    if (entry_lower != target && entry_lower != target_player) {
-                        continue;
-                    }
-                    entry.device_name = raw_names[ci];
-                    entry.control_index = ci;
-                    entry.soft = true;
-                    device_matched[ci] = true;
-                    if (detected_controller.empty()) {
-                        detected_controller = controller;
-                    }
-                    return true;
-                }
-                return false;
-            };
-
-            for (int ri = 0; ri < LIGHT_MATCH_MAP_COUNT; ri++) {
-                auto &rule = LIGHT_MATCH_MAP[ri];
-                if (*rule.game && this->games_selected_name != rule.game) {
-                    continue;
-                }
-                if (rule.vid && device->hidInfo
-                        && (device->hidInfo->attributes.VendorID != rule.vid
-                            || device->hidInfo->attributes.ProductID != rule.pid)) {
-                    continue;
-                }
-
-                if (*rule.address) {
-                    // address mode: match device light at specific index
-                    int ci = (int) strtol(rule.address, nullptr, 0);
-                    if (ci >= (int) raw_names.size() || device_matched[ci]) {
-                        continue;
-                    }
-                    if (strtolower(raw_names[ci]) != strtolower(std::string(rule.device_light))) {
-                        continue;
-                    }
-                    try_match(rule.game_light, ci, rule.controller);
-                } else if (rule.rgb) {
-                    // RGB mode: expand device_light + " R/G/B" + device_suffix
-                    const char *game_base = (is_valkyrie_mode && *rule.game_light_alt)
-                        ? rule.game_light_alt : rule.game_light;
-                    if (!*game_base) {
-                        continue;
-                    }
-                    for (int ci = 0; ci < (int) raw_names.size(); ci++) {
-                        if (device_matched[ci]) {
-                            continue;
-                        }
-                        auto dev_lower = strtolower(raw_names[ci]);
-                        for (int rgb = 0; rgb < 3; rgb++) {
-                            auto expected = strtolower(
-                                std::string(rule.device_light) + RGB[rgb] + rule.device_suffix);
-                            if (dev_lower != expected) {
-                                continue;
-                            }
-                            try_match(std::string(game_base) + RGB[rgb], ci, rule.controller);
-                            break;
-                        }
-                    }
-                } else {
-                    // name mode: direct 1:1 device_light → game_light
-                    const char *game_base = (is_valkyrie_mode && *rule.game_light_alt)
-                        ? rule.game_light_alt : rule.game_light;
-                    if (!*game_base) {
-                        continue;
-                    }
-                    for (int ci = 0; ci < (int) raw_names.size(); ci++) {
-                        if (device_matched[ci]) {
-                            continue;
-                        }
-                        if (strtolower(raw_names[ci]) != strtolower(std::string(rule.device_light))) {
-                            continue;
-                        }
-                        if (try_match(game_base, ci, rule.controller)) {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // unmatched device lights
-            for (int ci = 0; ci < (int) raw_names.size(); ci++) {
-                if (!device_matched[ci] && strtolower(raw_names[ci]) != "null") {
-                    unmatched.push_back({"", raw_names[ci], -1, ci, false});
-                }
-            }
+            detected_controller = match_lights(device, lights, raw_names, matched, unmatched);
         }
 
         // partition: matches first, then hard before soft
@@ -3553,6 +3400,214 @@ namespace overlay::windows {
         ImGui::EndPopup();
     }
 
+    std::string Config::match_lights(
+            rawinput::Device *device,
+            std::vector<Light> *lights,
+            std::vector<std::string> &raw_names,
+            std::vector<MatchEntry> &matched,
+            std::vector<MatchEntry> &unmatched) {
+
+        std::string detected_controller;
+
+        // build output name list
+        switch (device->type) {
+            case rawinput::HID: {
+                for (auto &n : device->hidInfo->button_output_caps_names) {
+                    raw_names.push_back(n);
+                }
+                for (auto &n : device->hidInfo->value_output_caps_names) {
+                    raw_names.push_back(n);
+                }
+                break;
+            }
+            case rawinput::SEXTET_OUTPUT: {
+                for (int i = 0; i < rawinput::SextetDevice::LIGHT_COUNT; i++) {
+                    raw_names.emplace_back(
+                        rawinput::SextetDevice::LIGHT_NAMES[i]);
+                }
+                break;
+            }
+            case rawinput::PIUIO_DEVICE: {
+                for (int i = 0; i < rawinput::PIUIO::PIUIO_MAX_NUM_OF_LIGHTS; i++) {
+                    raw_names.emplace_back(
+                        rawinput::PIUIO::LIGHT_NAMES[i]);
+                }
+                break;
+            }
+            case rawinput::SMX_STAGE: {
+                for (int i = 0; i < rawinput::SmxStageDevice::TOTAL_LIGHT_COUNT; i++) {
+                    raw_names.push_back(
+                        rawinput::SmxStageDevice::GetLightNameByIndex(i));
+                }
+                break;
+            }
+            case rawinput::SMX_DEDICAB: {
+                for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
+                    raw_names.push_back(
+                        rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
+                }
+                break;
+            }
+            default:
+                break;
+        }
+
+        // match by name (hard match, case insensitive, with P1/P2 prefix fallback)
+        std::vector<bool> device_matched(raw_names.size(), false);
+        const std::string player_prefix = auto_match_p2 ? "p2 " : "p1 ";
+
+        for (auto &entry : matched) {
+            const auto game_lower = strtolower(entry.game_name);
+
+            // match on exact name
+            for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                if (device_matched[ci]) {
+                    continue;
+                }
+
+                const auto dev_lower = strtolower(raw_names[ci]);
+                if (game_lower == dev_lower ||
+                    game_lower == player_prefix + dev_lower) {
+
+                    entry.device_name = raw_names[ci];
+                    entry.control_index = ci;
+                    device_matched[ci] = true;
+                    break;
+                }
+            }
+
+            // raw device name, but stripped of a few common strings, and spaces
+            for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                if (device_matched[ci]) {
+                    continue;
+                }
+
+                auto dev_stripped = strtolower(raw_names[ci]);;
+                strreplace(dev_stripped, "button", "");
+                strreplace(dev_stripped, "led", "");
+                strreplace(dev_stripped, "light", "");
+                strreplace(dev_stripped, " ", "");
+
+                if (game_lower == dev_stripped ||
+                    game_lower == player_prefix + dev_stripped) {
+
+                    entry.device_name = raw_names[ci];
+                    entry.control_index = ci;
+                    device_matched[ci] = true;
+                    break;
+                }
+            }
+        }
+
+        // soft matching
+        const bool is_valkyrie_mode = games::sdvx::is_valkyrie_model();
+        static const char *RGB[] = {"R", "G", "B"};
+
+        // try to match a game light name, first as-is, then with P1/P2 prefix
+        auto try_match = [&](const std::string &game_target, int ci, const char *controller) -> bool {
+            auto target = strtolower(game_target);
+            auto target_player = strtolower(player_prefix + game_target);
+            for (auto &entry : matched) {
+                if (entry.control_index >= 0) {
+                    continue;
+                }
+                auto entry_lower = strtolower(entry.game_name);
+                if (entry_lower != target && entry_lower != target_player) {
+                    continue;
+                }
+                entry.device_name = raw_names[ci];
+                entry.control_index = ci;
+                entry.soft = true;
+                device_matched[ci] = true;
+                if (detected_controller.empty()) {
+                    detected_controller = controller;
+                }
+                return true;
+            }
+            return false;
+        };
+
+        for (int ri = 0; ri < LIGHT_MATCH_MAP_COUNT; ri++) {
+            auto &rule = LIGHT_MATCH_MAP[ri];
+            if (*rule.game && this->games_selected_name != rule.game) {
+                continue;
+            }
+            if (rule.vid && device->hidInfo
+                    && (device->hidInfo->attributes.VendorID != rule.vid
+                        || device->hidInfo->attributes.ProductID != rule.pid)) {
+                continue;
+            }
+
+            if (*rule.address) {
+                // address mode: match device light at specific index
+                int ci = (int) strtol(rule.address, nullptr, 0);
+                if (ci >= (int) raw_names.size() || device_matched[ci]) {
+                    continue;
+                }
+                if (strtolower(raw_names[ci]) != strtolower(std::string(rule.device_light))) {
+                    continue;
+                }
+                try_match(rule.game_light, ci, rule.controller);
+            } else if (rule.rgb) {
+                // RGB mode: expand device_light + " R/G/B" + device_suffix
+                const char *game_base = (is_valkyrie_mode && *rule.game_light_alt)
+                    ? rule.game_light_alt : rule.game_light;
+                if (!*game_base) {
+                    continue;
+                }
+                for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                    if (device_matched[ci]) {
+                        continue;
+                    }
+                    auto dev_lower = strtolower(raw_names[ci]);
+                    for (int rgb = 0; rgb < 3; rgb++) {
+                        // try light name, plus space, plus R/G/B
+                        auto expected = strtolower(
+                            std::string(rule.device_light) + " " + RGB[rgb] + rule.device_suffix);
+                        if (dev_lower == expected) {
+                            try_match(std::string(game_base) + " " + RGB[rgb], ci, rule.controller);
+                            break;
+                        }
+                        // try light name, plus R/G/B
+                        auto expected2 = strtolower(
+                            std::string(rule.device_light) + RGB[rgb] + rule.device_suffix);
+                        if (dev_lower == expected2) {
+                            try_match(std::string(game_base) + " " + RGB[rgb], ci, rule.controller);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // name mode: direct 1:1 device_light → game_light
+                const char *game_base = (is_valkyrie_mode && *rule.game_light_alt)
+                    ? rule.game_light_alt : rule.game_light;
+                if (!*game_base) {
+                    continue;
+                }
+                for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+                    if (device_matched[ci]) {
+                        continue;
+                    }
+                    if (strtolower(raw_names[ci]) != strtolower(std::string(rule.device_light))) {
+                        continue;
+                    }
+                    if (try_match(game_base, ci, rule.controller)) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // unmatched device lights
+        for (int ci = 0; ci < (int) raw_names.size(); ci++) {
+            if (!device_matched[ci] && strtolower(raw_names[ci]) != "null") {
+                unmatched.push_back({"", raw_names[ci], -1, ci, false});
+            }
+        }
+
+        return detected_controller;
+    }
+    
     void Config::build_cards() {
 
         // early quit
