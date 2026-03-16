@@ -2563,14 +2563,15 @@ namespace overlay::windows {
         }
 
         // render a section header
-        auto render_section_header = [](const char *name) {
-            float pad = ImGui::GetTextLineHeight() * 0.5f;
+        auto render_section_header = [](const std::string &name) {
+            const float pad = ImGui::GetTextLineHeight() * 0.5f;
             ImGui::Dummy(ImVec2(0, pad));
-            ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "%s", name);
+            ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "%s", name.c_str());
             ImGui::Dummy(ImVec2(0, pad));
         };
 
-        std::string current_section = "";
+        // need to ensure a irst table begins, so current_section must not equal any existing category name
+        std::string current_section = "!!invalid!!";
         bool table_begin = false;
         for (size_t i = 0; i < lights->size(); i++) {
             auto &light = lights->at(i);
@@ -2581,7 +2582,7 @@ namespace overlay::windows {
                     ImGui::EndTable();
                 }
 
-                render_section_header(current_section.c_str());
+                render_section_header(current_section.empty() ? "Uncategorized" : current_section);
                 
                 table_begin = begin_lights_table();
                 if (!table_begin) {

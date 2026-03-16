@@ -861,28 +861,39 @@ std::vector<Light> GameAPI::Lights::sortLights(
     return sorted;
 }
 
-std::vector<Light> GameAPI::Lights::sortLightsWithCategory(
+
+void GameAPI::Lights::sortLightsWithCategory(
+    std::vector<Light> *lights,
+    const std::initializer_list<LightAndCategory> list) {
+
+    if (lights) {
+        *lights = GameAPI::Lights::sortLightsWithCategoryInternal(*lights, list);
+    }
+}
+
+
+std::vector<Light> GameAPI::Lights::sortLightsWithCategoryInternal(
     const std::vector<Light> &lights,
-    const std::vector<std::pair<std::string, std::string>> &category_and_light_names)
+    const std::initializer_list<LightAndCategory> list)
 {
     std::vector<Light> sorted;
 
     bool light_found;
-    for (auto &name : category_and_light_names) {
+    for (auto &name : list) {
         light_found = false;
 
         for (auto &light : lights) {
-            if (name.first == light.getName()) {
+            if (name.light_name == light.getName()) {
                 light_found = true;
                 Light light_new = light;
-                light_new.setCategory(name.first);
+                light_new.setCategory(name.category_name);
                 sorted.push_back(light_new);
                 break;
             }
         }
 
         if (!light_found) {
-            sorted.emplace_back(name.second, name.first);
+            sorted.emplace_back(name.light_name, name.category_name);
         }
     }
 

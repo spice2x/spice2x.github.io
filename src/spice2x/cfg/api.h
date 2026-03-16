@@ -116,15 +116,6 @@ namespace GameAPI {
                 const std::vector<Light> &lights,
                 const std::vector<std::string> &light_names);
 
-        template<typename T>
-        void sortLights(std::vector<Light> *lights, T t) {
-            const std::vector<std::string> light_names { t };
-
-            if (lights) {
-                *lights = GameAPI::Lights::sortLights(*lights, light_names);
-            }
-        }
-
         template<typename T, typename... Rest>
         void sortLights(std::vector<Light> *lights, T t, Rest... rest) {
             const std::vector<std::string> light_names { t, rest... };
@@ -134,27 +125,18 @@ namespace GameAPI {
             }
         }
 
-        std::vector<Light> sortLightsWithCategory(
+        struct LightAndCategory {
+            const std::string category_name;
+            const std::string light_name;
+
+            LightAndCategory(std::string category_name, std::string light_name) :
+                category_name(std::move(category_name)), light_name(std::move(light_name))  {}
+        };
+
+        std::vector<Light> sortLightsWithCategoryInternal(
                 const std::vector<Light> &lights,
-                const std::vector<std::pair<std::string, std::string>> &category_and_light_names);
-
-        template<typename T>
-        void sortLightsWithCategory(std::vector<Light> *lights, T t) {
-            const std::vector<std::pair<std::string, std::string>> category_and_light_names { t };
-
-            if (lights) {
-                *lights = GameAPI::Lights::sortLightsWithCategory(*lights, category_and_light_names);
-            }
-        }
-
-        template<typename T, typename... Rest>
-        void sortLightsWithCategory(std::vector<Light> *lights, T t, Rest... rest) {
-            const std::vector<std::pair<std::string, std::string>> category_and_light_names { t, rest... };
-
-            if (lights) {
-                *lights = GameAPI::Lights::sortLightsWithCategory(*lights, category_and_light_names);
-            }
-        }
+                const std::initializer_list<LightAndCategory> list);
+        void sortLightsWithCategory(std::vector<Light> *lights, const std::initializer_list<LightAndCategory> list);
 
         void writeLight(rawinput::Device *device, int index, float value);
         void writeLight(rawinput::RawInputManager *manager, Light &light, float value);
