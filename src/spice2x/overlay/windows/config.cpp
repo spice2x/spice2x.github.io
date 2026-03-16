@@ -2562,117 +2562,44 @@ namespace overlay::windows {
             return;
         }
 
-        bool is_sdvx = (this->games_selected_name == "Sound Voltex");
-        bool is_valkyrie = games::sdvx::is_valkyrie_model();
-
-        auto render_lights = [&](int start, int end) {
-            if (!begin_lights_table()) {
-                return;
-            }
-            for (int i = start; i < end; i++) {
-                auto &light = lights->at(i);
-                build_light(light, &light, i, 0);
-                int alt_index = 1;
-                for (auto &alt : light.getAlternatives()) {
-                    if (alt.isValid()) {
-                        build_light(light, &alt, i, alt_index);
-                    }
-                    alt_index++;
-                }
-            }
-            ImGui::EndTable();
-        };
-
-        // render a section header with optional tooltip
-        auto render_section_header = [](const char *name, const char *tooltip) {
+        // render a section header
+        auto render_section_header = [](const char *name) {
             float pad = ImGui::GetTextLineHeight() * 0.5f;
             ImGui::Dummy(ImVec2(0, pad));
             ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "%s", name);
-            if (tooltip) {
-                ImGui::SameLine();
-                ImGui::HelpMarker(tooltip);
-            }
-            ImGui::Separator();
+            ImGui::Dummy(ImVec2(0, pad));
         };
 
-        if (is_sdvx) {
-            // find section boundaries
-            int total = (int)lights->size();
-            int idx_buttons = -1, idx_nemsys = -1;
-            int idx_valkyrie = -1, idx_others = -1;
-            for (int i = 0; i < total; i++) {
-                auto &ln = lights->at(i).getName();
-                if (ln == "BT-A") {
-                    idx_buttons = i;
-                } else if (ln == "Wing Left Up R") {
-                    idx_nemsys = i;
-                } else if (ln == "IC Card Reader R") {
-                    idx_valkyrie = i;
-                } else if (ln == "Volume Sound") {
-                    idx_others = i;
+        std::string current_section = "";
+        bool table_begin = false;
+        for (size_t i = 0; i < lights->size(); i++) {
+            auto &light = lights->at(i);
+            
+            if (current_section != light.getCategory()) {
+                current_section = light.getCategory();
+                if (table_begin) {
+                    ImGui::EndTable();
+                }
+
+                render_section_header(current_section.c_str());
+                
+                table_begin = begin_lights_table();
+                if (!table_begin) {
+                    break;
                 }
             }
 
-            // compute end index for each section
-            auto next_boundary = [&](int after) -> int {
-                int result = total;
-                for (int c : {idx_buttons, idx_nemsys,
-                        idx_valkyrie, idx_others}) {
-                    if (c > after && c < result) {
-                        result = c;
-                    }
+            build_light(light, &light, i, 0);
+            int alt_index = 1;
+            for (auto &alt : light.getAlternatives()) {
+                if (alt.isValid()) {
+                    build_light(light, &alt, i, alt_index);
                 }
-                return result;
-            };
-
-            // buttons always first
-            if (idx_buttons >= 0) {
-                render_section_header("Buttons", nullptr);
-                render_lights(idx_buttons,
-                    next_boundary(idx_buttons));
+                alt_index++;
             }
-
-            // swap valkyrie and nemsys lights depending on spec
-            struct Section {
-                const char *name;
-                const char *tooltip;
-                int start;
-                int end;
-            };
-            Section valkyrie = {
-                "Valkyrie Lights",
-                "Valkyrie (G/H spec) / BI2X ONLY.\nWon't work in Nemsys mode.",
-                idx_valkyrie,
-                (idx_valkyrie >= 0) ? next_boundary(idx_valkyrie) : 0
-            };
-            Section nemsys = {
-                "Nemsys Lights",
-                "Nemsys (F spec) / BI2A ONLY.\nWon't work in Valkyrie mode.",
-                idx_nemsys,
-                (idx_nemsys >= 0) ? next_boundary(idx_nemsys) : 0
-            };
-
-            Section first = nemsys, second = valkyrie;
-            if (is_valkyrie) {
-                first = valkyrie;
-                second = nemsys;
-            }
-            if (first.start >= 0) {
-                render_section_header(first.name, first.tooltip);
-                render_lights(first.start, first.end);
-            }
-            if (second.start >= 0) {
-                render_section_header(second.name, second.tooltip);
-                render_lights(second.start, second.end);
-            }
-
-            // others always last
-            if (idx_others >= 0) {
-                render_section_header("Others", nullptr);
-                render_lights(idx_others, next_boundary(idx_others));
-            }
-        } else {
-            render_lights(0, (int)lights->size());
+        }
+        if (table_begin) {
+            ImGui::EndTable();
         }
     }
 

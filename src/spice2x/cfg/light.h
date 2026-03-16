@@ -11,6 +11,7 @@ class Light {
 private:
     std::vector<Light> alternatives;
     std::string lightName;
+    std::string lightCategory;
     std::string deviceIdentifier = "";
     unsigned int index = 0;
     bool is_temporary = false;
@@ -23,6 +24,8 @@ public:
     float override_state = 0.f;
 
     explicit Light(std::string lightName) : lightName(std::move(lightName)) {};
+    explicit Light(std::string lightName, std::string lightCategory) :
+        lightName(std::move(lightName)), lightCategory(std::move(lightCategory)) {};
 
     std::string getDisplayString(rawinput::RawInputManager* manager);
 
@@ -49,6 +52,14 @@ public:
 
     inline const std::string &getName() const {
         return this->lightName;
+    }
+
+    inline const std::string &getCategory() const {
+        return this->lightCategory;
+    }
+
+    inline void setCategory(std::string category) {
+        this->lightCategory = std::move(category);
     }
 
     inline const std::string &getDeviceIdentifier() const {

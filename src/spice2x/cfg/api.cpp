@@ -861,6 +861,34 @@ std::vector<Light> GameAPI::Lights::sortLights(
     return sorted;
 }
 
+std::vector<Light> GameAPI::Lights::sortLightsWithCategory(
+    const std::vector<Light> &lights,
+    const std::vector<std::pair<std::string, std::string>> &category_and_light_names)
+{
+    std::vector<Light> sorted;
+
+    bool light_found;
+    for (auto &name : category_and_light_names) {
+        light_found = false;
+
+        for (auto &light : lights) {
+            if (name.first == light.getName()) {
+                light_found = true;
+                Light light_new = light;
+                light_new.setCategory(name.first);
+                sorted.push_back(light_new);
+                break;
+            }
+        }
+
+        if (!light_found) {
+            sorted.emplace_back(name.second, name.first);
+        }
+    }
+
+    return sorted;
+}
+
 void GameAPI::Lights::writeLight(rawinput::Device *device, int index, float value) {
 
     // check device

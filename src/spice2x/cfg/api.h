@@ -109,6 +109,7 @@ namespace GameAPI {
     }
 
     namespace Lights {
+
         std::vector<Light> getLights(const std::string &game_name);
 
         std::vector<Light> sortLights(
@@ -130,6 +131,28 @@ namespace GameAPI {
 
             if (lights) {
                 *lights = GameAPI::Lights::sortLights(*lights, light_names);
+            }
+        }
+
+        std::vector<Light> sortLightsWithCategory(
+                const std::vector<Light> &lights,
+                const std::vector<std::pair<std::string, std::string>> &category_and_light_names);
+
+        template<typename T>
+        void sortLightsWithCategory(std::vector<Light> *lights, T t) {
+            const std::vector<std::pair<std::string, std::string>> category_and_light_names { t };
+
+            if (lights) {
+                *lights = GameAPI::Lights::sortLightsWithCategory(*lights, category_and_light_names);
+            }
+        }
+
+        template<typename T, typename... Rest>
+        void sortLightsWithCategory(std::vector<Light> *lights, T t, Rest... rest) {
+            const std::vector<std::pair<std::string, std::string>> category_and_light_names { t, rest... };
+
+            if (lights) {
+                *lights = GameAPI::Lights::sortLightsWithCategory(*lights, category_and_light_names);
             }
         }
 
