@@ -2416,28 +2416,43 @@ namespace overlay::windows {
             // clear all
             ImGui::BeginDisabled(bound.empty());
             if (ImGui::Button("Clear All")) {
-                if (lights_testing) {
-                    if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
-                        auto &cur = (*lights)[bound[lights_test_current]];
-                        GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
-                        RI_MGR->devices_flush_output();
-                    }
-                    lights_testing = false;
-                    lights_test_current = -1;
-                }
-                for (auto &light : *lights) {
-                    if (!light.isSet()) {
-                        continue;
-                    }
-                    clear_light(&light, 0);
-                    for (int ai = 0; ai < (int) light.getAlternatives().size(); ai++) {
-                        clear_light(&light.getAlternatives()[ai], ai + 1);
-                    }
-                }
+                ImGui::OpenPopup("Clear all light bindings");
             }
             ImGui::EndDisabled();
             if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                 ImGui::SetTooltip("Unbind all lights.");
+            }
+            if (ImGui::BeginPopupModal("Clear all light bindings", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextUnformatted("Are you sure? This can't be undone.");
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+                if (ImGui::Button("Yes")) {
+                    if (lights_testing) {
+                        if (lights_test_current >= 0 && lights_test_current < (int) bound.size()) {
+                            auto &cur = (*lights)[bound[lights_test_current]];
+                            GameAPI::Lights::writeLight(RI_MGR, cur, 0.f);
+                            RI_MGR->devices_flush_output();
+                        }
+                        lights_testing = false;
+                        lights_test_current = -1;
+                    }
+                    for (auto &light : *lights) {
+                        if (!light.isSet()) {
+                            continue;
+                        }
+                        clear_light(&light, 0);
+                        for (int ai = 0; ai < (int) light.getAlternatives().size(); ai++) {
+                            clear_light(&light.getAlternatives()[ai], ai + 1);
+                        }
+                    }
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel")) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
             }
 
             // test all
