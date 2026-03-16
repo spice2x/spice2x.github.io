@@ -133,9 +133,6 @@ namespace GameAPI {
                 category_name(std::move(category_name)), light_name(std::move(light_name))  {}
         };
 
-        std::vector<Light> sortLightsWithCategoryInternal(
-                const std::vector<Light> &lights,
-                const std::initializer_list<LightAndCategory> list);
         void sortLightsWithCategory(std::vector<Light> *lights, const std::initializer_list<LightAndCategory> list);
 
         void writeLight(rawinput::Device *device, int index, float value);

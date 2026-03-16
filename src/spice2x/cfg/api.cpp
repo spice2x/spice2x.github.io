@@ -861,20 +861,9 @@ std::vector<Light> GameAPI::Lights::sortLights(
     return sorted;
 }
 
-
-void GameAPI::Lights::sortLightsWithCategory(
-    std::vector<Light> *lights,
-    const std::initializer_list<LightAndCategory> list) {
-
-    if (lights) {
-        *lights = GameAPI::Lights::sortLightsWithCategoryInternal(*lights, list);
-    }
-}
-
-
-std::vector<Light> GameAPI::Lights::sortLightsWithCategoryInternal(
+static std::vector<Light> sortLightsWithCategoryInternal(
     const std::vector<Light> &lights,
-    const std::initializer_list<LightAndCategory> list)
+    const std::initializer_list<GameAPI::Lights::LightAndCategory> list)
 {
     std::vector<Light> sorted;
 
@@ -899,6 +888,16 @@ std::vector<Light> GameAPI::Lights::sortLightsWithCategoryInternal(
 
     return sorted;
 }
+
+void GameAPI::Lights::sortLightsWithCategory(
+    std::vector<Light> *lights,
+    const std::initializer_list<LightAndCategory> list) {
+
+    if (lights) {
+        *lights = sortLightsWithCategoryInternal(*lights, list);
+    }
+}
+
 
 void GameAPI::Lights::writeLight(rawinput::Device *device, int index, float value) {
 

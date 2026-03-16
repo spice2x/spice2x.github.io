@@ -2532,7 +2532,7 @@ namespace overlay::windows {
         } else {
             ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Lights");
         }
-        ImGui::Separator();
+        ImGui::Spacing();
 
         auto begin_lights_table = [&]() -> bool {
             if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable)) {
@@ -2567,7 +2567,7 @@ namespace overlay::windows {
             const float pad = ImGui::GetTextLineHeight() * 0.5f;
             ImGui::Dummy(ImVec2(0, pad));
             ImGui::TextColored(ImVec4(1.f, 0.7f, 0.f, 1.f), "%s", name.c_str());
-            ImGui::Dummy(ImVec2(0, pad));
+            ImGui::Separator();
         };
 
         // need to ensure a irst table begins, so current_section must not equal any existing category name
