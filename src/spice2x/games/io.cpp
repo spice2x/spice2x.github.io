@@ -361,6 +361,60 @@ namespace games {
         return it->second;
     }
 
+    static std::vector<Button> gen_buttons_keypads_defaults(const std::string &game) {
+        auto buttons = GameAPI::Buttons::getButtons(game);
+        std::vector<std::string> names;
+        std::vector<unsigned short> vkey_defaults;
+
+        // loop for 2 keypad units, only setting defaults for keypad 1
+        for (size_t unit = 0; unit < 2; unit++) {
+            std::string prefix = unit == 0 ? "P1 Keypad " : "P2 Keypad ";
+
+            names.emplace_back(prefix + "0");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD0 : 0xFF);
+
+            names.emplace_back(prefix + "1");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD1 : 0xFF);
+
+            names.emplace_back(prefix + "2");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD2 : 0xFF);
+
+            names.emplace_back(prefix + "3");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD3 : 0xFF);
+
+            names.emplace_back(prefix + "4");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD4 : 0xFF);
+
+            names.emplace_back(prefix + "5");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD5 : 0xFF);
+
+            names.emplace_back(prefix + "6");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD6 : 0xFF);
+
+            names.emplace_back(prefix + "7");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD7 : 0xFF);
+
+            names.emplace_back(prefix + "8");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD8 : 0xFF);
+
+            names.emplace_back(prefix + "9");
+            vkey_defaults.push_back(unit == 0 ? VK_NUMPAD9 : 0xFF);
+
+            names.emplace_back(prefix + "00");
+            vkey_defaults.push_back(unit == 0 ? VK_RETURN : 0xFF);
+
+            names.emplace_back(prefix + "Decimal");
+            vkey_defaults.push_back(unit == 0 ? VK_DECIMAL : 0xFF);
+
+            names.emplace_back(prefix + "Insert Card");
+            vkey_defaults.push_back(unit == 0 ? VK_ADD : 0xFF);
+        }
+
+        // return sorted buttons
+        buttons = GameAPI::Buttons::sortButtons(buttons, names, &vkey_defaults);
+        return buttons;
+    }
+
     static std::vector<Button> gen_buttons_keypads(const std::string &game) {
         auto buttons = GameAPI::Buttons::getButtons(game);
         std::vector<std::string> names;

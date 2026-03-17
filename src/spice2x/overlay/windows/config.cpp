@@ -590,9 +590,50 @@ namespace overlay::windows {
     }
 
     void Config::build_buttons(const std::string &name, std::vector<Button> *buttons, int min, int max) {
-
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "%s Buttons", name.c_str());
+
+        const float clear_w = ImGui::CalcTextSize("Reset All").x
+            + ImGui::GetStyle().FramePadding.x * 2;
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - clear_w);
+
+        std::string reset_str = "Reset all " + name + " button bindings";
+
+        // clear all
+        ImGui::PushID(name.c_str());
+        if (ImGui::Button("Reset All")) {
+            ImGui::OpenPopup(reset_str.c_str());
+        }
+        if (ImGui::BeginPopupModal(reset_str.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Are you sure? This can't be undone.");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            if (ImGui::Button("Yes")) {
+                for (auto &button : *buttons) {
+                    // delete all alternatives
+                    int alt_index = 1; // 0 is primary
+                    for (auto &alt : button.getAlternatives()) {
+                        clear_button(&alt, alt_index);
+                        alt_index++;
+                    }
+                    // reset primary button to default
+                    log_info("xxx", "{} = {}", button.getName(), button.getVKeyDefault());
+                    clear_button(&button, 0, button.getVKeyDefault());
+                }
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::PopID();
+
         ImGui::Separator();
+
         if (ImGui::BeginTable("ButtonsTable", 3, ImGuiTableFlags_Resizable)) {
             // longest column is probably "Toggle Virtual Keypad P1" in Overlay tab
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(220));
@@ -899,9 +940,13 @@ namespace overlay::windows {
         ImGui::PopID();
     }
 
-    void Config::clear_button(Button *button, const int alt_index) {
+    void Config::clear_button(Button *button, const int alt_index, std::optional<unsigned short> vKey_default) {
         button->setDeviceIdentifier("");
-        button->setVKey(0xFF);
+        if (vKey_default.has_value()) {
+            button->setVKey(vKey_default.value());
+        } else {
+            button->setVKey(0xFF);
+        }
         button->setAnalogType(BAT_NONE);
         button->setDebounceUp(0.0);
         button->setDebounceDown(0.0);

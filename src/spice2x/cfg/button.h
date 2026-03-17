@@ -49,6 +49,10 @@ private:
     std::string name;
     std::string device_identifier = "";
     unsigned short vKey = INVALID_VKEY;
+
+    // default bindings are always naive
+    unsigned short vKey_default = INVALID_VKEY;
+
     ButtonAnalogType analog_type = BAT_NONE;
     double debounce_up = 0.0;
     double debounce_down = 0.0;
@@ -123,6 +127,14 @@ public:
 
     inline void setVKey(unsigned short vKey) {
         this->vKey = vKey;
+    }
+
+    inline unsigned short getVKeyDefault() const {
+        return this->vKey_default;
+    }
+
+    inline void setVKeyDefault(unsigned short vKey_default) {
+        this->vKey_default = vKey_default;
     }
 
     inline ButtonAnalogType getAnalogType() const {

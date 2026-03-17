@@ -47,6 +47,7 @@ std::vector<Button> GameAPI::Buttons::sortButtons(
 
             if (vkey_defaults) {
                 button.setVKey(vkey_defaults->at(index));
+                button.setVKeyDefault(vkey_defaults->at(index));
             }
         }
 
