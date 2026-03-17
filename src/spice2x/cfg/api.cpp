@@ -37,7 +37,11 @@ std::vector<Button> GameAPI::Buttons::sortButtons(
         for (auto &bt : buttons) {
             if (name == bt.getName()) {
                 button_found = true;
-                sorted.push_back(bt);
+                Button button_new = bt;
+                if (vkey_defaults) {
+                    button_new.setVKeyDefault(vkey_defaults->at(index));
+                }
+                sorted.push_back(button_new);
                 break;
             }
         }

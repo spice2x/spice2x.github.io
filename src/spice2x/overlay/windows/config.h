@@ -125,6 +125,8 @@ namespace overlay::windows {
             const float button_velocity,
             const int alt_index);
         void clear_button(Button *button, const int alt_index, std::optional<unsigned short> vKey_default = std::nullopt);
+        void reset_button_to_default(Button *button, unsigned short vKey_default);
+        unsigned int get_keypad_top_row(const Button &button);
 
         void build_analogs(const std::string &name, std::vector<Analog> *analogs);
         void edit_analog_popup(Analog &analog);

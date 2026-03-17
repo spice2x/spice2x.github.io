@@ -44,7 +44,7 @@ std::string Button::getVKeyString() {
         case 0x0C:
             return "Clear";
         case 0x0D:
-            return "Enter";
+            return "Enter/Return";
         case 0x10:
             return "Shift";
         case 0x11:
@@ -183,37 +183,37 @@ std::string Button::getVKeyString() {
         case 0x5D:
             return "Apps";
         case 0x60:
-            return "Num 0";
+            return "Numpad 0";
         case 0x61:
-            return "Num 1";
+            return "Numpad 1";
         case 0x62:
-            return "Num 2";
+            return "Numpad 2";
         case 0x63:
-            return "Num 3";
+            return "Numpad 3";
         case 0x64:
-            return "Num 4";
+            return "Numpad 4";
         case 0x65:
-            return "Num 5";
+            return "Numpad 5";
         case 0x66:
-            return "Num 6";
+            return "Numpad 6";
         case 0x67:
-            return "Num 7";
+            return "Numpad 7";
         case 0x68:
-            return "Num 8";
+            return "Numpad 8";
         case 0x69:
-            return "Num 9";
+            return "Numpad 9";
         case 0x6A:
-            return "*";
+            return "Numpad *";
         case 0x6B:
-            return "+";
+            return "Numpad +";
         case 0x6C:
-            return "Seperator";
+            return "Numpad Seperator";
         case 0x6D:
-            return "-";
+            return "Numpad -";
         case 0x6E:
-            return ".";
+            return "Numpad .";
         case 0x6F:
-            return "/";
+            return "Numpad /";
         case 0x70:
             return "F1";
         case 0x71:
@@ -263,7 +263,7 @@ std::string Button::getVKeyString() {
         case 0x87:
             return "F24";
         case 0x90:
-            return "Num Lock";
+            return "Numpad Lock";
         case 0x91:
             return "Scroll Lock";
         case 0xA0:
