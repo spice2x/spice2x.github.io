@@ -263,7 +263,7 @@ std::string Button::getVKeyString() {
         case 0x87:
             return "F24";
         case 0x90:
-            return "Numpad Lock";
+            return "Num Lock";
         case 0x91:
             return "Scroll Lock";
         case 0xA0:
