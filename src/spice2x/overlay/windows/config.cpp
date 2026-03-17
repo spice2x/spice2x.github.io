@@ -1872,7 +1872,40 @@ namespace overlay::windows {
     }
 
     void Config::build_analogs(const std::string &name, std::vector<Analog> *analogs) {
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Analogs");
+
+        const float clear_w = ImGui::CalcTextSize("Clear All").x
+            + ImGui::GetStyle().FramePadding.x * 2;
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - clear_w);
+
+        // clear all
+        if (ImGui::Button("Clear All")) {
+            ImGui::OpenPopup("Clear all analog bindings");
+        }
+        if (ImGui::BeginPopupModal("Clear all analog bindings", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Are you sure? This can't be undone.");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            if (ImGui::Button("Yes")) {
+                for (auto &analog : *analogs) {
+                    // explicitly not checking for analog.isSet() here
+                    // since it doesn't account for a binding with valid device but invalid index
+                    analog.clearBindings();
+                    analog.setLastState(0.f);
+                    ::Config::getInstance().updateBinding(games_list[games_selected], analog);
+                }
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
         ImGui::Separator();
         if (ImGui::BeginTable("AnalogsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
 
@@ -2419,9 +2452,6 @@ namespace overlay::windows {
                 ImGui::OpenPopup("Clear all light bindings");
             }
             ImGui::EndDisabled();
-            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-                ImGui::SetTooltip("Unbind all lights.");
-            }
             if (ImGui::BeginPopupModal("Clear all light bindings", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 ImGui::TextUnformatted("Are you sure? This can't be undone.");
                 ImGui::Spacing();
