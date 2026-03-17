@@ -861,6 +861,44 @@ std::vector<Light> GameAPI::Lights::sortLights(
     return sorted;
 }
 
+static std::vector<Light> sortLightsWithCategoryInternal(
+    const std::vector<Light> &lights,
+    const std::initializer_list<GameAPI::Lights::LightAndCategory> list)
+{
+    std::vector<Light> sorted;
+
+    bool light_found;
+    for (auto &name : list) {
+        light_found = false;
+
+        for (auto &light : lights) {
+            if (name.light_name == light.getName()) {
+                light_found = true;
+                Light light_new = light;
+                light_new.setCategory(name.category_name);
+                sorted.push_back(light_new);
+                break;
+            }
+        }
+
+        if (!light_found) {
+            sorted.emplace_back(name.light_name, name.category_name);
+        }
+    }
+
+    return sorted;
+}
+
+void GameAPI::Lights::sortLightsWithCategory(
+    std::vector<Light> *lights,
+    const std::initializer_list<LightAndCategory> list) {
+
+    if (lights) {
+        *lights = sortLightsWithCategoryInternal(*lights, list);
+    }
+}
+
+
 void GameAPI::Lights::writeLight(rawinput::Device *device, int index, float value) {
 
     // check device
