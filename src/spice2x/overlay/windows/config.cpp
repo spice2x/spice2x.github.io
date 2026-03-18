@@ -593,9 +593,11 @@ namespace overlay::windows {
         ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "%s Buttons", name.c_str());
 
-        std::string reset_button_str = "Reset all";
+        std::string reset_button_str = "Clear All";
         if (name == "Keypad") {
             reset_button_str = "Use Preset";
+        } else if (name == "Overlay") {
+            reset_button_str = "Reset All";
         }
 
         const float clear_w = ImGui::CalcTextSize(reset_button_str.c_str()).x
@@ -2001,7 +2003,6 @@ namespace overlay::windows {
                     // explicitly not checking for analog.isSet() here
                     // since it doesn't account for a binding with valid device but invalid index
                     analog.clearBindings();
-                    analog.setLastState(0.f);
                     ::Config::getInstance().updateBinding(games_list[games_selected], analog);
                 }
                 ImGui::CloseCurrentPopup();
@@ -2066,7 +2067,6 @@ namespace overlay::windows {
                         ImGui::SameLine();
                         if (ImGui::DeleteButton("Remove")) {
                             analog.clearBindings();
-                            analog.setLastState(0.f);
                             ::Config::getInstance().updateBinding(
                                     games_list[games_selected], analog);
                         }
