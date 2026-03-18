@@ -401,7 +401,8 @@ namespace games {
             vkey_defaults.push_back(unit == 0 ? VK_NUMPAD9 : 0xFF);
 
             names.emplace_back(prefix + "00");
-            vkey_defaults.push_back(unit == 0 ? VK_RETURN : 0xFF);
+            // this used to be VK_RETURN, but that shares a value with normal Enter key
+            vkey_defaults.push_back(unit == 0 ? VK_SUBTRACT : 0xFF);
 
             names.emplace_back(prefix + "Decimal");
             vkey_defaults.push_back(unit == 0 ? VK_DECIMAL : 0xFF);

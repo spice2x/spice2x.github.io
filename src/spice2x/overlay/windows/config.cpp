@@ -590,14 +590,75 @@ namespace overlay::windows {
     }
 
     void Config::build_buttons(const std::string &name, std::vector<Button> *buttons, int min, int max) {
-
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "%s Buttons", name.c_str());
+
+        std::string reset_button_str = "Reset all";
+        if (name == "Keypad") {
+            reset_button_str = "Use Preset";
+        }
+
+        const float clear_w = ImGui::CalcTextSize(reset_button_str.c_str()).x
+            + ImGui::GetStyle().FramePadding.x * 2;
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - clear_w);
+
+        std::string reset_str = "Reset all " + name + " button bindings";
+
+        // clear all
+        ImGui::PushID(name.c_str());
+        if (ImGui::Button(reset_button_str.c_str())) {
+            ImGui::OpenPopup(reset_str.c_str());
+        }
+        if (ImGui::BeginPopupModal(reset_str.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Are you sure? This can't be undone.");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            if (name == "Keypad") {
+                if (ImGui::Button("Use Numpad")) {
+                    for (auto &button : *buttons) {
+                        reset_button_to_default(&button, button.getVKeyDefault());
+                    }
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Use Top Row")) {
+                    for (auto &button : *buttons) {
+                        reset_button_to_default(&button, get_keypad_top_row(button));
+                    }
+                    ImGui::CloseCurrentPopup();
+                }                
+                ImGui::SameLine();
+                if (ImGui::Button("Remove All")) {
+                    for (auto &button : *buttons) {
+                        reset_button_to_default(&button, 0xFF);
+                    }
+                    ImGui::CloseCurrentPopup();
+                }                
+            } else {
+                if (ImGui::Button("Yes")) {
+                    for (auto &button : *buttons) {
+                        reset_button_to_default(&button, button.getVKeyDefault());
+                    }
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::PopID();
+
         ImGui::Separator();
+
         if (ImGui::BeginTable("ButtonsTable", 3, ImGuiTableFlags_Resizable)) {
             // longest column is probably "Toggle Virtual Keypad P1" in Overlay tab
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(220));
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(180));
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(140));
 
             // check if empty
             if (!buttons || buttons->empty()) {
@@ -651,7 +712,14 @@ namespace overlay::windows {
 
         // get button info
         ImGui::PushID(button);
-        const auto button_name = button->getName();
+        auto button_name = button->getName();
+        if (button_name == "Service") {
+            button_name = "Insert Service Coin";
+        } else if (button_name == "Test") {
+            button_name = "Enter Test Menu";
+        } else if (button_name == "Coin Mech") {
+            button_name = "Activate Coin Mech";
+        }
         const auto button_display = button->getDisplayString(RI_MGR.get());
         const auto button_velocity = GameAPI::Buttons::getVelocity(RI_MGR, *button);
 
@@ -899,9 +967,13 @@ namespace overlay::windows {
         ImGui::PopID();
     }
 
-    void Config::clear_button(Button *button, const int alt_index) {
+    void Config::clear_button(Button *button, const int alt_index, std::optional<unsigned short> vKey_default) {
         button->setDeviceIdentifier("");
-        button->setVKey(0xFF);
+        if (vKey_default.has_value()) {
+            button->setVKey(vKey_default.value());
+        } else {
+            button->setVKey(0xFF);
+        }
         button->setAnalogType(BAT_NONE);
         button->setDebounceUp(0.0);
         button->setDebounceDown(0.0);
@@ -913,6 +985,41 @@ namespace overlay::windows {
         ::Config::getInstance().updateBinding(
                 games_list[games_selected], *button,
                 alt_index - 1);
+    }
+
+    void Config::reset_button_to_default(Button *button, unsigned short vKey_default) {
+        // delete all alternatives
+        int alt_index = 1; // 0 is primary
+        for (auto &alt : button->getAlternatives()) {
+            clear_button(&alt, alt_index);
+            alt_index++;
+        }
+        // reset primary button to default
+        clear_button(button, 0, vKey_default);
+    }
+
+    unsigned int Config::get_keypad_top_row(const Button &button) {
+        static const std::unordered_map<std::string, unsigned short> keypad_top_row_defaults = {
+            {"P1 Keypad 0", 0x30}, // 0 (top row number key)
+            {"P1 Keypad 1", 0x31},
+            {"P1 Keypad 2", 0x32},
+            {"P1 Keypad 3", 0x33},
+            {"P1 Keypad 4", 0x34},
+            {"P1 Keypad 5", 0x35},
+            {"P1 Keypad 6", 0x36},
+            {"P1 Keypad 7", 0x37},
+            {"P1 Keypad 8", 0x38},
+            {"P1 Keypad 9", 0x39},
+            {"P1 Keypad 00", VK_OEM_MINUS},
+            {"P1 Keypad Decimal", VK_OEM_PLUS},
+            {"P1 Keypad Insert Card", VK_BACK}};
+        
+        for (const auto &[key, value] : keypad_top_row_defaults) {
+            if (button.getName() == key) {
+                return value;
+            }
+        }
+        return 0xFF;
     }
 
     void Config::bind_button_popup(
@@ -1872,7 +1979,40 @@ namespace overlay::windows {
     }
 
     void Config::build_analogs(const std::string &name, std::vector<Analog> *analogs) {
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Analogs");
+
+        const float clear_w = ImGui::CalcTextSize("Clear All").x
+            + ImGui::GetStyle().FramePadding.x * 2;
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - clear_w);
+
+        // clear all
+        if (ImGui::Button("Clear All")) {
+            ImGui::OpenPopup("Clear all analog bindings");
+        }
+        if (ImGui::BeginPopupModal("Clear all analog bindings", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted("Are you sure? This can't be undone.");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            if (ImGui::Button("Yes")) {
+                for (auto &analog : *analogs) {
+                    // explicitly not checking for analog.isSet() here
+                    // since it doesn't account for a binding with valid device but invalid index
+                    analog.clearBindings();
+                    analog.setLastState(0.f);
+                    ::Config::getInstance().updateBinding(games_list[games_selected], analog);
+                }
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
         ImGui::Separator();
         if (ImGui::BeginTable("AnalogsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
 
@@ -2419,9 +2559,6 @@ namespace overlay::windows {
                 ImGui::OpenPopup("Clear all light bindings");
             }
             ImGui::EndDisabled();
-            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-                ImGui::SetTooltip("Unbind all lights.");
-            }
             if (ImGui::BeginPopupModal("Clear all light bindings", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 ImGui::TextUnformatted("Are you sure? This can't be undone.");
                 ImGui::Spacing();
