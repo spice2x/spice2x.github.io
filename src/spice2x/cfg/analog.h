@@ -91,6 +91,7 @@ public:
         setMultiplier(1);
         setRelativeMode(false);
         setDelayBufferDepth(0);
+        setLastState(0.5f);
     }
 
     inline void clearBindings() {
