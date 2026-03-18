@@ -565,6 +565,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         overlay/windows/screen_resize.cpp
         overlay/windows/sdvx_sub.cpp
         overlay/windows/config.cpp
+        overlay/windows/controller_presets.cpp
         overlay/windows/control.cpp
         overlay/windows/eadev.cpp
         overlay/windows/fps.cpp

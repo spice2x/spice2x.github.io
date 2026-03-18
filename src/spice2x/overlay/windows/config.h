@@ -8,6 +8,7 @@
 #include "rawinput/device.h"
 #include "external/imgui/imgui_filebrowser.h"
 #include "patch_manager.h"
+#include "controller_presets.h"
 
 namespace overlay::windows {
 
@@ -23,6 +24,7 @@ namespace overlay::windows {
         CONFIG_TAB_OPTIONS,
         CONFIG_TAB_ADVANCED,
         CONFIG_TAB_DEV,
+        CONFIG_TAB_PRESETS,
         CONFIG_TAB_SEARCH,
     };
 
@@ -93,6 +95,21 @@ namespace overlay::windows {
         ImGui::FileBrowser keypads_card_select_browser[2];
         char keypads_card_number[2][18] {};
 
+        // presets tab
+        std::vector<ControllerTemplate> templates_cache;
+        bool templates_cache_dirty = true;
+        int templates_selected = -1;
+        char template_save_name[256] = {};
+        // per-source target mapping: source index -> selected target device index
+        std::vector<int> template_target_selection;
+        // deferred popup flags (to avoid ImGui ID stack mismatch inside tables)
+        bool template_apply_open = false;
+        bool template_edit_open = false;
+        bool template_save_labels_open = false;
+        ControllerTemplate template_pending_save;
+        std::vector<std::string> template_save_sources;
+        std::vector<std::string> template_save_labels;
+
         // patches tab
         std::unique_ptr<PatchManager> patch_manager;
 
@@ -145,6 +162,13 @@ namespace overlay::windows {
             std::vector<std::string> &raw_names,
             std::vector<MatchEntry> &matched,
             std::vector<MatchEntry> &unmatched);
+
+        void build_presets();
+        void clear_all_bindings();
+        void apply_template_source(const ControllerTemplate &tmpl,
+                                   const std::string &source_filter,
+                                   const std::string &target_device);
+        ControllerTemplate capture_current_bindings(const std::string &name);
 
         void build_cards();
         std::string build_option_value_picker_title(const OptionDefinition& option);

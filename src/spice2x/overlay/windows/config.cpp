@@ -257,6 +257,7 @@ namespace overlay::windows {
         // selected game changed
         if (previous_games_selected != this->games_selected) {
             read_card();
+            templates_cache_dirty = true;
         }
 
         // tab selection
@@ -350,6 +351,14 @@ namespace overlay::windows {
                 ImGui::BeginChild("Lights", ImVec2(
                         0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
                 this->build_lights("Game", games::get_lights(this->games_selected_name));
+                ImGui::EndChild();
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Presets")) {
+                tab_selected_new = ConfigTab::CONFIG_TAB_PRESETS;
+                ImGui::BeginChild("Presets", ImVec2(
+                        0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
+                this->build_presets();
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
@@ -573,6 +582,7 @@ namespace overlay::windows {
             this->tab_selected = tab_selected_new;
             buttons_many_active = false;
             buttons_many_index = -1;
+            templates_cache_dirty = true;
             ImGui::CloseCurrentPopup();
         }
 
@@ -4677,6 +4687,767 @@ namespace overlay::windows {
                 this->build_about();
                 ImGui::EndPopup();
             }
+        }
+    }
+
+    //////////////////
+    /// Presets Tab //
+    //////////////////
+
+    ControllerTemplate Config::capture_current_bindings(const std::string &name) {
+        ControllerTemplate tmpl;
+        tmpl.name = name;
+        tmpl.game_name = this->games_selected_name;
+        tmpl.is_builtin = false;
+
+        // capture buttons
+        auto *buttons = games::get_buttons(this->games_selected_name);
+        if (buttons) {
+            for (auto &btn : *buttons) {
+                TemplateButtonBinding tb;
+                tb.name = btn.getName();
+                tb.primary.vKey = btn.getVKey();
+                tb.primary.analog_type = btn.getAnalogType();
+                tb.primary.device_identifier = btn.getDeviceIdentifier();
+                tb.primary.invert = btn.getInvert();
+                tb.primary.debounce_up = btn.getDebounceUp();
+                tb.primary.debounce_down = btn.getDebounceDown();
+                tb.primary.velocity_threshold = btn.getVelocityThreshold();
+
+                for (auto &alt : btn.getAlternatives()) {
+                    TemplateButtonEntry ae;
+                    ae.vKey = alt.getVKey();
+                    ae.analog_type = alt.getAnalogType();
+                    ae.device_identifier = alt.getDeviceIdentifier();
+                    ae.invert = alt.getInvert();
+                    ae.debounce_up = alt.getDebounceUp();
+                    ae.debounce_down = alt.getDebounceDown();
+                    ae.velocity_threshold = alt.getVelocityThreshold();
+                    tb.alternatives.push_back(ae);
+                }
+
+                tmpl.buttons.push_back(std::move(tb));
+            }
+        }
+
+        // capture keypad buttons
+        auto *keypad_buttons = games::get_buttons_keypads(this->games_selected_name);
+        if (keypad_buttons) {
+            for (auto &btn : *keypad_buttons) {
+                TemplateButtonBinding tb;
+                tb.name = btn.getName();
+                tb.primary.vKey = btn.getVKey();
+                tb.primary.analog_type = btn.getAnalogType();
+                tb.primary.device_identifier = btn.getDeviceIdentifier();
+                tb.primary.invert = btn.getInvert();
+                tb.primary.debounce_up = btn.getDebounceUp();
+                tb.primary.debounce_down = btn.getDebounceDown();
+                tb.primary.velocity_threshold = btn.getVelocityThreshold();
+
+                for (auto &alt : btn.getAlternatives()) {
+                    TemplateButtonEntry ae;
+                    ae.vKey = alt.getVKey();
+                    ae.analog_type = alt.getAnalogType();
+                    ae.device_identifier = alt.getDeviceIdentifier();
+                    ae.invert = alt.getInvert();
+                    ae.debounce_up = alt.getDebounceUp();
+                    ae.debounce_down = alt.getDebounceDown();
+                    ae.velocity_threshold = alt.getVelocityThreshold();
+                    tb.alternatives.push_back(ae);
+                }
+
+                tmpl.keypad_buttons.push_back(std::move(tb));
+            }
+        }
+
+        // capture analogs
+        auto *analogs = games::get_analogs(this->games_selected_name);
+        if (analogs) {
+            for (auto &a : *analogs) {
+                TemplateAnalogBinding ta;
+                ta.name = a.getName();
+                ta.device_identifier = a.getDeviceIdentifier();
+                ta.index = a.getIndex();
+                ta.sensitivity = a.getSensitivity();
+                ta.deadzone = a.getDeadzone();
+                ta.deadzone_mirror = a.getDeadzoneMirror();
+                ta.invert = a.getInvert();
+                ta.smoothing = a.getSmoothing();
+                ta.multiplier = a.getMultiplier();
+                ta.relative_mode = a.isRelativeMode();
+                ta.delay_buffer_depth = a.getDelayBufferDepth();
+                tmpl.analogs.push_back(std::move(ta));
+            }
+        }
+
+        // capture lights
+        auto *lights = games::get_lights(this->games_selected_name);
+        if (lights) {
+            for (auto &l : *lights) {
+                TemplateLightBinding tl;
+                tl.name = l.getName();
+                tl.primary.device_identifier = l.getDeviceIdentifier();
+                tl.primary.index = l.getIndex();
+
+                for (auto &alt : l.getAlternatives()) {
+                    TemplateLightEntry le;
+                    le.device_identifier = alt.getDeviceIdentifier();
+                    le.index = alt.getIndex();
+                    tl.alternatives.push_back(le);
+                }
+
+                tmpl.lights.push_back(std::move(tl));
+            }
+        }
+
+        return tmpl;
+    }
+
+    void Config::clear_all_bindings() {
+        auto &game = games_list[games_selected];
+
+        // clear all game buttons (NOT overlay buttons)
+        auto *buttons = games::get_buttons(this->games_selected_name);
+        if (buttons) {
+            for (auto &btn : *buttons) {
+                // clear alternatives first
+                for (int ai = (int)btn.getAlternatives().size() - 1; ai >= 0; ai--) {
+                    clear_button(&btn.getAlternatives()[ai], ai + 1);
+                }
+                btn.getAlternatives().clear();
+                // clear primary
+                clear_button(&btn, -1);
+            }
+        }
+
+        // clear all keypad buttons
+        auto *keypad_buttons = games::get_buttons_keypads(this->games_selected_name);
+        if (keypad_buttons) {
+            for (auto &btn : *keypad_buttons) {
+                for (int ai = (int)btn.getAlternatives().size() - 1; ai >= 0; ai--) {
+                    clear_button(&btn.getAlternatives()[ai], ai + 1);
+                }
+                btn.getAlternatives().clear();
+                clear_button(&btn, -1);
+            }
+        }
+
+        // clear all analogs
+        auto *analogs = games::get_analogs(this->games_selected_name);
+        if (analogs) {
+            for (auto &a : *analogs) {
+                a.clearBindings();
+                ::Config::getInstance().updateBinding(game, a);
+            }
+        }
+
+        // clear all lights
+        auto *lights = games::get_lights(this->games_selected_name);
+        if (lights) {
+            for (auto &l : *lights) {
+                for (int ai = (int)l.getAlternatives().size() - 1; ai >= 0; ai--) {
+                    clear_light(&l.getAlternatives()[ai], ai + 1);
+                }
+                l.getAlternatives().clear();
+                clear_light(&l, -1);
+            }
+        }
+    }
+
+    // apply bindings from a template filtered by source, remapping to target_device
+    void Config::apply_template_source(const ControllerTemplate &tmpl,
+                                       const std::string &source_filter,
+                                       const std::string &target_device) {
+        auto &game = games_list[games_selected];
+        bool source_is_naive = (source_filter == "Naive");
+        bool target_is_naive = (target_device == "Naive");
+
+        // helper: check if a button entry matches the source filter
+        auto entry_matches = [&](const TemplateButtonEntry &e) -> bool {
+            if (source_is_naive) return e.is_naive();
+            return e.is_device() && e.device_identifier == source_filter;
+        };
+
+        // helper: remap device identifier from source to target
+        auto remap_devid = [&]() -> std::string {
+            if (target_is_naive) return "";
+            return target_device;
+        };
+
+        // helper: apply template button bindings to a game button vector
+        auto apply_buttons = [&](const std::vector<TemplateButtonBinding> &tmpl_btns,
+                                 std::vector<Button> *game_btns) {
+            if (!game_btns) return;
+            for (auto &tb : tmpl_btns) {
+                std::vector<const TemplateButtonEntry *> matching_entries;
+                if (entry_matches(tb.primary)) {
+                    matching_entries.push_back(&tb.primary);
+                }
+                for (auto &alt : tb.alternatives) {
+                    if (entry_matches(alt)) {
+                        matching_entries.push_back(&alt);
+                    }
+                }
+                if (matching_entries.empty()) continue;
+
+                for (auto &btn : *game_btns) {
+                    if (btn.getName() != tb.name) continue;
+
+                    for (auto *entry : matching_entries) {
+                        auto mapped_devid = remap_devid();
+
+                        if (btn.getVKey() == INVALID_VKEY && btn.getDeviceIdentifier().empty()) {
+                            btn.setVKey(entry->vKey);
+                            btn.setAnalogType(entry->analog_type);
+                            btn.setDeviceIdentifier(mapped_devid);
+                            btn.setInvert(entry->invert);
+                            btn.setDebounceUp(entry->debounce_up);
+                            btn.setDebounceDown(entry->debounce_down);
+                            btn.setVelocityThreshold(entry->velocity_threshold);
+                            ::Config::getInstance().updateBinding(game, btn, -1);
+                        } else {
+                            Button alt_btn(btn.getName());
+                            alt_btn.setVKey(entry->vKey);
+                            alt_btn.setAnalogType(entry->analog_type);
+                            alt_btn.setDeviceIdentifier(mapped_devid);
+                            alt_btn.setInvert(entry->invert);
+                            alt_btn.setDebounceUp(entry->debounce_up);
+                            alt_btn.setDebounceDown(entry->debounce_down);
+                            alt_btn.setVelocityThreshold(entry->velocity_threshold);
+                            alt_btn.setTemporary(true);
+                            btn.getAlternatives().push_back(alt_btn);
+                            ::Config::getInstance().updateBinding(
+                                game, btn.getAlternatives().back(),
+                                (int)btn.getAlternatives().size() - 1);
+                            btn.getAlternatives().back().setTemporary(false);
+                        }
+                    }
+
+                    break;
+                }
+            }
+        };
+
+        // apply game buttons and keypad buttons
+        apply_buttons(tmpl.buttons, games::get_buttons(this->games_selected_name));
+        apply_buttons(tmpl.keypad_buttons, games::get_buttons_keypads(this->games_selected_name));
+
+        // apply analog bindings (device source only)
+        if (!source_is_naive && !target_is_naive) {
+            auto *analogs = games::get_analogs(this->games_selected_name);
+            if (analogs) {
+                for (auto &ta : tmpl.analogs) {
+                    if (!ta.is_device() || ta.device_identifier != source_filter) continue;
+
+                    for (auto &a : *analogs) {
+                        if (a.getName() != ta.name) continue;
+
+                        a.setDeviceIdentifier(remap_devid());
+                        a.setIndex(ta.index);
+                        a.setSensitivity(ta.sensitivity);
+                        a.setDeadzone(ta.deadzone);
+                        a.setDeadzoneMirror(ta.deadzone_mirror);
+                        a.setInvert(ta.invert);
+                        a.setSmoothing(ta.smoothing);
+                        a.setMultiplier(ta.multiplier);
+                        a.setRelativeMode(ta.relative_mode);
+                        a.setDelayBufferDepth(ta.delay_buffer_depth);
+                        ::Config::getInstance().updateBinding(game, a);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // apply light bindings (device source only)
+        if (!source_is_naive && !target_is_naive) {
+            auto *lights = games::get_lights(this->games_selected_name);
+            if (lights) {
+                for (auto &tl : tmpl.lights) {
+                    // collect matching entries
+                    std::vector<const TemplateLightEntry *> matching_entries;
+                    if (tl.primary.is_device() && tl.primary.device_identifier == source_filter) {
+                        matching_entries.push_back(&tl.primary);
+                    }
+                    for (auto &alt : tl.alternatives) {
+                        if (alt.is_device() && alt.device_identifier == source_filter) {
+                            matching_entries.push_back(&alt);
+                        }
+                    }
+                    if (matching_entries.empty()) continue;
+
+                    for (auto &l : *lights) {
+                        if (l.getName() != tl.name) continue;
+
+                        for (auto *entry : matching_entries) {
+                            auto mapped_devid = remap_devid();
+                            if (l.getDeviceIdentifier().empty()) {
+                                // set as primary
+                                l.setDeviceIdentifier(mapped_devid);
+                                l.setIndex(entry->index);
+                                ::Config::getInstance().updateBinding(game, l, -1);
+                            } else {
+                                // add as alternative
+                                Light alt_light(l.getName());
+                                alt_light.setDeviceIdentifier(mapped_devid);
+                                alt_light.setIndex(entry->index);
+                                alt_light.setTemporary(true);
+                                l.getAlternatives().push_back(alt_light);
+                                ::Config::getInstance().updateBinding(
+                                    game, l.getAlternatives().back(),
+                                    (int)l.getAlternatives().size() - 1);
+                                l.getAlternatives().back().setTemporary(false);
+                            }
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    void Config::build_presets() {
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Presets for: %s",
+            this->games_selected_name.c_str());
+        ImGui::Spacing();
+
+        // refresh cache
+        if (templates_cache_dirty) {
+            templates_cache = get_templates_for_game(this->games_selected_name);
+            templates_cache_dirty = false;
+        }
+
+        // preset list table
+        if (!templates_cache.empty()) {
+            if (ImGui::BeginTable("TemplateList", 6,
+                    ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None, 3.f);
+                ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None, 1.f);
+                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_None, 2.f);
+                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_None, 1.f);
+                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_None, 1.f);
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_None, 2.f);
+                ImGui::TableHeadersRow();
+
+                for (int i = 0; i < (int)templates_cache.size(); i++) {
+                    auto &t = templates_cache[i];
+                    ImGui::PushID(i);
+                    ImGui::TableNextRow();
+
+                    // name
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(t.name.c_str());
+
+                    // type
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(t.is_builtin ? "Built-in" : "User");
+
+                    // buttons
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%d", (int)t.buttons.size());
+
+                    // analogs
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%d", (int)t.analogs.size());
+
+                    // lights
+                    ImGui::TableNextColumn();
+                    {
+                        ImGui::Text("%d", (int)t.lights.size());
+                    }
+
+                    // actions
+                    ImGui::TableNextColumn();
+                    if (ImGui::SmallButton("Apply")) {
+                        templates_selected = i;
+                        template_target_selection.clear();
+                        template_apply_open = true;
+                    }
+                    if (!t.is_builtin) {
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("Edit")) {
+                            templates_selected = i;
+                            template_save_sources = t.get_binding_sources();
+                            template_save_labels.resize(template_save_sources.size());
+                            for (int si = 0; si < (int)template_save_sources.size(); si++) {
+                                template_save_labels[si] = template_save_sources[si];
+                            }
+                            template_edit_open = true;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("Del")) {
+                            delete_user_template(t.game_name, t.name);
+                            templates_cache_dirty = true;
+                        }
+                    }
+
+                    ImGui::PopID();
+                }
+
+                ImGui::EndTable();
+            }
+        } else {
+            ImGui::TextDisabled("No presets available for this game.");
+        }
+
+        // deferred popup opens
+        if (template_apply_open) {
+            ImGui::OpenPopup("Apply Preset##confirm");
+            template_apply_open = false;
+        }
+
+        // apply preset popup
+        ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("Apply Preset##confirm", NULL, 0)) {
+
+            if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
+                auto &t = templates_cache[templates_selected];
+
+                ImGui::Text("Apply preset \"%s\"", t.name.c_str());
+                ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
+                    "Overlay bindings are not affected.");
+                ImGui::Spacing();
+
+                // clear all button
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(1.f, 0.5f, 0.5f, 1.f),
+                    "Step 1: Reset all existing bindings (Caution! This can't be undone.)");
+                if (ImGui::Button("Clear All Bindings")) {
+                    clear_all_bindings();
+                }
+                ImGui::SameLine();
+                ImGui::HelpMarker(
+                    "Clears all game button, analog, and light bindings.");
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
+                    "Step 2: Apply bindings by source (one at a time)");
+                ImGui::Spacing();
+
+                // list binding sources with target selection
+                auto sources = t.get_binding_sources();
+
+                // build target device list: "Naive" + all connected devices
+                std::vector<std::string> target_options;
+                target_options.emplace_back("Naive");
+                for (auto &device : RI_MGR->devices_get()) {
+                    target_options.push_back(device.name);
+                }
+
+                // ensure target selection vector is sized (reset on source count change)
+                if (template_target_selection.size() != sources.size()) {
+                    template_target_selection.resize(sources.size());
+                    for (int si = 0; si < (int)sources.size(); si++) {
+                        template_target_selection[si] = -1;
+                        for (int ti = 0; ti < (int)target_options.size(); ti++) {
+                            if (target_options[ti] == sources[si]) {
+                                template_target_selection[si] = ti;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (ImGui::BeginTable("TemplateSources", 4,
+                        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                        ImGuiTableFlags_SizingStretchProp)) {
+
+                    ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_None, 2.f);
+                    ImGui::TableSetupColumn("Apply As", ImGuiTableColumnFlags_None, 3.f);
+                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_None, 2.f);
+                    ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_None, 1.f);
+                    ImGui::TableHeadersRow();
+
+                    for (int si = 0; si < (int)sources.size(); si++) {
+                        ImGui::PushID(si);
+                        ImGui::TableNextRow();
+
+                        // source (label is the device_identifier)
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(sources[si].c_str());
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("%s", t.get_source_summary(sources[si]).c_str());
+                        }
+
+                        // target device combo
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-1);
+                        {
+                            int sel = template_target_selection[si];
+                            const char *preview = (sel >= 0) ? target_options[sel].c_str() : "(select target)";
+                            if (ImGui::BeginCombo("##target", preview)) {
+                                for (int ti = 0; ti < (int)target_options.size(); ti++) {
+                                    bool is_selected = (sel == ti);
+                                    std::string combo_label = target_options[ti];
+                                    if (ti > 0) {
+                                        auto *dev = RI_MGR->devices_get(target_options[ti]);
+                                        if (dev) {
+                                            combo_label = fmt::format("{}##{}", dev->desc, dev->name);
+                                        }
+                                    }
+                                    if (ImGui::Selectable(combo_label.c_str(), is_selected)) {
+                                        template_target_selection[si] = ti;
+                                    }
+                                    if (is_selected) {
+                                        ImGui::SetItemDefaultFocus();
+                                    }
+                                }
+                                ImGui::EndCombo();
+                            }
+                        }
+
+                        // connection status of target
+                        ImGui::TableNextColumn();
+                        {
+                            int sel = template_target_selection[si];
+                            if (sel < 0) {
+                                ImGui::TextDisabled("--");
+                            } else if (target_options[sel] == "Naive") {
+                                ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "OK");
+                            } else {
+                                auto *device = RI_MGR->devices_get(target_options[sel]);
+                                if (device) {
+                                    ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "OK");
+                                } else {
+                                    ImGui::TextColored(ImVec4(1.f, 0.5f, 0.f, 1.f), "Not found");
+                                }
+                            }
+                        }
+
+                        // apply button
+                        ImGui::TableNextColumn();
+                        {
+                            int sel = template_target_selection[si];
+                            if (sel < 0) ImGui::BeginDisabled();
+                            if (ImGui::SmallButton("Apply")) {
+                                if (sel >= 0) {
+                                    apply_template_source(t, sources[si], target_options[sel]);
+                                }
+                            }
+                            if (sel < 0) ImGui::EndDisabled();
+                        }
+
+                        ImGui::PopID();
+                    }
+
+                    ImGui::EndTable();
+                }
+            }
+
+            ImGui::Spacing();
+            if (ImGui::Button("Close")) {
+                templates_selected = -1;
+                template_target_selection.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        // save section
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Save Current Bindings as Preset");
+        ImGui::Spacing();
+
+        ImGui::SetNextItemWidth(300);
+        ImGui::InputText("Preset Name", template_save_name, sizeof(template_save_name));
+        ImGui::SameLine();
+        bool name_empty = strlen(template_save_name) == 0;
+        if (name_empty) {
+            ImGui::BeginDisabled();
+        }
+        if (ImGui::Button("Save")) {
+            // capture bindings and open label assignment dialog
+            template_pending_save = capture_current_bindings(template_save_name);
+            template_save_sources = template_pending_save.get_binding_sources();
+            template_save_labels.resize(template_save_sources.size());
+            for (int si = 0; si < (int)template_save_sources.size(); si++) {
+                // default label: device description or source id
+                auto &src = template_save_sources[si];
+                if (src == "Naive") {
+                    template_save_labels[si] = "Keyboard";
+                } else {
+                    auto *dev = RI_MGR->devices_get(src);
+                    template_save_labels[si] = dev ? dev->desc : src;
+                }
+            }
+            template_save_labels_open = true;
+        }
+        if (name_empty) {
+            ImGui::EndDisabled();
+        }
+
+        // open save labels popup (deferred)
+        if (template_save_labels_open) {
+            ImGui::OpenPopup("Assign Labels##save");
+            template_save_labels_open = false;
+        }
+
+        // open edit labels popup (deferred from Edit button inside table)
+        if (template_edit_open) {
+            ImGui::OpenPopup("Edit Labels##preset");
+            template_edit_open = false;
+        }
+
+        // save labels popup: assign labels to sources before saving
+        ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("Assign Labels##save", NULL, 0)) {
+
+            ImGui::TextUnformatted("Assign a label to each source device.");
+            ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
+                "Labels replace device IDs in the saved preset.");
+            ImGui::Spacing();
+
+            if (ImGui::BeginTable("SaveLabels", 2,
+                    ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_SizingStretchProp)) {
+
+                ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_None, 3.f);
+                ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_None, 3.f);
+                ImGui::TableHeadersRow();
+
+                for (int si = 0; si < (int)template_save_sources.size(); si++) {
+                    ImGui::PushID(si + 3000);
+                    ImGui::TableNextRow();
+
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(template_save_sources[si].c_str());
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s",
+                            template_pending_save.get_source_summary(
+                                template_save_sources[si]).c_str());
+                    }
+
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1);
+                    char buf[128] = {};
+                    strncpy(buf, template_save_labels[si].c_str(), sizeof(buf) - 1);
+                    if (ImGui::InputText("##label", buf, sizeof(buf))) {
+                        template_save_labels[si] = buf;
+                    }
+
+                    ImGui::PopID();
+                }
+
+                ImGui::EndTable();
+            }
+
+            ImGui::Spacing();
+
+            // check all labels are non-empty
+            bool all_labels_set = true;
+            for (auto &lbl : template_save_labels) {
+                if (lbl.empty()) { all_labels_set = false; break; }
+            }
+
+            if (!all_labels_set) ImGui::BeginDisabled();
+            if (ImGui::Button("Save")) {
+                // replace device IDs with labels in the template
+                for (int si = 0; si < (int)template_save_sources.size(); si++) {
+                    template_pending_save.rename_source(
+                        template_save_sources[si], template_save_labels[si]);
+                }
+                if (save_user_template(template_pending_save)) {
+                    template_save_name[0] = '\0';
+                    templates_cache_dirty = true;
+                }
+                template_save_sources.clear();
+                template_save_labels.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            if (!all_labels_set) ImGui::EndDisabled();
+
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                template_save_sources.clear();
+                template_save_labels.clear();
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
+        }
+
+        // edit labels popup: rename sources in an existing preset
+        ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("Edit Labels##preset", NULL, 0)) {
+
+            if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
+                auto &t = templates_cache[templates_selected];
+                ImGui::Text("Edit labels for \"%s\"", t.name.c_str());
+                ImGui::Spacing();
+
+                if (ImGui::BeginTable("EditLabels", 2,
+                        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                        ImGuiTableFlags_SizingStretchProp)) {
+
+                    ImGui::TableSetupColumn("Current Label", ImGuiTableColumnFlags_None, 3.f);
+                    ImGui::TableSetupColumn("New Label", ImGuiTableColumnFlags_None, 3.f);
+                    ImGui::TableHeadersRow();
+
+                    for (int si = 0; si < (int)template_save_sources.size(); si++) {
+                        ImGui::PushID(si + 2000);
+                        ImGui::TableNextRow();
+
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(template_save_sources[si].c_str());
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("%s",
+                                t.get_source_summary(template_save_sources[si]).c_str());
+                        }
+
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-1);
+                        char buf[128] = {};
+                        strncpy(buf, template_save_labels[si].c_str(), sizeof(buf) - 1);
+                        if (ImGui::InputText("##label", buf, sizeof(buf))) {
+                            template_save_labels[si] = buf;
+                        }
+
+                        ImGui::PopID();
+                    }
+
+                    ImGui::EndTable();
+                }
+
+                ImGui::Spacing();
+
+                // check all labels are non-empty
+                bool all_labels_set = true;
+                for (auto &lbl : template_save_labels) {
+                    if (lbl.empty()) { all_labels_set = false; break; }
+                }
+
+                if (!all_labels_set) ImGui::BeginDisabled();
+                if (ImGui::Button("Save Labels")) {
+                    // rename sources in the template
+                    for (int si = 0; si < (int)template_save_sources.size(); si++) {
+                        if (template_save_labels[si] != template_save_sources[si]) {
+                            t.rename_source(template_save_sources[si], template_save_labels[si]);
+                        }
+                    }
+                    save_user_template(t);
+                    templates_cache_dirty = true;
+                    template_save_sources.clear();
+                    template_save_labels.clear();
+                    templates_selected = -1;
+                    ImGui::CloseCurrentPopup();
+                }
+                if (!all_labels_set) ImGui::EndDisabled();
+                ImGui::SameLine();
+            }
+            if (ImGui::Button("Cancel")) {
+                template_save_sources.clear();
+                template_save_labels.clear();
+                templates_selected = -1;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImGui::EndPopup();
         }
     }
 
