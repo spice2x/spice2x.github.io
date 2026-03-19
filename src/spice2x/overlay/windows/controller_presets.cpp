@@ -5,6 +5,7 @@
 #include <filesystem>
 
 #include "external/tinyxml2/tinyxml2.h"
+#include "cfg/button.h"
 #include "util/logging.h"
 
 namespace overlay::windows {
@@ -144,39 +145,6 @@ namespace overlay::windows {
         }
     }
 
-    // get human-readable vKey name
-    static std::string vkey_to_string(unsigned short vKey) {
-        if (vKey == INVALID_VKEY) return "None";
-
-        // named keys
-        switch (vKey) {
-            case 0x08: return "Backspace";
-            case 0x09: return "Tab";
-            case 0x0D: return "Enter";
-            case 0x1B: return "Escape";
-            case 0x20: return "Space";
-            case 0x24: return "Home";
-            case 0x25: return "Left";
-            case 0x26: return "Up";
-            case 0x27: return "Right";
-            case 0x28: return "Down";
-            case 0xBD: return "OEM_MINUS";
-            default: break;
-        }
-        // F1-F24
-        if (vKey >= 0x70 && vKey <= 0x87) {
-            return "F" + std::to_string(vKey - 0x70 + 1);
-        }
-        // printable ASCII
-        if ((vKey >= '0' && vKey <= '9') || (vKey >= 'A' && vKey <= 'Z')) {
-            return std::string(1, (char)vKey);
-        }
-        // fallback hex
-        char buf[16];
-        snprintf(buf, sizeof(buf), "0x%02X", vKey);
-        return buf;
-    }
-
     std::string ControllerTemplate::get_source_summary(const std::string &source) const {
         bool is_naive = (source == "Naive");
         std::string result;
@@ -187,7 +155,9 @@ namespace overlay::windows {
             for (auto &tb : btns) {
                 auto check_entry = [&](const TemplateButtonEntry &e) {
                     if (is_naive && e.is_naive()) {
-                        lines.push_back(tb.name + " = " + vkey_to_string(e.vKey));
+                        Button b("");
+                        b.setVKey(e.vKey);
+                        lines.push_back(tb.name + " = " + (e.vKey == INVALID_VKEY ? "None" : b.getVKeyString()));
                     } else if (!is_naive && e.is_device() && e.device_identifier == source) {
                         std::string desc = std::to_string(e.vKey);
                         if (e.analog_type != BAT_NONE) {

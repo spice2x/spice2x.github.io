@@ -5025,10 +5025,10 @@ namespace overlay::windows {
 
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None, 3.f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None, 1.f);
-                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_None, 2.f);
-                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_None, 1.f);
-                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_None, 1.f);
-                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_None, 2.f);
+                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_WidthFixed, 60.f);
+                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_WidthFixed, 60.f);
+                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_WidthFixed, 60.f);
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 140.f);
                 ImGui::TableHeadersRow();
 
                 for (int i = 0; i < (int)templates_cache.size(); i++) {
@@ -5060,14 +5060,14 @@ namespace overlay::windows {
 
                     // actions
                     ImGui::TableNextColumn();
-                    if (ImGui::SmallButton("Apply")) {
+                    if (ImGui::Button("Apply")) {
                         templates_selected = i;
                         template_target_selection.clear();
                         template_apply_open = true;
                     }
                     if (!t.is_builtin) {
                         ImGui::SameLine();
-                        if (ImGui::SmallButton("Edit")) {
+                        if (ImGui::Button("Edit")) {
                             templates_selected = i;
                             template_save_sources = t.get_binding_sources();
                             template_save_labels.resize(template_save_sources.size());
@@ -5077,7 +5077,7 @@ namespace overlay::windows {
                             template_edit_open = true;
                         }
                         ImGui::SameLine();
-                        if (ImGui::SmallButton("Del")) {
+                        if (ImGui::Button("Del")) {
                             delete_user_template(t.game_name, t.name);
                             templates_cache_dirty = true;
                         }

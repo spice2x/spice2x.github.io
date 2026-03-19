@@ -63,10 +63,10 @@ private:
     float last_velocity = 0.f;
     unsigned short velocity_threshold = 0;
 
-    std::string getVKeyString();
     std::string getMidiNoteString();
 
 public:
+    std::string getVKeyString();
 
     // overrides
     bool override_enabled = false;
