@@ -5190,16 +5190,66 @@ namespace overlay::windows {
                     ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_None, 1.f);
                     ImGui::TableHeadersRow();
 
-                    for (int si = 0; si < (int)sources.size(); si++) {
-                        ImGui::PushID(si);
-                        ImGui::TableNextRow();
+                // build a set of device names with any button currently pressed
+                std::set<std::string> active_devices;
+                for (auto &dev : RI_MGR->devices_get()) {
+                    bool pressed = false;
+                    switch (dev.type) {
+                        case rawinput::HID:
+                            if (dev.hidInfo) {
+                                for (auto &page : dev.hidInfo->button_states) {
+                                    for (bool s : page) {
+                                        if (s) { pressed = true; break; }
+                                    }
+                                    if (pressed) break;
+                                }
+                            }
+                            break;
+                        case rawinput::KEYBOARD:
+                            if (dev.keyboardInfo) {
+                                for (bool s : dev.keyboardInfo->key_states) {
+                                    if (s) { pressed = true; break; }
+                                }
+                            }
+                            break;
+                        case rawinput::MOUSE:
+                            if (dev.mouseInfo) {
+                                for (bool s : dev.mouseInfo->key_states) {
+                                    if (s) { pressed = true; break; }
+                                }
+                            }
+                            break;
+                        case rawinput::MIDI:
+                            if (dev.midiInfo) {
+                                for (bool s : dev.midiInfo->states) {
+                                    if (s) { pressed = true; break; }
+                                }
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    if (pressed) active_devices.insert(dev.name);
+                }
 
-                        // source (label is the device_identifier)
-                        ImGui::TableNextColumn();
-                        ImGui::TextUnformatted(sources[si].c_str());
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip("%s", t.get_source_summary(sources[si]).c_str());
-                        }
+                for (int si = 0; si < (int)sources.size(); si++) {
+                    ImGui::PushID(si);
+                    ImGui::TableNextRow();
+
+                    // source (label is the device_identifier)
+                    // highlight if the selected target device has recent input
+                    ImGui::TableNextColumn();
+                    {
+                        int sel = template_target_selection[si];
+                        bool active = sel > 0 && active_devices.count(target_options[sel]) > 0;
+                        if (active)
+                            ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", sources[si].c_str());
+                        else
+                            ImGui::TextUnformatted(sources[si].c_str());
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", t.get_source_summary(sources[si]).c_str());
+                    }
 
                         // target device combo
                         ImGui::TableNextColumn();
@@ -5211,15 +5261,21 @@ namespace overlay::windows {
                                 for (int ti = 0; ti < (int)target_options.size(); ti++) {
                                     bool is_selected = (sel == ti);
                                     std::string combo_label = target_options[ti];
+                                    bool item_active = false;
                                     if (ti > 0) {
                                         auto *dev = RI_MGR->devices_get(target_options[ti]);
                                         if (dev) {
                                             combo_label = fmt::format("{}##{}", dev->desc, dev->name);
+                                            item_active = active_devices.count(dev->name) > 0;
                                         }
                                     }
+                                    if (item_active)
+                                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 1.f, 0.f, 1.f));
                                     if (ImGui::Selectable(combo_label.c_str(), is_selected)) {
                                         template_target_selection[si] = ti;
                                     }
+                                    if (item_active)
+                                        ImGui::PopStyleColor();
                                     if (is_selected) {
                                         ImGui::SetItemDefaultFocus();
                                     }
