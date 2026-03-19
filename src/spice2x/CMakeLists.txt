@@ -352,6 +352,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         cfg/configurator.cpp
         cfg/configurator_wnd.cpp
         cfg/screen_resize.cpp
+        cfg/controller_presets.cpp
 
         # easrv
         easrv/easrv.cpp

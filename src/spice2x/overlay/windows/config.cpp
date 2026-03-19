@@ -5008,7 +5008,7 @@ namespace overlay::windows {
     }
 
     void Config::build_presets() {
-        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Presets for: %s",
+        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Controller presets for: %s",
             this->games_selected_name.c_str());
         ImGui::Spacing();
 
@@ -5078,8 +5078,8 @@ namespace overlay::windows {
                         }
                         ImGui::SameLine();
                         if (ImGui::Button("Del")) {
-                            delete_user_template(t.game_name, t.name);
-                            templates_cache_dirty = true;
+                            templates_selected = i;
+                            template_delete_open = true;
                         }
                     }
 
@@ -5096,6 +5096,31 @@ namespace overlay::windows {
         if (template_apply_open) {
             ImGui::OpenPopup("Apply Preset##confirm");
             template_apply_open = false;
+        }
+        if (template_delete_open) {
+            ImGui::OpenPopup("Delete Preset##confirm");
+            template_delete_open = false;
+        }
+
+        // delete preset confirmation popup
+        ImGui::SetNextWindowSize(ImVec2(360, 120), ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("Delete Preset##confirm", NULL, 0)) {
+            if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
+                auto &t = templates_cache[templates_selected];
+                ImGui::Text("Delete preset \"%s\"?", t.name.c_str());
+                ImGui::TextColored(ImVec4(1.f, 0.5f, 0.5f, 1.f), "This cannot be undone.");
+                ImGui::Spacing();
+                if (ImGui::Button("Delete")) {
+                    delete_user_template(t.game_name, t.name);
+                    templates_cache_dirty = true;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel")) {
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::EndPopup();
         }
 
         // apply preset popup

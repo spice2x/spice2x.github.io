@@ -34,7 +34,7 @@ namespace overlay::windows {
     struct TemplateAnalogBinding {
         std::string name;
         std::string device_identifier;
-        unsigned short index = USHRT_MAX;
+        unsigned short index = 0xFF;
         float sensitivity = 1.f;
         float deadzone = 0.f;
         bool deadzone_mirror = false;
@@ -45,7 +45,7 @@ namespace overlay::windows {
         int delay_buffer_depth = 0;
 
         bool is_device() const { return !device_identifier.empty(); }
-        bool is_unbound() const { return device_identifier.empty() && index == USHRT_MAX; }
+        bool is_unbound() const { return device_identifier.empty() && index == 0xFF; }
     };
 
     // single light binding entry (primary or alternative)

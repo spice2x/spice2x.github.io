@@ -106,6 +106,7 @@ namespace overlay::windows {
         bool template_apply_open = false;
         bool template_edit_open = false;
         bool template_save_labels_open = false;
+        bool template_delete_open = false;
         ControllerTemplate template_pending_save;
         std::vector<std::string> template_save_sources;
         std::vector<std::string> template_save_labels;
