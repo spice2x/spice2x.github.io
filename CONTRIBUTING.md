@@ -58,7 +58,7 @@ Watch out for legacy OS compatibility. Currently, the minimum support floor is W
 * Indents are four spaces.
 * Try to keep under 100 characters per line. This includes comments and string literals.
 * Avoid making unnecessary formatting or whitespace changes in a PR; e.g., watch out for text editor automatically stripping trailing whitespace. It pollutes the diff and slows down code review.
-* For signed/unsigned integer types, prefer `cstdint` types; e.g., use int32_t, uint64_t and not `int` and `unsigned long long`.
+* For signed/unsigned integer types, prefer `cstdint` types; e.g., use `int32_t`, `uint64_t` and not `int` and `unsigned long long`.
 * Always use \{ curly braces \} when appropriate; do not omit them even when it's optional; such as `for` `if` `else`, etc.
 
 OK:
