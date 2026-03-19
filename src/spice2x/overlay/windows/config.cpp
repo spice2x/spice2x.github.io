@@ -5109,7 +5109,11 @@ namespace overlay::windows {
                 auto &t = templates_cache[templates_selected];
                 ImGui::Text("Delete preset \"%s\"?", t.name.c_str());
                 ImGui::TextColored(ImVec4(1.f, 0.5f, 0.5f, 1.f), "This cannot be undone.");
-                ImGui::Spacing();
+
+                // buttons at the bottom
+                ImGui::SetCursorPosY(ImGui::GetWindowHeight()
+                    - ImGui::GetFrameHeightWithSpacing()
+                    - ImGui::GetStyle().WindowPadding.y);
                 if (ImGui::Button("Delete")) {
                     delete_user_template(t.game_name, t.name);
                     templates_cache_dirty = true;
@@ -5262,7 +5266,9 @@ namespace overlay::windows {
                 }
             }
 
-            ImGui::Spacing();
+            ImGui::SetCursorPosY(ImGui::GetWindowHeight()
+                - ImGui::GetFrameHeightWithSpacing()
+                - ImGui::GetStyle().WindowPadding.y);
             if (ImGui::Button("Close")) {
                 templates_selected = -1;
                 template_target_selection.clear();
@@ -5370,6 +5376,9 @@ namespace overlay::windows {
                 if (lbl.empty()) { all_labels_set = false; break; }
             }
 
+            ImGui::SetCursorPosY(ImGui::GetWindowHeight()
+                - ImGui::GetFrameHeightWithSpacing()
+                - ImGui::GetStyle().WindowPadding.y);
             if (!all_labels_set) ImGui::BeginDisabled();
             if (ImGui::Button("Save")) {
                 // replace device IDs with labels in the template
@@ -5447,6 +5456,9 @@ namespace overlay::windows {
                     if (lbl.empty()) { all_labels_set = false; break; }
                 }
 
+                ImGui::SetCursorPosY(ImGui::GetWindowHeight()
+                    - ImGui::GetFrameHeightWithSpacing()
+                    - ImGui::GetStyle().WindowPadding.y);
                 if (!all_labels_set) ImGui::BeginDisabled();
                 if (ImGui::Button("Save Labels")) {
                     // rename sources in the template
@@ -5464,12 +5476,12 @@ namespace overlay::windows {
                 }
                 if (!all_labels_set) ImGui::EndDisabled();
                 ImGui::SameLine();
-            }
-            if (ImGui::Button("Cancel")) {
-                template_save_sources.clear();
-                template_save_labels.clear();
-                templates_selected = -1;
-                ImGui::CloseCurrentPopup();
+                if (ImGui::Button("Cancel")) {
+                    template_save_sources.clear();
+                    template_save_labels.clear();
+                    templates_selected = -1;
+                    ImGui::CloseCurrentPopup();
+                }
             }
 
             ImGui::EndPopup();
