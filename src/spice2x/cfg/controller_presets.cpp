@@ -1,17 +1,17 @@
 #include "overlay/windows/controller_presets.h"
 
-#include <cstdlib>
 #include <filesystem>
 
 #include "cfg/resource.h"
 #include "external/tinyxml2/tinyxml2.h"
+#include "util/fileutils.h"
 #include "util/logging.h"
 #include "util/resutils.h"
 
 namespace overlay::windows {
 
     static std::filesystem::path get_templates_path() {
-        return std::filesystem::path(_wgetenv(L"APPDATA")) / L"spicetools_presets.xml";
+        return fileutils::get_config_file_path("ControllerPresets", "spicetools_presets.xml");
     }
 
     static void write_button_entry(tinyxml2::XMLDocument &doc, tinyxml2::XMLElement *parent,
