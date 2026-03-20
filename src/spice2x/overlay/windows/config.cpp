@@ -4748,17 +4748,15 @@ namespace overlay::windows {
     }
 
     void Config::clear_all_bindings() {
-        auto &game = games_list[games_selected];
+        const auto &game = games_list[games_selected];
 
         // clear all game buttons (NOT overlay buttons)
         auto *buttons = games::get_buttons(this->games_selected_name);
         if (buttons) {
             for (auto &btn : *buttons) {
-                // clear alternatives first
                 for (int ai = (int)btn.getAlternatives().size() - 1; ai >= 0; ai--) {
                     clear_button(&btn.getAlternatives()[ai], ai + 1);
                 }
-                btn.getAlternatives().clear();
                 // clear primary
                 clear_button(&btn, -1);
             }
@@ -4771,7 +4769,6 @@ namespace overlay::windows {
                 for (int ai = (int)btn.getAlternatives().size() - 1; ai >= 0; ai--) {
                     clear_button(&btn.getAlternatives()[ai], ai + 1);
                 }
-                btn.getAlternatives().clear();
                 clear_button(&btn, -1);
             }
         }
@@ -4792,7 +4789,6 @@ namespace overlay::windows {
                 for (int ai = (int)l.getAlternatives().size() - 1; ai >= 0; ai--) {
                     clear_light(&l.getAlternatives()[ai], ai + 1);
                 }
-                l.getAlternatives().clear();
                 clear_light(&l, -1);
             }
         }
@@ -4802,26 +4798,32 @@ namespace overlay::windows {
     void Config::apply_template_source(const ControllerTemplate &tmpl,
                                        const std::string &source_filter,
                                        const std::string &target_device) {
-        auto &game = games_list[games_selected];
+        const auto &game = games_list[games_selected];
         bool source_is_naive = (source_filter == "Naive");
         bool target_is_naive = (target_device == "Naive");
 
         // helper: check if a button entry matches the source filter
         auto entry_matches = [&](const TemplateButtonEntry &e) -> bool {
-            if (source_is_naive) return e.is_naive();
+            if (source_is_naive) {
+                return e.is_naive();
+            }
             return e.is_device() && e.device_identifier == source_filter;
         };
 
         // helper: remap device identifier from source to target
         auto remap_devid = [&]() -> std::string {
-            if (target_is_naive) return "";
+            if (target_is_naive) {
+                return "";
+            }
             return target_device;
         };
 
         // helper: apply template button bindings to a game button vector
         auto apply_buttons = [&](const std::vector<TemplateButtonBinding> &tmpl_btns,
                                  std::vector<Button> *game_btns) {
-            if (!game_btns) return;
+            if (!game_btns) {
+                return;
+            }
             for (auto &tb : tmpl_btns) {
                 std::vector<const TemplateButtonEntry *> matching_entries;
                 if (entry_matches(tb.primary)) {
@@ -4832,10 +4834,14 @@ namespace overlay::windows {
                         matching_entries.push_back(&alt);
                     }
                 }
-                if (matching_entries.empty()) continue;
+                if (matching_entries.empty()) {
+                    continue;
+                }
 
                 for (auto &btn : *game_btns) {
-                    if (btn.getName() != tb.name) continue;
+                    if (btn.getName() != tb.name) {
+                        continue;
+                    }
 
                     for (auto *entry : matching_entries) {
                         auto mapped_devid = remap_devid();
@@ -4881,10 +4887,14 @@ namespace overlay::windows {
             auto *analogs = games::get_analogs(this->games_selected_name);
             if (analogs) {
                 for (auto &ta : tmpl.analogs) {
-                    if (!ta.is_device() || ta.device_identifier != source_filter) continue;
+                    if (!ta.is_device() || ta.device_identifier != source_filter) {
+                        continue;
+                    }
 
                     for (auto &a : *analogs) {
-                        if (a.getName() != ta.name) continue;
+                        if (a.getName() != ta.name) {
+                            continue;
+                        }
 
                         a.setDeviceIdentifier(remap_devid());
                         a.setIndex(ta.index);
@@ -4918,10 +4928,14 @@ namespace overlay::windows {
                             matching_entries.push_back(&alt);
                         }
                     }
-                    if (matching_entries.empty()) continue;
+                    if (matching_entries.empty()) {
+                        continue;
+                    }
 
                     for (auto &l : *lights) {
-                        if (l.getName() != tl.name) continue;
+                        if (l.getName() != tl.name) {
+                            continue;
+                        }
 
                         for (auto *entry : matching_entries) {
                             auto mapped_devid = remap_devid();
@@ -4977,7 +4991,7 @@ namespace overlay::windows {
                 ImGui::TableHeadersRow();
 
                 for (int i = 0; i < (int)templates_cache.size(); i++) {
-                    auto &t = templates_cache[i];
+                    const auto &t = templates_cache[i];
                     ImGui::PushID(i);
                     ImGui::TableNextRow();
 
@@ -5050,7 +5064,7 @@ namespace overlay::windows {
         ImGui::SetNextWindowSize(ImVec2(360, 120), ImGuiCond_Appearing);
         if (ImGui::BeginPopupModal("Delete Preset##confirm", NULL, 0)) {
             if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
-                auto &t = templates_cache[templates_selected];
+                const auto &t = templates_cache[templates_selected];
                 ImGui::TextWrapped("Delete preset \"%s\"?", t.name.c_str());
                 ImGui::TextColored(ImVec4(1.f, 0.5f, 0.5f, 1.f), "This cannot be undone.");
 
@@ -5076,7 +5090,7 @@ namespace overlay::windows {
         if (ImGui::BeginPopupModal("Apply Preset##confirm", NULL, 0)) {
 
             if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
-                auto &t = templates_cache[templates_selected];
+                const auto &t = templates_cache[templates_selected];
 
                 ImGui::Text("Apply preset \"%s\"", t.name.c_str());
                 ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
@@ -5311,7 +5325,7 @@ namespace overlay::windows {
             template_save_labels.resize(template_save_sources.size());
             for (int si = 0; si < (int)template_save_sources.size(); si++) {
                 // default label: device description or source id
-                auto &src = template_save_sources[si];
+                const auto &src = template_save_sources[si];
                 if (src == "Naive") {
                     template_save_labels[si] = "Keyboard";
                 } else {
