@@ -1052,6 +1052,7 @@ bool graphics_capture_receive_jpeg(int screen, TooJpeg::WRITE_ONE_BYTE receiver,
     auto capture_width = capture.width;
     auto capture_height = capture.height;
     auto capture_timestamp = capture.timestamp;
+    capture.data = nullptr;
     lock.unlock();
 
     // validate data
