@@ -5054,9 +5054,7 @@ namespace overlay::windows {
 
                     // lights
                     ImGui::TableNextColumn();
-                    {
-                        ImGui::Text("%d", (int)t.lights.size());
-                    }
+                    ImGui::Text("%d", (int)t.lights.size());
 
                     // actions
                     ImGui::TableNextColumn();
@@ -5190,66 +5188,69 @@ namespace overlay::windows {
                     ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_None, 1.f);
                     ImGui::TableHeadersRow();
 
-                // build a set of device names with any button currently pressed
-                std::set<std::string> active_devices;
-                for (auto &dev : RI_MGR->devices_get()) {
-                    bool pressed = false;
-                    switch (dev.type) {
-                        case rawinput::HID:
-                            if (dev.hidInfo) {
-                                for (auto &page : dev.hidInfo->button_states) {
-                                    for (bool s : page) {
+                    // build a set of device names with any button currently pressed
+                    std::set<std::string> active_devices;
+                    for (auto &dev : RI_MGR->devices_get()) {
+                        bool pressed = false;
+                        switch (dev.type) {
+                            case rawinput::HID:
+                                if (dev.hidInfo) {
+                                    for (auto &page : dev.hidInfo->button_states) {
+                                        for (bool s : page) {
+                                            if (s) { pressed = true; break; }
+                                        }
+                                        if (pressed) { break; }
+                                    }
+                                }
+                                break;
+                            case rawinput::KEYBOARD:
+                                if (dev.keyboardInfo) {
+                                    for (bool s : dev.keyboardInfo->key_states) {
                                         if (s) { pressed = true; break; }
                                     }
-                                    if (pressed) break;
                                 }
-                            }
-                            break;
-                        case rawinput::KEYBOARD:
-                            if (dev.keyboardInfo) {
-                                for (bool s : dev.keyboardInfo->key_states) {
-                                    if (s) { pressed = true; break; }
+                                break;
+                            case rawinput::MOUSE:
+                                if (dev.mouseInfo) {
+                                    for (bool s : dev.mouseInfo->key_states) {
+                                        if (s) { pressed = true; break; }
+                                    }
                                 }
-                            }
-                            break;
-                        case rawinput::MOUSE:
-                            if (dev.mouseInfo) {
-                                for (bool s : dev.mouseInfo->key_states) {
-                                    if (s) { pressed = true; break; }
+                                break;
+                            case rawinput::MIDI:
+                                if (dev.midiInfo) {
+                                    for (bool s : dev.midiInfo->states) {
+                                        if (s) { pressed = true; break; }
+                                    }
                                 }
-                            }
-                            break;
-                        case rawinput::MIDI:
-                            if (dev.midiInfo) {
-                                for (bool s : dev.midiInfo->states) {
-                                    if (s) { pressed = true; break; }
-                                }
-                            }
-                            break;
-                        default:
-                            break;
+                                break;
+                            default:
+                                break;
+                        }
+                        if (pressed) {
+                            active_devices.insert(dev.name);
+                        }
                     }
-                    if (pressed) active_devices.insert(dev.name);
-                }
 
-                for (int si = 0; si < (int)sources.size(); si++) {
-                    ImGui::PushID(si);
-                    ImGui::TableNextRow();
+                    for (int si = 0; si < (int)sources.size(); si++) {
+                        ImGui::PushID(si);
+                        ImGui::TableNextRow();
 
-                    // source (label is the device_identifier)
-                    // highlight if the selected target device has recent input
-                    ImGui::TableNextColumn();
-                    {
-                        int sel = template_target_selection[si];
-                        bool active = sel > 0 && active_devices.count(target_options[sel]) > 0;
-                        if (active)
-                            ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", sources[si].c_str());
-                        else
-                            ImGui::TextUnformatted(sources[si].c_str());
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("%s", t.get_source_summary(sources[si]).c_str());
-                    }
+                        // source (label is the device_identifier)
+                        // highlight if the selected target device has recent input
+                        ImGui::TableNextColumn();
+                        {
+                            int sel = template_target_selection[si];
+                            bool active = sel > 0 && active_devices.count(target_options[sel]) > 0;
+                            if (active) {
+                                ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", sources[si].c_str());
+                            } else {
+                                ImGui::TextUnformatted(sources[si].c_str());
+                            }
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("%s", t.get_source_summary(sources[si]).c_str());
+                        }
 
                         // target device combo
                         ImGui::TableNextColumn();
@@ -5269,13 +5270,15 @@ namespace overlay::windows {
                                             item_active = active_devices.count(dev->name) > 0;
                                         }
                                     }
-                                    if (item_active)
+                                    if (item_active) {
                                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 1.f, 0.f, 1.f));
+                                    }
                                     if (ImGui::Selectable(combo_label.c_str(), is_selected)) {
                                         template_target_selection[si] = ti;
                                     }
-                                    if (item_active)
+                                    if (item_active) {
                                         ImGui::PopStyleColor();
+                                    }
                                     if (is_selected) {
                                         ImGui::SetItemDefaultFocus();
                                     }
@@ -5306,13 +5309,17 @@ namespace overlay::windows {
                         ImGui::TableNextColumn();
                         {
                             int sel = template_target_selection[si];
-                            if (sel < 0) ImGui::BeginDisabled();
+                            if (sel < 0) {
+                                ImGui::BeginDisabled();
+                            }
                             if (ImGui::SmallButton("Apply")) {
                                 if (sel >= 0) {
                                     apply_template_source(t, sources[si], target_options[sel]);
                                 }
                             }
-                            if (sel < 0) ImGui::EndDisabled();
+                            if (sel < 0) {
+                                ImGui::EndDisabled();
+                            }
                         }
 
                         ImGui::PopID();
@@ -5435,7 +5442,9 @@ namespace overlay::windows {
             ImGui::SetCursorPosY(ImGui::GetWindowHeight()
                 - ImGui::GetFrameHeightWithSpacing()
                 - ImGui::GetStyle().WindowPadding.y);
-            if (!all_labels_set) ImGui::BeginDisabled();
+            if (!all_labels_set) {
+                ImGui::BeginDisabled();
+            }
             if (ImGui::Button("Save")) {
                 // replace device IDs with labels in the template
                 for (int si = 0; si < (int)template_save_sources.size(); si++) {
@@ -5450,7 +5459,9 @@ namespace overlay::windows {
                 template_save_labels.clear();
                 ImGui::CloseCurrentPopup();
             }
-            if (!all_labels_set) ImGui::EndDisabled();
+            if (!all_labels_set) {
+                ImGui::EndDisabled();
+            }
 
             ImGui::SameLine();
             if (ImGui::Button("Cancel")) {
@@ -5515,7 +5526,9 @@ namespace overlay::windows {
                 ImGui::SetCursorPosY(ImGui::GetWindowHeight()
                     - ImGui::GetFrameHeightWithSpacing()
                     - ImGui::GetStyle().WindowPadding.y);
-                if (!all_labels_set) ImGui::BeginDisabled();
+                if (!all_labels_set) {
+                    ImGui::BeginDisabled();
+                }
                 if (ImGui::Button("Save Labels")) {
                     // rename sources in the template
                     for (int si = 0; si < (int)template_save_sources.size(); si++) {
@@ -5530,7 +5543,9 @@ namespace overlay::windows {
                     templates_selected = -1;
                     ImGui::CloseCurrentPopup();
                 }
-                if (!all_labels_set) ImGui::EndDisabled();
+                if (!all_labels_set) {
+                    ImGui::EndDisabled();
+                }
                 ImGui::SameLine();
                 if (ImGui::Button("Cancel")) {
                     template_save_sources.clear();

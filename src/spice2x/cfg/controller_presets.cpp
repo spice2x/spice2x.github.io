@@ -273,11 +273,13 @@ namespace overlay::windows {
         // buttons — skip unbound entries
         auto *buttons_el = doc.NewElement("buttons");
         for (auto &btn : tmpl.buttons) {
-            if (!btn.primary.is_unbound())
+            if (!btn.primary.is_unbound()) {
                 write_button_entry(doc, buttons_el, btn.name, btn.primary);
+            }
             for (auto &alt : btn.alternatives) {
-                if (!alt.is_unbound())
+                if (!alt.is_unbound()) {
                     write_button_entry(doc, buttons_el, btn.name, alt);
+                }
             }
         }
         tmpl_el->InsertEndChild(buttons_el);
@@ -286,11 +288,13 @@ namespace overlay::windows {
         if (!tmpl.keypad_buttons.empty()) {
             auto *kp_el = doc.NewElement("keypad_buttons");
             for (auto &btn : tmpl.keypad_buttons) {
-                if (!btn.primary.is_unbound())
+                if (!btn.primary.is_unbound()) {
                     write_button_entry(doc, kp_el, btn.name, btn.primary);
+                }
                 for (auto &alt : btn.alternatives) {
-                    if (!alt.is_unbound())
+                    if (!alt.is_unbound()) {
                         write_button_entry(doc, kp_el, btn.name, alt);
+                    }
                 }
             }
             tmpl_el->InsertEndChild(kp_el);
@@ -299,19 +303,22 @@ namespace overlay::windows {
         // analogs — skip unbound entries
         auto *analogs_el = doc.NewElement("analogs");
         for (auto &a : tmpl.analogs) {
-            if (!a.is_unbound())
+            if (!a.is_unbound()) {
                 write_analog(doc, analogs_el, a);
+            }
         }
         tmpl_el->InsertEndChild(analogs_el);
 
         // lights — skip unbound entries
         auto *lights_el = doc.NewElement("lights");
         for (auto &l : tmpl.lights) {
-            if (!l.primary.is_unbound())
+            if (!l.primary.is_unbound()) {
                 write_light_entry(doc, lights_el, l.name, l.primary);
+            }
             for (auto &alt : l.alternatives) {
-                if (!alt.is_unbound())
+                if (!alt.is_unbound()) {
                     write_light_entry(doc, lights_el, l.name, alt);
+                }
             }
         }
         tmpl_el->InsertEndChild(lights_el);
@@ -411,13 +418,15 @@ namespace overlay::windows {
         std::vector<ControllerTemplate> result;
 
         for (auto &t : load_builtin_templates()) {
-            if (t.game_name == game_name)
+            if (t.game_name == game_name) {
                 result.push_back(std::move(t));
+            }
         }
 
         for (auto &t : load_user_templates()) {
-            if (t.game_name == game_name)
+            if (t.game_name == game_name) {
                 result.push_back(std::move(t));
+            }
         }
 
         return result;
