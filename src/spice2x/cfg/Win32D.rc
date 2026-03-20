@@ -13,5 +13,6 @@ IDR_LICENSES RCDATA "../licenses.txt"
 IDR_PATCHES RCDATA "../build/patches.json"
 IDR_README RCDATA "../readme.txt"
 IDR_DSEGFONT RCDATA "../external/dseg/DSEG14Classic-Italic.ttf"
+IDR_CONTROLLER_PRESETS_BUILTIN RCDATA "../build/controller_presets.xml"
 
 #endif

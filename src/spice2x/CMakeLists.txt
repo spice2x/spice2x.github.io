@@ -352,6 +352,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         cfg/configurator.cpp
         cfg/configurator_wnd.cpp
         cfg/screen_resize.cpp
+        cfg/controller_presets.cpp
 
         # easrv
         easrv/easrv.cpp
@@ -565,6 +566,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         overlay/windows/screen_resize.cpp
         overlay/windows/sdvx_sub.cpp
         overlay/windows/config.cpp
+        overlay/windows/controller_presets.cpp
         overlay/windows/control.cpp
         overlay/windows/eadev.cpp
         overlay/windows/fps.cpp
