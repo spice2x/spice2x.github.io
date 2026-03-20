@@ -3297,7 +3297,7 @@ namespace overlay::windows {
             + ImGui::GetFrameHeightWithSpacing() * 2 + ImGui::GetStyle().WindowPadding.y;
         float table_h = ImGui::GetContentRegionAvail().y - footer_h;
         if (ImGui::BeginTable("##AutoMatchTable", 3,
-                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
                 ImVec2(0, table_h))) {
             ImGui::TableSetupColumn("Device Light", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 30.f);
@@ -4980,7 +4980,7 @@ namespace overlay::windows {
         // preset list table
         if (!templates_cache.empty()) {
             if (ImGui::BeginTable("TemplateList", 6,
-                    ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                    ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None, 3.f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None, 1.f);
@@ -5141,8 +5141,7 @@ namespace overlay::windows {
                 }
 
                 if (ImGui::BeginTable("TemplateSources", 4,
-                        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                        ImGuiTableFlags_SizingStretchProp)) {
+                        ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
                     ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_None, 2.f);
                     ImGui::TableSetupColumn("Apply As", ImGuiTableColumnFlags_None, 3.f);
@@ -5361,8 +5360,7 @@ namespace overlay::windows {
             ImGui::Spacing();
 
             if (ImGui::BeginTable("SaveLabels", 2,
-                    ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                    ImGuiTableFlags_SizingStretchProp)) {
+                    ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
                 ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_None, 3.f);
                 ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_None, 3.f);
@@ -5446,8 +5444,7 @@ namespace overlay::windows {
                 ImGui::Spacing();
 
                 if (ImGui::BeginTable("EditLabels", 2,
-                        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                        ImGuiTableFlags_SizingStretchProp)) {
+                        ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
                     ImGui::TableSetupColumn("Current Label", ImGuiTableColumnFlags_None, 3.f);
                     ImGui::TableSetupColumn("New Label", ImGuiTableColumnFlags_None, 3.f);
