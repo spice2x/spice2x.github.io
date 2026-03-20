@@ -5031,6 +5031,7 @@ namespace overlay::windows {
 
                 ImGui::EndTable();
             }
+            ImGui::Spacing();
         } else {
             ImGui::TextDisabled("No presets available for this game.");
         }
