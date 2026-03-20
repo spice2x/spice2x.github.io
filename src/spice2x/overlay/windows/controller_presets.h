@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "cfg/analog.h"
 #include "cfg/button.h"
 
 namespace overlay::windows {
@@ -21,6 +22,18 @@ namespace overlay::windows {
         bool is_naive() const { return device_identifier.empty() && vKey != INVALID_VKEY; }
         bool is_device() const { return !device_identifier.empty(); }
         bool is_unbound() const { return device_identifier.empty() && vKey == INVALID_VKEY; }
+
+        static TemplateButtonEntry FromButton(const Button &btn) {
+            TemplateButtonEntry e;
+            e.vKey = btn.getVKey();
+            e.analog_type = btn.getAnalogType();
+            e.device_identifier = btn.getDeviceIdentifier();
+            e.invert = btn.getInvert();
+            e.debounce_up = btn.getDebounceUp();
+            e.debounce_down = btn.getDebounceDown();
+            e.velocity_threshold = btn.getVelocityThreshold();
+            return e;
+        }
     };
 
     // button binding with primary + alternatives
@@ -28,6 +41,21 @@ namespace overlay::windows {
         std::string name;
         TemplateButtonEntry primary;
         std::vector<TemplateButtonEntry> alternatives;
+
+        TemplateButtonBinding() = default;
+
+        TemplateButtonBinding(std::string name, TemplateButtonEntry primary,
+                              std::vector<TemplateButtonEntry> alternatives)
+            : name(std::move(name)), primary(std::move(primary)),
+              alternatives(std::move(alternatives)) {}
+
+        explicit TemplateButtonBinding(Button &btn) {
+            name = btn.getName();
+            primary = TemplateButtonEntry::FromButton(btn);
+            for (auto &alt : btn.getAlternatives()) {
+                alternatives.push_back(TemplateButtonEntry::FromButton(alt));
+            }
+        }
     };
 
     // analog binding
@@ -46,6 +74,22 @@ namespace overlay::windows {
 
         bool is_device() const { return !device_identifier.empty(); }
         bool is_unbound() const { return device_identifier.empty() && index == 0xFF; }
+
+        TemplateAnalogBinding() = default;
+
+        explicit TemplateAnalogBinding(Analog &a) {
+            name = a.getName();
+            device_identifier = a.getDeviceIdentifier();
+            index = a.getIndex();
+            sensitivity = a.getSensitivity();
+            deadzone = a.getDeadzone();
+            deadzone_mirror = a.getDeadzoneMirror();
+            invert = a.getInvert();
+            smoothing = a.getSmoothing();
+            multiplier = a.getMultiplier();
+            relative_mode = a.isRelativeMode();
+            delay_buffer_depth = a.getDelayBufferDepth();
+        }
     };
 
     // single light binding entry (primary or alternative)
@@ -62,6 +106,13 @@ namespace overlay::windows {
         std::string name;
         TemplateLightEntry primary;
         std::vector<TemplateLightEntry> alternatives;
+
+        TemplateLightBinding() = default;
+
+        TemplateLightBinding(std::string name, TemplateLightEntry primary,
+                             std::vector<TemplateLightEntry> alternatives)
+            : name(std::move(name)), primary(std::move(primary)),
+              alternatives(std::move(alternatives)) {}
     };
 
     // controller preset

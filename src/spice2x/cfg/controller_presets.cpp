@@ -215,8 +215,9 @@ namespace overlay::windows {
     static std::vector<ControllerTemplate> load_builtin_templates() {
         auto xml = resutil::load_file_string(IDR_CONTROLLER_PRESETS_BUILTIN);
         tinyxml2::XMLDocument doc;
-        if (doc.Parse(xml.c_str()) != tinyxml2::XML_SUCCESS) {
-            log_warning("templates", "failed to parse builtin templates XML");
+        auto err = doc.Parse(xml.c_str());
+        if (err != tinyxml2::XML_SUCCESS) {
+            log_warning("templates", "failed to parse builtin templates XML: {}", (int)err);
             return {};
         }
         return load_templates_from_doc(doc, true);
@@ -325,9 +326,15 @@ namespace overlay::windows {
 
         root->InsertEndChild(tmpl_el);
 
+        // ensure directory exists
+        if (!path.parent_path().empty() && !std::filesystem::exists(path.parent_path())) {
+            fileutils::dir_create_recursive(path.parent_path());
+        }
+
         // save atomically via temp file
-        if (doc.SaveFile(path_tmp.c_str()) != tinyxml2::XML_SUCCESS) {
-            log_warning("templates", "failed to save templates file");
+        auto save_err = doc.SaveFile(path_tmp.c_str());
+        if (save_err != tinyxml2::XML_SUCCESS) {
+            log_warning("templates", "failed to save templates file: {}", (int)save_err);
             return false;
         }
 

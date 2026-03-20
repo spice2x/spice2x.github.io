@@ -4704,29 +4704,7 @@ namespace overlay::windows {
         auto *buttons = games::get_buttons(this->games_selected_name);
         if (buttons) {
             for (auto &btn : *buttons) {
-                TemplateButtonBinding tb;
-                tb.name = btn.getName();
-                tb.primary.vKey = btn.getVKey();
-                tb.primary.analog_type = btn.getAnalogType();
-                tb.primary.device_identifier = btn.getDeviceIdentifier();
-                tb.primary.invert = btn.getInvert();
-                tb.primary.debounce_up = btn.getDebounceUp();
-                tb.primary.debounce_down = btn.getDebounceDown();
-                tb.primary.velocity_threshold = btn.getVelocityThreshold();
-
-                for (auto &alt : btn.getAlternatives()) {
-                    TemplateButtonEntry ae;
-                    ae.vKey = alt.getVKey();
-                    ae.analog_type = alt.getAnalogType();
-                    ae.device_identifier = alt.getDeviceIdentifier();
-                    ae.invert = alt.getInvert();
-                    ae.debounce_up = alt.getDebounceUp();
-                    ae.debounce_down = alt.getDebounceDown();
-                    ae.velocity_threshold = alt.getVelocityThreshold();
-                    tb.alternatives.push_back(ae);
-                }
-
-                tmpl.buttons.push_back(std::move(tb));
+                tmpl.buttons.emplace_back(btn);
             }
         }
 
@@ -4734,29 +4712,7 @@ namespace overlay::windows {
         auto *keypad_buttons = games::get_buttons_keypads(this->games_selected_name);
         if (keypad_buttons) {
             for (auto &btn : *keypad_buttons) {
-                TemplateButtonBinding tb;
-                tb.name = btn.getName();
-                tb.primary.vKey = btn.getVKey();
-                tb.primary.analog_type = btn.getAnalogType();
-                tb.primary.device_identifier = btn.getDeviceIdentifier();
-                tb.primary.invert = btn.getInvert();
-                tb.primary.debounce_up = btn.getDebounceUp();
-                tb.primary.debounce_down = btn.getDebounceDown();
-                tb.primary.velocity_threshold = btn.getVelocityThreshold();
-
-                for (auto &alt : btn.getAlternatives()) {
-                    TemplateButtonEntry ae;
-                    ae.vKey = alt.getVKey();
-                    ae.analog_type = alt.getAnalogType();
-                    ae.device_identifier = alt.getDeviceIdentifier();
-                    ae.invert = alt.getInvert();
-                    ae.debounce_up = alt.getDebounceUp();
-                    ae.debounce_down = alt.getDebounceDown();
-                    ae.velocity_threshold = alt.getVelocityThreshold();
-                    tb.alternatives.push_back(ae);
-                }
-
-                tmpl.keypad_buttons.push_back(std::move(tb));
+                tmpl.keypad_buttons.emplace_back(btn);
             }
         }
 
@@ -4764,19 +4720,7 @@ namespace overlay::windows {
         auto *analogs = games::get_analogs(this->games_selected_name);
         if (analogs) {
             for (auto &a : *analogs) {
-                TemplateAnalogBinding ta;
-                ta.name = a.getName();
-                ta.device_identifier = a.getDeviceIdentifier();
-                ta.index = a.getIndex();
-                ta.sensitivity = a.getSensitivity();
-                ta.deadzone = a.getDeadzone();
-                ta.deadzone_mirror = a.getDeadzoneMirror();
-                ta.invert = a.getInvert();
-                ta.smoothing = a.getSmoothing();
-                ta.multiplier = a.getMultiplier();
-                ta.relative_mode = a.isRelativeMode();
-                ta.delay_buffer_depth = a.getDelayBufferDepth();
-                tmpl.analogs.push_back(std::move(ta));
+                tmpl.analogs.emplace_back(a);
             }
         }
 
@@ -5008,6 +4952,7 @@ namespace overlay::windows {
     }
 
     void Config::build_presets() {
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Controller presets for: %s",
             this->games_selected_name.c_str());
         ImGui::Spacing();
@@ -5025,10 +4970,10 @@ namespace overlay::windows {
 
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None, 3.f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None, 1.f);
-                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_WidthFixed, 60.f);
-                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_WidthFixed, 60.f);
-                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_WidthFixed, 60.f);
-                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 140.f);
+                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
+                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
+                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
+                ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(140.f));
                 ImGui::TableHeadersRow();
 
                 for (int i = 0; i < (int)templates_cache.size(); i++) {
@@ -5105,7 +5050,7 @@ namespace overlay::windows {
         if (ImGui::BeginPopupModal("Delete Preset##confirm", NULL, 0)) {
             if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
                 auto &t = templates_cache[templates_selected];
-                ImGui::Text("Delete preset \"%s\"?", t.name.c_str());
+                ImGui::TextWrapped("Delete preset \"%s\"?", t.name.c_str());
                 ImGui::TextColored(ImVec4(1.f, 0.5f, 0.5f, 1.f), "This cannot be undone.");
 
                 // buttons at the bottom
@@ -5139,6 +5084,7 @@ namespace overlay::windows {
 
                 // clear all button
                 ImGui::Separator();
+                ImGui::AlignTextToFramePadding();
                 ImGui::TextColored(ImVec4(1.f, 0.5f, 0.5f, 1.f),
                     "Step 1: Reset all existing bindings (Caution! This can't be undone.)");
                 if (ImGui::Button("Clear All Bindings")) {
@@ -5150,6 +5096,7 @@ namespace overlay::windows {
 
                 ImGui::Spacing();
                 ImGui::Separator();
+                ImGui::AlignTextToFramePadding();
                 ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
                     "Step 2: Apply bindings by source (one at a time)");
                 ImGui::Spacing();
@@ -5312,7 +5259,7 @@ namespace overlay::windows {
                             if (sel < 0) {
                                 ImGui::BeginDisabled();
                             }
-                            if (ImGui::SmallButton("Apply")) {
+                            if (ImGui::Button("Apply")) {
                                 if (sel >= 0) {
                                     apply_template_source(t, sources[si], target_options[sel]);
                                 }
@@ -5345,6 +5292,7 @@ namespace overlay::windows {
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Save Current Bindings as Preset");
         ImGui::Spacing();
 
