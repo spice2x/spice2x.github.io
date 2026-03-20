@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <templates>
 
   <!-- PHOENIXWAN controller preset for Beatmania IIDX
@@ -10,7 +10,7 @@
              8 9 10 11          8 9 10 11
               2  4  6            2  4  6
        TT   1  3  5  7         1  3  5  7   TT -->
-  <template name="PHOENIXWAN" game="Beatmania IIDX">
+  <template name="DJ DAO PHOENIXWAN" game="Beatmania IIDX">
     <buttons>
       <button name="P1 1" vkey="0" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
       <button name="P1 2" vkey="1" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
