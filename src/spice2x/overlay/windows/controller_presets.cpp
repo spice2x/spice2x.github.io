@@ -96,7 +96,9 @@ namespace overlay::windows {
         collect_sources_from(buttons, sources_set, has_naive);
         collect_sources_from(keypad_buttons, sources_set, has_naive);
         for (auto &a : analogs) {
-            if (a.is_device()) sources_set.insert(a.device_identifier);
+            if (a.is_device()) {
+                sources_set.insert(a.device_identifier);
+            }
         }
         for (auto &l : lights) {
             if (l.primary.is_device()) sources_set.insert(l.primary.device_identifier);

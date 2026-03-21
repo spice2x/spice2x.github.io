@@ -121,7 +121,9 @@ namespace overlay::windows {
         std::vector<ControllerTemplate> templates;
 
         auto *root = doc.RootElement();
-        if (!root) return templates;
+        if (!root) {
+            return templates;
+        }
 
         auto *tmpl_el = root->FirstChildElement("template");
         while (tmpl_el) {

@@ -4879,11 +4879,15 @@ namespace overlay::windows {
         };
 
         // apply game buttons and keypad buttons
-        apply_buttons(tmpl.buttons, games::get_buttons(this->games_selected_name));
-        apply_buttons(tmpl.keypad_buttons, games::get_buttons_keypads(this->games_selected_name));
+        if (this->apply_buttons) {
+            apply_buttons(tmpl.buttons, games::get_buttons(this->games_selected_name));
+        }
+        if (this->apply_keypads) {
+            apply_buttons(tmpl.keypad_buttons, games::get_buttons_keypads(this->games_selected_name));
+        }
 
         // apply analog bindings (device source only)
-        if (!source_is_naive && !target_is_naive) {
+        if (this->apply_analogs && !source_is_naive && !target_is_naive) {
             auto *analogs = games::get_analogs(this->games_selected_name);
             if (analogs) {
                 for (auto &ta : tmpl.analogs) {
@@ -4914,7 +4918,7 @@ namespace overlay::windows {
         }
 
         // apply light bindings (device source only)
-        if (!source_is_naive && !target_is_naive) {
+        if (this->apply_lights && !source_is_naive && !target_is_naive) {
             auto *lights = games::get_lights(this->games_selected_name);
             if (lights) {
                 for (auto &tl : tmpl.lights) {
@@ -5090,11 +5094,9 @@ namespace overlay::windows {
         if (ImGui::BeginPopupModal("Apply Preset##confirm", NULL, 0)) {
 
             if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
-                const auto &t = templates_cache[templates_selected];
+                auto &t = templates_cache[templates_selected];
 
-                ImGui::Text("Apply preset \"%s\"", t.name.c_str());
-                ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
-                    "Overlay bindings are not affected.");
+                ImGui::Text("Applying preset: \"%s\"", t.name.c_str());
                 ImGui::Spacing();
 
                 // clear all button
@@ -5102,22 +5104,56 @@ namespace overlay::windows {
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextColored(ImVec4(1.f, 0.5f, 0.5f, 1.f),
                     "Step 1: Reset all existing bindings (Caution! This can't be undone.)");
+                ImGui::BeginDisabled(this->all_cleared);
                 if (ImGui::Button("Clear All Bindings")) {
                     clear_all_bindings();
+                    this->all_cleared = true;
+                    std::fill(this->template_is_applied.begin(), this->template_is_applied.end(), false);
                 }
+                ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::HelpMarker(
                     "Clears all game button, analog, and light bindings.");
+                if (this->all_cleared) {
+                    ImGui::SameLine();
+                    ImGui::TextUnformatted("Done.");
+                }
 
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
-                    "Step 2: Apply bindings by source (one at a time)");
+                    "Step 2: Pick which groups to apply");
+                ImGui::Spacing();
+                bool selection_changed = false;
+                selection_changed |= ImGui::Checkbox("Buttons", &apply_buttons);
+                ImGui::SameLine();
+                selection_changed |= ImGui::Checkbox("Keypads", &apply_keypads);
+                ImGui::SameLine();
+                selection_changed |= ImGui::Checkbox("Analogs", &apply_analogs);
+                ImGui::SameLine();
+                selection_changed |= ImGui::Checkbox("Lights", &apply_lights);
+                if (selection_changed) {
+                    std::fill(this->template_is_applied.begin(), this->template_is_applied.end(), false);
+                }
+
+                if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
+                    ImGui::TextUnformatted("\nYou must select at least one group to apply.\n\n");
+                }
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Step 3: Pick devices to apply profiles");
+                ImGui::Spacing();
+                ImGui::TextUnformatted("Hint: hold a button on the controller, it'll turn green in the drop down.");
                 ImGui::Spacing();
 
                 // list binding sources with target selection
-                auto sources = t.get_binding_sources();
+                const auto sources = t.get_binding_sources();
+                if (sources.size() != template_save_sources.size()) {
+                    this->template_is_applied.resize(sources.size(), false);
+                }
 
                 // build target device list: "Naive" + all connected devices
                 std::vector<std::string> target_options;
@@ -5140,11 +5176,15 @@ namespace overlay::windows {
                     }
                 }
 
+                if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
+                    ImGui::BeginDisabled();
+                }
+
                 if (ImGui::BeginTable("TemplateSources", 4,
                         ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
-                    ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_None, 2.f);
-                    ImGui::TableSetupColumn("Apply As", ImGuiTableColumnFlags_None, 3.f);
+                    ImGui::TableSetupColumn("Profile", ImGuiTableColumnFlags_None, 2.f);
+                    ImGui::TableSetupColumn("Device", ImGuiTableColumnFlags_None, 3.f);
                     ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(80));
                     ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_None, 1.f);
                     ImGui::TableHeadersRow();
@@ -5217,6 +5257,7 @@ namespace overlay::windows {
                         {
                             int sel = template_target_selection[si];
                             bool active = sel > 0 && active_devices.count(target_options[sel]) > 0;
+                            ImGui::AlignTextToFramePadding();
                             if (active) {
                                 ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", sources[si].c_str());
                             } else {
@@ -5231,7 +5272,7 @@ namespace overlay::windows {
                         ImGui::TableNextColumn();
                         ImGui::SetNextItemWidth(-1);
                         {
-                            int sel = template_target_selection[si];
+                            const int sel = template_target_selection[si];
                             const char *preview = (sel >= 0) ? target_options[sel].c_str() : "(select target)";
                             if (ImGui::BeginCombo("##target", preview)) {
                                 for (int ti = 0; ti < (int)target_options.size(); ti++) {
@@ -5258,6 +5299,7 @@ namespace overlay::windows {
                                         ImGui::SetItemDefaultFocus();
                                     }
                                 }
+                                this->template_is_applied[si] = false;
                                 ImGui::EndCombo();
                             }
                         }
@@ -5268,12 +5310,14 @@ namespace overlay::windows {
                             int sel = template_target_selection[si];
                             if (sel < 0) {
                                 ImGui::TextDisabled("--");
+                            } else if (this->template_is_applied[si]) {
+                                ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "Applied!");
                             } else if (target_options[sel] == "Naive") {
-                                ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "OK");
+                                ImGui::TextUnformatted("Ready");
                             } else {
                                 auto *device = RI_MGR->devices_get(target_options[sel]);
                                 if (device) {
-                                    ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "OK");
+                                    ImGui::TextUnformatted("Ready");
                                 } else {
                                     ImGui::TextColored(ImVec4(1.f, 0.5f, 0.f, 1.f), "Not found");
                                 }
@@ -5283,24 +5327,26 @@ namespace overlay::windows {
                         // apply button
                         ImGui::TableNextColumn();
                         {
-                            int sel = template_target_selection[si];
-                            if (sel < 0) {
-                                ImGui::BeginDisabled();
-                            }
+                            const int sel = template_target_selection[si];
+                            ImGui::BeginDisabled(sel < 0 || this->template_is_applied[si]);
                             if (ImGui::Button("Apply")) {
                                 if (sel >= 0) {
                                     apply_template_source(t, sources[si], target_options[sel]);
+                                    this->template_is_applied[si] = true;
+                                    this->all_cleared = false;
                                 }
                             }
-                            if (sel < 0) {
-                                ImGui::EndDisabled();
-                            }
+                            ImGui::EndDisabled();
                         }
 
                         ImGui::PopID();
                     }
 
                     ImGui::EndTable();
+                }
+            
+                if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
+                    ImGui::EndDisabled();
                 }
             }
 
@@ -5309,6 +5355,7 @@ namespace overlay::windows {
                 - ImGui::GetStyle().WindowPadding.y);
             if (ImGui::Button("Close")) {
                 templates_selected = -1;
+                all_cleared = false;
                 template_target_selection.clear();
                 ImGui::CloseCurrentPopup();
             }

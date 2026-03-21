@@ -110,6 +110,12 @@ namespace overlay::windows {
         ControllerTemplate template_pending_save;
         std::vector<std::string> template_save_sources;
         std::vector<std::string> template_save_labels;
+        bool apply_buttons = true;
+        bool apply_keypads = true;
+        bool apply_analogs = true;
+        bool apply_lights = true;
+        bool all_cleared = false;
+        std::vector<bool> template_is_applied;
 
         // patches tab
         std::unique_ptr<PatchManager> patch_manager;
