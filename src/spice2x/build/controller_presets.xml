@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates>
-
-  <!-- PHOENIXWAN controller preset for Beatmania IIDX
+    <!-- PHOENIXWAN controller preset for Beatmania IIDX
 
        Button indices 0-6: keys 1-7
        Button indices 8-11: E1 (Start for Deluxe Model Style), E2 (Effect), E3 (VEFX), E4 (P1 Start for Lightning Model Style)
@@ -10,63 +9,319 @@
              8 9 10 11          8 9 10 11
               2  4  6            2  4  6
        TT   1  3  5  7         1  3  5  7   TT -->
-  <template name="DJ DAO PHOENIXWAN" game="Beatmania IIDX">
-    <buttons>
-      <button name="P1 1" vkey="0" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P1 2" vkey="1" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P1 3" vkey="2" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P1 4" vkey="3" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P1 5" vkey="4" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P1 6" vkey="5" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P1 7" vkey="6" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P2 1" vkey="0" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P2 2" vkey="1" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P2 3" vkey="2" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P2 4" vkey="3" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P2 5" vkey="4" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P2 6" vkey="5" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P2 7" vkey="6" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <!-- P1 Start: E1 primary (index 8), E4 alternative (index 11) -->
-      <button name="P1 Start" vkey="8" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P1 Start" vkey="11" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <!-- P2 Start: E1 primary (index 8), E4 alternative (index 11) -->
-      <button name="P2 Start" vkey="8" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="P2 Start" vkey="11" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <!-- EFFECT: E2 (index 9), primary P2 side, alternative P1 side -->
-      <button name="EFFECT" vkey="9" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="EFFECT" vkey="9" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <!-- VEFX: E3 (index 10), primary P2 side, alternative P1 side -->
-      <button name="VEFX" vkey="10" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-      <button name="VEFX" vkey="10" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
-    </buttons>
-    <analogs>
-      <analog name="Turntable P1" devid="Player 1" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-      <analog name="Turntable P2" devid="Player 2" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-    </analogs>
-    <lights>
-      <light name="P1 1" devid="Player 1" index="0"/>
-      <light name="P1 2" devid="Player 1" index="1"/>
-      <light name="P1 3" devid="Player 1" index="2"/>
-      <light name="P1 4" devid="Player 1" index="3"/>
-      <light name="P1 5" devid="Player 1" index="4"/>
-      <light name="P1 6" devid="Player 1" index="5"/>
-      <light name="P1 7" devid="Player 1" index="6"/>
-      <light name="P2 1" devid="Player 2" index="0"/>
-      <light name="P2 2" devid="Player 2" index="1"/>
-      <light name="P2 3" devid="Player 2" index="2"/>
-      <light name="P2 4" devid="Player 2" index="3"/>
-      <light name="P2 5" devid="Player 2" index="4"/>
-      <light name="P2 6" devid="Player 2" index="5"/>
-      <light name="P2 7" devid="Player 2" index="6"/>
-      <!-- Start buttons bind both E1 (index 8) and E4 (index 11), but lights use
+    <template name="DJ DAO PHOENIXWAN" game="Beatmania IIDX">
+        <buttons>
+            <button name="P1 1" vkey="0" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 2" vkey="1" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 3" vkey="2" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 4" vkey="3" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 5" vkey="4" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 6" vkey="5" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 7" vkey="6" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 1" vkey="0" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 2" vkey="1" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 3" vkey="2" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 4" vkey="3" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 5" vkey="4" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 6" vkey="5" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 7" vkey="6" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <!-- P1 Start: E1 primary (index 8), E4 alternative (index 11) -->
+            <button name="P1 Start" vkey="8" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 Start" vkey="11" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <!-- P2 Start: E1 primary (index 8), E4 alternative (index 11) -->
+            <button name="P2 Start" vkey="8" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 Start" vkey="11" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <!-- EFFECT: E2 (index 9), primary P2 side, alternative P1 side -->
+            <button name="EFFECT" vkey="9" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="EFFECT" vkey="9" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <!-- VEFX: E3 (index 10), primary P2 side, alternative P1 side -->
+            <button name="VEFX" vkey="10" analogtype="0" devid="Player 2" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="VEFX" vkey="10" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+        </buttons>
+        <analogs>
+            <analog name="Turntable P1" devid="Player 1" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Turntable P2" devid="Player 2" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+        </analogs>
+        <lights>
+            <light name="P1 1" devid="Player 1" index="0"/>
+            <light name="P1 2" devid="Player 1" index="1"/>
+            <light name="P1 3" devid="Player 1" index="2"/>
+            <light name="P1 4" devid="Player 1" index="3"/>
+            <light name="P1 5" devid="Player 1" index="4"/>
+            <light name="P1 6" devid="Player 1" index="5"/>
+            <light name="P1 7" devid="Player 1" index="6"/>
+            <light name="P2 1" devid="Player 2" index="0"/>
+            <light name="P2 2" devid="Player 2" index="1"/>
+            <light name="P2 3" devid="Player 2" index="2"/>
+            <light name="P2 4" devid="Player 2" index="3"/>
+            <light name="P2 5" devid="Player 2" index="4"/>
+            <light name="P2 6" devid="Player 2" index="5"/>
+            <light name="P2 7" devid="Player 2" index="6"/>
+            <!-- Start buttons bind both E1 (index 8) and E4 (index 11), but lights use
            Lightning Model style only (one per side) to avoid both lighting up at once -->
-      <light name="P1 Start" devid="Player 1" index="10"/>
-      <light name="P2 Start" devid="Player 2" index="7"/>
-      <light name="VEFX" devid="Player 1" index="8"/>
-      <light name="VEFX" devid="Player 2" index="8"/>
-      <light name="Effect" devid="Player 1" index="9"/>
-      <light name="Effect" devid="Player 2" index="9"/>
-    </lights>
-  </template>
-
+            <light name="P1 Start" devid="Player 1" index="10"/>
+            <light name="P2 Start" devid="Player 2" index="7"/>
+            <light name="VEFX" devid="Player 1" index="8"/>
+            <light name="VEFX" devid="Player 2" index="8"/>
+            <light name="Effect" devid="Player 1" index="9"/>
+            <light name="Effect" devid="Player 2" index="9"/>
+        </lights>
+    </template>
+    <!-- Common "double scratch" BMS playstyle: LSHIFT   A S D SPACE L ; '   RSHIFT -->
+    <!-- Uses Up/Down arrows for turntable navigation -->
+    <template name="Keyboard (linear, double scratch, QWERTY)" game="Beatmania IIDX">
+        <buttons>
+            <button name="P1 1" vkey="65" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 2" vkey="83" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 3" vkey="68" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 4" vkey="32" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 5" vkey="76" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 6" vkey="186" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 7" vkey="222" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 TT+" vkey="40" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 TT-" vkey="38" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 TT+/-" vkey="160" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 TT+/- Alternate" vkey="161" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 Start" vkey="13" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 Start" vkey="69" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="EFFECT" vkey="81" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="VEFX" vkey="87" analogtype="0" devid="" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+        </buttons>
+        <keypad_buttons/>
+        <analogs/>
+        <lights/>
+    </template>
+    <template name="arcin (arcin-infinitas)" game="Beatmania IIDX">
+        <buttons>
+            <button name="P1 1" vkey="0" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 2" vkey="1" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 3" vkey="2" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 4" vkey="3" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 5" vkey="4" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 6" vkey="5" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 7" vkey="6" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P1 Start" vkey="9" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 1" vkey="0" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 2" vkey="1" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 3" vkey="2" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 4" vkey="3" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 5" vkey="4" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 6" vkey="5" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 7" vkey="6" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="P2 Start" vkey="9" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="EFFECT" vkey="11" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="EFFECT" vkey="11" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="VEFX" vkey="10" analogtype="0" devid="arcin (1p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="VEFX" vkey="10" analogtype="0" devid="arcin (2p)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+        </buttons>
+        <keypad_buttons/>
+        <!-- Assumes analog mode. Need to invert direction since this FW is designed for INF. -->
+        <analogs>
+            <analog name="Turntable P1" devid="arcin (1p)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="true" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Turntable P2" devid="arcin (2p)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="true" smoothing="false" multiplier="1" relative="false" delay="0"/>
+        </analogs>
+        <lights>
+            <light name="P1 1" devid="arcin (1p)" index="0"/>
+            <light name="P1 2" devid="arcin (1p)" index="1"/>
+            <light name="P1 3" devid="arcin (1p)" index="2"/>
+            <light name="P1 4" devid="arcin (1p)" index="3"/>
+            <light name="P1 5" devid="arcin (1p)" index="4"/>
+            <light name="P1 6" devid="arcin (1p)" index="5"/>
+            <light name="P1 7" devid="arcin (1p)" index="6"/>
+            <light name="P2 1" devid="arcin (2p)" index="0"/>
+            <light name="P2 2" devid="arcin (2p)" index="1"/>
+            <light name="P2 3" devid="arcin (2p)" index="2"/>
+            <light name="P2 4" devid="arcin (2p)" index="3"/>
+            <light name="P2 5" devid="arcin (2p)" index="4"/>
+            <light name="P2 6" devid="arcin (2p)" index="5"/>
+            <light name="P2 7" devid="arcin (2p)" index="6"/>
+            <light name="P1 Start" devid="arcin (1p)" index="9"/>
+            <light name="P2 Start" devid="arcin (2p)" index="9"/>
+        </lights>
+    </template>
+    <!-- This controller has many modes; here, we use HID Analog mode which is meant for data -->
+    <template name="DJ DAO Nostroller (Analog mode)" game="Nostalgia">
+        <buttons/>
+        <keypad_buttons/>
+        <analogs>
+            <analog name="Key 1" devid="Analogs key 01-28" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 2" devid="Analogs key 01-28" index="5" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 3" devid="Analogs key 01-28" index="6" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 4" devid="Analogs key 01-28" index="7" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 5" devid="Analogs key 01-28" index="8" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 6" devid="Analogs key 01-28" index="9" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 7" devid="Analogs key 01-28" index="10" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 8" devid="Analogs key 01-28" index="11" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 9" devid="Analogs key 01-28" index="12" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 10" devid="Analogs key 01-28" index="13" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 11" devid="Analogs key 01-28" index="14" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 12" devid="Analogs key 01-28" index="15" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 13" devid="Analogs key 01-28" index="16" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 14" devid="Analogs key 01-28" index="17" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 15" devid="Analogs key 01-28" index="18" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 16" devid="Analogs key 01-28" index="19" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 17" devid="Analogs key 01-28" index="20" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 18" devid="Analogs key 01-28" index="21" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 19" devid="Analogs key 01-28" index="22" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 20" devid="Analogs key 01-28" index="23" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 21" devid="Analogs key 01-28" index="24" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 22" devid="Analogs key 01-28" index="25" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 23" devid="Analogs key 01-28" index="26" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 24" devid="Analogs key 01-28" index="27" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 25" devid="Analogs key 01-28" index="28" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 26" devid="Analogs key 01-28" index="29" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 27" devid="Analogs key 01-28" index="30" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 28" devid="Analogs key 01-28" index="31" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+        </analogs>
+        <lights>
+            <light name="Key 1 R" devid="Lights 01-14" index="0"/>
+            <light name="Key 1 G" devid="Lights 01-14" index="1"/>
+            <light name="Key 1 B" devid="Lights 01-14" index="2"/>
+            <light name="Key 2 R" devid="Lights 01-14" index="3"/>
+            <light name="Key 2 G" devid="Lights 01-14" index="4"/>
+            <light name="Key 2 B" devid="Lights 01-14" index="5"/>
+            <light name="Key 3 R" devid="Lights 01-14" index="6"/>
+            <light name="Key 3 G" devid="Lights 01-14" index="7"/>
+            <light name="Key 3 B" devid="Lights 01-14" index="8"/>
+            <light name="Key 4 R" devid="Lights 01-14" index="9"/>
+            <light name="Key 4 G" devid="Lights 01-14" index="10"/>
+            <light name="Key 4 B" devid="Lights 01-14" index="11"/>
+            <light name="Key 5 R" devid="Lights 01-14" index="12"/>
+            <light name="Key 5 G" devid="Lights 01-14" index="13"/>
+            <light name="Key 5 B" devid="Lights 01-14" index="14"/>
+            <light name="Key 6 R" devid="Lights 01-14" index="15"/>
+            <light name="Key 6 G" devid="Lights 01-14" index="16"/>
+            <light name="Key 6 B" devid="Lights 01-14" index="17"/>
+            <light name="Key 7 R" devid="Lights 01-14" index="18"/>
+            <light name="Key 7 G" devid="Lights 01-14" index="19"/>
+            <light name="Key 7 B" devid="Lights 01-14" index="20"/>
+            <light name="Key 8 R" devid="Lights 01-14" index="21"/>
+            <light name="Key 8 G" devid="Lights 01-14" index="22"/>
+            <light name="Key 8 B" devid="Lights 01-14" index="23"/>
+            <light name="Key 9 R" devid="Lights 01-14" index="24"/>
+            <light name="Key 9 G" devid="Lights 01-14" index="25"/>
+            <light name="Key 9 B" devid="Lights 01-14" index="26"/>
+            <light name="Key 10 R" devid="Lights 01-14" index="27"/>
+            <light name="Key 10 G" devid="Lights 01-14" index="28"/>
+            <light name="Key 10 B" devid="Lights 01-14" index="29"/>
+            <light name="Key 11 R" devid="Lights 01-14" index="30"/>
+            <light name="Key 11 G" devid="Lights 01-14" index="31"/>
+            <light name="Key 11 B" devid="Lights 01-14" index="32"/>
+            <light name="Key 12 R" devid="Lights 01-14" index="33"/>
+            <light name="Key 12 G" devid="Lights 01-14" index="34"/>
+            <light name="Key 12 B" devid="Lights 01-14" index="35"/>
+            <light name="Key 13 R" devid="Lights 01-14" index="36"/>
+            <light name="Key 13 G" devid="Lights 01-14" index="37"/>
+            <light name="Key 13 B" devid="Lights 01-14" index="38"/>
+            <light name="Key 14 R" devid="Lights 01-14" index="39"/>
+            <light name="Key 14 G" devid="Lights 01-14" index="40"/>
+            <light name="Key 14 B" devid="Lights 01-14" index="41"/>
+            <light name="Key 15 R" devid="Lights 15-28" index="0"/>
+            <light name="Key 15 G" devid="Lights 15-28" index="1"/>
+            <light name="Key 15 B" devid="Lights 15-28" index="2"/>
+            <light name="Key 16 R" devid="Lights 15-28" index="3"/>
+            <light name="Key 16 G" devid="Lights 15-28" index="4"/>
+            <light name="Key 16 B" devid="Lights 15-28" index="5"/>
+            <light name="Key 17 R" devid="Lights 15-28" index="6"/>
+            <light name="Key 17 G" devid="Lights 15-28" index="7"/>
+            <light name="Key 17 B" devid="Lights 15-28" index="8"/>
+            <light name="Key 18 R" devid="Lights 15-28" index="9"/>
+            <light name="Key 18 G" devid="Lights 15-28" index="10"/>
+            <light name="Key 18 B" devid="Lights 15-28" index="11"/>
+            <light name="Key 19 R" devid="Lights 15-28" index="12"/>
+            <light name="Key 19 G" devid="Lights 15-28" index="13"/>
+            <light name="Key 19 B" devid="Lights 15-28" index="14"/>
+            <light name="Key 20 R" devid="Lights 15-28" index="15"/>
+            <light name="Key 20 G" devid="Lights 15-28" index="16"/>
+            <light name="Key 20 B" devid="Lights 15-28" index="17"/>
+            <light name="Key 21 R" devid="Lights 15-28" index="18"/>
+            <light name="Key 21 G" devid="Lights 15-28" index="19"/>
+            <light name="Key 21 B" devid="Lights 15-28" index="20"/>
+            <light name="Key 22 R" devid="Lights 15-28" index="21"/>
+            <light name="Key 22 G" devid="Lights 15-28" index="22"/>
+            <light name="Key 22 B" devid="Lights 15-28" index="23"/>
+            <light name="Key 23 R" devid="Lights 15-28" index="24"/>
+            <light name="Key 23 G" devid="Lights 15-28" index="25"/>
+            <light name="Key 23 B" devid="Lights 15-28" index="26"/>
+            <light name="Key 24 R" devid="Lights 15-28" index="27"/>
+            <light name="Key 24 G" devid="Lights 15-28" index="28"/>
+            <light name="Key 24 B" devid="Lights 15-28" index="29"/>
+            <light name="Key 25 R" devid="Lights 15-28" index="30"/>
+            <light name="Key 25 G" devid="Lights 15-28" index="31"/>
+            <light name="Key 25 B" devid="Lights 15-28" index="32"/>
+            <light name="Key 26 R" devid="Lights 15-28" index="33"/>
+            <light name="Key 26 G" devid="Lights 15-28" index="34"/>
+            <light name="Key 26 B" devid="Lights 15-28" index="35"/>
+            <light name="Key 27 R" devid="Lights 15-28" index="36"/>
+            <light name="Key 27 G" devid="Lights 15-28" index="37"/>
+            <light name="Key 27 B" devid="Lights 15-28" index="38"/>
+            <light name="Key 28 R" devid="Lights 15-28" index="39"/>
+            <light name="Key 28 G" devid="Lights 15-28" index="40"/>
+            <light name="Key 28 B" devid="Lights 15-28" index="41"/>
+        </lights>
+    </template>
+    <!-- Gitaller has two modes - digital tilt and analog axis. This binds both of them at the same time. -->
+    <template name="DJ DAO Gitaller" game="GitaDora">
+        <buttons>
+            <button name="Guitar P1 Start" vkey="9" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 Help" vkey="8" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 Pick Up" vkey="5" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 Pick Down" vkey="6" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 R" vkey="0" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 G" vkey="1" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 B" vkey="2" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 Y" vkey="3" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 P" vkey="4" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 Wail Up" vkey="10" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Guitar P1 Wail Down" vkey="11" analogtype="0" devid="Gitaller P1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+        </buttons>
+        <keypad_buttons/>
+        <analogs>
+            <analog name="Guitar P1 Wail X" devid="Gitaller P1" index="1" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Guitar P1 Wail Y" devid="Gitaller P1" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Guitar P1 Wail Z" devid="Gitaller P1" index="5" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+        </analogs>
+        <lights/>
+    <!-- Gen 1 FAUCETWO in HID mode; should also work for later gens -->
+    </template>
+        <template name="DJ DAO FAUCETWO" game="Sound Voltex">
+        <buttons>
+            <button name="BT-A" vkey="1" analogtype="0" devid="Buttons (MI_01)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="BT-B" vkey="2" analogtype="0" devid="Buttons (MI_01)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="BT-C" vkey="3" analogtype="0" devid="Buttons (MI_01)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="BT-D" vkey="4" analogtype="0" devid="Buttons (MI_01)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="FX-L" vkey="5" analogtype="0" devid="Buttons (MI_01)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="FX-R" vkey="6" analogtype="0" devid="Buttons (MI_01)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+            <button name="Start" vkey="0" analogtype="0" devid="Buttons (MI_01)" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
+        </buttons>
+        <keypad_buttons/>
+        <analogs>
+            <analog name="VOL-L" devid="Buttons (MI_01)" index="1" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="VOL-R" devid="Buttons (MI_01)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+        </analogs>
+        <lights>
+            <light name="BT-A" devid="Lights (MI_02)" index="24"/>
+            <light name="BT-B" devid="Lights (MI_02)" index="25"/>
+            <light name="BT-C" devid="Lights (MI_02)" index="26"/>
+            <light name="BT-D" devid="Lights (MI_02)" index="27"/>
+            <light name="FX-L" devid="Lights (MI_02)" index="28"/>
+            <light name="FX-R" devid="Lights (MI_02)" index="29"/>
+            <light name="Start" devid="Lights (MI_02)" index="30"/>
+            <light name="Upper Left Speaker Avg R" devid="Lights (MI_02)" index="0"/>
+            <light name="Upper Left Speaker Avg G" devid="Lights (MI_02)" index="1"/>
+            <light name="Upper Left Speaker Avg B" devid="Lights (MI_02)" index="2"/>
+            <light name="Upper Right Speaker Avg R" devid="Lights (MI_02)" index="9"/>
+            <light name="Upper Right Speaker Avg G" devid="Lights (MI_02)" index="10"/>
+            <light name="Upper Right Speaker Avg B" devid="Lights (MI_02)" index="11"/>
+            <light name="Lower Left Speaker Avg R" devid="Lights (MI_02)" index="3"/>
+            <light name="Lower Left Speaker Avg G" devid="Lights (MI_02)" index="4"/>
+            <light name="Lower Left Speaker Avg B" devid="Lights (MI_02)" index="5"/>
+            <light name="Lower Right Speaker Avg R" devid="Lights (MI_02)" index="6"/>
+            <light name="Lower Right Speaker Avg G" devid="Lights (MI_02)" index="7"/>
+            <light name="Lower Right Speaker Avg B" devid="Lights (MI_02)" index="8"/>
+            <light name="Control Panel Avg R" devid="Lights (MI_02)" index="15"/>
+            <light name="Control Panel Avg G" devid="Lights (MI_02)" index="16"/>
+            <light name="Control Panel Avg B" devid="Lights (MI_02)" index="17"/>
+        </lights>
+    </template>
 </templates>

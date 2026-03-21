@@ -5145,7 +5145,7 @@ namespace overlay::windows {
 
                     ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_None, 2.f);
                     ImGui::TableSetupColumn("Apply As", ImGuiTableColumnFlags_None, 3.f);
-                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_None, 2.f);
+                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(80));
                     ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_None, 1.f);
                     ImGui::TableHeadersRow();
 
@@ -5158,30 +5158,44 @@ namespace overlay::windows {
                                 if (dev.hidInfo) {
                                     for (auto &page : dev.hidInfo->button_states) {
                                         for (bool s : page) {
-                                            if (s) { pressed = true; break; }
+                                            if (s) {
+                                                pressed = true;
+                                                break;
+                                            }
                                         }
-                                        if (pressed) { break; }
+                                        if (pressed) {
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
                             case rawinput::KEYBOARD:
                                 if (dev.keyboardInfo) {
                                     for (bool s : dev.keyboardInfo->key_states) {
-                                        if (s) { pressed = true; break; }
+                                        if (s) {
+                                            pressed = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
                             case rawinput::MOUSE:
                                 if (dev.mouseInfo) {
                                     for (bool s : dev.mouseInfo->key_states) {
-                                        if (s) { pressed = true; break; }
+                                        if (s) {
+                                            pressed = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
                             case rawinput::MIDI:
                                 if (dev.midiInfo) {
                                     for (bool s : dev.midiInfo->states) {
-                                        if (s) { pressed = true; break; }
+                                        if (s) {
+                                            pressed = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
@@ -5227,7 +5241,7 @@ namespace overlay::windows {
                                     if (ti > 0) {
                                         auto *dev = RI_MGR->devices_get(target_options[ti]);
                                         if (dev) {
-                                            combo_label = fmt::format("{}##{}", dev->desc, dev->name);
+                                            combo_label = fmt::format("{} ({})##{}", dev->desc.substr(0, 42), dev->name.substr(0, 36), dev->name);
                                             item_active = active_devices.count(dev->name) > 0;
                                         }
                                     }
