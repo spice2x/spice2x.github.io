@@ -258,6 +258,10 @@ namespace overlay::windows {
         if (previous_games_selected != this->games_selected) {
             read_card();
             templates_cache_dirty = true;
+            log_misc(
+                "config",
+                "game selection changed from {} to {}",
+                previous_games_selected, this->games_selected);
         }
 
         // tab selection
@@ -576,13 +580,18 @@ namespace overlay::windows {
 
         // did tab selection change?
         if (this->tab_selected != tab_selected_new) {
+            log_misc(
+                "config",
+                "tab selection changed from {} to {}",
+                static_cast<uint32_t>(this->tab_selected),
+                static_cast<uint32_t>(tab_selected_new));
 
             stop_lights_test();
 
             this->tab_selected = tab_selected_new;
             buttons_many_active = false;
             buttons_many_index = -1;
-            templates_cache_dirty = true;
+
             ImGui::CloseCurrentPopup();
         }
 
@@ -5126,18 +5135,19 @@ namespace overlay::windows {
                     "Step 2: Pick which groups to apply");
                 ImGui::Spacing();
                 bool selection_changed = false;
-                selection_changed |= ImGui::Checkbox("Buttons", &apply_buttons);
+                selection_changed |= ImGui::Checkbox("Buttons", &this->apply_buttons);
                 ImGui::SameLine();
-                selection_changed |= ImGui::Checkbox("Keypads", &apply_keypads);
+                selection_changed |= ImGui::Checkbox("Keypads", &this->apply_keypads);
                 ImGui::SameLine();
-                selection_changed |= ImGui::Checkbox("Analogs", &apply_analogs);
+                selection_changed |= ImGui::Checkbox("Analogs", &this->apply_analogs);
                 ImGui::SameLine();
-                selection_changed |= ImGui::Checkbox("Lights", &apply_lights);
+                selection_changed |= ImGui::Checkbox("Lights", &this->apply_lights);
                 if (selection_changed) {
                     std::fill(this->template_is_applied.begin(), this->template_is_applied.end(), false);
                 }
 
-                if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
+                if (!this->apply_buttons && !this->apply_keypads &&
+                    !this->apply_analogs && !this->apply_lights) {
                     ImGui::TextUnformatted("\nYou must select at least one group to apply.\n\n");
                 }
 
@@ -5420,6 +5430,19 @@ namespace overlay::windows {
                 "Labels replace device IDs in the saved preset.");
             ImGui::Spacing();
 
+            ImGui::TextUnformatted("Pick which groups to save:");
+            ImGui::Checkbox("Buttons", &this->save_buttons);
+            ImGui::SameLine();
+            ImGui::Checkbox("Keypads", &this->save_keypads);
+            ImGui::SameLine();
+            ImGui::Checkbox("Analogs", &this->save_analogs);
+            ImGui::SameLine();
+            ImGui::Checkbox("Lights", &this->save_lights);
+            if (!this->save_analogs && !this->save_keypads &&
+                !this->save_analogs && !this->save_lights) {
+                ImGui::TextUnformatted("\nYou must select at least one group to save.\n\n");
+            }
+
             if (ImGui::BeginTable("SaveLabels", 2,
                     ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
@@ -5464,16 +5487,19 @@ namespace overlay::windows {
             ImGui::SetCursorPosY(ImGui::GetWindowHeight()
                 - ImGui::GetFrameHeightWithSpacing()
                 - ImGui::GetStyle().WindowPadding.y);
-            if (!all_labels_set) {
-                ImGui::BeginDisabled();
-            }
+
+            ImGui::BeginDisabled(
+                !all_labels_set ||
+                (!this->save_buttons && !this->save_keypads && !this->save_analogs && !this->save_lights));
+
             if (ImGui::Button("Save")) {
                 // replace device IDs with labels in the template
                 for (int si = 0; si < (int)template_save_sources.size(); si++) {
                     template_pending_save.rename_source(
                         template_save_sources[si], template_save_labels[si]);
                 }
-                if (save_user_template(template_pending_save)) {
+                if (save_user_template(template_pending_save,
+                        this->save_buttons, this->save_keypads, this->save_analogs, this->save_lights)) {
                     template_save_name[0] = '\0';
                     templates_cache_dirty = true;
                 }
@@ -5481,9 +5507,7 @@ namespace overlay::windows {
                 template_save_labels.clear();
                 ImGui::CloseCurrentPopup();
             }
-            if (!all_labels_set) {
-                ImGui::EndDisabled();
-            }
+            ImGui::EndDisabled();
 
             ImGui::SameLine();
             if (ImGui::Button("Cancel")) {
@@ -5557,7 +5581,7 @@ namespace overlay::windows {
                             t.rename_source(template_save_sources[si], template_save_labels[si]);
                         }
                     }
-                    save_user_template(t);
+                    save_user_template(t, true, true, true, true);
                     templates_cache_dirty = true;
                     template_save_sources.clear();
                     template_save_labels.clear();

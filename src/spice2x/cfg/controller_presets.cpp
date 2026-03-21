@@ -236,7 +236,13 @@ namespace overlay::windows {
         return load_templates_from_doc(doc, false);
     }
 
-    bool save_user_template(const ControllerTemplate &tmpl) {
+    bool save_user_template(
+        const ControllerTemplate &tmpl,
+        const bool save_buttons,
+        const bool save_keypads,
+        const bool save_analogs,
+        const bool save_lights) {
+
         auto path = get_templates_path();
         auto path_tmp = path;
         path_tmp.replace_extension(L"tmp");
@@ -275,13 +281,15 @@ namespace overlay::windows {
 
         // buttons — skip unbound entries
         auto *buttons_el = doc.NewElement("buttons");
-        for (auto &btn : tmpl.buttons) {
-            if (!btn.primary.is_unbound()) {
-                write_button_entry(doc, buttons_el, btn.name, btn.primary);
-            }
-            for (auto &alt : btn.alternatives) {
-                if (!alt.is_unbound()) {
-                    write_button_entry(doc, buttons_el, btn.name, alt);
+        if (save_buttons) {
+            for (auto &btn : tmpl.buttons) {
+                if (!btn.primary.is_unbound()) {
+                    write_button_entry(doc, buttons_el, btn.name, btn.primary);
+                }
+                for (auto &alt : btn.alternatives) {
+                    if (!alt.is_unbound()) {
+                        write_button_entry(doc, buttons_el, btn.name, alt);
+                    }
                 }
             }
         }
@@ -290,13 +298,15 @@ namespace overlay::windows {
         // keypad buttons — skip unbound entries
         if (!tmpl.keypad_buttons.empty()) {
             auto *kp_el = doc.NewElement("keypad_buttons");
-            for (auto &btn : tmpl.keypad_buttons) {
-                if (!btn.primary.is_unbound()) {
-                    write_button_entry(doc, kp_el, btn.name, btn.primary);
-                }
-                for (auto &alt : btn.alternatives) {
-                    if (!alt.is_unbound()) {
-                        write_button_entry(doc, kp_el, btn.name, alt);
+            if (save_keypads) {
+                for (auto &btn : tmpl.keypad_buttons) {
+                    if (!btn.primary.is_unbound()) {
+                        write_button_entry(doc, kp_el, btn.name, btn.primary);
+                    }
+                    for (auto &alt : btn.alternatives) {
+                        if (!alt.is_unbound()) {
+                            write_button_entry(doc, kp_el, btn.name, alt);
+                        }
                     }
                 }
             }
@@ -305,22 +315,26 @@ namespace overlay::windows {
 
         // analogs — skip unbound entries
         auto *analogs_el = doc.NewElement("analogs");
-        for (auto &a : tmpl.analogs) {
-            if (!a.is_unbound()) {
-                write_analog(doc, analogs_el, a);
+        if (save_analogs) {
+            for (auto &a : tmpl.analogs) {
+                if (!a.is_unbound()) {
+                    write_analog(doc, analogs_el, a);
+                }
             }
         }
         tmpl_el->InsertEndChild(analogs_el);
 
         // lights — skip unbound entries
         auto *lights_el = doc.NewElement("lights");
-        for (auto &l : tmpl.lights) {
-            if (!l.primary.is_unbound()) {
-                write_light_entry(doc, lights_el, l.name, l.primary);
-            }
-            for (auto &alt : l.alternatives) {
-                if (!alt.is_unbound()) {
-                    write_light_entry(doc, lights_el, l.name, alt);
+        if (save_lights) {
+            for (auto &l : tmpl.lights) {
+                if (!l.primary.is_unbound()) {
+                    write_light_entry(doc, lights_el, l.name, l.primary);
+                }
+                for (auto &alt : l.alternatives) {
+                    if (!alt.is_unbound()) {
+                        write_light_entry(doc, lights_el, l.name, alt);
+                    }
                 }
             }
         }
@@ -426,12 +440,14 @@ namespace overlay::windows {
     std::vector<ControllerTemplate> get_templates_for_game(const std::string &game_name) {
         std::vector<ControllerTemplate> result;
 
+        log_misc("templates", "loading built-in templates for {}", game_name);
         for (auto &t : load_builtin_templates()) {
             if (t.game_name == game_name) {
                 result.push_back(std::move(t));
             }
         }
 
+        log_misc("templates", "loading user templates for {}", game_name);
         for (auto &t : load_user_templates()) {
             if (t.game_name == game_name) {
                 result.push_back(std::move(t));

@@ -114,6 +114,10 @@ namespace overlay::windows {
         bool apply_keypads = true;
         bool apply_analogs = true;
         bool apply_lights = true;
+        bool save_buttons = true;
+        bool save_keypads = true;
+        bool save_analogs = true;
+        bool save_lights = true;
         bool all_cleared = false;
         std::vector<bool> template_is_applied;
 
