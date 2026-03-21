@@ -88,10 +88,10 @@ namespace games::qma {
             // create quiz directory
             static bool dirs_created = false;
             if (!dirs_created && _wcsnicmp(lpFileName, L"E:\\LMA", 6) == 0) {
+                dirs_created = true;
                 fileutils::dir_create_recursive("E:\\LMA\\quiz11");
                 fileutils::dir_create_recursive("E:\\LMA\\quiz13");
                 fileutils::dir_create_recursive("E:\\LMA\\quiz15");
-                dirs_created = true;
             }
 
             // return result
