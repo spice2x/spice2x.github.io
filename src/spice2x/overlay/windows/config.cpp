@@ -258,6 +258,10 @@ namespace overlay::windows {
         if (previous_games_selected != this->games_selected) {
             read_card();
             templates_cache_dirty = true;
+            log_misc(
+                "config",
+                "game selection changed from {} to {}",
+                previous_games_selected, this->games_selected);
         }
 
         // tab selection
@@ -576,13 +580,18 @@ namespace overlay::windows {
 
         // did tab selection change?
         if (this->tab_selected != tab_selected_new) {
+            log_misc(
+                "config",
+                "tab selection changed from {} to {}",
+                static_cast<uint32_t>(this->tab_selected),
+                static_cast<uint32_t>(tab_selected_new));
 
             stop_lights_test();
 
             this->tab_selected = tab_selected_new;
             buttons_many_active = false;
             buttons_many_index = -1;
-            templates_cache_dirty = true;
+
             ImGui::CloseCurrentPopup();
         }
 
@@ -3297,7 +3306,7 @@ namespace overlay::windows {
             + ImGui::GetFrameHeightWithSpacing() * 2 + ImGui::GetStyle().WindowPadding.y;
         float table_h = ImGui::GetContentRegionAvail().y - footer_h;
         if (ImGui::BeginTable("##AutoMatchTable", 3,
-                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,
                 ImVec2(0, table_h))) {
             ImGui::TableSetupColumn("Device Light", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 30.f);
@@ -4879,11 +4888,15 @@ namespace overlay::windows {
         };
 
         // apply game buttons and keypad buttons
-        apply_buttons(tmpl.buttons, games::get_buttons(this->games_selected_name));
-        apply_buttons(tmpl.keypad_buttons, games::get_buttons_keypads(this->games_selected_name));
+        if (this->apply_buttons) {
+            apply_buttons(tmpl.buttons, games::get_buttons(this->games_selected_name));
+        }
+        if (this->apply_keypads) {
+            apply_buttons(tmpl.keypad_buttons, games::get_buttons_keypads(this->games_selected_name));
+        }
 
         // apply analog bindings (device source only)
-        if (!source_is_naive && !target_is_naive) {
+        if (this->apply_analogs && !source_is_naive && !target_is_naive) {
             auto *analogs = games::get_analogs(this->games_selected_name);
             if (analogs) {
                 for (auto &ta : tmpl.analogs) {
@@ -4914,7 +4927,7 @@ namespace overlay::windows {
         }
 
         // apply light bindings (device source only)
-        if (!source_is_naive && !target_is_naive) {
+        if (this->apply_lights && !source_is_naive && !target_is_naive) {
             auto *lights = games::get_lights(this->games_selected_name);
             if (lights) {
                 for (auto &tl : tmpl.lights) {
@@ -4980,7 +4993,7 @@ namespace overlay::windows {
         // preset list table
         if (!templates_cache.empty()) {
             if (ImGui::BeginTable("TemplateList", 6,
-                    ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                    ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None, 3.f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None, 1.f);
@@ -5092,9 +5105,7 @@ namespace overlay::windows {
             if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
                 const auto &t = templates_cache[templates_selected];
 
-                ImGui::Text("Apply preset \"%s\"", t.name.c_str());
-                ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
-                    "Overlay bindings are not affected.");
+                ImGui::Text("Applying preset: \"%s\"", t.name.c_str());
                 ImGui::Spacing();
 
                 // clear all button
@@ -5102,22 +5113,57 @@ namespace overlay::windows {
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextColored(ImVec4(1.f, 0.5f, 0.5f, 1.f),
                     "Step 1: Reset all existing bindings (Caution! This can't be undone.)");
+                ImGui::BeginDisabled(this->all_cleared);
                 if (ImGui::Button("Clear All Bindings")) {
                     clear_all_bindings();
+                    this->all_cleared = true;
+                    std::fill(this->template_is_applied.begin(), this->template_is_applied.end(), false);
                 }
+                ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::HelpMarker(
                     "Clears all game button, analog, and light bindings.");
+                if (this->all_cleared) {
+                    ImGui::SameLine();
+                    ImGui::TextUnformatted("Done.");
+                }
 
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1),
-                    "Step 2: Apply bindings by source (one at a time)");
+                    "Step 2: Pick which groups to apply");
+                ImGui::Spacing();
+                bool selection_changed = false;
+                selection_changed |= ImGui::Checkbox("Buttons", &this->apply_buttons);
+                ImGui::SameLine();
+                selection_changed |= ImGui::Checkbox("Keypads", &this->apply_keypads);
+                ImGui::SameLine();
+                selection_changed |= ImGui::Checkbox("Analogs", &this->apply_analogs);
+                ImGui::SameLine();
+                selection_changed |= ImGui::Checkbox("Lights", &this->apply_lights);
+                if (selection_changed) {
+                    std::fill(this->template_is_applied.begin(), this->template_is_applied.end(), false);
+                }
+
+                if (!this->apply_buttons && !this->apply_keypads &&
+                    !this->apply_analogs && !this->apply_lights) {
+                    ImGui::TextUnformatted("\nYou must select at least one group to apply.\n\n");
+                }
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Step 3: Pick devices to apply profiles");
+                ImGui::Spacing();
+                ImGui::TextUnformatted("Hint: hold a button on the controller, it'll turn green in the drop down.");
                 ImGui::Spacing();
 
                 // list binding sources with target selection
-                auto sources = t.get_binding_sources();
+                const auto sources = t.get_binding_sources();
+                if (sources.size() != template_save_sources.size()) {
+                    this->template_is_applied.resize(sources.size(), false);
+                }
 
                 // build target device list: "Naive" + all connected devices
                 std::vector<std::string> target_options;
@@ -5140,13 +5186,16 @@ namespace overlay::windows {
                     }
                 }
 
-                if (ImGui::BeginTable("TemplateSources", 4,
-                        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                        ImGuiTableFlags_SizingStretchProp)) {
+                if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
+                    ImGui::BeginDisabled();
+                }
 
-                    ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_None, 2.f);
-                    ImGui::TableSetupColumn("Apply As", ImGuiTableColumnFlags_None, 3.f);
-                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_None, 2.f);
+                if (ImGui::BeginTable("TemplateSources", 4,
+                        ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+
+                    ImGui::TableSetupColumn("Profile", ImGuiTableColumnFlags_None, 2.f);
+                    ImGui::TableSetupColumn("Device", ImGuiTableColumnFlags_None, 3.f);
+                    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(80));
                     ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_None, 1.f);
                     ImGui::TableHeadersRow();
 
@@ -5159,30 +5208,44 @@ namespace overlay::windows {
                                 if (dev.hidInfo) {
                                     for (auto &page : dev.hidInfo->button_states) {
                                         for (bool s : page) {
-                                            if (s) { pressed = true; break; }
+                                            if (s) {
+                                                pressed = true;
+                                                break;
+                                            }
                                         }
-                                        if (pressed) { break; }
+                                        if (pressed) {
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
                             case rawinput::KEYBOARD:
                                 if (dev.keyboardInfo) {
                                     for (bool s : dev.keyboardInfo->key_states) {
-                                        if (s) { pressed = true; break; }
+                                        if (s) {
+                                            pressed = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
                             case rawinput::MOUSE:
                                 if (dev.mouseInfo) {
                                     for (bool s : dev.mouseInfo->key_states) {
-                                        if (s) { pressed = true; break; }
+                                        if (s) {
+                                            pressed = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
                             case rawinput::MIDI:
                                 if (dev.midiInfo) {
                                     for (bool s : dev.midiInfo->states) {
-                                        if (s) { pressed = true; break; }
+                                        if (s) {
+                                            pressed = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 break;
@@ -5204,6 +5267,7 @@ namespace overlay::windows {
                         {
                             int sel = template_target_selection[si];
                             bool active = sel > 0 && active_devices.count(target_options[sel]) > 0;
+                            ImGui::AlignTextToFramePadding();
                             if (active) {
                                 ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "%s", sources[si].c_str());
                             } else {
@@ -5218,7 +5282,7 @@ namespace overlay::windows {
                         ImGui::TableNextColumn();
                         ImGui::SetNextItemWidth(-1);
                         {
-                            int sel = template_target_selection[si];
+                            const int sel = template_target_selection[si];
                             const char *preview = (sel >= 0) ? target_options[sel].c_str() : "(select target)";
                             if (ImGui::BeginCombo("##target", preview)) {
                                 for (int ti = 0; ti < (int)target_options.size(); ti++) {
@@ -5228,7 +5292,7 @@ namespace overlay::windows {
                                     if (ti > 0) {
                                         auto *dev = RI_MGR->devices_get(target_options[ti]);
                                         if (dev) {
-                                            combo_label = fmt::format("{}##{}", dev->desc, dev->name);
+                                            combo_label = fmt::format("{} ({})##{}", dev->desc.substr(0, 42), dev->name.substr(0, 36), dev->name);
                                             item_active = active_devices.count(dev->name) > 0;
                                         }
                                     }
@@ -5245,6 +5309,7 @@ namespace overlay::windows {
                                         ImGui::SetItemDefaultFocus();
                                     }
                                 }
+                                this->template_is_applied[si] = false;
                                 ImGui::EndCombo();
                             }
                         }
@@ -5255,12 +5320,14 @@ namespace overlay::windows {
                             int sel = template_target_selection[si];
                             if (sel < 0) {
                                 ImGui::TextDisabled("--");
+                            } else if (this->template_is_applied[si]) {
+                                ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "Applied!");
                             } else if (target_options[sel] == "Naive") {
-                                ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "OK");
+                                ImGui::TextUnformatted("Ready");
                             } else {
                                 auto *device = RI_MGR->devices_get(target_options[sel]);
                                 if (device) {
-                                    ImGui::TextColored(ImVec4(0.f, 1.f, 0.f, 1.f), "OK");
+                                    ImGui::TextUnformatted("Ready");
                                 } else {
                                     ImGui::TextColored(ImVec4(1.f, 0.5f, 0.f, 1.f), "Not found");
                                 }
@@ -5270,24 +5337,26 @@ namespace overlay::windows {
                         // apply button
                         ImGui::TableNextColumn();
                         {
-                            int sel = template_target_selection[si];
-                            if (sel < 0) {
-                                ImGui::BeginDisabled();
-                            }
+                            const int sel = template_target_selection[si];
+                            ImGui::BeginDisabled(sel < 0 || this->template_is_applied[si]);
                             if (ImGui::Button("Apply")) {
                                 if (sel >= 0) {
                                     apply_template_source(t, sources[si], target_options[sel]);
+                                    this->template_is_applied[si] = true;
+                                    this->all_cleared = false;
                                 }
                             }
-                            if (sel < 0) {
-                                ImGui::EndDisabled();
-                            }
+                            ImGui::EndDisabled();
                         }
 
                         ImGui::PopID();
                     }
 
                     ImGui::EndTable();
+                }
+            
+                if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
+                    ImGui::EndDisabled();
                 }
             }
 
@@ -5296,6 +5365,7 @@ namespace overlay::windows {
                 - ImGui::GetStyle().WindowPadding.y);
             if (ImGui::Button("Close")) {
                 templates_selected = -1;
+                all_cleared = false;
                 template_target_selection.clear();
                 ImGui::CloseCurrentPopup();
             }
@@ -5360,9 +5430,21 @@ namespace overlay::windows {
                 "Labels replace device IDs in the saved preset.");
             ImGui::Spacing();
 
+            ImGui::TextUnformatted("Pick which groups to save:");
+            ImGui::Checkbox("Buttons", &this->save_buttons);
+            ImGui::SameLine();
+            ImGui::Checkbox("Keypads", &this->save_keypads);
+            ImGui::SameLine();
+            ImGui::Checkbox("Analogs", &this->save_analogs);
+            ImGui::SameLine();
+            ImGui::Checkbox("Lights", &this->save_lights);
+            if (!this->save_analogs && !this->save_keypads &&
+                !this->save_analogs && !this->save_lights) {
+                ImGui::TextUnformatted("\nYou must select at least one group to save.\n\n");
+            }
+
             if (ImGui::BeginTable("SaveLabels", 2,
-                    ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                    ImGuiTableFlags_SizingStretchProp)) {
+                    ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
                 ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_None, 3.f);
                 ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_None, 3.f);
@@ -5405,16 +5487,19 @@ namespace overlay::windows {
             ImGui::SetCursorPosY(ImGui::GetWindowHeight()
                 - ImGui::GetFrameHeightWithSpacing()
                 - ImGui::GetStyle().WindowPadding.y);
-            if (!all_labels_set) {
-                ImGui::BeginDisabled();
-            }
+
+            ImGui::BeginDisabled(
+                !all_labels_set ||
+                (!this->save_buttons && !this->save_keypads && !this->save_analogs && !this->save_lights));
+
             if (ImGui::Button("Save")) {
                 // replace device IDs with labels in the template
                 for (int si = 0; si < (int)template_save_sources.size(); si++) {
                     template_pending_save.rename_source(
                         template_save_sources[si], template_save_labels[si]);
                 }
-                if (save_user_template(template_pending_save)) {
+                if (save_user_template(template_pending_save,
+                        this->save_buttons, this->save_keypads, this->save_analogs, this->save_lights)) {
                     template_save_name[0] = '\0';
                     templates_cache_dirty = true;
                 }
@@ -5422,9 +5507,7 @@ namespace overlay::windows {
                 template_save_labels.clear();
                 ImGui::CloseCurrentPopup();
             }
-            if (!all_labels_set) {
-                ImGui::EndDisabled();
-            }
+            ImGui::EndDisabled();
 
             ImGui::SameLine();
             if (ImGui::Button("Cancel")) {
@@ -5446,8 +5529,7 @@ namespace overlay::windows {
                 ImGui::Spacing();
 
                 if (ImGui::BeginTable("EditLabels", 2,
-                        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                        ImGuiTableFlags_SizingStretchProp)) {
+                        ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
                     ImGui::TableSetupColumn("Current Label", ImGuiTableColumnFlags_None, 3.f);
                     ImGui::TableSetupColumn("New Label", ImGuiTableColumnFlags_None, 3.f);
@@ -5499,7 +5581,7 @@ namespace overlay::windows {
                             t.rename_source(template_save_sources[si], template_save_labels[si]);
                         }
                     }
-                    save_user_template(t);
+                    save_user_template(t, true, true, true, true);
                     templates_cache_dirty = true;
                     template_save_sources.clear();
                     template_save_labels.clear();

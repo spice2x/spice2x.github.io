@@ -145,7 +145,13 @@ namespace overlay::windows {
     // template management API
     std::vector<ControllerTemplate> get_templates_for_game(const std::string &game_name);
     std::vector<ControllerTemplate> load_user_templates();
-    bool save_user_template(const ControllerTemplate &tmpl);
+    bool save_user_template(
+        const ControllerTemplate &tmpl,
+        const bool save_buttons,
+        const bool save_keypads,
+        const bool save_analogs,
+        const bool save_lights);
+
     bool delete_user_template(const std::string &game_name, const std::string &template_name);
     bool rename_user_template(const std::string &game_name,
                               const std::string &old_name, const std::string &new_name);
