@@ -5103,7 +5103,7 @@ namespace overlay::windows {
         if (ImGui::BeginPopupModal("Apply Preset##confirm", NULL, 0)) {
 
             if (templates_selected >= 0 && templates_selected < (int)templates_cache.size()) {
-                auto &t = templates_cache[templates_selected];
+                const auto &t = templates_cache[templates_selected];
 
                 ImGui::Text("Applying preset: \"%s\"", t.name.c_str());
                 ImGui::Spacing();
