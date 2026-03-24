@@ -1534,7 +1534,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Invert Touch",
         .name = "touchinvert",
-        .desc = "Inverts touch coordinates; only works for default raw input handler and IIDX/SDVX native touch handler,"
+        .desc = "Inverts touch coordinates; only works for default raw input handler and IIDX/SDVX native touch handler, "
                 "and not Windows Touch API.",
         .type = OptionType::Bool,
         .category = "Touch Parameters",
