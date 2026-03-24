@@ -245,6 +245,12 @@ void overlay::SpiceOverlay::init() {
     colors[ImGuiCol_TextSelectedBg] = ImVec4(0.85f, 0.15f, 0.15f, 0.35f);
     colors[ImGuiCol_NavHighlight] = ImVec4(0.85f, 0.15f, 0.15f, 1.00f);
 
+    // spice custom
+    colors[ImGuiCol_TableRowBgAlt]    = ImVec4(1.00f, 1.00f, 1.00f, 0.025f);
+    colors[ImGuiCol_Separator]        = ImVec4(0.32f, 0.22f, 0.22f, 1.00f);
+    colors[ImGuiCol_SeparatorHovered] = ImVec4(0.42f, 0.22f, 0.22f, 1.00f);
+    colors[ImGuiCol_SeparatorActive]  = ImVec4(0.52f, 0.22f, 0.22f, 1.00f);
+
 #ifdef IMGUI_HAS_DOCK
     colors[ImGuiCol_DockingPreview] = ImVec4(0.85f, 0.15f, 0.15f, 0.40f);
     colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.08f, 0.07f, 0.07f, 1.00f);
