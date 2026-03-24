@@ -92,6 +92,10 @@ namespace nativetouchhook {
             }
         }
 
+        if (rawinput::touch::INVERTED) {
+            flip_values = !flip_values;
+        }
+
         for (size_t i = 0; i < cInputs; i++) {
             PTOUCHINPUT point = &pInputs[i];
 
