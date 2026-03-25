@@ -5367,6 +5367,7 @@ namespace overlay::windows {
                 templates_selected = -1;
                 all_cleared = false;
                 template_target_selection.clear();
+                std::fill(this->template_is_applied.begin(), this->template_is_applied.end(), false);
                 ImGui::CloseCurrentPopup();
             }
 
