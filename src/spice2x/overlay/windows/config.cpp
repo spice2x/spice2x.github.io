@@ -58,6 +58,7 @@ namespace overlay::windows {
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
+    constexpr uint32_t OPTION_INPUT_TEXT_WIDTH = 512;
     
     std::unique_ptr<AsioDriverList> asio_driver_list;
 
@@ -3694,14 +3695,108 @@ namespace overlay::windows {
     
     void Config::build_cards() {
 
+        constexpr float TEXT_INPUT_WIDTH = 240.f;
+
         // early quit
         if (this->games_selected < 0 || this->games_selected_name.empty()) {
             ImGui::Text("Please select a game first.");
             return;
         }
 
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Card overrides");
         ImGui::Spacing();
-        ImGui::SeparatorText("Card files (card0.txt / card1.txt)");
+        ImGui::TextUnformatted("Specify hardcoded card numbers here. This will always take priority.");
+        ImGui::Spacing();
+
+        // read in values from options
+        auto options = games::get_options(this->games_selected_name);
+        for (int player = 0; player < 2; player++) {
+            // intentionally using the same buffer length as options tab
+            char buffer[OPTION_INPUT_TEXT_WIDTH];
+            bool card_changed = false;
+
+            // read in values from options
+            auto &option = player == 0
+                    ? options->at(launcher::Options::Player1Card)
+                    : options->at(launcher::Options::Player2Card);
+            if (option.is_active()) {
+                strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
+            } else {
+                buffer[0] = '\0';
+            }
+
+            if (ImGui::TreeNodeEx(
+                    fmt::format("Player {} (-card{})", player + 1, player).c_str(),
+                    ImGuiTreeNodeFlags_DefaultOpen)) {
+
+                // card number box
+                ImGui::PushStyleColor(
+                    ImGuiCol_Text,
+                    this->keypads_card_override_valid[player] ? ImVec4(1.f, 1.f, 1.f, 1.f) :
+                    ImVec4(1.f, 0.f, 0.f, 1.f));
+                ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
+                ImGui::InputTextWithHint("##OverrideCard", "E004010000000000",
+                        buffer, sizeof(buffer) - 1,
+                        ImGuiInputTextFlags_CharsUppercase |
+                        ImGuiInputTextFlags_CharsHexadecimal |
+                        ImGuiInputTextFlags_EscapeClearsAll);
+                ImGui::PopStyleColor();
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    card_changed = true;
+                }
+
+                // check if valid on every frame;
+                // do this after the widget and remember the result for next frame
+                this->keypads_card_override_valid[player] = false;
+                const auto buffer_len = strlen(buffer);
+                if (buffer_len == 16) {
+                    this->keypads_card_override_valid[player] = validate_ea_card(buffer);
+                } else if (buffer_len == 0) {
+                    this->keypads_card_override_valid[player] = true;
+                }
+
+                // generate button
+                ImGui::SameLine();
+                if (ImGui::Button("Generate")) {
+                    generate_ea_card(buffer);
+                    card_changed = true;
+                }
+
+                if (option.is_active()) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Clear")) {
+                        buffer[0] = '\0';
+                        card_changed = true;
+                    }
+                }
+
+                // bad card number warning
+                if (!this->keypads_card_override_valid[player]) {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Invalid card number");
+                }
+
+                ImGui::TreePop();
+            }
+
+            if (player == 0) {
+                ImGui::Spacing();
+                ImGui::Spacing();
+            }
+
+            if (card_changed) {
+                this->options_dirty = true;
+                option.value = buffer;
+                ::Config::getInstance().updateBinding(games_list[games_selected], option);
+            }
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Card from text files");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Use text files on disk to read a virtual card.");
         ImGui::Spacing();
 
         // get bindings and copy paths
@@ -3718,133 +3813,145 @@ namespace overlay::windows {
         // card settings for each player
         for (int player = 0; player < 2; player++) {
 
-            // custom ID and title
+            // check overrides first
+            auto &override = player == 0
+                    ? options->at(launcher::Options::Player1Card)
+                    : options->at(launcher::Options::Player2Card);
+
+            // custom ID
             ImGui::PushID(("KeypadP" + to_string(player)).c_str());
-            ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Player %i", player + 1);
 
-            // card path
-            std::string hint = "card" + to_string(player) + ".txt";
-            if (ImGui::InputTextWithHint("Card Path", hint.c_str(),
-                    this->keypads_card_path[player], sizeof(this->keypads_card_path[0]) - 1))
-            {
-                bindings.card_paths[player] = this->keypads_card_path[player];
-                bindings_updated = true;
-            }
+            // title
+            if (ImGui::TreeNodeEx(
+                fmt::format("Player {} (card{}.txt)", player + 1, player).c_str(),
+                ImGuiTreeNodeFlags_DefaultOpen)) {
 
-            // help marker
-            ImGui::SameLine();
-            ImGui::HelpMarker("Leave this empty to use the card file in your game directory.\n"
-                              "Hint: You can place 'card0.txt' (P1) / 'card1.txt' (P2) into the root of your USB "
-                              "flash drive and it will trigger a card insert when you connect it!");
+                if (override.is_active()) {
+                    ImGui::TextDisabled("Disabled - override is in use.");
+                } else {
+                    // card path
+                    std::string hint = ".\\card" + to_string(player) + ".txt";
+                    ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
+                    if (ImGui::InputTextWithHint("Card Path", hint.c_str(),
+                            this->keypads_card_path[player], sizeof(this->keypads_card_path[0]) - 1))
+                    {
+                        bindings.card_paths[player] = this->keypads_card_path[player];
+                        bindings_updated = true;
+                    }
 
-            // card path file selector
-            ImGui::SameLine();
-            if (ImGui::Button("Open...")) {
+                    // help marker
+                    ImGui::SameLine();
+                    ImGui::HelpMarker("Leave this empty to use the card file in your game directory.\n"
+                                    "Hint: You can place 'card0.txt' (P1) / 'card1.txt' (P2) into the root of your USB "
+                                    "flash drive and it will trigger a card insert when you connect it!");
 
-                // standalone version opens native file browser
-                if (cfg::CONFIGURATOR_STANDALONE && !keypads_card_select) {
+                    // card path file selector
+                    ImGui::SameLine();
+                    if (ImGui::Button("Open...")) {
 
-                    // run in separate thread otherwise we get a crash
-                    keypads_card_select_done = false;
-                    keypads_card_select = new std::thread([this, bindings, player, game] {
+                        // standalone version opens native file browser
+                        if (cfg::CONFIGURATOR_STANDALONE && !keypads_card_select) {
 
-                        // open dialog to get path
-                        auto ofn_path = std::make_unique<wchar_t[]>(512);
-                        ofn_path[0] = L'\0';
-                        OPENFILENAMEW ofn {};
-                        ofn.lStructSize = sizeof(ofn);
-                        ofn.lpstrFile = ofn_path.get();
-                        ofn.nMaxFile = 512;
-                        ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR;
-                        ofn.lpstrDefExt = L"txt";
-                        ofn.lpstrInitialDir = L".";
+                            // run in separate thread otherwise we get a crash
+                            keypads_card_select_done = false;
+                            keypads_card_select = new std::thread([this, bindings, player, game] {
 
-                        // check for success
-                        auto guard = rawinput::set_os_window_focus_guard();
-                        if (GetSaveFileNameW(&ofn)) {
+                                // open dialog to get path
+                                auto ofn_path = std::make_unique<wchar_t[]>(512);
+                                ofn_path[0] = L'\0';
+                                OPENFILENAMEW ofn {};
+                                ofn.lStructSize = sizeof(ofn);
+                                ofn.lpstrFile = ofn_path.get();
+                                ofn.nMaxFile = 512;
+                                ofn.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR;
+                                ofn.lpstrDefExt = L"txt";
+                                ofn.lpstrInitialDir = L".";
 
-                            // update card path
-                            auto new_bindings = bindings;
-                            new_bindings.card_paths[player] = std::filesystem::path(ofn_path.get());
-                            ::Config::getInstance().updateBinding(game, new_bindings);
-                            eamuse_update_keypad_bindings();
+                                // check for success
+                                auto guard = rawinput::set_os_window_focus_guard();
+                                if (GetSaveFileNameW(&ofn)) {
 
-                            read_card(player);
-                        } else {
-                            auto error = CommDlgExtendedError();
-                            if (error) {
-                                log_warning("cfg", "failed to get save file name: {}", error);
-                            } else {
-                                log_warning("cfg", "failed to get save file name");
-                            }
+                                    // update card path
+                                    auto new_bindings = bindings;
+                                    new_bindings.card_paths[player] = std::filesystem::path(ofn_path.get());
+                                    ::Config::getInstance().updateBinding(game, new_bindings);
+                                    eamuse_update_keypad_bindings();
+
+                                    read_card(player);
+                                } else {
+                                    auto error = CommDlgExtendedError();
+                                    if (error) {
+                                        log_warning("cfg", "failed to get save file name: {}", error);
+                                    } else {
+                                        log_warning("cfg", "failed to get save file name");
+                                    }
+                                }
+
+                                // clean up
+                                keypads_card_select_done = true;
+                            });
                         }
 
-                        // clean up
-                        keypads_card_select_done = true;
-                    });
-                }
+                        // in-game version opens ImGui file browser
+                        if (!cfg::CONFIGURATOR_STANDALONE && !this->keypads_card_select_browser[player].IsOpened()) {
+                            this->keypads_card_select_browser[player].SetTitle("Card Select");
+                            this->keypads_card_select_browser[player].SetTypeFilters({".txt", "*"});
+                            // this->keypads_card_select_browser[player].flags_ |= ImGuiFileBrowserFlags_EnterNewFilename;
+                            this->keypads_card_select_browser[player].Open();
+                        }
+                    }
 
-                // in-game version opens ImGui file browser
-                if (!cfg::CONFIGURATOR_STANDALONE && !this->keypads_card_select_browser[player].IsOpened()) {
-                    this->keypads_card_select_browser[player].SetTitle("Card Select");
-                    this->keypads_card_select_browser[player].SetTypeFilters({".txt", "*"});
-                    // this->keypads_card_select_browser[player].flags_ |= ImGuiFileBrowserFlags_EnterNewFilename;
-                    this->keypads_card_select_browser[player].Open();
-                }
-            }
+                    // clear button
+                    if (!bindings.card_paths[player].empty()) {
+                        ImGui::SameLine();
+                        if (ImGui::Button("Clear")) {
+                            bindings.card_paths[player] = "";
+                            bindings_updated = true;
+                        }
+                    }
 
-            // clear button
-            if (!bindings.card_paths[player].empty()) {
-                ImGui::SameLine();
-                if (ImGui::Button("Clear")) {
-                    bindings.card_paths[player] = "";
-                    bindings_updated = true;
-                }
-            }
+                    // verify card number
+                    auto card_valid = true;
+                    if (this->keypads_card_number[player][0] != 0) {
+                        card_valid = validate_ea_card(this->keypads_card_number[player]);
+                    }
 
-            // verify card number
-            auto card_valid = true;
-            if (this->keypads_card_number[player][0] != 0) {
-                for (int n = 0; n < 16; n++) {
-                    char c = this->keypads_card_number[player][n];
-                    bool digit = c >= '0' && c <= '9';
-                    bool character_big = c >= 'A' && c <= 'F';
-                    bool character_small = c >= 'a' && c <= 'f';
-                    if (!digit && !character_big && !character_small) {
-                        card_valid = false;
+                    // card number box
+                    ImGui::PushStyleColor(ImGuiCol_Text,
+                                        card_valid ? ImVec4(1.f, 1.f, 1.f, 1.f) :
+                                        ImVec4(1.f, 0.f, 0.f, 1.f));
+                    ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
+                    ImGui::InputTextWithHint("Card Number", "E004010000000000",
+                            this->keypads_card_number[player], sizeof(this->keypads_card_number[0]) - 1,
+                            ImGuiInputTextFlags_CharsUppercase |
+                            ImGuiInputTextFlags_CharsHexadecimal |
+                            ImGuiInputTextFlags_EscapeClearsAll);
+                    ImGui::PopStyleColor();
+
+                    // write card after edit
+                    if (ImGui::IsItemDeactivatedAfterEdit()) {
+                        write_card(player);
+                        read_card(1 - player);
+                    }
+
+                    // help marker
+                    ImGui::SameLine();
+                    ImGui::HelpMarker(
+                        "Click on Generate button to randomize a valid card number and automatically it save to specified file.");
+
+                    // generate button
+                    ImGui::SameLine();
+                    if (ImGui::Button("Generate")) {
+                        // don't know why this file insists on using 18 chars to store the card ID
+                        char new_card[17];
+                        generate_ea_card(new_card);
+                        strcpy_s(this->keypads_card_number[player], new_card);
+                        write_card(player);
+                        read_card(1 - player);
                     }
                 }
-            }
 
-            // card number box
-            ImGui::PushStyleColor(ImGuiCol_Text,
-                                  card_valid ? ImVec4(1.f, 1.f, 1.f, 1.f) :
-                                  ImVec4(1.f, 0.f, 0.f, 1.f));
-            ImGui::InputTextWithHint("Card Number", "E004010000000000",
-                    this->keypads_card_number[player], sizeof(this->keypads_card_number[0]) - 1,
-                    ImGuiInputTextFlags_CharsUppercase | ImGuiInputTextFlags_CharsHexadecimal);
-            ImGui::PopStyleColor();
-
-            // write card after edit
-            if (ImGui::IsItemDeactivatedAfterEdit()) {
-                write_card(player);
-                read_card(1 - player);
-            }
-
-            // help marker
-            ImGui::SameLine();
-            ImGui::HelpMarker(
-                "Click on Generate button to randomize a valid card number and automatically it save to specified file.");
-
-            // generate button
-            ImGui::SameLine();
-            if (ImGui::Button("Generate")) {
-                // don't know why this file insists on using 18 chars to store the card ID
-                char new_card[17];
-                generate_ea_card(new_card);
-                strcpy_s(this->keypads_card_number[player], new_card);
-                write_card(player);
-                read_card(1 - player);
+                ImGui::TreePop();
             }
 
             // render card select browser
@@ -3881,12 +3988,14 @@ namespace overlay::windows {
         }
 
         ImGui::Spacing();
-        ImGui::SeparatorText("NFC card reader status");
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "NFC card reader status");
         ImGui::Spacing();
         if (cfg::CONFIGURATOR_STANDALONE) {
 
             ImGui::AlignTextToFramePadding();
-            ImGui::TextWrapped("Test NFC card readers and card insertions over API");
+            ImGui::TextWrapped("Test NFC card readers and card insertions over API.");
             ImGui::SameLine();
             ImGui::HelpMarker(
                 "Enable card readers in Advanced tab, under Card Readers section, and restart. "
@@ -3897,31 +4006,35 @@ namespace overlay::windows {
             // show scanned card numbers
             for (int player = 0; player < 2; player++) {
                 ImGui::PushID(("CardReaderDisp" + to_string(player)).c_str());
-                ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Last card detected for player %i", player + 1);
+                if (ImGui::TreeNodeEx(
+                        fmt::format("Last card detected for player {}", player + 1).c_str(),
+                        ImGuiTreeNodeFlags_DefaultOpen)) {
 
-                char card_uid[8];
-                const bool card_present = eamuse_scanned_card_peek_noninvasive(player, card_uid);
-                if (card_present) {
-                    ImGui::AlignTextToFramePadding();
-                    const auto card_str = bin2hex(card_uid, 8);
-                    ImGui::Text(
-                        "%s %s %s %s",
-                        card_str.substr(0, 4).c_str(),
-                        card_str.substr(4, 4).c_str(),
-                        card_str.substr(8, 4).c_str(),
-                        card_str.substr(12, 4).c_str()
-                        );
-                    ImGui::SameLine();
-                    if (ImGui::Button("Copy")) {
-                        clipboard::copy_text(card_str);
+                    char card_uid[8];
+                    const bool card_present = eamuse_scanned_card_peek_noninvasive(player, card_uid);
+                    if (card_present) {
+                        ImGui::AlignTextToFramePadding();
+                        const auto card_str = bin2hex(card_uid, 8);
+                        ImGui::Text(
+                            "%s %s %s %s",
+                            card_str.substr(0, 4).c_str(),
+                            card_str.substr(4, 4).c_str(),
+                            card_str.substr(8, 4).c_str(),
+                            card_str.substr(12, 4).c_str()
+                            );
+                        ImGui::SameLine();
+                        if (ImGui::Button("Copy")) {
+                            clipboard::copy_text(card_str);
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Clear")) {
+                            eamuse_scanned_card_clear(player);
+                        }
+                    } else {
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::TextDisabled("Card not present");
                     }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Clear")) {
-                        eamuse_scanned_card_clear(player);
-                    }
-                } else {
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextDisabled("Card not present");
+                    ImGui::TreePop();
                 }
 
                 ImGui::PopID();
@@ -3938,7 +4051,9 @@ namespace overlay::windows {
         }
 
         ImGui::Spacing();
-        ImGui::SeparatorText("More tips");
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "More tips");
         ImGui::Spacing();
         ImGui::BeginDisabled();
         ImGui::TextWrapped("To debug card reader issues, run spice.exe -cfg in command line and check the log.");
@@ -3946,6 +4061,19 @@ namespace overlay::windows {
             "If you have multiple players, try opening Card Manager window in the game. "
             "Check the key bind in Overlay tab for Toggle Card Manager.");
         ImGui::EndDisabled();
+    }
+
+    bool Config::validate_ea_card(char card_number[16]) {
+        for (int n = 0; n < 16; n++) {
+            char c = card_number[n];
+            bool digit = c >= '0' && c <= '9';
+            bool character_big = c >= 'A' && c <= 'F';
+            bool character_small = c >= 'a' && c <= 'f';
+            if (!digit && !character_big && !character_small) {
+                return false;
+            }
+        }
+        return true;
     }
 
     std::string Config::build_option_value_picker_title(const OptionDefinition& definition) {
@@ -4404,7 +4532,7 @@ namespace overlay::windows {
                         break;
                     }
                     case OptionType::Text: {
-                        char buffer[512];
+                        char buffer[OPTION_INPUT_TEXT_WIDTH];
                         strncpy(buffer, option.value.c_str(), sizeof(buffer) - 1);
                         buffer[sizeof(buffer) - 1] = '\0';
 
