@@ -3705,7 +3705,8 @@ namespace overlay::windows {
 
         ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Card overrides");
         ImGui::Spacing();
-        ImGui::TextUnformatted("Specify hardcoded card numbers here. This will always take priority.");
+        ImGui::TextUnformatted(
+            "Specify hardcoded card numbers here. This will always take priority when Insert Card is pressed.");
         ImGui::Spacing();
 
         // read in values from options
@@ -3796,7 +3797,8 @@ namespace overlay::windows {
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Card from text files");
         ImGui::Spacing();
-        ImGui::TextUnformatted("Use text files on disk to read a virtual card.");
+        ImGui::TextUnformatted(
+            "Use text files on disk; its content will be read when Insert Card is pressed.");
         ImGui::Spacing();
 
         // get bindings and copy paths
