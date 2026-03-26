@@ -94,6 +94,8 @@ namespace overlay::windows {
         bool keypads_card_select_done = false;
         ImGui::FileBrowser keypads_card_select_browser[2];
         char keypads_card_number[2][18] {};
+        bool keypads_card_override_valid[2] = { false, false };
+        bool keypads_card_file_contents_valid[2] = { false, false };
 
         // presets tab
         std::vector<ControllerTemplate> templates_cache;
@@ -195,12 +197,13 @@ namespace overlay::windows {
 
         void set_alternating_row_colors(const int row_index);
 
+        bool validate_ea_card(char card_number[16]);
+
     public:
         Config(SpiceOverlay *overlay);
         ~Config() override;
 
         void read_card(int player = -1);
-        void write_card(int player);
         void build_content() override;
 
     };
