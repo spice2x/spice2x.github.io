@@ -204,7 +204,6 @@ namespace overlay::windows {
         ~Config() override;
 
         void read_card(int player = -1);
-        void write_card(int player);
         void build_content() override;
 
     };

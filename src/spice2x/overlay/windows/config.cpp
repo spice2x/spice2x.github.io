@@ -203,25 +203,6 @@ namespace overlay::windows {
         }
     }
 
-    void Config::write_card(int player) {
-
-        // get path
-        auto bindings = ::Config::getInstance().getKeypadBindings(this->games_selected_name);
-        std::filesystem::path path;
-        if (!bindings.card_paths[player].empty()) {
-            path = bindings.card_paths[player];
-        } else {
-            path = player > 0 ? "card1.txt" : "card0.txt";
-        }
-
-        // write file
-        std::ofstream f(path);
-        if (f) {
-            f.write(this->keypads_card_number[player], strlen(this->keypads_card_number[player]));
-            f.close();
-        }
-    }
-
     void Config::build_content() {
 
         // if standalone then fullscreen window
@@ -3854,7 +3835,7 @@ namespace overlay::windows {
                     // card path
                     std::string hint = "using .\\card" + to_string(player) + ".txt (default)";
                     ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
-                    if (ImGui::InputTextWithHint("Card Path", hint.c_str(),
+                    if (ImGui::InputTextWithHint("File Path", hint.c_str(),
                             this->keypads_card_path[player], sizeof(this->keypads_card_path[0]) - 1))
                     {
                         bindings.card_paths[player] = this->keypads_card_path[player];
@@ -3945,34 +3926,14 @@ namespace overlay::windows {
                         this->keypads_card_file_contents_valid[player] ? ImVec4(1.f, 1.f, 1.f, 1.f) :
                         ImVec4(1.f, 0.f, 0.f, 1.f));
                     ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
-                    ImGui::InputTextWithHint("Card Number", "E004010000000000",
-                            this->keypads_card_number[player], sizeof(this->keypads_card_number[0]) - 1,
-                            ImGuiInputTextFlags_CharsUppercase |
-                            ImGuiInputTextFlags_CharsHexadecimal |
-                            ImGuiInputTextFlags_EscapeClearsAll);
+                    ImGui::BeginDisabled();
+                    if (this->keypads_card_number[player][0] != 0) {
+                        ImGui::Text("Card from file: %s", this->keypads_card_number[player]);
+                    } else {
+                        ImGui::TextUnformatted("Failed to read file.");
+                    }
+                    ImGui::EndDisabled();
                     ImGui::PopStyleColor();
-
-                    // write card after edit
-                    if (ImGui::IsItemDeactivatedAfterEdit()) {
-                        write_card(player);
-                        read_card(1 - player);
-                    }
-
-                    // help marker
-                    ImGui::SameLine();
-                    ImGui::HelpMarker(
-                        "Click on Generate button to randomize a valid card number and automatically it save to specified file.");
-
-                    // generate button
-                    ImGui::SameLine();
-                    if (ImGui::Button("Generate")) {
-                        // don't know why this file insists on using 18 chars to store the card ID
-                        char new_card[17];
-                        generate_ea_card(new_card);
-                        strcpy_s(this->keypads_card_number[player], new_card);
-                        write_card(player);
-                        read_card(1 - player);
-                    }
                 }
 
                 ImGui::TreePop();
