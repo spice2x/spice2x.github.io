@@ -3904,6 +3904,18 @@ namespace overlay::windows {
                         }
                     }
 
+                    ImGui::SameLine();
+                    if (ImGui::Button("Edit")) {
+                        std::filesystem::path path;
+                        if (!bindings.card_paths[player].empty()) {
+                            path = bindings.card_paths[player];
+                        } else {
+                            path = (player > 0) ? "card1.txt" : "card0.txt";
+                        }
+                        // using notepad here in case the file doesn't exist
+                        launch_shell("notepad.exe", path.string().c_str());
+                    }
+
                     // clear button
                     if (!bindings.card_paths[player].empty()) {
                         ImGui::SameLine();
