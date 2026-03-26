@@ -95,6 +95,7 @@ namespace overlay::windows {
         ImGui::FileBrowser keypads_card_select_browser[2];
         char keypads_card_number[2][18] {};
         bool keypads_card_override_valid[2] = { false, false };
+        bool keypads_card_file_contents_valid[2] = { false, false };
 
         // presets tab
         std::vector<ControllerTemplate> templates_cache;

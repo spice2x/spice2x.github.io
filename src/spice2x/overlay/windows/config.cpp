@@ -3712,12 +3712,14 @@ namespace overlay::windows {
         // read in values from options
         auto options = games::get_options(this->games_selected_name);
         for (int player = 0; player < 2; player++) {
+            ImGui::PushID(("OverrideCardP" + to_string(player)).c_str());
+
             // intentionally using the same buffer length as options tab
             char buffer[OPTION_INPUT_TEXT_WIDTH];
             bool card_changed = false;
 
             // read in values from options
-            auto &option = player == 0
+            auto &option = (player == 0)
                     ? options->at(launcher::Options::Player1Card)
                     : options->at(launcher::Options::Player2Card);
             if (option.is_active()) {
@@ -3726,10 +3728,17 @@ namespace overlay::windows {
                 buffer[0] = '\0';
             }
 
-            if (ImGui::TreeNodeEx(
-                    fmt::format("Player {} (-card{})", player + 1, player).c_str(),
-                    ImGuiTreeNodeFlags_DefaultOpen)) {
+            const bool tree_open  = ImGui::TreeNodeEx("##OverrideCardTree", ImGuiTreeNodeFlags_DefaultOpen);
+            if (this->keypads_card_override_valid[player]) {
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
+            }
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::Text("Player %i (-card%i)", player + 1, player);
+            if (this->keypads_card_override_valid[player]) {
+                ImGui::PopStyleColor();
+            }
 
+            if (tree_open) {
                 // card number box
                 ImGui::PushStyleColor(
                     ImGuiCol_Text,
@@ -3753,7 +3762,7 @@ namespace overlay::windows {
                 if (buffer_len == 16) {
                     this->keypads_card_override_valid[player] = validate_ea_card(buffer);
                 } else if (buffer_len == 0) {
-                    this->keypads_card_override_valid[player] = true;
+                    this->keypads_card_override_valid[player] = false;
                 }
 
                 // generate button
@@ -3772,7 +3781,7 @@ namespace overlay::windows {
                 }
 
                 // bad card number warning
-                if (!this->keypads_card_override_valid[player]) {
+                if (!this->keypads_card_override_valid[player] && buffer_len > 0) {
                     ImGui::SameLine();
                     ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Invalid card number");
                 }
@@ -3784,6 +3793,8 @@ namespace overlay::windows {
                 ImGui::Spacing();
                 ImGui::Spacing();
             }
+
+            ImGui::PopID();
 
             if (card_changed) {
                 this->options_dirty = true;
@@ -3816,23 +3827,32 @@ namespace overlay::windows {
         for (int player = 0; player < 2; player++) {
 
             // check overrides first
-            auto &override = player == 0
-                    ? options->at(launcher::Options::Player1Card)
-                    : options->at(launcher::Options::Player2Card);
+            const auto &override = (player == 0)
+                ? options->at(launcher::Options::Player1Card)
+                : options->at(launcher::Options::Player2Card);
 
-            // custom ID
+            // custom ID and title
             ImGui::PushID(("KeypadP" + to_string(player)).c_str());
+            const bool tree_open = ImGui::TreeNodeEx("##KeypadTreeNode", ImGuiTreeNodeFlags_DefaultOpen);
+            const bool card_content_valid =
+                !override.is_active() &&
+                this->keypads_card_file_contents_valid[player] &&
+                this->keypads_card_number[player][0] != 0;
+            if (card_content_valid) {
+                ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
+            }
+            ImGui::SameLine(0.0f, 0.0f);
+            ImGui::Text("Player %i (card%i.txt)", player + 1, player);
+            if (card_content_valid) {
+                ImGui::PopStyleColor();
+            }
 
-            // title
-            if (ImGui::TreeNodeEx(
-                fmt::format("Player {} (card{}.txt)", player + 1, player).c_str(),
-                ImGuiTreeNodeFlags_DefaultOpen)) {
-
+            if (tree_open) {
                 if (override.is_active()) {
                     ImGui::TextDisabled("Disabled - override is in use.");
                 } else {
                     // card path
-                    std::string hint = ".\\card" + to_string(player) + ".txt";
+                    std::string hint = "using .\\card" + to_string(player) + ".txt (default)";
                     ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
                     if (ImGui::InputTextWithHint("Card Path", hint.c_str(),
                             this->keypads_card_path[player], sizeof(this->keypads_card_path[0]) - 1))
@@ -3913,15 +3933,17 @@ namespace overlay::windows {
                     }
 
                     // verify card number
-                    auto card_valid = true;
+                    this->keypads_card_file_contents_valid[player] = true;
                     if (this->keypads_card_number[player][0] != 0) {
-                        card_valid = validate_ea_card(this->keypads_card_number[player]);
+                        this->keypads_card_file_contents_valid[player] = 
+                            validate_ea_card(this->keypads_card_number[player]);
                     }
 
                     // card number box
-                    ImGui::PushStyleColor(ImGuiCol_Text,
-                                        card_valid ? ImVec4(1.f, 1.f, 1.f, 1.f) :
-                                        ImVec4(1.f, 0.f, 0.f, 1.f));
+                    ImGui::PushStyleColor(
+                        ImGuiCol_Text,
+                        this->keypads_card_file_contents_valid[player] ? ImVec4(1.f, 1.f, 1.f, 1.f) :
+                        ImVec4(1.f, 0.f, 0.f, 1.f));
                     ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
                     ImGui::InputTextWithHint("Card Number", "E004010000000000",
                             this->keypads_card_number[player], sizeof(this->keypads_card_number[0]) - 1,
