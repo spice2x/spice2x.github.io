@@ -2307,6 +2307,7 @@ int main_implementation(int argc, char *argv[]) {
     // load hooks
     for (auto &hook : game_hooks) {
         log_info("launcher", "loading hook DLL {}", hook);
+        libutils::print_dll_info(hook);
         HMODULE module;
         if (!(module = libutils::try_library(hook))) {
             log_warning("launcher", "failed to load hook {}: {}", hook, get_last_error_string());

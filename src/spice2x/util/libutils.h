@@ -77,4 +77,6 @@ namespace libutils {
     intptr_t rva2offset(const std::filesystem::path &path, intptr_t rva);
     intptr_t offset2rva(IMAGE_NT_HEADERS *nt_headers, intptr_t offset);
     intptr_t offset2rva(const std::filesystem::path &path, intptr_t offset);
+
+    void print_dll_info(std::filesystem::path filename);
 }
