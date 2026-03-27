@@ -846,6 +846,51 @@ namespace overlay::windows {
             ImGui::HelpTooltip("Bind a button to a device using Windows RawInput API.");
         }
 
+        if (this->analog_as_button_warning_show_next_frame.first == button->getName() &&
+            this->analog_as_button_warning_show_next_frame.second == alt_index) {
+
+            this->analog_as_button_warning_show_next_frame = std::make_pair("", 0);
+            ImGui::OpenPopup("Warning##AnalogAsButtonWarning");
+
+            // stop bind-many
+            RI_MGR->devices_midi_freeze(false);
+            this->buttons_bind_active = false;
+            this->buttons_many_active = false;
+        }
+        if (ImGui::BeginPopupModal("Warning##AnalogAsButtonWarning", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextUnformatted(
+                "You just bound an analog axis to a digital button.\n"
+                "\n"
+                "If your controller supports analog input (turntable,\n"
+                "knob, slider) you should instead use the Analog tab and\n"
+                "bind as an analog axis.");
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // yes
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.2f, 0.9f, 0.2f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
+            ImGui::AlignTextToFramePadding();
+            ImGui::Bullet();
+            ImGui::SameLine();
+            if (ImGui::Button("I understand, undo binding")) {
+                clear_button(button, alt_index);
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::PopStyleColor(3);
+
+            // no
+            ImGui::AlignTextToFramePadding();
+            ImGui::Bullet();
+            ImGui::SameLine();
+            if (ImGui::Button("Ignore and continue anyway")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
         bind_button_popup(bind_name, button, button_it_max, alt_index);
 
         // naive binding
@@ -1190,6 +1235,22 @@ namespace overlay::windows {
                                         buttons_bind_active = false;
                                         inc_buttons_many_index(button_it_max);
                                         RI_MGR->devices_midi_freeze(false);
+
+                                        // usually, turntables are X, knobs are X and Y
+                                        // gamepad triggers are Z, and Rx/Ry are right thumb stick
+                                        // one day we will label all I/O modules and flag which one are button-as-analog
+                                        // so that we don't have to do string comparions like below
+                                        if ((value_name == "X" || value_name == "Y") &&
+                                            (button->getName().find("Press") == std::string::npos) && // museca
+                                            (button->getName().find("Slowdown") == std::string::npos) && // bishibashi
+                                            (button->getName().find("TT+") != std::string::npos ||
+                                             button->getName().find("TT-") != std::string::npos || // iidx
+                                             button->getName().find("Knob") != std::string::npos || // gitadora guitar
+                                             button->getName().find("Disk") != std::string::npos || // museca, bishibashi
+                                             button->getName().find("VOL-") != std::string::npos)) { // sdvx
+                                            this->analog_as_button_warning_show_next_frame =
+                                                std::make_pair(button->getName(), alt_index);
+                                        }
                                         break;
 
                                     } else if (diff > 0.3f) {
