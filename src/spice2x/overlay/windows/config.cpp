@@ -1236,12 +1236,17 @@ namespace overlay::windows {
                                         inc_buttons_many_index(button_it_max);
                                         RI_MGR->devices_midi_freeze(false);
 
-                                        // turntables are usually X,
-                                        // knobs are usually X and Y
-                                        // gamepad triggers are usually Z, and Rx/Ry are usually right thumb stick
+                                        // usually, turntables are X, knobs are X and Y
+                                        // gamepad triggers are Z, and Rx/Ry are right thumb stick
+                                        // one day we will label all I/O modules and flag which one are button-as-analog
+                                        // so that we don't have to do string comparions like below
                                         if ((value_name == "X" || value_name == "Y") &&
-                                            (button->getName().find("TT") != std::string::npos || // iidx
+                                            (button->getName().find("Press") == std::string::npos) && // museca
+                                            (button->getName().find("Slowdown") == std::string::npos) && // bishibashi
+                                            (button->getName().find("TT+") != std::string::npos ||
+                                             button->getName().find("TT-") != std::string::npos || // iidx
                                              button->getName().find("Knob") != std::string::npos || // gitadora guitar
+                                             button->getName().find("Disk") != std::string::npos || // museca, bishibashi
                                              button->getName().find("VOL-") != std::string::npos)) { // sdvx
                                             this->analog_as_button_warning_show_next_frame =
                                                 std::make_pair(button->getName(), alt_index);
