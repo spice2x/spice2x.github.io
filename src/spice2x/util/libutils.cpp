@@ -9,6 +9,16 @@
 #include "peb.h"
 #include "util/fileutils.h"
 #include "util/dependencies.h"
+#include "util/unique_plain_ptr.h"
+
+#define DEBUG_VERBOSE 0
+
+#if DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
 
 std::filesystem::path libutils::module_file_name(HMODULE module) {
     std::wstring buf;
@@ -361,11 +371,106 @@ void libutils::check_duplicate_dlls() {
 void libutils::warn_if_dll_exists(const std::string &file_name) {
     if (fileutils::file_exists(MODULE_PATH / file_name)) {
         log_info("libutils", "found user-supplied {} in modules directory", file_name);
+        libutils::print_dll_info(MODULE_PATH / file_name);
         return;
     }
     const auto &spice_bin_path = libutils::module_file_name(nullptr).parent_path();
     if (fileutils::file_exists(spice_bin_path / file_name)) {
         log_info("libutils", "found user-supplied {} next to spice executable path", file_name);
+        libutils::print_dll_info(spice_bin_path / file_name);
         return;
     }
+}
+
+void libutils::print_dll_info(std::filesystem::path filename) {
+    DWORD handle;
+    const auto size = GetFileVersionInfoSizeA(filename.string().c_str(), &handle);
+    if (size == 0) {
+        log_debug(
+            "libutils",
+            "GetFileVersionInfoSizeA failed for {}: {}",
+            filename.filename().string(),
+            get_last_error_string());
+        return;
+    }
+
+    util::unique_plain_ptr<PVOID> data = util::make_unique_plain<PVOID>(size);
+    if (!GetFileVersionInfoA(filename.string().c_str(), handle, size, data.get())) {
+        log_debug(
+            "libutils",
+            "GetFileVersionInfoA failed for {}: {}",
+            filename.filename().string(),
+            get_last_error_string());
+        return;
+    }
+
+    struct LANGANDCODEPAGE {
+        WORD wLanguage;
+        WORD wCodePage;
+    } *lpTranslate = nullptr;
+
+    UINT cbTranslate = 0;
+    if (!VerQueryValueA(data.get(), "\\VarFileInfo\\Translation", (LPVOID*)&lpTranslate, &cbTranslate)) {
+        log_debug(
+            "libutils",
+            "VerQueryValueA failed for {}: {}",
+            filename.filename().string(),
+            get_last_error_string());
+        return;
+    }
+    if (cbTranslate == 0 || lpTranslate == nullptr) {
+        log_debug(
+            "libutils",
+            "VerQueryValueA returned invalid results for {}",
+            filename.filename().string());
+        return;
+    }
+
+    // pick language - prefer English
+    WORD lang = 0, codepage = 0;
+    for (UINT i = 0; i < cbTranslate / sizeof(*lpTranslate); i++) {
+        if (lpTranslate[i].wLanguage == 0x0409) { // en-us
+            lang = lpTranslate[i].wLanguage;
+            codepage = lpTranslate[i].wCodePage;
+            break;
+        }
+    }
+    if (lang == 0) {
+        lang = lpTranslate[0].wLanguage;
+        codepage = lpTranslate[0].wCodePage;
+    }
+
+    // StringFileInfo helper
+    auto query_string = [&](const char* key) -> std::string {
+        std::string subBlock = fmt::format(
+            "\\StringFileInfo\\{:04x}{:04x}\\{}",
+            lang, codepage, key
+        );
+
+        char* value = nullptr;
+        UINT size_out = 0;
+
+        if (VerQueryValueA(data.get(), subBlock.c_str(), (LPVOID*)&value, &size_out) && value) {
+            return value;
+        }
+        log_debug(
+            "libutils",
+            "VerQueryValueA({}) failed for {}: {}",
+            subBlock,
+            filename.filename().string(),
+            get_last_error_string());
+        return "";
+    };
+
+    const auto company_name = query_string("CompanyName");
+    const auto product_name = query_string("ProductName");
+    const auto version_str = query_string("FileVersion");
+
+    log_info(
+        "libutils",
+        "DLL info for {}: CompanyName = {}, ProductName = {}, Version = {}",
+        filename.filename().string(),
+        company_name.empty() ? "?" : company_name,
+        product_name.empty() ? "?" : product_name,
+        version_str.empty() ? "?" : version_str);
 }

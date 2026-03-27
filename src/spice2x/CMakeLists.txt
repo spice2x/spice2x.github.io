@@ -266,6 +266,7 @@ set_source_files_properties(cfg/manifest.rc PROPERTIES LANGUAGE RC)
 set_source_files_properties(cfg/icon.rc PROPERTIES LANGUAGE RC)
 set_source_files_properties(cfg/Win32D.rc PROPERTIES LANGUAGE RC)
 set_source_files_properties(build/manifest64.rc PROPERTIES LANGUAGE RC)
+set_source_files_properties(stubs/manifest.rc PROPERTIES LANGUAGE RC)
 
 # sources
 #########
@@ -813,7 +814,8 @@ endif()
 
 # nvcuda.dll
 set(SOURCE_FILES stubs/nvcuda.cpp)
-add_library(spicetools_stubs_nvcuda SHARED ${SOURCE_FILES} stubs/nvcuda.def)
+set(RESOURCE_FILES stubs/manifest.rc)
+add_library(spicetools_stubs_nvcuda SHARED ${SOURCE_FILES} ${RESOURCE_FILES} stubs/nvcuda.def)
 set_target_properties(spicetools_stubs_nvcuda PROPERTIES PREFIX "")
 set_target_properties(spicetools_stubs_nvcuda PROPERTIES OUTPUT_NAME "nvcuda")
 
@@ -823,7 +825,8 @@ endif()
 
 # nvcuvid.dll
 set(SOURCE_FILES stubs/nvcuvid.cpp)
-add_library(spicetools_stubs_nvcuvid SHARED ${SOURCE_FILES} stubs/nvcuvid.def)
+set(RESOURCE_FILES stubs/manifest.rc)
+add_library(spicetools_stubs_nvcuvid SHARED ${SOURCE_FILES} ${RESOURCE_FILES} stubs/nvcuvid.def)
 set_target_properties(spicetools_stubs_nvcuvid PROPERTIES PREFIX "")
 set_target_properties(spicetools_stubs_nvcuvid PROPERTIES OUTPUT_NAME "nvcuvid")
 
@@ -833,7 +836,8 @@ endif()
 
 # nvEncodeAPI64.dll
 set(SOURCE_FILES stubs/nvEncodeAPI64.cpp)
-add_library(spicetools_stubs_nvEncodeAPI64 SHARED ${SOURCE_FILES} stubs/nvEncodeAPI64.def)
+set(RESOURCE_FILES stubs/manifest.rc)
+add_library(spicetools_stubs_nvEncodeAPI64 SHARED ${SOURCE_FILES} ${RESOURCE_FILES} stubs/nvEncodeAPI64.def)
 set_target_properties(spicetools_stubs_nvEncodeAPI64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_stubs_nvEncodeAPI64 PROPERTIES OUTPUT_NAME "nvEncodeAPI64")
 
@@ -843,7 +847,8 @@ endif()
 
 # cpusbxpkm.dll (32 bit)
 set(SOURCE_FILES stubs/cpusbxpkm.cpp)
-add_library(spicetools_stubs_cpusbxpkm SHARED ${SOURCE_FILES} stubs/cpusbxpkm.def)
+set(RESOURCE_FILES stubs/manifest.rc)
+add_library(spicetools_stubs_cpusbxpkm SHARED ${SOURCE_FILES} ${RESOURCE_FILES} stubs/cpusbxpkm.def)
 set_target_properties(spicetools_stubs_cpusbxpkm PROPERTIES PREFIX "")
 set_target_properties(spicetools_stubs_cpusbxpkm PROPERTIES OUTPUT_NAME "cpusbxpkm")
 
