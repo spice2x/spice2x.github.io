@@ -217,7 +217,23 @@ namespace avs {
                 ea3_config_name = "prop/eamuse-config.xml";
             }
 
-            log_info("avs-ea3", "booting (using {})", ea3_config_name);
+            if (avs::core::file_exists(ea3_config_name)) {
+                log_info("avs-ea3", "booting (using {})", ea3_config_name);
+            } else {
+                log_warning("avs-ea3", "looked for the following files in order:");
+                log_warning("avs-ea3", "  * prop/ea3-config.xml");
+                log_warning("avs-ea3", "  * prop/ea3-cfg.xml");
+                if (avs::game::DLL_NAME == "beatstream1.dll") {
+                    log_warning("avs-ea3", "  * prop/ea3-config-1.xml");
+                }
+                if (avs::game::DLL_NAME == "beatstream2.dll") {
+                    log_warning("avs-ea3", "  * prop/ea3-config-2.xml");
+                }
+                log_warning("avs-ea3", "  * prop/eamuse-config.xml");
+                log_warning("avs-ea3", "none of the files above were found, game will fail to boot");
+                log_warning("avs-ea3", "usually, this means your game data is incomplete");
+                log_fatal("avs-ea3", "no ea3 config file found in prop directory; check log messages");
+            }
 
             // remember new config path
             CFG_PATH = ea3_config_name;
