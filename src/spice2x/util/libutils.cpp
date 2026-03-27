@@ -394,7 +394,7 @@ void libutils::print_dll_info(std::filesystem::path filename) {
         return;
     }
 
-    util::unique_plain_ptr<PVOID> data = util::make_unique_plain<PVOID>(size);
+    auto data = util::make_unique_plain<VOID>(size);
     if (!GetFileVersionInfoA(filename.string().c_str(), handle, size, data.get())) {
         log_debug(
             "libutils",
