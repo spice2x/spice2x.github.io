@@ -1507,6 +1507,7 @@ int main_implementation(int argc, char *argv[]) {
     // early hooks
     for (auto &hook : early_hooks) {
         log_info("launcher", "loading early hook DLL {}", hook);
+        libutils::print_dll_info(hook);
         HMODULE module;
         if (!(module = libutils::try_library(hook))) {
             log_warning("launcher", "failed to load early hook {}: {}", hook, get_last_error_string());
