@@ -685,12 +685,18 @@ namespace overlay::windows {
 
                     // primary
                     build_button(name, primary_button, &primary_button, button_it, button_it_max, 0);
+                    ImGui::PushID(&primary_button);
+                    ImGui::InvisibleTableRowSelectable();
+                    ImGui::PopID();
 
                     // alternatives
                     int alt_index = 1; // 0 is primary
                     for (auto &alt : primary_button.getAlternatives()) {
                         if (alt.isValid()) {
                             build_button(name, primary_button, &alt, button_it, button_it_max, alt_index);
+                            ImGui::PushID(&alt);
+                            ImGui::InvisibleTableRowSelectable();
+                            ImGui::PopID();
                         }
                         alt_index++;
                     }
@@ -2109,6 +2115,9 @@ namespace overlay::windows {
 
                     edit_analog_popup(analog);
 
+                    // row hover detection (invisible selectable that spans entire row)
+                    ImGui::InvisibleTableRowSelectable();
+
                     // clean up
                     ImGui::PopID();
                 }
@@ -2729,13 +2738,21 @@ namespace overlay::windows {
             }
 
             build_light(light, &light, i, 0);
+            ImGui::PushID(&light);
+            ImGui::InvisibleTableRowSelectable();
+            ImGui::PopID();
             int alt_index = 1;
             for (auto &alt : light.getAlternatives()) {
                 if (alt.isValid()) {
                     build_light(light, &alt, i, alt_index);
+                    ImGui::PushID(&alt);
+                    ImGui::InvisibleTableRowSelectable();
+                    ImGui::PopID();
                 }
                 alt_index++;
             }
+
+            
         }
         if (table_begin) {
             ImGui::EndTable();
@@ -4408,7 +4425,7 @@ namespace overlay::windows {
                         ImGui::TextDisabled(definition.category.c_str());
                     }
                 }
-
+                
                 // option name
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
@@ -4687,6 +4704,9 @@ namespace overlay::windows {
                     }
                 }
 
+                // row hover detection (invisible selectable that spans entire row)
+                ImGui::InvisibleTableRowSelectable();
+                
                 // next item
                 ImGui::PopID();
             }
@@ -5199,6 +5219,7 @@ namespace overlay::windows {
                         }
                     }
 
+                    ImGui::InvisibleTableRowSelectable();
                     ImGui::PopID();
                 }
 
