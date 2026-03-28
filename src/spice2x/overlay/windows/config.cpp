@@ -4340,21 +4340,17 @@ namespace overlay::windows {
         // tables must share the same ID to have synced column settings
         const int num_columns = (filter != nullptr) ? 3 : 2;
         if (ImGui::BeginTable("OptionsTable", num_columns, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            auto widget_col_width = 0;
             if (filter != nullptr) {
                 ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(160));
                 ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn(
-                    "Setting",
-                    ImGuiTableColumnFlags_WidthFixed,
-                    overlay::apply_scaling(220));
+                widget_col_width = overlay::apply_scaling(220);
             } else {
                 ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn(
-                    "Setting",
-                    ImGuiTableColumnFlags_WidthFixed,
-                    overlay::apply_scaling(270));
+                widget_col_width = overlay::apply_scaling(264);
             }
-
+            ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, widget_col_width);
+            
             // iterate options
             options_count = 0;
             for (auto &option : *options) {
@@ -4470,6 +4466,10 @@ namespace overlay::windows {
                 if (option.disabled || definition.disabled) {
                     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                }
+                if (definition.type != OptionType::Bool) {
+                    // take up width of column, minus some room for clear button and Pick button
+                    ImGui::SetNextItemWidth(widget_col_width - overlay::apply_scaling(70));
                 }
                 switch (definition.type) {
                     case OptionType::Bool: {
