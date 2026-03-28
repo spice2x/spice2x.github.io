@@ -4341,12 +4341,12 @@ namespace overlay::windows {
         const int num_columns = (filter != nullptr) ? 3 : 2;
         if (ImGui::BeginTable("OptionsTable", num_columns, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
             if (filter != nullptr) {
-                ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(170));
+                ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(160));
                 ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn(
                     "Setting",
                     ImGuiTableColumnFlags_WidthFixed,
-                    overlay::apply_scaling(240));
+                    overlay::apply_scaling(220));
             } else {
                 ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn(
@@ -4407,13 +4407,10 @@ namespace overlay::windows {
                     ImGui::TableNextColumn();
                     ImGui::AlignTextToFramePadding();
                     if (definition.category.empty()) {
-                        ImGui::TextUnformatted("-");
+                        ImGui::TextDisabled("-");
                     } else {
-                        ImGui::TextUnformatted(definition.category.c_str());
+                        ImGui::TextDisabled(definition.category.c_str());
                     }
-                    if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-                        ImGui::HelpTooltip(definition.category.c_str());
-                    }   
                 }
 
                 // option name
