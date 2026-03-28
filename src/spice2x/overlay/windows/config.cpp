@@ -4338,16 +4338,22 @@ namespace overlay::windows {
 
         // render table
         // tables must share the same ID to have synced column settings
-        if (ImGui::BeginTable("OptionsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
-            ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn(
-                "CMD Line Parameter",
-                ImGuiTableColumnFlags_WidthFixed,
-                overlay::apply_scaling(216));
-            ImGui::TableSetupColumn(
-                "Setting",
-                ImGuiTableColumnFlags_WidthFixed,
-                overlay::apply_scaling(240));
+        const int num_columns = (filter != nullptr) ? 3 : 2;
+        if (ImGui::BeginTable("OptionsTable", num_columns, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            if (filter != nullptr) {
+                ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(170));
+                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn(
+                    "Setting",
+                    ImGuiTableColumnFlags_WidthFixed,
+                    overlay::apply_scaling(240));
+            } else {
+                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn(
+                    "Setting",
+                    ImGuiTableColumnFlags_WidthFixed,
+                    overlay::apply_scaling(270));
+            }
 
             // iterate options
             options_count = 0;
@@ -4396,10 +4402,27 @@ namespace overlay::windows {
                 ImGui::PushID(&option);
                 ImGui::TableNextRow();
 
+                // category (only shown for search results)
+                if (filter != nullptr) {
+                    ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
+                    if (definition.category.empty()) {
+                        ImGui::TextUnformatted("-");
+                    } else {
+                        ImGui::TextUnformatted(definition.category.c_str());
+                    }
+                    if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                        ImGui::HelpTooltip(definition.category.c_str());
+                    }   
+                }
+
                 // option name
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
-                ImGui::Indent(INDENT);
+                if (filter == nullptr) {
+                    // add indent to make options align under category header
+                    ImGui::Indent(INDENT);
+                }
                 if (option.is_active()) {
                     // active option
                     if (option.disabled || definition.disabled) {
@@ -4415,21 +4438,22 @@ namespace overlay::windows {
                     // normal text
                     ImGui::TextUnformatted(definition.title.c_str());
                 }
-                ImGui::Unindent(INDENT);
+                if (filter == nullptr) {
+                    ImGui::Unindent(INDENT);
+                }
                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     ImGui::HelpTooltip(definition.desc.c_str());
                 }
 
                 // command line parameter
-                ImGui::TableNextColumn();
-                ImGui::AlignTextToFramePadding();
                 std::string param = "-";
                 if (definition.display_name.empty()) {
                     param += definition.name;
                 } else {
                     param += definition.display_name;
                 }
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", param.c_str());
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.27f, 0.27f, 0.27f, 1.f), " %s", param.c_str());
                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     const auto help =
                         param +
