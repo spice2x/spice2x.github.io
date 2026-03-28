@@ -62,9 +62,9 @@ void show_popup_for_crash() {
     text += "Game has crashed.\n\n";
     text += "Check log.txt and look for error messages near the end of file.\n\n";
     text += "Unsure what to do next?\n";
-    text += "  * update spice2x to the latest version\n";
-    text += "  * check the FAQ on spice2x github wiki\n";
-    text += "  * do NOT screenshot this, instead, share log.txt with someone and ask for help\n\n";
+    text += "  * Update spice2x to the latest version\n";
+    text += "  * Check the FAQ on spice2x github wiki\n";
+    text += "  * Do NOT screenshot this, instead, share log.txt with someone and ask for help\n\n";
     text += "Press Enter, Esc, Alt+F4, or click OK to exit. Otherwise, game will close in 30 seconds.";
     show_popup(text);
 }
@@ -76,9 +76,9 @@ void show_popup_for_fatal_error(std::string message) {
     text += message;
     text += "----------------------------------------------------------\n\n";
     text += "Unsure what to do next?\n";
-    text += "  * update spice2x to the latest version\n";
-    text += "  * check the FAQ on spice2x github wiki\n";
-    text += "  * do NOT screenshot this, instead, share log.txt with someone and ask for help\n\n";
+    text += "  * Update spice2x to the latest version\n";
+    text += "  * Check the FAQ on spice2x github wiki\n";
+    text += "  * Do NOT screenshot this, instead, share log.txt with someone and ask for help\n\n";
     text += "Press Enter, Esc, Alt+F4, or click OK to exit. Otherwise, game will close in 30 seconds.";
     show_popup(text);
 }
