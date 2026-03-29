@@ -844,6 +844,10 @@ namespace overlay::windows {
                         ImGui::TextUnformatted(patch_checked ? "ON" : "off");
                         ImGui::EndDisabled();
                     }
+
+                    // row hover detection (invisible selectable that spans entire row)
+                    ImGui::InvisibleTableRowSelectable();
+
                     ImGui::PopID();
                 }
 

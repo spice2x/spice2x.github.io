@@ -685,12 +685,18 @@ namespace overlay::windows {
 
                     // primary
                     build_button(name, primary_button, &primary_button, button_it, button_it_max, 0);
+                    ImGui::PushID(&primary_button);
+                    ImGui::InvisibleTableRowSelectable();
+                    ImGui::PopID();
 
                     // alternatives
                     int alt_index = 1; // 0 is primary
                     for (auto &alt : primary_button.getAlternatives()) {
                         if (alt.isValid()) {
                             build_button(name, primary_button, &alt, button_it, button_it_max, alt_index);
+                            ImGui::PushID(&alt);
+                            ImGui::InvisibleTableRowSelectable();
+                            ImGui::PopID();
                         }
                         alt_index++;
                     }
@@ -2170,6 +2176,9 @@ namespace overlay::windows {
 
                     edit_analog_popup(analog);
 
+                    // row hover detection (invisible selectable that spans entire row)
+                    ImGui::InvisibleTableRowSelectable();
+
                     // clean up
                     ImGui::PopID();
                 }
@@ -2790,13 +2799,21 @@ namespace overlay::windows {
             }
 
             build_light(light, &light, i, 0);
+            ImGui::PushID(&light);
+            ImGui::InvisibleTableRowSelectable();
+            ImGui::PopID();
             int alt_index = 1;
             for (auto &alt : light.getAlternatives()) {
                 if (alt.isValid()) {
                     build_light(light, &alt, i, alt_index);
+                    ImGui::PushID(&alt);
+                    ImGui::InvisibleTableRowSelectable();
+                    ImGui::PopID();
                 }
                 alt_index++;
             }
+
+            
         }
         if (table_begin) {
             ImGui::EndTable();
@@ -4399,17 +4416,19 @@ namespace overlay::windows {
 
         // render table
         // tables must share the same ID to have synced column settings
-        if (ImGui::BeginTable("OptionsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
-            ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn(
-                "CMD Line Parameter",
-                ImGuiTableColumnFlags_WidthFixed,
-                overlay::apply_scaling(216));
-            ImGui::TableSetupColumn(
-                "Setting",
-                ImGuiTableColumnFlags_WidthFixed,
-                overlay::apply_scaling(240));
-
+        const int num_columns = (filter != nullptr) ? 3 : 2;
+        if (ImGui::BeginTable("OptionsTable", num_columns, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            auto widget_col_width = 0;
+            if (filter != nullptr) {
+                ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(160));
+                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
+                widget_col_width = overlay::apply_scaling(220);
+            } else {
+                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
+                widget_col_width = overlay::apply_scaling(264);
+            }
+            ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, widget_col_width);
+            
             // iterate options
             options_count = 0;
             for (auto &option : *options) {
@@ -4457,10 +4476,24 @@ namespace overlay::windows {
                 ImGui::PushID(&option);
                 ImGui::TableNextRow();
 
+                // category (only shown for search results)
+                if (filter != nullptr) {
+                    ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
+                    if (definition.category.empty()) {
+                        ImGui::TextDisabled("-");
+                    } else {
+                        ImGui::TextDisabled(definition.category.c_str());
+                    }
+                }
+                
                 // option name
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
-                ImGui::Indent(INDENT);
+                if (filter == nullptr) {
+                    // add indent to make options align under category header
+                    ImGui::Indent(INDENT);
+                }
                 if (option.is_active()) {
                     // active option
                     if (option.disabled || definition.disabled) {
@@ -4476,21 +4509,22 @@ namespace overlay::windows {
                     // normal text
                     ImGui::TextUnformatted(definition.title.c_str());
                 }
-                ImGui::Unindent(INDENT);
+                if (filter == nullptr) {
+                    ImGui::Unindent(INDENT);
+                }
                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     ImGui::HelpTooltip(definition.desc.c_str());
                 }
 
                 // command line parameter
-                ImGui::TableNextColumn();
-                ImGui::AlignTextToFramePadding();
                 std::string param = "-";
                 if (definition.display_name.empty()) {
                     param += definition.name;
                 } else {
                     param += definition.display_name;
                 }
-                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "%s", param.c_str());
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.27f, 0.27f, 0.27f, 1.f), " %s", param.c_str());
                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     const auto help =
                         param +
@@ -4510,6 +4544,10 @@ namespace overlay::windows {
                 if (option.disabled || definition.disabled) {
                     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                }
+                if (definition.type != OptionType::Bool) {
+                    // take up width of column, minus some room for clear button and Pick button
+                    ImGui::SetNextItemWidth(widget_col_width - overlay::apply_scaling(70));
                 }
                 switch (definition.type) {
                     case OptionType::Bool: {
@@ -4727,6 +4765,9 @@ namespace overlay::windows {
                     }
                 }
 
+                // row hover detection (invisible selectable that spans entire row)
+                ImGui::InvisibleTableRowSelectable();
+                
                 // next item
                 ImGui::PopID();
             }
@@ -5239,6 +5280,7 @@ namespace overlay::windows {
                         }
                     }
 
+                    ImGui::InvisibleTableRowSelectable();
                     ImGui::PopID();
                 }
 

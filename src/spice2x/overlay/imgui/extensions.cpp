@@ -163,4 +163,17 @@ namespace ImGui {
         ImGui::PopID();
         return clicked;
     }
+
+    void InvisibleTableRowSelectable() {
+        ImGui::TableSetColumnIndex(0);
+        ImGui::PushStyleColor(ImGuiCol_Header, 0);
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0);
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, 0);
+        ImGui::Selectable("##row", false,
+            ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap);
+        ImGui::PopStyleColor(3);
+        if (ImGui::IsItemHovered()) {
+            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, IM_COL32(200, 200, 200, 24));
+        }
+    }
 }

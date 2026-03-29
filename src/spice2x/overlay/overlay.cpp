@@ -194,7 +194,7 @@ void overlay::SpiceOverlay::init() {
 
     // Text
     colors[ImGuiCol_Text] = ImVec4(1.00f, 0.90f, 0.90f, 1.00f); // Slight pinkish tint to off-white
-    colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.40f, 0.40f, 1.00f);
+    colors[ImGuiCol_TextDisabled] = ImVec4(0.35f, 0.26f, 0.26f, 1.00f);
 
     // Backgrounds
     colors[ImGuiCol_WindowBg] = ImVec4(0.08f, 0.07f, 0.07f, 1.00f); // Deep charcoal
