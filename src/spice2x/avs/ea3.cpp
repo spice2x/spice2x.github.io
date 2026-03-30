@@ -554,9 +554,17 @@ namespace avs {
             auto app_param = avs::core::property_search_safe(app_config, nullptr, "/param");
 
             // call the game init
-            log_info("avs-ea3", "calling entry init (init code = {})", init_code_str);
+            log_info("avs-ea3", "calling dll_entry_init (init code = {})", init_code_str);
             if (!avs::game::entry_init(init_code_str.data(), app_param)) {
-                log_fatal("avs-ea3", "entry init failed :(");
+                for (size_t i = 0; i < 255; i++) {
+                    log_warning("avs-ea3", "dll_entry_init failed :(");
+                }
+                deferredlogs::defer_error_messages({
+                    "dll_entry_init failed",
+                    "    init code: " + init_code_str,
+                    "    this is a fatal error that causes boot failure",
+                    "    most likely, your prop files have errors"
+                });
             }
 
             // accommodate changes to soft id code
