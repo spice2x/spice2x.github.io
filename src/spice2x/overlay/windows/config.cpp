@@ -3726,6 +3726,7 @@ namespace overlay::windows {
                     this->keypads_card_override_valid[player] ? ImVec4(1.f, 1.f, 1.f, 1.f) :
                     ImVec4(1.f, 0.f, 0.f, 1.f));
                 ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
+                ImGui::BeginDisabled(option.disabled);
                 ImGui::InputTextWithHint("##OverrideCard", "E004010000000000",
                         buffer, sizeof(buffer) - 1,
                         ImGuiInputTextFlags_CharsUppercase |
@@ -3746,18 +3747,29 @@ namespace overlay::windows {
                     this->keypads_card_override_valid[player] = false;
                 }
 
-                // generate button
-                ImGui::SameLine();
-                if (ImGui::Button("Generate")) {
-                    generate_ea_card(buffer);
-                    card_changed = true;
-                }
+                ImGui::EndDisabled();
 
-                if (option.is_active()) {
+                if (!option.disabled) {
+                    // generate button
                     ImGui::SameLine();
-                    if (ImGui::Button("Clear")) {
-                        buffer[0] = '\0';
+                    if (ImGui::Button("Generate")) {
+                        generate_ea_card(buffer);
                         card_changed = true;
+                    }
+
+                    // clear button
+                    if (option.is_active()) {
+                        ImGui::SameLine();
+                        if (ImGui::Button("Clear")) {
+                            buffer[0] = '\0';
+                            card_changed = true;
+                        }
+                    }
+                } else {
+                    if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                        ImGui::HelpTooltip(
+                            "This option cannot be edited because it was overriden by command-line options.\n"
+                            "Run spicecfg.exe to configure the options and then run spice(64).exe directly.");
                     }
                 }
 
@@ -4624,7 +4636,7 @@ namespace overlay::windows {
                 if (option.disabled && !definition.disabled) {
                     ImGui::SameLine();
                     ImGui::HelpMarker(
-                        "This option can not be edited because it was overriden by command-line options.\n"
+                        "This option cannot be edited because it was overriden by command-line options.\n"
                         "Run spicecfg.exe to configure the options and then run spice(64).exe directly.");
                 }
 
