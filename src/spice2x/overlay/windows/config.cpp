@@ -3844,8 +3844,12 @@ namespace overlay::windows {
                     if (option.is_active()) {
                         ImGui::SameLine();
                         if (ImGui::Button("Clear")) {
-                            buffer[0] = '\0';
-                            card_changed = true;
+                            if (!this->keypads_card_overwrite_confirmed[player] && buffer_len > 0) {
+                                ImGui::OpenPopup("Clear Card##ClearCardConfirm");
+                            } else {
+                                buffer[0] = '\0';
+                                card_changed = true;
+                            }
                         }
                     }
                 } else {
@@ -3885,6 +3889,33 @@ namespace overlay::windows {
                     ImGui::Bullet();
                     ImGui::SameLine();
                     if (ImGui::Button("Keep current card and cancel")) {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+                }
+                if (ImGui::BeginPopupModal(
+                        "Clear Card##ClearCardConfirm",
+                        nullptr,
+                        ImGuiWindowFlags_AlwaysAutoResize)) {
+
+                    ImGui::TextUnformatted(
+                        "This cannot be undone. Are you sure?");
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::Spacing();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Bullet();
+                    ImGui::SameLine();
+                    if (ImGui::Button("Yes, delete card number")) {
+                        this->keypads_card_overwrite_confirmed[player] = true;
+                        buffer[0] = '\0';
+                        card_changed = true;
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Bullet();
+                    ImGui::SameLine();
+                    if (ImGui::Button("No, keep my card number")) {
                         ImGui::CloseCurrentPopup();
                     }
                     ImGui::EndPopup();
