@@ -87,7 +87,7 @@ namespace overlay::windows {
         bool auto_match_soft_enabled = true;
         bool auto_match_p2 = false;
 
-        // keypads tab
+        // cards tab
         int keypads_selected[2] {};
         char keypads_card_path[2][1024] {};
         std::thread *keypads_card_select = nullptr;
@@ -96,6 +96,7 @@ namespace overlay::windows {
         char keypads_card_number[2][18] {};
         bool keypads_card_override_valid[2] = { false, false };
         bool keypads_card_file_contents_valid[2] = { false, false };
+        bool keypads_card_overwrite_confirmed[2];
 
         // presets tab
         std::vector<ControllerTemplate> templates_cache;
