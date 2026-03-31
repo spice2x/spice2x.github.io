@@ -58,6 +58,7 @@ namespace overlay::windows {
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
+    constexpr ImVec4 TEXT_COLOR_RED(1.f, 0.f, 0.f, 1.f);
     constexpr uint32_t OPTION_INPUT_TEXT_WIDTH = 512;
     
     std::unique_ptr<AsioDriverList> asio_driver_list;
@@ -3831,8 +3832,12 @@ namespace overlay::windows {
                     // generate button
                     ImGui::SameLine();
                     if (ImGui::Button("Generate")) {
-                        generate_ea_card(buffer);
-                        card_changed = true;
+                        if (!this->keypads_card_overwrite_confirmed[player] && buffer_len > 0) {
+                            ImGui::OpenPopup("Card Generator##GenerateCardConfirm");
+                        } else {
+                            generate_ea_card(buffer);
+                            card_changed = true;
+                        }
                     }
 
                     // clear button
@@ -3855,6 +3860,34 @@ namespace overlay::windows {
                 if (!this->keypads_card_override_valid[player] && buffer_len > 0) {
                     ImGui::SameLine();
                     ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Invalid card number");
+                }
+
+                if (ImGui::BeginPopupModal(
+                        "Card Generator##GenerateCardConfirm",
+                        nullptr,
+                        ImGuiWindowFlags_AlwaysAutoResize)) {
+
+                    ImGui::TextUnformatted(
+                        "What do you want to do?");
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::Spacing();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Bullet();
+                    ImGui::SameLine();
+                    if (ImGui::Button("Discard current card and generate new one")) {
+                        this->keypads_card_overwrite_confirmed[player] = true;
+                        generate_ea_card(buffer);
+                        card_changed = true;
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::Bullet();
+                    ImGui::SameLine();
+                    if (ImGui::Button("Keep current card and cancel")) {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
                 }
 
                 ImGui::TreePop();
@@ -3995,7 +4028,7 @@ namespace overlay::windows {
                     }
 
                     ImGui::SameLine();
-                    if (ImGui::Button("Edit")) {
+                    if (ImGui::Button("Edit in Notepad")) {
                         std::filesystem::path path;
                         if (!bindings.card_paths[player].empty()) {
                             path = bindings.card_paths[player];
@@ -4023,19 +4056,20 @@ namespace overlay::windows {
                     }
 
                     // card number box
-                    ImGui::PushStyleColor(
-                        ImGuiCol_Text,
-                        this->keypads_card_file_contents_valid[player] ? ImVec4(1.f, 1.f, 1.f, 1.f) :
-                        ImVec4(1.f, 0.f, 0.f, 1.f));
+                    
                     ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
                     ImGui::BeginDisabled();
                     if (this->keypads_card_number[player][0] != 0) {
+                        ImGui::PushStyleColor(
+                            ImGuiCol_Text,
+                            this->keypads_card_file_contents_valid[player] ?
+                            TEXT_COLOR_GREEN : TEXT_COLOR_RED);
                         ImGui::Text("Card from file: %s", this->keypads_card_number[player]);
+                        ImGui::PopStyleColor();
                     } else {
-                        ImGui::TextUnformatted("Failed to read file.");
+                        ImGui::TextColored(TEXT_COLOR_RED, "Failed to read file.");
                     }
                     ImGui::EndDisabled();
-                    ImGui::PopStyleColor();
                 }
 
                 ImGui::TreePop();
