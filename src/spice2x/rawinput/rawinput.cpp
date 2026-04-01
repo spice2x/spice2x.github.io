@@ -176,7 +176,7 @@ void rawinput::RawInputManager::input_hwnd_destroy() {
 
 void rawinput::RawInputManager::devices_reload() {
     this->devices_destruct();
-    log_info("rawinput", "reloading devices");
+    log_info("rawinput", "reloading devices...");
 
     // scan for devices
     this->devices_scan_rawinput();
@@ -199,6 +199,7 @@ void rawinput::RawInputManager::devices_reload() {
 }
 
 void rawinput::RawInputManager::devices_scan_rawinput(const std::string &device_name) {
+    log_misc("rawinput", "scan rawinput devices...");
 
     // get number of devices
     UINT device_no = 0;
@@ -235,6 +236,8 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
     if (device_name.empty()) {
         return;
     }
+
+    log_misc("rawinput", "found rawinput device: {}", device_name);
 
     // extract information out of name
     auto device_info = rawinput::RawInputManager::get_device_info(device_name);
@@ -810,6 +813,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
 }
 
 void rawinput::RawInputManager::devices_scan_midi() {
+    log_misc("rawinput", "scan MIDI devices...");
 
     // add midi devices
     auto midi_device_count = midiInGetNumDevs();
@@ -820,6 +824,9 @@ void rawinput::RawInputManager::devices_scan_midi() {
         if (midiInGetDevCaps(midi_device_id, &midi_device_caps, sizeof(MIDIINCAPS)) != MMSYSERR_NOERROR) {
             continue;
         }
+
+        log_misc("rawinput", "found MIDI device: id {}, name {}, mid {}, pid {}",
+            midi_device_id, midi_device_caps.szPname, midi_device_caps.wMid, midi_device_caps.wPid);
 
         // open device
         HMIDIIN midi_device_handle;
@@ -920,6 +927,7 @@ void rawinput::RawInputManager::devices_scan_midi() {
 }
 
 void rawinput::RawInputManager::devices_scan_piuio() {
+    log_misc("rawinput", "scan PIUIO devices...");
 
     // add device to vector first so pointer is valid
     auto *new_piuio_device = new Device();
@@ -950,6 +958,8 @@ void rawinput::RawInputManager::devices_scan_piuio() {
 }
 
 void rawinput::RawInputManager::devices_scan_smxstage() {
+    log_misc("rawinput", "scan SMX Stage devices...");
+
     auto *new_smxstage_device = new Device();
     new_smxstage_device->type = SMX_STAGE;
     new_smxstage_device->name = "smxstage";
@@ -974,6 +984,8 @@ void rawinput::RawInputManager::devices_scan_smxstage() {
 }
 
 void rawinput::RawInputManager::devices_scan_smxdedicab() {
+    log_misc("rawinput", "scan SMX Dedicated Cabinet devices...");
+
     auto *new_smxdedicab_device = new Device();
     new_smxdedicab_device->type = SMX_DEDICAB;
     new_smxdedicab_device->name = "smxdedicab";
@@ -1218,6 +1230,8 @@ std::string rawinput::RawInputManager::rawinput_get_device_description(const raw
 void rawinput::RawInputManager::sextet_register(const std::string &port_name, const std::string &alias,
         bool warn) {
 
+    log_misc("rawinput", "checking for sextet-stream device on {}...", port_name);
+
     // check for any sextet-stream devices
     Device device {};
     device.type = SEXTET_OUTPUT;
@@ -1258,12 +1272,14 @@ void rawinput::RawInputManager::devices_remove(const std::string &name) {
 }
 
 void rawinput::RawInputManager::devices_register() {
-
+    
     // check input window
     if (!this->input_hwnd) {
         log_warning("rawinput", "trying to register devices without input window");
         return;
     }
+    
+    log_misc("rawinput", "registering raw input devices...");
 
     // register keyboard
     RAWINPUTDEVICE keyboard_device{};
