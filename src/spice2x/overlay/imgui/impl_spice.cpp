@@ -487,7 +487,7 @@ void ImGui_ImplSpice_NewFrame() {
         if (old_mouse_pos.x != new_mouse_pos.x ||
             old_mouse_pos.y != new_mouse_pos.y ||
             wheel_diff != 0 ||
-            g_MouseDown[0] || g_MouseDown[1] || g_MouseDown[2]) {
+            g_MouseDown[ImGuiMouseButton_Left] || g_MouseDown[ImGuiMouseButton_Right] || g_MouseDown[ImGuiMouseButton_Middle]) {
 
             // mouse moved, update time and show the cursor
             g_LastMouseMovement = get_performance_milliseconds();
