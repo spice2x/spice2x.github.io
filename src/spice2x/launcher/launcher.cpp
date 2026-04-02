@@ -980,7 +980,7 @@ int main_implementation(int argc, char *argv[]) {
         // do not explicitly set GRAPHICS_9_ON_12_STATE to default here; must respect
         // legacy Graphics9On12 option from above if set
     }
-    if (options[launcher::Options::NoLegacy].value_bool() && !cfg::CONFIGURATOR_STANDALONE) {
+    if (options[launcher::Options::NoLegacy].value_bool() && !cfg_run) {
         rawinput::NOLEGACY = true;
     }
     if (options[launcher::Options::RichPresence].value_bool()) {

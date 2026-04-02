@@ -15,6 +15,15 @@
 #include "util/utils.h"
 #include "hooks/graphics/graphics.h"
 
+#define DEBUG_VERBOSE 1
+
+#if DEBUG_VERBOSE
+#define log_debug(module, format_str, ...) logger::push( \
+    LOG_FORMAT("M", module, format_str, ## __VA_ARGS__), logger::Style::GREY)
+#else
+#define log_debug(module, format_str, ...)
+#endif
+
 #if !defined(IMGUI_ENABLE_WIN32_DEFAULT_IME_FUNCTIONS) || \
     !defined(IMGUI_DISABLE_DEFAULT_ALLOCATORS) || \
     !defined(IMGUI_USE_BGRA_PACKED_COLOR) || \
@@ -33,8 +42,93 @@ static ImGuiMouseCursor g_LastMouseCursor = ImGuiMouseCursor_COUNT;
 static double g_LastMouseMovement = 0.f;
 static bool g_MouseCursorAutoHide = false;
 
+static ImGuiKey get_imgui_key(int vkey) {
+    switch (vkey) {
+        case VK_TAB:
+            return ImGuiKey_Tab;
+        case VK_LEFT:
+            return ImGuiKey_LeftArrow; 
+        case VK_RIGHT:
+            return ImGuiKey_RightArrow;
+        case VK_UP:
+            return ImGuiKey_UpArrow;
+        case VK_DOWN:
+            return ImGuiKey_DownArrow;
+        case VK_PRIOR:
+            return ImGuiKey_PageUp;
+        case VK_NEXT:
+            return ImGuiKey_PageDown;
+        case VK_HOME:
+            return ImGuiKey_Home;
+        case VK_END:
+            return ImGuiKey_End;
+        case VK_INSERT:
+            return ImGuiKey_Insert;
+        case VK_DELETE:
+            return ImGuiKey_Delete;
+        case VK_BACK:
+            return ImGuiKey_Backspace;
+        case VK_SPACE:
+            return ImGuiKey_Space;
+        case VK_RETURN:
+            return ImGuiKey_Enter;
+        case VK_ESCAPE:
+            return ImGuiKey_Escape;
+        case VK_SHIFT:
+        case VK_LSHIFT:
+            return ImGuiKey_LeftShift;
+        case VK_RSHIFT:
+            return ImGuiKey_RightShift;
+        case VK_CONTROL:
+        case VK_LCONTROL:
+            return ImGuiKey_LeftCtrl;
+        case VK_RCONTROL:
+            return ImGuiKey_RightCtrl;
+        case 'A':
+        case 'a':
+            return ImGuiKey_A;
+        case 'C':
+        case 'c':
+            return ImGuiKey_C;
+        case 'V':
+        case 'v':
+            return ImGuiKey_V;
+        case 'X':
+        case 'x':
+            return ImGuiKey_X;
+        case 'Y':
+        case 'y':
+            return ImGuiKey_Y;  
+        case 'Z':
+        case 'z':
+            return ImGuiKey_Z;
+        default:
+            return ImGuiKey_None;
+    }
+}
+
+static ImGuiKey get_imgui_mod_key(int vkey) {
+    switch (vkey) {
+        case VK_SHIFT:
+        case VK_LSHIFT:
+        case VK_RSHIFT:
+            return ImGuiMod_Shift;
+            return ImGuiMod_Shift;
+        case VK_CONTROL:
+        case VK_LCONTROL:
+        case VK_RCONTROL:
+            return ImGuiMod_Ctrl;
+        case VK_MENU:
+        case VK_LMENU:
+        case VK_RMENU:
+            return ImGuiMod_Alt;
+        default:
+            return ImGuiMod_None;
+    }
+}
+
 bool ImGui_ImplSpice_Init(HWND hWnd) {
-    log_misc("imgui_impl_spice", "init");
+    log_misc("imgui_imgui_impl_spice", "init");
 
     // check if already initialized
     if (g_hWnd != nullptr) {
@@ -56,32 +150,8 @@ bool ImGui_ImplSpice_Init(HWND hWnd) {
     ImGuiIO &io = ImGui::GetIO();
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
-    io.BackendPlatformName = "imgui_impl_spice";
+    io.BackendPlatformName = "imgui_imgui_impl_spice";
     io.ConfigErrorRecoveryEnableTooltip = true;
-
-    // keyboard mapping
-    io.KeyMap[ImGuiKey_Tab] = VK_TAB;
-    io.KeyMap[ImGuiKey_LeftArrow] = VK_LEFT;
-    io.KeyMap[ImGuiKey_RightArrow] = VK_RIGHT;
-    io.KeyMap[ImGuiKey_UpArrow] = VK_UP;
-    io.KeyMap[ImGuiKey_DownArrow] = VK_DOWN;
-    io.KeyMap[ImGuiKey_PageUp] = VK_PRIOR;
-    io.KeyMap[ImGuiKey_PageDown] = VK_NEXT;
-    io.KeyMap[ImGuiKey_Home] = VK_HOME;
-    io.KeyMap[ImGuiKey_End] = VK_END;
-    io.KeyMap[ImGuiKey_Insert] = VK_INSERT;
-    io.KeyMap[ImGuiKey_Delete] = VK_DELETE;
-    io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
-    io.KeyMap[ImGuiKey_Space] = VK_SPACE;
-    io.KeyMap[ImGuiKey_Enter] = VK_RETURN;
-    io.KeyMap[ImGuiKey_Escape] = VK_ESCAPE;
-    io.KeyMap[ImGuiKey_KeypadEnter] = VK_RETURN;
-    io.KeyMap[ImGuiKey_A] = 'A';
-    io.KeyMap[ImGuiKey_C] = 'C';
-    io.KeyMap[ImGuiKey_V] = 'V';
-    io.KeyMap[ImGuiKey_X] = 'X';
-    io.KeyMap[ImGuiKey_Y] = 'Y';
-    io.KeyMap[ImGuiKey_Z] = 'Z';
 
     // get display size
     ImGui_ImplSpice_UpdateDisplaySize();
@@ -97,7 +167,7 @@ bool ImGui_ImplSpice_Init(HWND hWnd) {
 }
 
 void ImGui_ImplSpice_Shutdown() {
-    log_misc("imgui_impl_spice", "shutdown");
+    log_misc("imgui_imgui_impl_spice", "shutdown");
 
     // reset window handle
     g_hWnd = nullptr;
@@ -262,6 +332,9 @@ static void ImGui_ImplSpice_UpdateMousePos() {
     }
 }
 
+constexpr size_t VKEY_MAX = 255;
+static std::array<bool, VKEY_MAX> g_KeysDown;
+
 void ImGui_ImplSpice_NewFrame() {
 
     // check if font is built
@@ -275,33 +348,20 @@ void ImGui_ImplSpice_NewFrame() {
     g_Time = current_time;
 
     // remember old state
-    BYTE KeysDownOld[sizeof(io.KeysDown)];
-    for (size_t i = 0; i < sizeof(io.KeysDown); i++) {
-        KeysDownOld[i] = io.KeysDown[i] ? ~0 : 0;
+    std::array<BYTE, VKEY_MAX> KeysDownOld;
+    for (size_t i = 0; i < VKEY_MAX; i++) {
+        KeysDownOld[i] = g_KeysDown[i] ? ~0 : 0;
     }
-    KeysDownOld[VK_SHIFT] |= KeysDownOld[VK_LSHIFT];
-    KeysDownOld[VK_SHIFT] |= KeysDownOld[VK_RSHIFT];
 
     // reset keys state
     io.MouseWheel = 0;
-    io.KeyCtrl = false;
-    io.KeyShift = false;
-    io.KeyAlt = false;
-    io.KeySuper = false;
-    memset(io.KeysDown, false, sizeof(io.KeysDown));
     memset(io.MouseDown, false, sizeof(io.MouseDown));
+    g_KeysDown.fill(false);
 
     // early quit if window not in focus
     if (!superexit::has_focus() || rawinput::OS_WINDOW_ACTIVE) {
         return;
     }
-
-    // read keyboard modifiers inputs
-    io.KeyCtrl = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
-    io.KeyShift = (::GetKeyState(VK_SHIFT) & 0x8000) != 0;
-    io.KeyAlt = (::GetKeyState(VK_MENU) & 0x8000) != 0;
-    io.KeySuper = (::GetKeyState(VK_LWIN) & 0x8000) != 0;
-    io.KeySuper |= (::GetKeyState(VK_RWIN) & 0x8000) != 0;
 
     // apply windows mouse buttons
     io.MouseDown[0] |= (get_async_primary_mouse()) != 0;
@@ -346,39 +406,53 @@ void ImGui_ImplSpice_NewFrame() {
                 case rawinput::KEYBOARD: {
 
                     // iterate all virtual key codes
-                    for (size_t vKey = 0; vKey < 256; vKey++) {
-
+                    for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
                         // get state (combined from all pages)
                         auto &key_states = device.keyboardInfo->key_states;
-                        bool state = false;
                         for (size_t page_index = 0; page_index < 1024; page_index += 256) {
-                            state |= key_states[page_index + vKey];
-                        }
-
-                        // trigger
-                        io.KeysDown[vKey] |= state;
-
-                        // generate character input, but only if WM_CHAR didn't take over the
-                        // functionality
-                        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && !KeysDownOld[vKey] && state) {
-                            UCHAR buf[2];
-                            auto ret = ToAscii(
-                                    static_cast<UINT>(vKey),
-                                    0,
-                                    static_cast<const BYTE *>(KeysDownOld),
-                                    reinterpret_cast<LPWORD>(buf),
-                                    0);
-                            if (ret > 0) {
-                                for (int i = 0; i < ret; i++) {
-                                    overlay::OVERLAY->input_char(buf[i]);
-                                }
-                            }
+                            g_KeysDown[vKey] |= key_states[page_index + vKey];
                         }
                     }
                     break;
                 }
                 default:
                     break;
+            }
+        }
+    }
+
+    // process keyboard input from all keyboard collapsed into one state (g_KeysDown)
+    for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
+        const bool state = g_KeysDown[vKey];
+        const auto imgui_key = get_imgui_key(vKey);
+        if (imgui_key != ImGuiKey_None &&
+            (state || (KeysDownOld[vKey] && !state))) { // report key being held, or key being released
+
+            io.AddKeyEvent(imgui_key, state);
+            log_debug("imgui_impl_spice", "vkey {:x} added as navigation event, state: {}", static_cast<uint64_t>(vKey), state);
+
+            // mod key must also be processed separately
+            const auto imgui_mod_key = get_imgui_mod_key(vKey);
+            if (imgui_mod_key != ImGuiMod_None) {
+                io.AddKeyEvent(imgui_mod_key, state);
+            }
+        }
+
+        // generate character input, but only if WM_CHAR didn't take over the
+        // functionality
+        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && (state || (KeysDownOld[vKey] && !state))) {
+            UCHAR buf[2];
+            auto ret = ToAscii(
+                    static_cast<UINT>(vKey),
+                    0,
+                    static_cast<const BYTE *>(KeysDownOld.data()),
+                    reinterpret_cast<LPWORD>(buf),
+                    0);
+            if (ret > 0) {
+                for (int i = 0; i < ret; i++) {
+                    overlay::OVERLAY->input_char(buf[i]);
+                    log_debug("imgui_impl_spice", "vkey {:x} inputted as character", vKey);
+                }
             }
         }
     }
