@@ -44,7 +44,7 @@ static bool g_MouseCursorAutoHide = false;
 
 constexpr size_t VKEY_MAX = 255;
 static std::array<bool, VKEY_MAX> g_KeysDown;
-static std::array<bool, 3> g_MouseDown;
+static std::array<bool, ImGuiMouseButton_COUNT> g_MouseDown;
 
 static ImGuiKey get_imgui_key(int vkey) {
     switch (vkey) {
@@ -132,7 +132,7 @@ static ImGuiKey get_imgui_mod_key(int vkey) {
 }
 
 bool ImGui_ImplSpice_Init(HWND hWnd) {
-    log_misc("imgui_imgui_impl_spice", "init");
+    log_misc("imgui_impl_spice", "init");
 
     // check if already initialized
     if (g_hWnd != nullptr) {
@@ -154,7 +154,7 @@ bool ImGui_ImplSpice_Init(HWND hWnd) {
     ImGuiIO &io = ImGui::GetIO();
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
-    io.BackendPlatformName = "imgui_imgui_impl_spice";
+    io.BackendPlatformName = "imgui_impl_spice";
     io.ConfigErrorRecoveryEnableTooltip = true;
 
     // get display size
@@ -171,7 +171,7 @@ bool ImGui_ImplSpice_Init(HWND hWnd) {
 }
 
 void ImGui_ImplSpice_Shutdown() {
-    log_misc("imgui_imgui_impl_spice", "shutdown");
+    log_misc("imgui_impl_spice", "shutdown");
 
     // reset window handle
     g_hWnd = nullptr;
@@ -322,7 +322,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
             }
 
             // delay press
-            g_MouseDown[0] = delay_touch++ >= delay_touch_target && last_touch_id == tp.id;
+            g_MouseDown[ImGuiMouseButton_Left] = delay_touch++ >= delay_touch_target && last_touch_id == tp.id;
             if (last_touch_id == ~0u) {
                 last_touch_id = tp.id;
             }
@@ -366,9 +366,9 @@ void ImGui_ImplSpice_NewFrame() {
     }
 
     // apply windows mouse buttons
-    g_MouseDown[0] |= (get_async_primary_mouse()) != 0;
-    g_MouseDown[1] |= (get_async_secondary_mouse()) != 0;
-    g_MouseDown[2] |= (GetAsyncKeyState(VK_MBUTTON)) != 0;
+    g_MouseDown[ImGuiMouseButton_Left] |= (get_async_primary_mouse()) != 0;
+    g_MouseDown[ImGuiMouseButton_Right] |= (get_async_secondary_mouse()) != 0;
+    g_MouseDown[ImGuiMouseButton_Middle] |= (GetAsyncKeyState(VK_MBUTTON)) != 0;
 
     // read new keys state
     static long mouse_wheel_last = 0;
@@ -383,21 +383,21 @@ void ImGui_ImplSpice_NewFrame() {
                     // mouse button triggers
                     if (GetSystemMetrics(SM_SWAPBUTTON)) {
                         if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
-                            g_MouseDown[0] = true;
+                            g_MouseDown[ImGuiMouseButton_Left] = true;
                         }
                         if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
-                            g_MouseDown[1] = true;
+                            g_MouseDown[ImGuiMouseButton_Right] = true;
                         }
                     } else {
                         if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
-                            g_MouseDown[0] = true;
+                            g_MouseDown[ImGuiMouseButton_Left] = true;
                         }
                         if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
-                            g_MouseDown[1] = true;
+                            g_MouseDown[ImGuiMouseButton_Right] = true;
                         }
                     }
                     if (mouse->key_states[rawinput::MOUSEBTN_MIDDLE]) {
-                        g_MouseDown[2] = true;
+                        g_MouseDown[ImGuiMouseButton_Middle] = true;
                     }
 
                     // final mouse wheel value should be all devices combined
