@@ -432,7 +432,6 @@ void ImGui_ImplSpice_NewFrame() {
             (!state && KeysDownOld[vKey]);
 
         if (imgui_key != ImGuiKey_None && changed) {
-
             io.AddKeyEvent(imgui_key, state);
             log_debug("imgui_impl_spice", "vkey {:x} added as navigation event, state: {}", static_cast<uint64_t>(vKey), state);
 
@@ -443,9 +442,8 @@ void ImGui_ImplSpice_NewFrame() {
             }
         }
 
-        // generate character input, but only if WM_CHAR didn't take over the
-        // functionality
-        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && changed) {
+        // generate character input, but only if WM_CHAR didn't take over the functionality
+        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && state) {
             UCHAR buf[2];
             auto ret = ToAscii(
                     static_cast<UINT>(vKey),
