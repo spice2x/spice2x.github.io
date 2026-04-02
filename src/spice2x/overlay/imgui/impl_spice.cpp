@@ -433,7 +433,7 @@ void ImGui_ImplSpice_NewFrame() {
 
         if (imgui_key != ImGuiKey_None && changed) {
             io.AddKeyEvent(imgui_key, state);
-            log_debug("imgui_impl_spice", "vkey {:x} added as navigation event, state: {}", static_cast<uint64_t>(vKey), state);
+            log_debug("imgui_impl_spice", "vkey {:#x} added as navigation event, state: {}", static_cast<uint64_t>(vKey), state);
 
             // mod key must also be processed separately
             const auto imgui_mod_key = get_imgui_mod_key(vKey);
@@ -443,7 +443,10 @@ void ImGui_ImplSpice_NewFrame() {
         }
 
         // generate character input, but only if WM_CHAR didn't take over the functionality
-        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && state) {
+        // only detecting rising edges here - this means holding a key won't work
+        // (it's better than repeating a character input every frame - cost we pay for providing input
+        // on top of rawinput instead of WM_CHAR)
+        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && !KeysDownOld[vKey] && state) {
             UCHAR buf[2];
             auto ret = ToAscii(
                     static_cast<UINT>(vKey),
@@ -454,7 +457,7 @@ void ImGui_ImplSpice_NewFrame() {
             if (ret > 0) {
                 for (int i = 0; i < ret; i++) {
                     overlay::OVERLAY->input_char(buf[i]);
-                    log_debug("imgui_impl_spice", "vkey {:x} inputted as character", vKey);
+                    log_debug("imgui_impl_spice", "vkey {:#x} inputted as character", vKey);
                 }
             }
         }
