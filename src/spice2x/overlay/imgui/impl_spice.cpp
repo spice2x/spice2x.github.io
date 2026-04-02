@@ -42,6 +42,10 @@ static ImGuiMouseCursor g_LastMouseCursor = ImGuiMouseCursor_COUNT;
 static double g_LastMouseMovement = 0.f;
 static bool g_MouseCursorAutoHide = false;
 
+constexpr size_t VKEY_MAX = 255;
+static std::array<bool, VKEY_MAX> g_KeysDown;
+static std::array<bool, 3> g_MouseDown;
+
 static ImGuiKey get_imgui_key(int vkey) {
     switch (vkey) {
         case VK_TAB:
@@ -318,7 +322,7 @@ static void ImGui_ImplSpice_UpdateMousePos() {
             }
 
             // delay press
-            io.MouseDown[0] = delay_touch++ >= delay_touch_target && last_touch_id == tp.id;
+            g_MouseDown[0] = delay_touch++ >= delay_touch_target && last_touch_id == tp.id;
             if (last_touch_id == ~0u) {
                 last_touch_id = tp.id;
             }
@@ -331,9 +335,6 @@ static void ImGui_ImplSpice_UpdateMousePos() {
         }
     }
 }
-
-constexpr size_t VKEY_MAX = 255;
-static std::array<bool, VKEY_MAX> g_KeysDown;
 
 void ImGui_ImplSpice_NewFrame() {
 
@@ -353,9 +354,10 @@ void ImGui_ImplSpice_NewFrame() {
         KeysDownOld[i] = g_KeysDown[i] ? ~0 : 0;
     }
 
+    const auto MouseDownOld = g_MouseDown;
+
     // reset keys state
-    io.MouseWheel = 0;
-    memset(io.MouseDown, false, sizeof(io.MouseDown));
+    g_MouseDown.fill(false);
     g_KeysDown.fill(false);
 
     // early quit if window not in focus
@@ -364,9 +366,9 @@ void ImGui_ImplSpice_NewFrame() {
     }
 
     // apply windows mouse buttons
-    io.MouseDown[0] |= (get_async_primary_mouse()) != 0;
-    io.MouseDown[1] |= (get_async_secondary_mouse()) != 0;
-    io.MouseDown[2] |= (GetAsyncKeyState(VK_MBUTTON)) != 0;
+    g_MouseDown[0] |= (get_async_primary_mouse()) != 0;
+    g_MouseDown[1] |= (get_async_secondary_mouse()) != 0;
+    g_MouseDown[2] |= (GetAsyncKeyState(VK_MBUTTON)) != 0;
 
     // read new keys state
     static long mouse_wheel_last = 0;
@@ -381,21 +383,21 @@ void ImGui_ImplSpice_NewFrame() {
                     // mouse button triggers
                     if (GetSystemMetrics(SM_SWAPBUTTON)) {
                         if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
-                            io.MouseDown[0] = true;
+                            g_MouseDown[0] = true;
                         }
                         if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
-                            io.MouseDown[1] = true;
+                            g_MouseDown[1] = true;
                         }
                     } else {
                         if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
-                            io.MouseDown[0] = true;
+                            g_MouseDown[0] = true;
                         }
                         if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
-                            io.MouseDown[1] = true;
+                            g_MouseDown[1] = true;
                         }
                     }
                     if (mouse->key_states[rawinput::MOUSEBTN_MIDDLE]) {
-                        io.MouseDown[2] = true;
+                        g_MouseDown[2] = true;
                     }
 
                     // final mouse wheel value should be all devices combined
@@ -425,8 +427,11 @@ void ImGui_ImplSpice_NewFrame() {
     for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
         const bool state = g_KeysDown[vKey];
         const auto imgui_key = get_imgui_key(vKey);
-        if (imgui_key != ImGuiKey_None &&
-            (state || (KeysDownOld[vKey] && !state))) { // report key being held, or key being released
+        const auto changed =
+            (state && !KeysDownOld[vKey]) ||
+            (!state && KeysDownOld[vKey]);
+
+        if (imgui_key != ImGuiKey_None && changed) {
 
             io.AddKeyEvent(imgui_key, state);
             log_debug("imgui_impl_spice", "vkey {:x} added as navigation event, state: {}", static_cast<uint64_t>(vKey), state);
@@ -440,7 +445,7 @@ void ImGui_ImplSpice_NewFrame() {
 
         // generate character input, but only if WM_CHAR didn't take over the
         // functionality
-        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && (state || (KeysDownOld[vKey] && !state))) {
+        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && changed) {
             UCHAR buf[2];
             auto ret = ToAscii(
                     static_cast<UINT>(vKey),
@@ -460,19 +465,28 @@ void ImGui_ImplSpice_NewFrame() {
     // set mouse wheel
     auto wheel_diff = mouse_wheel - mouse_wheel_last;
     mouse_wheel_last = mouse_wheel;
-    io.MouseWheel = wheel_diff;
+    io.AddMouseWheelEvent(0, wheel_diff);
 
     // update OS mouse position
     const auto old_mouse_pos = io.MousePos;
     ImGui_ImplSpice_UpdateMousePos();
     const auto new_mouse_pos = io.MousePos;
 
+    // update mouse buttons
+    // doing this after ImGui_ImplSpice_UpdateMousePos since it can set g_MouseDown for touch input
+    for (size_t i = 0; i < g_MouseDown.size(); i++) {
+        if (MouseDownOld[i] != g_MouseDown[i]) {
+            io.AddMouseButtonEvent(i, g_MouseDown[i]);
+            log_debug("imgui_impl_spice", "mouse button {} event", g_MouseDown[i]);
+        }
+    }
+
     // automatically hide cursor
     if (g_MouseCursorAutoHide) {
         if (old_mouse_pos.x != new_mouse_pos.x ||
             old_mouse_pos.y != new_mouse_pos.y ||
             wheel_diff != 0 ||
-            io.MouseDown[0] || io.MouseDown[1] || io.MouseDown[2]) {
+            g_MouseDown[0] || g_MouseDown[1] || g_MouseDown[2]) {
 
             // mouse moved, update time and show the cursor
             g_LastMouseMovement = get_performance_milliseconds();
