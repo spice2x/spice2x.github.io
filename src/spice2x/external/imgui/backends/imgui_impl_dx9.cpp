@@ -212,7 +212,7 @@ void ImGui_ImplDX9_RenderDrawData(ImDrawData *draw_data) {
             } else {
                 const RECT r = {(LONG) (pcmd->ClipRect.x - clip_off.x), (LONG) (pcmd->ClipRect.y - clip_off.y),
                                 (LONG) (pcmd->ClipRect.z - clip_off.x), (LONG) (pcmd->ClipRect.w - clip_off.y)};
-                auto texture = reinterpret_cast<IDirect3DBaseTexture9 *>(pcmd->TextureId);
+                auto texture = reinterpret_cast<IDirect3DBaseTexture9 *>(pcmd->GetTexID());
                 g_pd3dDevice->SetTexture(0, texture);
                 g_pd3dDevice->SetScissorRect(&r);
                 g_pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST,
@@ -327,7 +327,7 @@ void ImGui_ImplDX9_InvalidateDeviceObjects() {
     if (g_FontTexture) {
         g_FontTexture->Release();
         g_FontTexture = NULL;
-        ImGui::GetIO().Fonts->TexID = 0;
+        ImGui::GetIO().Fonts->SetTexID(0);
     } // We copied g_pFontTextureView to io.Fonts->TexID so let's clear that as well.
 }
 

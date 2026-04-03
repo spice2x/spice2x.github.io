@@ -501,7 +501,7 @@ void paint_draw_cmd(
 	const SwOptions&   options,
 	Stats*             stats)
 {
-	const auto texture = reinterpret_cast<const Texture*>(pcmd.TextureId);
+	const auto texture = reinterpret_cast<const Texture*>(pcmd.GetTexID());
     const auto offset = pcmd.IdxOffset;
 
 	// ImGui uses the first pixel for "white".
@@ -678,7 +678,7 @@ void bind_imgui_painting()
 	int font_width, font_height;
 	io.Fonts->GetTexDataAsAlpha8(&tex_data, &font_width, &font_height);
 	const auto texture = new Texture{tex_data, font_width, font_height};
-	io.Fonts->TexID = reinterpret_cast<ImTextureID>(texture);
+	io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(texture));
 }
 
 static Stats s_stats; // TODO: pass as an argument?
@@ -700,7 +700,7 @@ void paint_imgui(uint32_t* pixels, int width_pixels, int height_pixels, const Sw
 void unbind_imgui_painting()
 {
 	ImGuiIO& io = ImGui::GetIO();
-	delete reinterpret_cast<Texture*>(io.Fonts->TexID);
+	delete reinterpret_cast<Texture*>(io.Fonts->TexID.GetTexID());
 	io.Fonts = nullptr;
 }
 
