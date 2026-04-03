@@ -83,12 +83,20 @@ public:
         if (this->override_enabled) {
             return true;
         }
+
+        // has a device
+        if (!this->device_identifier.empty()) {
+            return true;
+        }
+
+        // naive, and has a valid vKey
         if (this->vKey != INVALID_VKEY) {
             return true;
         }
 
         for (auto &alternative : this->alternatives) {
-            if (alternative.vKey != INVALID_VKEY) {
+            if (!alternative.getDeviceIdentifier().empty() ||
+                alternative.getVKey() != INVALID_VKEY) {
                 return true;
             }
         }

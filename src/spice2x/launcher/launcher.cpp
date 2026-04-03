@@ -2569,9 +2569,10 @@ void dump_button_bindings(std::vector<Button> *buttons) {
 
         if (button->isNaive()) {
             log_misc(
-                "rawinput", "    [{}] dev=Naive, vkey={}",
+                "rawinput", "    [{}] dev=Naive, vkey={} ({})",
                 button->getName(),
-                button->getVKey()
+                button->getVKey(),
+                button->getVKeyString()
                 );
         } else {
             log_misc(
@@ -2584,16 +2585,25 @@ void dump_button_bindings(std::vector<Button> *buttons) {
         }
 
         for (auto& alt : button->getAlternatives()) {
-            if (alt.getVKey() == INVALID_VKEY) {
+            if (!alt.isValid()) {
                 continue;
             }
-            log_misc(
-                "rawinput", "    [{}] (alt) dev={}, vkey={}, analogtype={}",
-                button->getName(),
-                alt.isNaive() ? "Naive" : alt.getDeviceIdentifier(),
-                alt.getVKey(),
-                static_cast<uint32_t>(alt.getAnalogType())
-                );
+            if (alt.isNaive()) {
+                log_misc(
+                    "rawinput", "    [{}] (alt) dev=Naive, vkey={} ({})",
+                    alt.getName(),
+                    alt.getVKey(),
+                    alt.getVKeyString()
+                    );
+            } else {
+                log_misc(
+                    "rawinput", "    [{}] (alt) dev={}, vkey={}, analogtype={}",
+                    alt.getName(),
+                    alt.getDeviceIdentifier(),
+                    alt.getVKey(),
+                    static_cast<uint32_t>(alt.getAnalogType())
+                    );
+            }
         }
     }
 }
