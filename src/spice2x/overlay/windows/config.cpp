@@ -2196,9 +2196,8 @@ namespace overlay::windows {
             auto analog_device_changed = ImGui::Combo(
                 "Device",
                 &this->analogs_devices_selected,
-                [](void* data, int i, const char **item) {
-                    *item = ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
-                    return true;
+                [](void* data, int i) {
+                    return ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
                 },
                 &this->analogs_devices, (int) this->analogs_devices.size());
 
@@ -2317,9 +2316,8 @@ namespace overlay::windows {
             // controls
             ImGui::Combo("Control",
                         &this->analogs_devices_control_selected,
-                        [](void* data, int i, const char **item) {
-                            *item = ((std::vector<std::string>*) data)->at(i).c_str();
-                            return true;
+                        [](void* data, int i) {
+                            return ((std::vector<std::string>*) data)->at(i).c_str();
                         },
                         &control_names, control_names.size());
 
@@ -2957,9 +2955,8 @@ namespace overlay::windows {
             bool control_changed = false;
             if (ImGui::Combo("Device",
                             &this->lights_devices_selected,
-                            [] (void* data, int i, const char **item) {
-                                *item = ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
-                                return true;
+                            [] (void* data, int i) {
+                                return ((std::vector<rawinput::Device*>*) data)->at(i)->desc.c_str();
                             },
                             &this->lights_devices, (int) this->lights_devices.size())) {
                 this->lights_devices_control_selected = 0;
@@ -3054,9 +3051,8 @@ namespace overlay::windows {
             // controls
             if (ImGui::Combo("Light Control",
                         &this->lights_devices_control_selected,
-                        [] (void* data, int i, const char **item) {
-                            *item = ((std::vector<std::string> *) data)->at(i).c_str();
-                            return true;
+                        [] (void* data, int i) {
+                            return ((std::vector<std::string> *) data)->at(i).c_str();
                         },
                         &control_names, control_names.size())) {
                 control_changed = true;
@@ -3137,10 +3133,9 @@ namespace overlay::windows {
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
         bool device_changed = ImGui::Combo("##AutoMatchDevice",
                 &this->auto_match_device_selected,
-                [] (void* data, int i, const char **item) {
+                [] (void* data, int i) {
                     auto *devs = (std::vector<rawinput::Device*>*) data;
-                    *item = devs->at(i)->desc.c_str();
-                    return true;
+                    return devs->at(i)->desc.c_str();
                 },
                 &this->auto_match_devices,
                 (int) this->auto_match_devices.size());
