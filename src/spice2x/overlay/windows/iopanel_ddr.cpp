@@ -40,13 +40,17 @@ namespace overlay::windows {
         ImGui::Dummy(ImVec2(12, 0));
 
         ImGui::SameLine();
+        ImGui::PushID("P1");
         this->draw_buttons(0);
+        ImGui::PopID();
 
         ImGui::SameLine();
         ImGui::Dummy(ImVec2(12, 0));
 
         ImGui::SameLine();
+        ImGui::PushID("P2");
         this->draw_buttons(1);
+        ImGui::PopID();
     }
 
     void DDRIOPanel::draw_buttons(const int p) {
