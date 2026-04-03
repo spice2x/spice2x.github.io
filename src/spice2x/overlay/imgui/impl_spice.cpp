@@ -15,7 +15,7 @@
 #include "util/utils.h"
 #include "hooks/graphics/graphics.h"
 
-#define DEBUG_VERBOSE 1
+#define DEBUG_VERBOSE 0
 
 #if DEBUG_VERBOSE
 #define log_debug(module, format_str, ...) logger::push( \
