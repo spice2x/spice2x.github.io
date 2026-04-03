@@ -185,6 +185,7 @@ void overlay::SpiceOverlay::init() {
     if (UI_SCALE_PERCENT.has_value()) {
         const auto scale = static_cast<float>(UI_SCALE_PERCENT.value()) / 100.f;
         ImGui::GetStyle().ScaleAllSizes(scale);
+        ImGui::GetStyle().FontScaleMain = scale;
     }
 
     // based on CrimsonVesuvius theme from
