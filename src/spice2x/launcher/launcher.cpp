@@ -2133,6 +2133,9 @@ int main_implementation(int argc, char *argv[]) {
         sysutils::print_gpus();
     }
 
+    // fix up monitor
+    update_monitor_on_boot();
+
     // initialize raw input
     RI_MGR = std::make_unique<rawinput::RawInputManager>();
     for (const auto &device : sextet_devices) {

@@ -552,18 +552,6 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
                 modified = true;
             }
         }
-
-        if (!modified &&
-            (width > height) &&
-            (GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CW ||
-             GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CCW)) {
-            log_misc(
-                "graphics::d3d9", "swapping width and height for mode {}, {}x{} @ {}Hz (-autoorientation)",
-                Mode, width, height, refresh);
-            pMode->Height = width;
-            pMode->Width = height;
-            modified = true;
-        }
     }
 
     CHECK_RESULT(ret);

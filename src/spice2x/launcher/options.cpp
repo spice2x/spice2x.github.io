@@ -224,11 +224,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Full Screen)",
     },
     {
-        .title = "Force Monitor Refresh Rate",
+        .title = "Monitor Refresh Rate",
         .name = "graphics-force-refresh",
-        .desc =
-            "Attempt to change the refresh rate for the primary monitor before the game boots; "
-            "works in both full screen and windowed modes, but known to fail for some games.",
+        .desc = "Change the refresh rate for the primary monitor before launching the game.",
         .type = OptionType::Integer,
         .category = "Graphics (Common)",
     },
@@ -1847,16 +1845,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // spice2x_AutoOrientation
-        .title = "Auto-rotate Display",
+        .title = "Rotate Monitor",
         .name = "sp2x-autoorientation",
         .display_name = "autoorientation",
         .aliases= "autoorientation",
-        .desc = "Automatically adjust the orientation of your display when launched. "
-                "WARNING: game may launch at incorrect refresh rate! Use in combination with "
-                "-graphics-force-refresh and potentially either -9on12 or full-screen optimizations (FSO) to fix.",
+        .desc = "Change the orientation of the primary display before launching the game.",
         .type = OptionType::Enum,
         .category = "Graphics (Common)",
-        // match graphics_orientation
+        // match graphics_orientation enum
         .elements = {{"0", "90 (CW)"}, {"1", "270 (CCW)"}},
     },
     {

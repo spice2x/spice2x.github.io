@@ -107,3 +107,5 @@ bool graphics_window_decoration_change_crashes_game();
 bool graphics_window_resize_breaks_game();
 bool graphics_window_move_and_resize_breaks_game();
 void graphics_load_windowed_subscreen_parameters();
+
+void update_monitor_on_boot();
