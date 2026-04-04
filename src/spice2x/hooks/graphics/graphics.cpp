@@ -301,30 +301,6 @@ static BOOL WINAPI ClipCursor_hook(const RECT *lpRect) {
     return ClipCursor_orig(lpRect);
 }
 
-static void fix_up_rb_auto_rotate_dimensions(DWORD &w, DWORD &h) {
-    // reflec beat
-    // for whatever reason, rb creates the first window it weird dimensions (774x1389 for reflesia, for example)
-    // so doing ChangeDisplaySettings as-is ends up with DISP_CHANGE_BADMODE
-    // while a second window (with title D3DProxyWindow) does get created with correct dimensions, it's
-    // too late to rotate the window then; as a workaround force the display change now with patched up dimensions
-
-    bool changed = false;
-    if (w == 774) {
-        // LBR, MBR reflesia
-        w = 768;
-        h = 1360;
-        changed = true;
-    } else if (w == 1086) {
-        // MBR (before reflesia)
-        w = 1080;
-        h = 1920;
-        changed = true;
-    }
-    if (changed) {
-        log_misc("graphics", "fix auto-rotate dimensions for reflec beat: w={}, h={}", w, h);
-    }
-}
-
 static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPCSTR lpWindowName,
                                         DWORD dwStyle, int x, int y, int nWidth, int nHeight,
                                         HWND hWndParent, HMENU hMenu, HINSTANCE hInstance,
@@ -345,62 +321,6 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             fmt::ptr(hMenu),
             fmt::ptr(hInstance),
             fmt::ptr(lpParam));
-
-    // set display orientation and/or refresh rate
-    // only set orientation when the target window is portrait
-    // (avoid doing this for SDVX subscreen which is in landscape, for example)
-    auto adjust_orientation =
-        (GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CW ||
-         GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CCW);
-
-    // reflec beat
-    if (avs::game::is_model("KBR")) {
-        // KBR (rb1) launches landscape and draws rotated by itself, don't do any rotation
-        adjust_orientation = false;
-    } else if (avs::game::is_model({"LBR", "MBR"}) && window_name == "D3DProxyWindow") {
-        // do not auto-rotate for second window (D3DProxyWindow)
-        adjust_orientation = false;
-    }
-
-    if ((nHeight > nWidth && adjust_orientation) || GRAPHICS_FORCE_REFRESH > 0) {
-        DEVMODE mode {};
-
-        // get display settings
-        if (EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &mode)) {
-            if (adjust_orientation) {
-                DWORD orientation = GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CW ? DMDO_90 : DMDO_270;
-                log_misc(
-                    "graphics",
-                    "auto-rotate: call ChangeDisplaySettings and rotate display to DMDO_xx mode {}, w={}, h={}",
-                    orientation, nWidth, nHeight);
-                mode.dmPelsWidth = nWidth;
-                mode.dmPelsHeight = nHeight;
-                mode.dmDisplayOrientation = orientation;
-
-                // reflec beat
-                if (avs::game::is_model({"LBR", "MBR"})) {
-                    fix_up_rb_auto_rotate_dimensions(mode.dmPelsWidth, mode.dmPelsHeight);
-                }
-            }
-
-            if (GRAPHICS_FORCE_REFRESH > 0) {
-                log_info(
-                    "graphics",
-                    "call ChangeDisplaySettings to force refresh rate: {} => {} Hz (-graphics-force-refresh)",
-                    mode.dmDisplayFrequency,
-                    GRAPHICS_FORCE_REFRESH);
-
-                mode.dmDisplayFrequency = GRAPHICS_FORCE_REFRESH;
-            }
-
-            const auto disp_res = ChangeDisplaySettings(&mode, CDS_FULLSCREEN);
-            if (disp_res != DISP_CHANGE_SUCCESSFUL) {
-                log_warning("graphics", "ChangeDisplaySettings failed: {}", disp_res);
-            }
-        } else {
-            log_warning("graphics", "failed to get display settings");
-        }
-    }
 
     // gfdm
     if (avs::game::is_model({"J32", "J33", "K32", "K33", "L32", "L33", "M32"})) {
@@ -1148,4 +1068,120 @@ std::string graphics_screenshot_genpath() {
 
         id++;
     }
+}
+
+static std::string get_dmdo_string(DWORD dmdo) {
+    switch (dmdo) {
+        case DMDO_DEFAULT:
+            return "DMDO_DEFAULT";
+        case DMDO_90:
+            return "DMDO_90";
+        case DMDO_180:
+            return "DMDO_180";
+        case DMDO_270:
+            return "DMDO_270";
+        default:
+            return fmt::format("Unknown ({})", dmdo);
+    }
+}
+
+void update_monitor_on_boot() {
+    // note: all of this is only being done for the primary motnior
+
+    // get current settings
+    DEVMODEA dm = {};
+    dm.dmSize = sizeof(dm);
+    if (!EnumDisplaySettingsExA(NULL, ENUM_CURRENT_SETTINGS, &dm, 0)) {
+        log_info("graphics", "EnumDisplaySettingsExa failed {}", get_last_error_string());
+        return;
+    }
+
+    bool needs_update = false;
+
+    // convert orientation values, and figure out if resolution needs to be swapped
+    bool rotate_resolution = false;
+    DWORD orientation = DMDO_DEFAULT;
+    switch (GRAPHICS_ADJUST_ORIENTATION) {
+        case ORIENTATION_CW:
+            orientation = DMDO_90;
+            if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
+                rotate_resolution = true;
+            }
+            break;
+        case ORIENTATION_CCW:
+            orientation = DMDO_270;
+            if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
+                rotate_resolution = true;
+            }
+            break;
+        case ORIENTATION_FLIPPED:
+            orientation = DMDO_180;
+            if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
+                rotate_resolution = true;
+            }
+            break;
+        default:
+            orientation = DMDO_DEFAULT;
+            if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
+                rotate_resolution = true;
+            }
+            break;
+    }
+
+    // update orientation (and resolution if it must be swapped)
+    if (dm.dmDisplayOrientation != orientation) {
+        log_misc("graphics",
+            "current orientation {} => desired orientation {}",
+            get_dmdo_string(dm.dmDisplayOrientation), get_dmdo_string(orientation));
+
+        const DWORD originalWidth = dm.dmPelsWidth;
+        const DWORD originalHeight = dm.dmPelsHeight;
+
+        // change orientation
+        dm.dmDisplayOrientation = orientation;
+        dm.dmFields |= DM_DISPLAYORIENTATION;
+
+        // rotate resolution
+        if (rotate_resolution) {
+            dm.dmPelsWidth  = originalHeight;
+            dm.dmPelsHeight = originalWidth;
+            dm.dmFields |= DM_PELSHEIGHT | DM_PELSWIDTH;
+        }
+
+        needs_update = true;
+    }
+
+    // update refresh rate
+    if (GRAPHICS_FORCE_REFRESH > 0) {
+        log_misc("graphics",
+            "current refresh rate {} => desired refresh rate {}",
+            dm.dmDisplayFrequency, GRAPHICS_FORCE_REFRESH);
+
+        dm.dmDisplayFrequency = GRAPHICS_FORCE_REFRESH;
+        dm.dmFields |= DM_DISPLAYFREQUENCY;
+        needs_update = true;
+    }
+
+    if (!needs_update) {
+        return;
+    }
+
+    const auto result = ChangeDisplaySettings(&dm, CDS_FULLSCREEN);
+    if (result != DISP_CHANGE_SUCCESSFUL) {
+        log_fatal(
+            "graphics",
+            "failed to update display settings ({}px x {}px @ {}Hz): {}",
+            dm.dmPelsWidth,
+            dm.dmPelsHeight,
+            dm.dmDisplayFrequency,
+            get_last_error_string());
+    } else {
+        log_info("graphics", "display settings updated successfully ({}px x {}px @ {}Hz)",
+            dm.dmPelsWidth,
+            dm.dmPelsHeight,
+            dm.dmDisplayFrequency);
+    }
+
+    // sleep for a little bit after changing monitor settings to delay game launch
+    Sleep(1000);
 }
