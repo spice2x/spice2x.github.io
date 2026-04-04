@@ -1101,9 +1101,9 @@ void change_primary_monitor() {
     DEVMODE dm = {};
     dm.dmSize = sizeof(dm);
     if (!EnumDisplaySettings(PRIMARY_MONITOR_NAME.c_str(), ENUM_CURRENT_SETTINGS, &dm)) {
-        log_warning(
+        log_fatal(
             "graphics",
-            "EnumDisplaySettingsExa failed for {}: {}",
+            "EnumDisplaySettingsExa failed for {}: {}, check -mainmonitor option",
             PRIMARY_MONITOR_NAME,
             get_last_error_string());
         return;
@@ -1125,15 +1125,39 @@ void change_primary_monitor() {
             continue;
         }
 
+        const auto x_before = dm.dmPosition.x;
+        const auto y_before = dm.dmPosition.y;
+
         dm.dmPosition.x -= x;
         dm.dmPosition.y -= y;
         dm.dmFields = DM_POSITION;
         // noreset = defer
-        ChangeDisplaySettingsEx(dd.DeviceName, &dm, NULL, CDS_NORESET, NULL);
+        ChangeDisplaySettingsEx(
+            dd.DeviceName,
+            &dm,
+            NULL,
+            CDS_UPDATEREGISTRY | CDS_NORESET,
+            NULL);
+
+        log_info(
+            "graphics",
+            "updated monitor {} position from {},{} to {},{}",
+            dd.DeviceName,
+            x_before, y_before,
+            dm.dmPosition.x, dm.dmPosition.y);
     }
 
     // now, apply all deferred changes
-    ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
+    const auto result = ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
+    if (result != DISP_CHANGE_SUCCESSFUL) {
+        log_fatal(
+            "graphics",
+            "failed to update main monitor to {}: error {}, check -mainmonitor option",
+            PRIMARY_MONITOR_NAME,
+            result);
+    } else {
+        log_info("graphics", "updated main monitor to {}", PRIMARY_MONITOR_NAME);
+    }
 
     // sleep for a little bit after changing monitor settings to delay game launch
     Sleep(1000);
@@ -1224,11 +1248,11 @@ void update_monitor_on_boot() {
     if (result != DISP_CHANGE_SUCCESSFUL) {
         log_fatal(
             "graphics",
-            "failed to update display settings ({}px x {}px @ {}Hz): {}",
+            "failed to update display settings ({}px x {}px @ {}Hz): error {}, double check options",
             dm.dmPelsWidth,
             dm.dmPelsHeight,
             dm.dmDisplayFrequency,
-            get_last_error_string());
+            result);
     } else {
         log_info("graphics", "display settings updated successfully ({}px x {}px @ {}Hz)",
             dm.dmPelsWidth,
