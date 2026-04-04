@@ -278,6 +278,8 @@ std::string Button::getVKeyString() {
             return "Left Alt";
         case 0xA5:
             return "Right Alt";
+        case INVALID_VKEY:
+            return "Invalid";
         default:
 
             // check win API
