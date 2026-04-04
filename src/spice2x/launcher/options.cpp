@@ -206,7 +206,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Common",
     },
     {
-        .title = "Monitor",
+        // PrimaryMonitor
+        .title = "Change Main Monitor",
+        .name = "mainmonitor",
+        .desc = "TODO",
+        .type = OptionType::String,
+        .setting_name = "\\\\.\\DISPLAY2\\Monitor0",
+        .category = "Graphics (Common)",
+    },
+    {
+        // DX9DisplayAdapter
+        .title = "DX9 Primary Display Adapter Override",
         .name = "monitor",
         .desc = "Sets the display that the game will be opened in, for multiple monitors.\n\n"
             "0 is the primary monitor, 1 is the second monitor, and so on.\n\n"

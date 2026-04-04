@@ -54,6 +54,7 @@ static std::mutex GRAPHICS_CAPTURE_BUFFER_M[GRAPHICS_CAPTURE_SCREEN_NO] {};
 static std::condition_variable GRAPHICS_CAPTURE_CV[GRAPHICS_CAPTURE_SCREEN_NO] {};
 
 // flag settings
+std::string PRIMARY_MONITOR_NAME = "";
 bool GRAPHICS_CAPTURE_CURSOR = false;
 bool GRAPHICS_LOG_HRESULT = false;
 bool GRAPHICS_SDVX_FORCE_720 = false;
@@ -1085,6 +1086,59 @@ static std::string get_dmdo_string(DWORD dmdo) {
     }
 }
 
+static std::mutex PRIMARY_MONITOR_MUTEX = {};
+static bool PRIMARY_MONITOR_CHANGED = false;
+
+void change_primary_monitor() {
+    if (PRIMARY_MONITOR_NAME.empty()) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(PRIMARY_MONITOR_MUTEX);
+    PRIMARY_MONITOR_CHANGED = true;
+
+    // remember old layout
+    DEVMODE dm = {};
+    dm.dmSize = sizeof(dm);
+    if (!EnumDisplaySettings(PRIMARY_MONITOR_NAME.c_str(), ENUM_CURRENT_SETTINGS, &dm)) {
+        log_warning(
+            "graphics",
+            "EnumDisplaySettingsExa failed for {}: {}",
+            PRIMARY_MONITOR_NAME,
+            get_last_error_string());
+        return;
+    }
+
+    const LONG x = dm.dmPosition.x;
+    const LONG y = dm.dmPosition.y;
+
+    DISPLAY_DEVICE dd = {};
+    dd.cb = sizeof(dd);
+    for (DWORD i = 0; EnumDisplayDevices(NULL, i, &dd, 0); i++) {
+        if ((dd.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) == 0) {
+            continue;
+        }
+
+        DEVMODE dm = {};
+        dm.dmSize = sizeof(dm);
+        if (!EnumDisplaySettings(dd.DeviceName, ENUM_CURRENT_SETTINGS, &dm)) {
+            continue;
+        }
+
+        dm.dmPosition.x -= x;
+        dm.dmPosition.y -= y;
+        dm.dmFields = DM_POSITION;
+        // noreset = defer
+        ChangeDisplaySettingsEx(dd.DeviceName, &dm, NULL, CDS_NORESET, NULL);
+    }
+
+    // now, apply all deferred changes
+    ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
+
+    // sleep for a little bit after changing monitor settings to delay game launch
+    Sleep(1000);
+}
+
 void update_monitor_on_boot() {
     // note: all of this is only being done for the primary motnior
 
@@ -1092,7 +1146,7 @@ void update_monitor_on_boot() {
     DEVMODEA dm = {};
     dm.dmSize = sizeof(dm);
     if (!EnumDisplaySettingsExA(NULL, ENUM_CURRENT_SETTINGS, &dm, 0)) {
-        log_info("graphics", "EnumDisplaySettingsExa failed {}", get_last_error_string());
+        log_warning("graphics", "EnumDisplaySettingsExa failed {}", get_last_error_string());
         return;
     }
 

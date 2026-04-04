@@ -25,6 +25,7 @@ enum graphics_dx9on12_state {
 };
 
 // flag settings
+extern std::string PRIMARY_MONITOR_NAME;
 extern bool GRAPHICS_CAPTURE_CURSOR;
 extern bool GRAPHICS_LOG_HRESULT;
 extern bool GRAPHICS_SDVX_FORCE_720;
@@ -109,4 +110,5 @@ bool graphics_window_resize_breaks_game();
 bool graphics_window_move_and_resize_breaks_game();
 void graphics_load_windowed_subscreen_parameters();
 
+void change_primary_monitor();
 void update_monitor_on_boot();
