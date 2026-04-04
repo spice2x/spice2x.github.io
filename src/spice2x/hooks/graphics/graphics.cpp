@@ -1070,7 +1070,25 @@ std::string graphics_screenshot_genpath() {
     }
 }
 
+static std::string get_dmdo_string(DWORD dmdo) {
+    switch (dmdo) {
+        case DMDO_DEFAULT:
+            return "DMDO_DEFAULT";
+        case DMDO_90:
+            return "DMDO_90";
+        case DMDO_180:
+            return "DMDO_180";
+        case DMDO_270:
+            return "DMDO_270";
+        default:
+            return fmt::format("Unknown ({})", dmdo);
+    }
+}
+
 void update_monitor_on_boot() {
+    // note: all of this is only being done for the primary motnior
+
+    // get current settings
     DEVMODEA dm = {};
     dm.dmSize = sizeof(dm);
     if (!EnumDisplaySettingsExA(NULL, ENUM_CURRENT_SETTINGS, &dm, 0)) {
@@ -1080,6 +1098,7 @@ void update_monitor_on_boot() {
 
     bool needs_update = false;
 
+    // convert orientation values, and figure out if resolution needs to be swapped
     bool rotate_resolution = false;
     DWORD orientation = DMDO_DEFAULT;
     switch (GRAPHICS_ADJUST_ORIENTATION) {
@@ -1102,18 +1121,18 @@ void update_monitor_on_boot() {
             }
             break;
         default:
+            orientation = DMDO_DEFAULT;
             if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
                 rotate_resolution = true;
             }
-            orientation = DMDO_DEFAULT;
             break;
     }
 
-    // orientation
+    // update orientation (and resolution if it must be swapped)
     if (dm.dmDisplayOrientation != orientation) {
         log_misc("graphics",
-            "current orientation {}, desired orientation {} (these are DMDO values)",
-            dm.dmDisplayOrientation, orientation);
+            "current orientation {} => desired orientation {}",
+            get_dmdo_string(dm.dmDisplayOrientation), get_dmdo_string(orientation));
 
         const DWORD originalWidth = dm.dmPelsWidth;
         const DWORD originalHeight = dm.dmPelsHeight;
@@ -1132,18 +1151,21 @@ void update_monitor_on_boot() {
         needs_update = true;
     }
 
-    // refresh rate
+    // update refresh rate
     if (GRAPHICS_FORCE_REFRESH > 0) {
+        log_misc("graphics",
+            "current refresh rate {} => desired refresh rate {}",
+            dm.dmDisplayFrequency, GRAPHICS_FORCE_REFRESH);
+
         dm.dmDisplayFrequency = GRAPHICS_FORCE_REFRESH;
         dm.dmFields |= DM_DISPLAYFREQUENCY;
+        needs_update = true;
     }
 
     if (!needs_update) {
         return;
     }
 
-    // limitation: only doing this for primary monitor
-    // (i.e., we don't honor the -monitor option; that requires calling DX9 APIs first)
     const auto result = ChangeDisplaySettings(&dm, CDS_FULLSCREEN);
     if (result != DISP_CHANGE_SUCCESSFUL) {
         log_fatal(
@@ -1159,6 +1181,4 @@ void update_monitor_on_boot() {
             dm.dmPelsHeight,
             dm.dmDisplayFrequency);
     }
-
-    return;
 }

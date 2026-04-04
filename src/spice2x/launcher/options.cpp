@@ -226,7 +226,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Monitor Refresh Rate",
         .name = "graphics-force-refresh",
-        .desc = "Change the refresh rate for the primary monitor before launching the game.",
+        .desc = "Change the refresh rate for the primary monitor before launching the game. It will be restored on exit.",
         .type = OptionType::Integer,
         .category = "Graphics (Common)",
     },
@@ -1849,7 +1849,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sp2x-autoorientation",
         .display_name = "autoorientation",
         .aliases= "autoorientation",
-        .desc = "Change the orientation of the primary display before launching the game.",
+        .desc = "Change the orientation of the primary display before launching the game. It will be restored on exit",
         .type = OptionType::Enum,
         .category = "Graphics (Common)",
         // match graphics_orientation enum
