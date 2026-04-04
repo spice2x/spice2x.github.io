@@ -1195,7 +1195,7 @@ void change_primary_monitor() {
         }
     }
     if (!found) {
-        log_fatal("graphics", "new main monitor target not found: {}", PRIMARY_MONITOR_NAME);
+        log_fatal("graphics", "new main monitor target not found, check -mainmonitor option: {}", PRIMARY_MONITOR_NAME);
         return;
     }
 
@@ -1208,7 +1208,7 @@ void change_primary_monitor() {
     }
 
     // finally, commit the new display ocnfig
-    const auto status = SetDisplayConfig(
+    const auto status = SetDisplayConfig_addr(
         path_count,
         paths.data(),
         mode_count,
@@ -1216,7 +1216,7 @@ void change_primary_monitor() {
         SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG);
 
     if (status != ERROR_SUCCESS) {
-        log_fatal("graphics", "SetDisplayConfig failed: {}", status);
+        log_fatal("graphics", "SetDisplayConfig failed, check -mainmonitor option: {}", status);
     }
 
     Sleep(1000);
