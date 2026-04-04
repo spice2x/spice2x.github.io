@@ -20,6 +20,7 @@ enum class OptionPickerType {
     CpuAffinity,
     FilePath,
     DirectoryPath,
+    Monitor,
 };
 
 struct OptionDefinition {

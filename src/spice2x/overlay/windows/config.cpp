@@ -34,6 +34,7 @@
 #include "util/resutils.h"
 #include "util/scope_guard.h"
 #include "util/time.h"
+#include "util/sysutils.h"
 #include "util/utils.h"
 
 #ifdef min
@@ -4237,6 +4238,8 @@ namespace overlay::windows {
                 return "File Picker";
             case OptionPickerType::DirectoryPath:
                 return "Folder Picker";
+            case OptionPickerType::Monitor:
+                return "Monitor Picker";
             default:
                 return "Unknown Picker";
         };
@@ -4466,6 +4469,28 @@ namespace overlay::windows {
             if (!cfg::CONFIGURATOR_STANDALONE) {
                 ImGui::EndDisabled();
             }
+
+        } else if (definition.picker == OptionPickerType::Monitor) {
+            const auto &monitors = sysutils::enumerate_monitors();
+            if (monitors.empty()) {
+                ImGui::TextUnformatted("Failed to fetch monitors. Requires Win7+");
+            } else {
+                ImGui::TextUnformatted("Pick from monitors:");
+                ImGui::SetNextItemWidth(300.f);
+                if (ImGui::BeginListBox("##monitors")) {
+                    for (const auto &monitor : monitors) {
+                        const bool is_selected = option.value == monitor.display_name;
+                        auto friendly = wchar_to_u8(monitor.friendly_name.c_str());
+                        if (ImGui::Selectable(
+                                fmt::format("{} ({})", monitor.display_name, friendly).c_str(),
+                                is_selected)) {
+                            option.value = monitor.display_name;
+                        }
+                    }
+                    ImGui::EndListBox();
+                }
+            }
+
 
         } else {
             ImGui::TextUnformatted("No picker available for this option. How did you get here?");

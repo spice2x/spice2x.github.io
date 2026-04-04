@@ -1091,6 +1091,31 @@ void change_primary_monitor() {
         return;
     }
 
+    // for WinXP, since these are Vista+ or 7+ APIs
+    const auto user32 = LoadLibraryA("user32.dll");
+    if (!user32) {
+        log_warning("graphics", "can't find user32.dll???");
+        return;
+    }
+    const auto GetDisplayConfigBufferSizes_addr =
+        reinterpret_cast<decltype(GetDisplayConfigBufferSizes) *>(
+            GetProcAddress(user32, "GetDisplayConfigBufferSizes"));
+    const auto QueryDisplayConfig_addr =
+        reinterpret_cast<decltype(QueryDisplayConfig) *>(
+            GetProcAddress(user32, "QueryDisplayConfig"));
+    const auto DisplayConfigGetDeviceInfo_addr =
+        reinterpret_cast<decltype(DisplayConfigGetDeviceInfo) *>(
+            GetProcAddress(user32, "DisplayConfigGetDeviceInfo"));
+    const auto SetDisplayConfig_addr =
+        reinterpret_cast<decltype(SetDisplayConfig) *>(
+            GetProcAddress(user32, "SetDisplayConfig"));
+    if (GetDisplayConfigBufferSizes_addr == nullptr || QueryDisplayConfig_addr == nullptr ||
+        DisplayConfigGetDeviceInfo_addr == nullptr || SetDisplayConfig_addr == nullptr) {
+        log_warning("graphics", "cannot change primary monitor, OS does not support required APIs)");
+        return;
+    }
+
+
     UINT32 path_count = 0;
     UINT32 mode_count = 0;
     std::vector<DISPLAYCONFIG_PATH_INFO> paths;
@@ -1100,7 +1125,7 @@ void change_primary_monitor() {
     // in a retry loop, try to query for display config
     // retry loop is needed because it can fail with ERROR_INSUFFICIENT_BUFFER
     for (int attempt = 0; attempt < 5; ++attempt) {
-        auto status = GetDisplayConfigBufferSizes(QDC_DATABASE_CURRENT, &path_count, &mode_count);
+        auto status = GetDisplayConfigBufferSizes_addr(QDC_DATABASE_CURRENT, &path_count, &mode_count);
         if (status != ERROR_SUCCESS) {
             log_warning("graphics", "GetDisplayConfigBufferSizes failed: {}", status);
             return;
@@ -1109,7 +1134,7 @@ void change_primary_monitor() {
         paths.resize(path_count);
         modes.resize(mode_count);
         DISPLAYCONFIG_TOPOLOGY_ID topology_id = DISPLAYCONFIG_TOPOLOGY_INTERNAL;
-        status = QueryDisplayConfig(
+        status = QueryDisplayConfig_addr(
             QDC_DATABASE_CURRENT,
             &path_count,
             paths.data(),
@@ -1152,7 +1177,7 @@ void change_primary_monitor() {
         name.header.size = sizeof(name);
         name.header.adapterId = mode.adapterId;
         name.header.id = mode.id;
-        if (DisplayConfigGetDeviceInfo(&name.header) != ERROR_SUCCESS) {
+        if (DisplayConfigGetDeviceInfo_addr(&name.header) != ERROR_SUCCESS) {
             continue;
         }
 
