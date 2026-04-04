@@ -1181,4 +1181,7 @@ void update_monitor_on_boot() {
             dm.dmPelsHeight,
             dm.dmDisplayFrequency);
     }
+
+    // sleep for a little bit after changing monitor settings to delay game launch
+    Sleep(1000);
 }
