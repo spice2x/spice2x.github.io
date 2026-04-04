@@ -209,7 +209,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // PrimaryMonitor
         .title = "Change Main Monitor",
         .name = "mainmonitor",
-        .desc = "Changes the primary monitor before launching the game. Warning: if spice is forcibly terminated, it may fail to restore your monitor layout.",
+        .desc = "Changes the primary monitor before launching the game. It will be restored on exit.\n\n"
+            "This may fail to work properly on hybrid laptops with iGPU + dGPU.",
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY2",
         .category = "Graphics (Common)",

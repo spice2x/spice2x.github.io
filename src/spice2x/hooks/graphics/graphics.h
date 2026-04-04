@@ -31,7 +31,7 @@ extern bool GRAPHICS_LOG_HRESULT;
 extern bool GRAPHICS_SDVX_FORCE_720;
 extern bool GRAPHICS_SHOW_CURSOR;
 extern bool GRAPHICS_WINDOWED;
-extern graphics_orientation GRAPHICS_ADJUST_ORIENTATION;
+extern std::optional<graphics_orientation> GRAPHICS_ADJUST_ORIENTATION;
 extern std::vector<HWND> GRAPHICS_WINDOWS;
 extern UINT GRAPHICS_FORCE_REFRESH;
 extern std::optional<uint32_t> GRAPHICS_FORCE_REFRESH_SUB;
