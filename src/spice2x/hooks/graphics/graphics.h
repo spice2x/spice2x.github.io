@@ -15,6 +15,7 @@ enum graphics_orientation {
     ORIENTATION_CW = 0,
     ORIENTATION_CCW = 1,
     ORIENTATION_NORMAL = 2,
+    ORIENTATION_FLIPPED = 3
 };
 
 enum graphics_dx9on12_state {

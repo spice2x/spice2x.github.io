@@ -1853,7 +1853,12 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Enum,
         .category = "Graphics (Common)",
         // match graphics_orientation enum
-        .elements = {{"0", "90 (CW)"}, {"1", "270 (CCW)"}},
+        .elements = {
+            {"0", "Portrait"},
+            {"1", "Portrait, Flipped"},
+            {"2", "Landscape"},
+            {"3", "Landscape, Flipped"}
+        },
     },
     {
         .title = "AVS Log Level",

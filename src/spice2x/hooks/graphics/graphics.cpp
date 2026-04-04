@@ -1071,38 +1071,75 @@ std::string graphics_screenshot_genpath() {
 }
 
 void update_monitor_on_boot() {
-
-    if (GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_NORMAL &&
-        GRAPHICS_FORCE_REFRESH == 0) {
-        // nothing to do
+    DEVMODEA dm = {};
+    dm.dmSize = sizeof(dm);
+    if (!EnumDisplaySettingsExA(NULL, ENUM_CURRENT_SETTINGS, &dm, 0)) {
+        log_info("graphics", "EnumDisplaySettingsExa failed {}", get_last_error_string());
         return;
     }
 
-    DEVMODE dm = {};
-    dm.dmSize = sizeof(dm);
+    bool needs_update = false;
 
-    if (!EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dm)) {
-        log_info("graphics", "EnumDisplaySettings failed {}", get_last_error_string());
-        return;
+    bool rotate_resolution = false;
+    DWORD orientation = DMDO_DEFAULT;
+    switch (GRAPHICS_ADJUST_ORIENTATION) {
+        case ORIENTATION_CW:
+            orientation = DMDO_90;
+            if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
+                rotate_resolution = true;
+            }
+            break;
+        case ORIENTATION_CCW:
+            orientation = DMDO_270;
+            if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
+                rotate_resolution = true;
+            }
+            break;
+        case ORIENTATION_FLIPPED:
+            orientation = DMDO_180;
+            if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
+                rotate_resolution = true;
+            }
+            break;
+        default:
+            if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
+                rotate_resolution = true;
+            }
+            orientation = DMDO_DEFAULT;
+            break;
     }
 
     // orientation
-    if (GRAPHICS_ADJUST_ORIENTATION != ORIENTATION_NORMAL) {
+    if (dm.dmDisplayOrientation != orientation) {
+        log_misc("graphics",
+            "current orientation {}, desired orientation {} (these are DMDO values)",
+            dm.dmDisplayOrientation, orientation);
+
         const DWORD originalWidth = dm.dmPelsWidth;
         const DWORD originalHeight = dm.dmPelsHeight;
-        const DWORD orientation = 
-            (GRAPHICS_ADJUST_ORIENTATION == ORIENTATION_CW) ? DMDO_90 : DMDO_270;
+
+        // change orientation
         dm.dmDisplayOrientation = orientation;
-        dm.dmPelsWidth  = originalHeight;
-        dm.dmPelsHeight = originalWidth;
         dm.dmFields |= DM_DISPLAYORIENTATION;
-        dm.dmFields |= DM_PELSHEIGHT | DM_PELSWIDTH;
+
+        // rotate resolution
+        if (rotate_resolution) {
+            dm.dmPelsWidth  = originalHeight;
+            dm.dmPelsHeight = originalWidth;
+            dm.dmFields |= DM_PELSHEIGHT | DM_PELSWIDTH;
+        }
+
+        needs_update = true;
     }
 
     // refresh rate
     if (GRAPHICS_FORCE_REFRESH > 0) {
         dm.dmDisplayFrequency = GRAPHICS_FORCE_REFRESH;
         dm.dmFields |= DM_DISPLAYFREQUENCY;
+    }
+
+    if (!needs_update) {
+        return;
     }
 
     // limitation: only doing this for primary monitor
@@ -1117,7 +1154,10 @@ void update_monitor_on_boot() {
             dm.dmDisplayFrequency,
             get_last_error_string());
     } else {
-        log_info("graphics", "display settings updated successfully on boot");
+        log_info("graphics", "display settings updated successfully ({}px x {}px @ {}Hz)",
+            dm.dmPelsWidth,
+            dm.dmPelsHeight,
+            dm.dmDisplayFrequency);
     }
 
     return;
