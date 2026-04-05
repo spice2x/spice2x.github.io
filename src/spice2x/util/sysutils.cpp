@@ -402,12 +402,8 @@ namespace sysutils {
         return result;
     }
 
-    const std::vector<MonitorEntry> &enumerate_monitors() {
-        static std::once_flag flag;
-        static std::vector<MonitorEntry> monitors;
-        std::call_once(flag, []() {
-            monitors = enumerate_monitors_internal();
-        });
+    const std::vector<MonitorEntry>& enumerate_monitors() {
+        static const std::vector<MonitorEntry> monitors = enumerate_monitors_internal();
         return monitors;
     }
 }

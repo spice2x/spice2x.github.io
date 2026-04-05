@@ -1205,7 +1205,7 @@ void change_primary_monitor(const std::string &monitor_name) {
         }
     }
 
-    // finally, commit the new display ocnfig
+    // finally, commit the new display config
     const auto status = SetDisplayConfig_addr(
         path_count,
         paths.data(),
