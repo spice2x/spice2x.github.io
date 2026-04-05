@@ -65,6 +65,10 @@ namespace games::ccj {
         libutils::load_library("libaio-iob2_video.dll");
         libutils::load_library("win10actlog.dll");
 
+        // we do this to prevent this unexpectedly being unloaded
+        // which leads to D3D10Warp.dll_unloaded crash
+        libutils::load_library("d3d10warp.dll");
+
         detour::trampoline_try("execexe.dll", MAKEINTRESOURCE(11),
                                (void*)execexe_CreateFileW_hook,(void**)&execexe_CreateFileW_orig);
 
