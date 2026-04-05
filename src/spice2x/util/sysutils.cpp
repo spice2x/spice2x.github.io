@@ -1,12 +1,15 @@
 #include "sysutils.h"
 
 #include <cstdlib>
+#include <mutex>
+
 #define WIN32_NO_STATUS
 #include <windows.h>
 #undef WIN32_NO_STATUS
 
 #include "util/libutils.h"
 #include "util/logging.h"
+#include "util/utils.h"
 
 #if 0
 #define log_dbug(module, format_str, ...) logger::push( \
@@ -222,6 +225,21 @@ namespace sysutils {
         log_dbug("gpuinfo", "{} {} flags         : 0x{:x}", prefix.c_str(), index, adapter->StateFlags);
 
         if (!is_monitor)  {
+            // get extended info for better friendly name of monitors
+            const auto &monitors = enumerate_monitors();
+            for (const auto& monitor : monitors) {
+                if (monitor.display_name == adapter->DeviceName) {
+                    const auto friendly = ws2s(monitor.friendly_name.c_str());
+                    log_misc(
+                        "gpuinfo", "{} {} friendly name : {}",
+                        prefix.c_str(),
+                        index,
+                        friendly);
+                    break;
+                }
+            }
+
+            // resolution, refresh rate
             DEVMODEA devmode = {};
             devmode.dmSize = sizeof(devmode);
             if (EnumDisplaySettingsA(adapter->DeviceName, ENUM_CURRENT_SETTINGS, &devmode)) {
@@ -236,11 +254,13 @@ namespace sysutils {
                 log_misc("gpuinfo", "EnumDisplaySettingsA failed");
             }
 
+            // primary?
             log_misc(
                 "gpuinfo", "{} {} is primary    : {}",
                 prefix.c_str(),
                 index,
                 (adapter->StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) ? "yes" : "no");
+
         }
     }
 
@@ -297,5 +317,93 @@ namespace sysutils {
             log_misc("sysutils", "Windows OS build number: {}", buildnum);
             return;
         }
+    }
+        
+    static std::vector<MonitorEntry> enumerate_monitors_internal() {
+        // for WinXP, since these are Vista+ or 7+ APIs
+        const auto user32 = LoadLibraryA("user32.dll");
+        if (!user32) {
+            log_warning("graphics", "can't find user32.dll???");
+            return {};
+        }
+        const auto GetDisplayConfigBufferSizes_addr =
+            reinterpret_cast<decltype(GetDisplayConfigBufferSizes) *>(
+                GetProcAddress(user32, "GetDisplayConfigBufferSizes"));
+        const auto QueryDisplayConfig_addr =
+            reinterpret_cast<decltype(QueryDisplayConfig) *>(
+                GetProcAddress(user32, "QueryDisplayConfig"));
+        const auto DisplayConfigGetDeviceInfo_addr =
+            reinterpret_cast<decltype(DisplayConfigGetDeviceInfo) *>(
+                GetProcAddress(user32, "DisplayConfigGetDeviceInfo"));
+        if (GetDisplayConfigBufferSizes_addr == nullptr ||
+            QueryDisplayConfig_addr == nullptr ||
+            DisplayConfigGetDeviceInfo_addr == nullptr) {
+            log_warning("sysutils", "OS does not support display config APIs");
+            return {};
+        }
+
+        UINT32 path_count = 0;
+        UINT32 mode_count = 0;
+        auto status = GetDisplayConfigBufferSizes_addr(QDC_ONLY_ACTIVE_PATHS, &path_count, &mode_count);
+        if (status != ERROR_SUCCESS) {
+            log_warning("sysutils", "GetDisplayConfigBufferSizes failed: {}", status);
+            return {};
+        }
+
+        std::vector<DISPLAYCONFIG_PATH_INFO> paths(path_count);
+        std::vector<DISPLAYCONFIG_MODE_INFO> modes(mode_count);
+        status = QueryDisplayConfig_addr(
+                QDC_ONLY_ACTIVE_PATHS,
+                &path_count,
+                paths.data(),
+                &mode_count,
+                modes.data(),
+                nullptr);
+        if (status != ERROR_SUCCESS) {
+            log_warning("sysutils", "QueryDisplayConfig failed: {}", status);
+            return {};
+        }
+
+        // shrink to actual returned items
+        paths.resize(path_count);
+        modes.resize(mode_count);
+
+        std::vector<MonitorEntry> result;
+        for (const auto& path : paths) {
+            MonitorEntry entry;
+
+            // device ID (\\.\DISPLAYn) 
+            DISPLAYCONFIG_SOURCE_DEVICE_NAME source_name = {};
+            source_name.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+            source_name.header.size = sizeof(source_name);
+            source_name.header.adapterId = path.sourceInfo.adapterId;
+            source_name.header.id = path.sourceInfo.id;
+            if (DisplayConfigGetDeviceInfo_addr(&source_name.header) != ERROR_SUCCESS) {
+                continue;
+            }
+            entry.display_name = ws2s(std::wstring(source_name.viewGdiDeviceName));
+
+            // friendly name
+            DISPLAYCONFIG_TARGET_DEVICE_NAME target_name = {};
+            target_name.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME;
+            target_name.header.size = sizeof(target_name);
+            target_name.header.adapterId = path.targetInfo.adapterId;
+            target_name.header.id = path.targetInfo.id;
+            if (DisplayConfigGetDeviceInfo_addr(&target_name.header) == ERROR_SUCCESS) {
+                entry.friendly_name = target_name.monitorFriendlyDeviceName;
+            } else {
+                entry.friendly_name = L"(unknown)";
+            }
+
+            // done
+            result.emplace_back(entry);
+        }
+
+        return result;
+    }
+
+    const std::vector<MonitorEntry>& enumerate_monitors() {
+        static const std::vector<MonitorEntry> monitors = enumerate_monitors_internal();
+        return monitors;
     }
 }

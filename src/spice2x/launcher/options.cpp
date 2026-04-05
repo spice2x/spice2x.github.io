@@ -23,6 +23,7 @@ static const std::vector<std::string> CATEGORY_ORDER_BASIC = {
     "Game Options",
     "Common",
     "Network",
+    "Monitor",
     "Graphics (Common)",
     "Graphics (Full Screen)",
     "Graphics (Windowed)",
@@ -206,9 +207,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Common",
     },
     {
-        .title = "Monitor",
+        // PrimaryMonitor
+        .title = "Change Main Monitor",
+        .name = "mainmonitor",
+        .desc = "Changes the primary monitor before launching the game. It will be restored on exit.\n\n"
+            "This may fail to work properly on hybrid laptops with iGPU + dGPU.",
+        .type = OptionType::Text,
+        .setting_name = "\\\\.\\DISPLAY2",
+        .category = "Monitor",
+        .picker = OptionPickerType::Monitor,
+    },
+    {
+        // DX9DisplayAdapter
+        .title = "DX9 Primary Display Adapter Override",
         .name = "monitor",
-        .desc = "Sets the display that the game will be opened in, for multiple monitors.\n\n"
+        .display_name = "dx9mainadapter",
+        .aliases = "dx9mainadapter",
+        .desc = "Prefer to use Change Main Monitor option instead of this one.\n\n"
+            "Sets the display that the game will be opened in, for multiple monitors.\n\n"
             "0 is the primary monitor, 1 is the second monitor, and so on.\n\n"
             "Not all games will respect this. Not recommended for multi-monitor games like Lightning Model / Valkyrie Model modes. "
             "Disable Full Screen Optimizations for best results.",
@@ -216,19 +232,19 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Full Screen)",
     },
     {
-        .title = "Only Use One Monitor",
+        .title = "Only Use Main Monitor For Full Screen",
         .name = "graphics-force-single-adapter",
         .desc = "Force the graphics device to be opened utilizing only one adapter in multi-monitor systems.\n\n"
             "May cause unstable framerate and desyncs, especially if monitors have different refresh rates!",
         .type = OptionType::Bool,
-        .category = "Graphics (Full Screen)",
+        .category = "Monitor",
     },
     {
         .title = "Monitor Refresh Rate",
         .name = "graphics-force-refresh",
         .desc = "Change the refresh rate for the primary monitor before launching the game. It will be restored on exit.",
         .type = OptionType::Integer,
-        .category = "Graphics (Common)",
+        .category = "Monitor",
     },
     {
         // FullscreenResolution
@@ -1851,7 +1867,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autoorientation",
         .desc = "Change the orientation of the primary display before launching the game. It will be restored on exit",
         .type = OptionType::Enum,
-        .category = "Graphics (Common)",
+        .category = "Monitor",
         // match graphics_orientation enum
         .elements = {
             {"0", "Portrait"},

@@ -351,9 +351,9 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
         GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
     }
-    if (options[launcher::Options::DisplayAdapter].is_active() && 
-        options[launcher::Options::DisplayAdapter].value_uint32() != D3DADAPTER_DEFAULT) {
-        D3D9_ADAPTER = options[launcher::Options::DisplayAdapter].value_uint32();
+    if (options[launcher::Options::DX9DisplayAdapter].is_active() && 
+        options[launcher::Options::DX9DisplayAdapter].value_uint32() != D3DADAPTER_DEFAULT) {
+        D3D9_ADAPTER = options[launcher::Options::DX9DisplayAdapter].value_uint32();
 
         // when we fix up adapter numbers, we only fix the first adapter, and not any subsequent
         // adapters, so we can't deal with multi-monitor games
@@ -374,12 +374,15 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::AllowEA3Verbose].value_bool()) {
         avs::ea3::EA3_DEBUG_VERBOSE = true;
     }
+
+    std::optional<graphics_orientation> monitor_orientation;
     if (options[launcher::Options::spice2x_AutoOrientation].is_active()) {
-        GRAPHICS_ADJUST_ORIENTATION =
+        monitor_orientation =
             (graphics_orientation)options[launcher::Options::spice2x_AutoOrientation].value_uint32();
     } else if (options[launcher::Options::AdjustOrientation].value_bool()) {
-        GRAPHICS_ADJUST_ORIENTATION = ORIENTATION_CW;
+        monitor_orientation = ORIENTATION_CW;
     }
+
     if (options[launcher::Options::spice2x_NoD3D9DeviceHook].value_bool()) {
         D3D9_DEVICE_HOOK_DISABLE = true;
         // touch emulation gets disabled, might as well turn these on
@@ -2134,7 +2137,10 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // fix up monitor
-    update_monitor_on_boot();
+    if (options[launcher::Options::PrimaryMonitor].is_active()) {
+        change_primary_monitor(options[launcher::Options::PrimaryMonitor].value_text());
+    }
+    update_monitor_on_boot(monitor_orientation, GRAPHICS_FORCE_REFRESH);
 
     // initialize raw input
     RI_MGR = std::make_unique<rawinput::RawInputManager>();

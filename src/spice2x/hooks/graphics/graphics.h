@@ -30,7 +30,6 @@ extern bool GRAPHICS_LOG_HRESULT;
 extern bool GRAPHICS_SDVX_FORCE_720;
 extern bool GRAPHICS_SHOW_CURSOR;
 extern bool GRAPHICS_WINDOWED;
-extern graphics_orientation GRAPHICS_ADJUST_ORIENTATION;
 extern std::vector<HWND> GRAPHICS_WINDOWS;
 extern UINT GRAPHICS_FORCE_REFRESH;
 extern std::optional<uint32_t> GRAPHICS_FORCE_REFRESH_SUB;
@@ -109,4 +108,5 @@ bool graphics_window_resize_breaks_game();
 bool graphics_window_move_and_resize_breaks_game();
 void graphics_load_windowed_subscreen_parameters();
 
-void update_monitor_on_boot();
+void change_primary_monitor(const std::string &monitor_name);
+void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate);

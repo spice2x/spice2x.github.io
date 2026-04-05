@@ -58,7 +58,6 @@ bool GRAPHICS_CAPTURE_CURSOR = false;
 bool GRAPHICS_LOG_HRESULT = false;
 bool GRAPHICS_SDVX_FORCE_720 = false;
 bool GRAPHICS_SHOW_CURSOR = false;
-graphics_orientation GRAPHICS_ADJUST_ORIENTATION = ORIENTATION_NORMAL;
 bool GRAPHICS_WINDOWED = false;
 std::vector<HWND> GRAPHICS_WINDOWS;
 UINT GRAPHICS_FORCE_REFRESH = 0;
@@ -1085,84 +1084,224 @@ static std::string get_dmdo_string(DWORD dmdo) {
     }
 }
 
-void update_monitor_on_boot() {
+void change_primary_monitor(const std::string &monitor_name) {
+    log_misc("graphics", "try changing primary monitor to {}...", monitor_name);    
+
+    // for WinXP, since these are Vista+ or 7+ APIs
+    const auto user32 = LoadLibraryA("user32.dll");
+    if (!user32) {
+        log_warning("graphics", "can't find user32.dll???");
+        return;
+    }
+    const auto GetDisplayConfigBufferSizes_addr =
+        reinterpret_cast<decltype(GetDisplayConfigBufferSizes) *>(
+            GetProcAddress(user32, "GetDisplayConfigBufferSizes"));
+    const auto QueryDisplayConfig_addr =
+        reinterpret_cast<decltype(QueryDisplayConfig) *>(
+            GetProcAddress(user32, "QueryDisplayConfig"));
+    const auto DisplayConfigGetDeviceInfo_addr =
+        reinterpret_cast<decltype(DisplayConfigGetDeviceInfo) *>(
+            GetProcAddress(user32, "DisplayConfigGetDeviceInfo"));
+    const auto SetDisplayConfig_addr =
+        reinterpret_cast<decltype(SetDisplayConfig) *>(
+            GetProcAddress(user32, "SetDisplayConfig"));
+    if (GetDisplayConfigBufferSizes_addr == nullptr || QueryDisplayConfig_addr == nullptr ||
+        DisplayConfigGetDeviceInfo_addr == nullptr || SetDisplayConfig_addr == nullptr) {
+        log_warning("graphics", "cannot change primary monitor, OS does not support required APIs)");
+        return;
+    }
+
+    UINT32 path_count = 0;
+    UINT32 mode_count = 0;
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths;
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes;
+    bool succeeded = false;
+    
+    // in a retry loop, try to query for display config
+    // retry loop is needed because it can fail with ERROR_INSUFFICIENT_BUFFER
+    for (int attempt = 0; attempt < 5; ++attempt) {
+        auto status = GetDisplayConfigBufferSizes_addr(QDC_DATABASE_CURRENT, &path_count, &mode_count);
+        if (status != ERROR_SUCCESS) {
+            log_warning("graphics", "GetDisplayConfigBufferSizes failed: {}", status);
+            return;
+        }
+
+        paths.resize(path_count);
+        modes.resize(mode_count);
+        DISPLAYCONFIG_TOPOLOGY_ID topology_id = DISPLAYCONFIG_TOPOLOGY_INTERNAL;
+        status = QueryDisplayConfig_addr(
+            QDC_DATABASE_CURRENT,
+            &path_count,
+            paths.data(),
+            &mode_count,
+            modes.data(),
+            &topology_id);
+
+        if (status == ERROR_SUCCESS) {
+            // Shrink to actual returned counts
+            paths.resize(path_count);
+            modes.resize(mode_count);
+            succeeded = true;
+            break;
+        }
+
+        if (status != ERROR_INSUFFICIENT_BUFFER) {
+            log_warning("graphics", "QueryDisplayConfig failed: {}", status);
+            return;
+        }
+
+        Sleep(500);
+    }
+    if (!succeeded) {
+        log_warning("graphics", "QueryDisplayConfig failed after reaching max retries");
+        return;
+    }
+
+    LONG x = 0;
+    LONG y = 0;
+    bool found = false;
+
+    // find the new main monitor
+    for (auto& mode : modes) {
+        if (mode.infoType != DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
+            continue;
+        }
+
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME name = {};
+        name.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+        name.header.size = sizeof(name);
+        name.header.adapterId = mode.adapterId;
+        name.header.id = mode.id;
+        if (DisplayConfigGetDeviceInfo_addr(&name.header) != ERROR_SUCCESS) {
+            continue;
+        }
+
+        const auto device_name = std::string(ws2s(name.viewGdiDeviceName));
+        if (monitor_name == device_name) {
+            x = mode.sourceMode.position.x;
+            y = mode.sourceMode.position.y;
+            found = true;
+            log_info(
+                "graphics",
+                "new main monitor target found: {}, old position: ({}, {})",
+                monitor_name,
+                x, y);
+            break;
+        }
+    }
+    if (!found) {
+        log_fatal(
+            "graphics",
+            "new main monitor target not found, check -mainmonitor option: {}",
+            monitor_name);
+        return;
+    }
+
+    // update monitor positions so that the new monitor is at (0, 0)
+    for (auto& mode : modes) {
+        if (mode.infoType == DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
+            mode.sourceMode.position.x -= x;
+            mode.sourceMode.position.y -= y;
+        }
+    }
+
+    // finally, commit the new display config
+    const auto status = SetDisplayConfig_addr(
+        path_count,
+        paths.data(),
+        mode_count,
+        modes.data(),
+        SDC_APPLY | SDC_USE_SUPPLIED_DISPLAY_CONFIG);
+
+    if (status != ERROR_SUCCESS) {
+        log_fatal("graphics", "SetDisplayConfig failed, check -mainmonitor option: {}", status);
+    }
+
+    // a little extra time for windows to settle and redraw things
+    Sleep(2000);
+}
+
+void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
     // note: all of this is only being done for the primary motnior
 
     // get current settings
     DEVMODEA dm = {};
     dm.dmSize = sizeof(dm);
     if (!EnumDisplaySettingsExA(NULL, ENUM_CURRENT_SETTINGS, &dm, 0)) {
-        log_info("graphics", "EnumDisplaySettingsExa failed {}", get_last_error_string());
+        log_warning("graphics", "EnumDisplaySettingsExa failed {}", get_last_error_string());
         return;
     }
 
     bool needs_update = false;
 
-    // convert orientation values, and figure out if resolution needs to be swapped
-    bool rotate_resolution = false;
-    DWORD orientation = DMDO_DEFAULT;
-    switch (GRAPHICS_ADJUST_ORIENTATION) {
-        case ORIENTATION_CW:
-            orientation = DMDO_90;
-            if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
-                rotate_resolution = true;
-            }
-            break;
-        case ORIENTATION_CCW:
-            orientation = DMDO_270;
-            if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
-                rotate_resolution = true;
-            }
-            break;
-        case ORIENTATION_FLIPPED:
-            orientation = DMDO_180;
-            if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
-                rotate_resolution = true;
-            }
-            break;
-        default:
-            orientation = DMDO_DEFAULT;
-            if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
-                rotate_resolution = true;
-            }
-            break;
-    }
-
-    // update orientation (and resolution if it must be swapped)
-    if (dm.dmDisplayOrientation != orientation) {
-        log_misc("graphics",
-            "current orientation {} => desired orientation {}",
-            get_dmdo_string(dm.dmDisplayOrientation), get_dmdo_string(orientation));
-
-        const DWORD originalWidth = dm.dmPelsWidth;
-        const DWORD originalHeight = dm.dmPelsHeight;
-
-        // change orientation
-        dm.dmDisplayOrientation = orientation;
-        dm.dmFields |= DM_DISPLAYORIENTATION;
-
-        // rotate resolution
-        if (rotate_resolution) {
-            dm.dmPelsWidth  = originalHeight;
-            dm.dmPelsHeight = originalWidth;
-            dm.dmFields |= DM_PELSHEIGHT | DM_PELSWIDTH;
+    if (target_orientation.has_value()) {
+        // convert orientation values, and figure out if resolution needs to be swapped
+        bool rotate_resolution = false;
+        DWORD orientation = DMDO_DEFAULT;
+        switch (target_orientation.value()) {
+            case ORIENTATION_CW:
+                orientation = DMDO_90;
+                if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
+                    rotate_resolution = true;
+                }
+                break;
+            case ORIENTATION_CCW:
+                orientation = DMDO_270;
+                if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
+                    rotate_resolution = true;
+                }
+                break;
+            case ORIENTATION_FLIPPED:
+                orientation = DMDO_180;
+                if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
+                    rotate_resolution = true;
+                }
+                break;
+            default:
+                orientation = DMDO_DEFAULT;
+                if (dm.dmDisplayOrientation == DMDO_90 || dm.dmDisplayOrientation == DMDO_270) {
+                    rotate_resolution = true;
+                }
+                break;
         }
 
-        needs_update = true;
+        // update orientation (and resolution if it must be swapped)
+        if (dm.dmDisplayOrientation != orientation) {
+            log_misc("graphics",
+                "current orientation {} => desired orientation {}",
+                get_dmdo_string(dm.dmDisplayOrientation), get_dmdo_string(orientation));
+
+            const DWORD originalWidth = dm.dmPelsWidth;
+            const DWORD originalHeight = dm.dmPelsHeight;
+
+            // change orientation
+            dm.dmDisplayOrientation = orientation;
+            dm.dmFields |= DM_DISPLAYORIENTATION;
+
+            // rotate resolution
+            if (rotate_resolution) {
+                dm.dmPelsWidth  = originalHeight;
+                dm.dmPelsHeight = originalWidth;
+                dm.dmFields |= DM_PELSHEIGHT | DM_PELSWIDTH;
+            }
+
+            needs_update = true;
+        }
     }
 
     // update refresh rate
-    if (GRAPHICS_FORCE_REFRESH > 0) {
+    if (target_refresh_rate > 0) {
         log_misc("graphics",
             "current refresh rate {} => desired refresh rate {}",
-            dm.dmDisplayFrequency, GRAPHICS_FORCE_REFRESH);
+            dm.dmDisplayFrequency, target_refresh_rate);
 
-        dm.dmDisplayFrequency = GRAPHICS_FORCE_REFRESH;
+        dm.dmDisplayFrequency = target_refresh_rate;
         dm.dmFields |= DM_DISPLAYFREQUENCY;
         needs_update = true;
     }
 
     if (!needs_update) {
+        // nothing to do
         return;
     }
 
@@ -1170,11 +1309,11 @@ void update_monitor_on_boot() {
     if (result != DISP_CHANGE_SUCCESSFUL) {
         log_fatal(
             "graphics",
-            "failed to update display settings ({}px x {}px @ {}Hz): {}",
+            "failed to update display settings ({}px x {}px @ {}Hz): error {}, double check options",
             dm.dmPelsWidth,
             dm.dmPelsHeight,
             dm.dmDisplayFrequency,
-            get_last_error_string());
+            result);
     } else {
         log_info("graphics", "display settings updated successfully ({}px x {}px @ {}Hz)",
             dm.dmPelsWidth,
