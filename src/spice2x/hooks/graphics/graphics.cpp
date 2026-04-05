@@ -54,12 +54,10 @@ static std::mutex GRAPHICS_CAPTURE_BUFFER_M[GRAPHICS_CAPTURE_SCREEN_NO] {};
 static std::condition_variable GRAPHICS_CAPTURE_CV[GRAPHICS_CAPTURE_SCREEN_NO] {};
 
 // flag settings
-std::string PRIMARY_MONITOR_NAME = "";
 bool GRAPHICS_CAPTURE_CURSOR = false;
 bool GRAPHICS_LOG_HRESULT = false;
 bool GRAPHICS_SDVX_FORCE_720 = false;
 bool GRAPHICS_SHOW_CURSOR = false;
-std::optional<graphics_orientation> GRAPHICS_ADJUST_ORIENTATION;
 bool GRAPHICS_WINDOWED = false;
 std::vector<HWND> GRAPHICS_WINDOWS;
 UINT GRAPHICS_FORCE_REFRESH = 0;
@@ -1086,10 +1084,8 @@ static std::string get_dmdo_string(DWORD dmdo) {
     }
 }
 
-void change_primary_monitor() {
-    if (PRIMARY_MONITOR_NAME.empty()) {
-        return;
-    }
+void change_primary_monitor(const std::string &monitor_name) {
+    log_misc("graphics", "try changing primary monitor to {}...", monitor_name);    
 
     // for WinXP, since these are Vista+ or 7+ APIs
     const auto user32 = LoadLibraryA("user32.dll");
@@ -1114,7 +1110,6 @@ void change_primary_monitor() {
         log_warning("graphics", "cannot change primary monitor, OS does not support required APIs)");
         return;
     }
-
 
     UINT32 path_count = 0;
     UINT32 mode_count = 0;
@@ -1182,20 +1177,23 @@ void change_primary_monitor() {
         }
 
         const auto device_name = std::string(ws2s(name.viewGdiDeviceName));
-        if (PRIMARY_MONITOR_NAME == device_name) {
+        if (monitor_name == device_name) {
             x = mode.sourceMode.position.x;
             y = mode.sourceMode.position.y;
             found = true;
             log_info(
                 "graphics",
                 "new main monitor target found: {}, old position: ({}, {})",
-                PRIMARY_MONITOR_NAME,
+                monitor_name,
                 x, y);
             break;
         }
     }
     if (!found) {
-        log_fatal("graphics", "new main monitor target not found, check -mainmonitor option: {}", PRIMARY_MONITOR_NAME);
+        log_fatal(
+            "graphics",
+            "new main monitor target not found, check -mainmonitor option: {}",
+            monitor_name);
         return;
     }
 
@@ -1219,10 +1217,11 @@ void change_primary_monitor() {
         log_fatal("graphics", "SetDisplayConfig failed, check -mainmonitor option: {}", status);
     }
 
-    Sleep(1000);
+    // a little extra time for windows to settle and redraw things
+    Sleep(2000);
 }
 
-void update_monitor_on_boot() {
+void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
     // note: all of this is only being done for the primary motnior
 
     // get current settings
@@ -1235,11 +1234,11 @@ void update_monitor_on_boot() {
 
     bool needs_update = false;
 
-    if (GRAPHICS_ADJUST_ORIENTATION.has_value()) {
+    if (target_orientation.has_value()) {
         // convert orientation values, and figure out if resolution needs to be swapped
         bool rotate_resolution = false;
         DWORD orientation = DMDO_DEFAULT;
-        switch (GRAPHICS_ADJUST_ORIENTATION.value()) {
+        switch (target_orientation.value()) {
             case ORIENTATION_CW:
                 orientation = DMDO_90;
                 if (dm.dmDisplayOrientation == DMDO_DEFAULT || dm.dmDisplayOrientation == DMDO_180) {
@@ -1291,17 +1290,18 @@ void update_monitor_on_boot() {
     }
 
     // update refresh rate
-    if (GRAPHICS_FORCE_REFRESH > 0) {
+    if (target_refresh_rate > 0) {
         log_misc("graphics",
             "current refresh rate {} => desired refresh rate {}",
-            dm.dmDisplayFrequency, GRAPHICS_FORCE_REFRESH);
+            dm.dmDisplayFrequency, target_refresh_rate);
 
-        dm.dmDisplayFrequency = GRAPHICS_FORCE_REFRESH;
+        dm.dmDisplayFrequency = target_refresh_rate;
         dm.dmFields |= DM_DISPLAYFREQUENCY;
         needs_update = true;
     }
 
     if (!needs_update) {
+        // nothing to do
         return;
     }
 
