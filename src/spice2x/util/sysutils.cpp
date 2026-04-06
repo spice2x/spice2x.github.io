@@ -219,16 +219,13 @@ namespace sysutils {
         if (adapter->StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) {
             return;
         }
-        if (!(adapter->StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP)) {
-            return;
-        }
         std::string prefix("device");
         if (is_monitor) {
             prefix = "    adapter";
         }
         log_misc("gpuinfo", "{} {} device name   : {}", prefix.c_str(), index, adapter->DeviceName);
         log_misc("gpuinfo", "{} {} device string : {}", prefix.c_str(), index, adapter->DeviceString);
-        log_dbug("gpuinfo", "{} {} flags         : 0x{:x}", prefix.c_str(), index, adapter->StateFlags);
+        log_misc("gpuinfo", "{} {} flags         : 0x{:x}", prefix.c_str(), index, adapter->StateFlags);
 
         if (!is_monitor)  {
             // get extended info for better friendly name of monitors
@@ -267,6 +264,11 @@ namespace sysutils {
                 index,
                 (adapter->StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) ? "yes" : "no");
 
+            log_misc(
+                "gpuinfo", "{} {} is attached   : {}",
+                prefix.c_str(),
+                index,
+                (adapter->StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) ? "yes" : "no");
         }
     }
 
