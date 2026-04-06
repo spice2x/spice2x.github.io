@@ -36,6 +36,7 @@ static decltype(RegEnumKeyA) *RegEnumKeyA_orig = nullptr;
 static decltype(RegOpenKeyA) *RegOpenKeyA_orig = nullptr;
 static decltype(RegOpenKeyExA) *RegOpenKeyExA_orig = nullptr;
 static decltype(RegQueryValueExA) *RegQueryValueExA_orig = nullptr;
+static decltype(EnumDisplayDevicesA) *EnumDisplayDevicesA_orig = nullptr;
 
 namespace games::sdvx {
 
@@ -49,6 +50,7 @@ namespace games::sdvx {
     uint8_t DIGITAL_KNOB_SENS = 16;
     SdvxOverlayPosition OVERLAY_POS = SDVX_OVERLAY_BOTTOM;
     bool ENABLE_COM_PORT_SCAN_HOOK = false;
+    std::string VM_SUB_MONITOR_OVERRIDE = "";
 
     bool USE_ASIO = false;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
@@ -151,7 +153,7 @@ namespace games::sdvx {
                 log_info("sdvx::asio", "RegQueryValueExA({}, \"{}\")", fmt::ptr((void *) hKey), lpValueName);
 
                 if (_stricmp(lpValueName, "Description") == 0) {
-                    // sdvx does a comparison against hardcoded string "XONAR SOUND CARD(64)" (same as iidx31)
+                    // sdvx does a comparison against hardcoded string "XONAR SOUND CARD(64)" (same as sdvx31)
                     // so what's in the registry must be overridden with "XONAR SOUND CARD(64)"
                     // otherwise you end up with this error: M:BMSoundLib: ASIODriver: No such driver
                     memcpy(lpData, ORIGINAL_ASIO_DEVICE_NAME, strlen(ORIGINAL_ASIO_DEVICE_NAME) + 1);
@@ -354,7 +356,7 @@ namespace games::sdvx {
         if (!GRAPHICS_WINDOWED && D3D9_ADAPTER.has_value() && is_valkyrie_model()) {
             SHOW_VM_MONITOR_WARNING = true;
             log_warning(
-                "iidx",
+                "sdvx",
                 "\n\n"
                 "!!! using -dxmainadapter option with Valkyrie mode is NOT          !!!\n"
                 "!!! recommended due to known compatibility issues with the game     !!!\n"
@@ -390,6 +392,74 @@ namespace games::sdvx {
                 socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
             }
         }
+    }
+    
+    static
+    BOOL
+    WINAPI
+    EnumDisplayDevicesA_hook(
+        LPCSTR lpDevice,
+        DWORD iDevNum,
+        PDISPLAY_DEVICEA lpDisplayDevice,
+        DWORD dwFlags
+    ) {
+        if (EnumDisplayDevicesA_orig == nullptr) {
+            return false;
+        }
+
+        // caller is enumerating monitors (adapters), not devices
+        if (lpDevice != nullptr) {
+            log_misc("sdvx", "EnumDisplayDevicesA: returning original results for device {} [{}]", lpDevice, iDevNum);
+            return EnumDisplayDevicesA_orig(lpDevice, iDevNum, lpDisplayDevice, dwFlags);
+        }
+
+        // for the primary monitor, we return the actual primary monitor
+        if (iDevNum == 0) {
+            const auto result = EnumDisplayDevicesA_orig(nullptr, iDevNum, lpDisplayDevice, dwFlags);
+            log_misc(
+                "sdvx",
+                "EnumDisplayDevicesA: returning original results for primary monitor [{}], {}, result={}",
+                iDevNum,
+                lpDisplayDevice ? lpDisplayDevice->DeviceName : "???",
+                result);
+            return result;
+        }
+
+        // for the second monitor (subscreen)...
+        if (iDevNum == 1) {
+            int32_t second_monitor = -1;
+            for (int i = 0;; i++) {
+                const auto result = EnumDisplayDevicesA_orig(nullptr, i, lpDisplayDevice, 0);
+                if (!result) {
+                    break;
+                }
+                if (lpDisplayDevice != nullptr &&
+                    lpDisplayDevice->DeviceName == VM_SUB_MONITOR_OVERRIDE) {
+                    second_monitor = i;
+                    log_info(
+                        "sdvx",
+                        "found second monitor, {} @ index {} (-sdvxsubmonitor)",
+                        VM_SUB_MONITOR_OVERRIDE,
+                        second_monitor);
+                    break;
+                }
+            }
+
+            if (second_monitor == -1) {
+                log_fatal(
+                    "sdvx",
+                    "failed to find second monitor, check -sdvxsubmonitor option ({})",
+                    VM_SUB_MONITOR_OVERRIDE);
+            }
+            return EnumDisplayDevicesA_orig(nullptr, second_monitor, lpDisplayDevice, dwFlags);
+        }
+
+        // for third+ monitor:
+        // UFC will attempt to initialize on ALL monitors when calling CreateDeviceEx
+        // and if the user has three or more monitors it will initialize them invalid presentation parameters
+        // which leads to CreateDeviceEx failures and eventually a crash
+        log_misc("sdvx", "EnumDisplayDevicesA: hiding display device at index {} to prevent crash", iDevNum);
+        return false;
     }
 
     void SDVXGame::attach() {
@@ -466,6 +536,7 @@ namespace games::sdvx {
                 ENABLE_COM_PORT_SCAN_HOOK = true;
             }
         }
+        
 #endif
 
         // ASIO device hook
@@ -501,6 +572,14 @@ namespace games::sdvx {
         // remove log spam
         logger::hook_add(sdvx64_spam_remover, nullptr);
 
+        if (is_valkyrie_model() && !VM_SUB_MONITOR_OVERRIDE.empty()) {
+            log_info(
+                "sdvx",
+                "VM_SUB_MONITOR_OVERRIDE is set to '{}', applying EnumDisplayDevicesA hook to fix sub screen detection",
+                VM_SUB_MONITOR_OVERRIDE);
+            EnumDisplayDevicesA_orig = detour::iat_try(
+                "EnumDisplayDevicesA", EnumDisplayDevicesA_hook, avs::game::DLL_INSTANCE);
+        }
 #endif
     }
 

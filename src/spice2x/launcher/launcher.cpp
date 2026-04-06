@@ -473,6 +473,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_SDVXSubRedraw].value_bool()) {
         SUBSCREEN_FORCE_REDRAW = true;
     }
+    if (options[launcher::Options::SDVXSubMonitorOverride].is_active()) {
+        games::sdvx::VM_SUB_MONITOR_OVERRIDE = options[launcher::Options::SDVXSubMonitorOverride].value_text();
+    }
     if (options[launcher::Options::LoadIIDXModule].value_bool()) {
         attach_iidx = true;
     }

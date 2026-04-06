@@ -240,8 +240,11 @@ static void log_create_device_failure(HRESULT hresult) {
                 "    * double check that your monitor supports the resolution + refresh rate",
                 "          combination that the game requires",
                 "    * enable GPU-side resolution scaling in your GPU options as needed",
-                "    * if you have three or more monitors, try unplugging them down to one or two,",
-                "          or enable -graphics-force-single-adapter option",
+                "    * if you have three or more monitors:",
+                "         * for iidx, set -iidxsubmonitor option",
+                "         * for sdvx, set -sdvxsubmonitor option",
+                "         * for other games, unplugging monitors except one or two,",
+                "           or enable -graphics-force-single-adapter option",
                 "    * failing all that, see if enabling windowed mode helps"
             });
         }

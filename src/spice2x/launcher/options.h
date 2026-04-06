@@ -92,6 +92,7 @@ namespace launcher {
             SDVXDigitalKnobSocd,
             spice2x_SDVXAsioDriver,
             spice2x_SDVXSubPos,
+            SDVXSubMonitorOverride,
             LoadDDRModule,
             DDR43Mode,
             DDRSkipCodecRegisteration,

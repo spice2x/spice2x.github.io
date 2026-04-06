@@ -22,6 +22,7 @@ namespace games::sdvx {
     extern uint8_t DIGITAL_KNOB_SENS;
     extern std::optional<std::string> ASIO_DRIVER;
     extern SdvxOverlayPosition OVERLAY_POS;
+    extern std::string VM_SUB_MONITOR_OVERRIDE;
 
     // states
     extern bool SHOW_VM_MONITOR_WARNING;
