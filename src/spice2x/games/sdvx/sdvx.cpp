@@ -152,7 +152,7 @@ namespace games::sdvx {
                 log_info("sdvx::asio", "RegQueryValueExA({}, \"{}\")", fmt::ptr((void *) hKey), lpValueName);
 
                 if (_stricmp(lpValueName, "Description") == 0) {
-                    // sdvx does a comparison against hardcoded string "XONAR SOUND CARD(64)" (same as sdvx31)
+                    // sdvx does a comparison against hardcoded string "XONAR SOUND CARD(64)" (same as iidx31)
                     // so what's in the registry must be overridden with "XONAR SOUND CARD(64)"
                     // otherwise you end up with this error: M:BMSoundLib: ASIODriver: No such driver
                     memcpy(lpData, ORIGINAL_ASIO_DEVICE_NAME, strlen(ORIGINAL_ASIO_DEVICE_NAME) + 1);
