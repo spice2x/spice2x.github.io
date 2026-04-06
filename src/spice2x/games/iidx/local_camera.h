@@ -1,6 +1,6 @@
 #pragma once
 
-#if SPICE64
+#if SPICE64 && !SPICE_XP
 
 #include <d3d9.h>
 #include <dxva2api.h>

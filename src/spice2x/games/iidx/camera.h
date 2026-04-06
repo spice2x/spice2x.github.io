@@ -1,6 +1,6 @@
 #pragma once
 
-#if SPICE64
+#if SPICE64 && !SPICE_XP
 
 #include <vector>
 #include "games/iidx/local_camera.h"

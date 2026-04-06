@@ -1227,7 +1227,7 @@ int main_implementation(int argc, char *argv[]) {
             acio::MDXF_BUFFER_FILL_MODE = acio::MDXFBufferFillMode::THREAD_MODE;
         } else if (options[launcher::Options::DDRP4IOBufferMode].value_text() == "backfill") {
             acio::MDXF_BUFFER_FILL_MODE = acio::MDXFBufferFillMode::BACKFILL_MODE;
-        } 
+        }
     }
 
     if (options[launcher::Options::MidiAlgoVer].is_active()) {
@@ -1364,7 +1364,7 @@ int main_implementation(int argc, char *argv[]) {
                 log_warning(
                     "launcher",
                     "multiple values for -{}, command line args take precedence: {}",
-                    option.get_definition().name, 
+                    option.get_definition().name,
                     value);
             } else {
                 log_warning(
@@ -1379,7 +1379,7 @@ int main_implementation(int argc, char *argv[]) {
         if (launcher::USE_CMD_OVERRIDE) {
             log_info(
                 "launcher",
-                "user specified -cmdoverride, therefore command line args took precedence over spicecfg"); 
+                "user specified -cmdoverride, therefore command line args took precedence over spicecfg");
         } else {
             log_warning(
                 "launcher",
@@ -2226,7 +2226,7 @@ int main_implementation(int argc, char *argv[]) {
         game->attach();
     }
 
-#ifdef SPICE64
+#if SPICE64 && !SPICE_XP
     if (!cfg::CONFIGURATOR_STANDALONE) {
         if (games::iidx::TDJ_CAMERA) {
             games::iidx::init_camera_hooks();
@@ -2507,7 +2507,7 @@ int main_implementation(int argc, char *argv[]) {
     // disable poke
     games::iidx::poke::disable();
 
-#ifdef SPICE64
+#if SPICE64 && !SPICE_XP
     games::iidx::camera_release();
 #endif
 

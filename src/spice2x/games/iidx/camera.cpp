@@ -1,6 +1,6 @@
 #include "camera.h"
 
-#if SPICE64
+#if SPICE64 && !SPICE_XP
 
 #include <d3d9.h>
 #include "mf_wrappers.h"
@@ -84,7 +84,7 @@ namespace games::iidx {
 
     bool find_camera_hooks() {
         std::string dll_name = avs::game::DLL_NAME;
-        dll_path = MODULE_PATH / dll_name; 
+        dll_path = MODULE_PATH / dll_name;
 
         iidx_module = libutils::try_module(dll_path);
         if (!iidx_module) {
@@ -149,7 +149,7 @@ namespace games::iidx {
             "E800000000488BC8488BD34883C420",
             "X????XXXXXXXXXX",
             0, 0));
-        
+
         if (addr_textures_ptr == nullptr) {
             log_warning("iidx:camhook", "failed to find hook: addr_textures (part 1)");
             return FALSE;
@@ -232,7 +232,7 @@ namespace games::iidx {
     }
 
     static void **__fastcall camera_hook_a(PBYTE a1) {
-        std::call_once(hook_a_init, [&]{           
+        std::call_once(hook_a_init, [&]{
             device = *reinterpret_cast<LPDIRECT3DDEVICE9EX*>(a1 + addr_device_offset);
             auto const preview = *reinterpret_cast<LPDIRECT3DTEXTURE9**>((uint8_t*)iidx_module + addr_textures);
             auto const manager = reinterpret_cast<Camera::CCameraManager2*>((uint8_t*)iidx_module + addr_camera_manager);
@@ -298,11 +298,11 @@ namespace games::iidx {
         // Ask for source type = video capture devices.
         if (SUCCEEDED(hr)) {
             hr = pAttributes->SetGUID(
-                MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, 
+                MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE,
                 MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID
             );
         }
-        
+
         // Enumerate devices.
         if (SUCCEEDED(hr)) {
             hr = WrappedMFEnumDeviceSources(pAttributes, &ppDevices, &numDevices);
@@ -478,7 +478,7 @@ namespace games::iidx {
                 init_mf_library();
             }
         }
-        
+
         return result;
     }
 

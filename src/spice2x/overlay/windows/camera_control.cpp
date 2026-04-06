@@ -1,6 +1,6 @@
 #include "camera_control.h"
 
-#if SPICE64
+#if SPICE64 && !SPICE_XP
 
 #include <games/io.h>
 #include <strmif.h>
@@ -193,7 +193,7 @@ namespace overlay::windows {
         }
 
         ImGui::Separator();
-        
+
         // reset button
         if (ImGui::Button("Reset")) {
             selectedCamera->ResetCameraControlProps();

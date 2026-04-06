@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # set to EN-US for consistency
 LANG=en_us_8859_1
@@ -43,10 +43,16 @@ GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2> /dev/null || echo "none")
 GIT_HEAD=$(git rev-parse HEAD || echo "none")
 TOOLCHAIN_32="${TOOLCHAIN_32:-"/usr/share/mingw/toolchain-i686-w64-mingw32.cmake"}"
 TOOLCHAIN_64="${TOOLCHAIN_64:-"/usr/share/mingw/toolchain-x86_64-w64-mingw32.cmake"}"
+TOOLCHAIN_WINXP_32="${TOOLCHAIN_WINXP_32:-"/opt/llvm-mingw-xp/toolchain-files/cmake/i686-mingw32-clang.cmake"}"
+TOOLCHAIN_WINXP_64="${TOOLCHAIN_WINXP_64:-"/opt/llvm-mingw-xp/toolchain-files/cmake/x86_64-mingw32-clang.cmake"}"
 BUILDDIR_32_RELEASE="./cmake-build-release-32"
 BUILDDIR_32_DEBUG="./cmake-build-debug-32"
 BUILDDIR_64_RELEASE="./cmake-build-release-64"
 BUILDDIR_64_DEBUG="./cmake-build-debug-64"
+BUILDDIR_WINXP_32_RELEASE="./cmake-build-release-winxp-32"
+BUILDDIR_WINXP_32_DEBUG="./cmake-build-debug-winxp-32"
+BUILDDIR_WINXP_64_RELEASE="./cmake-build-release-winxp-64"
+BUILDDIR_WINXP_64_DEBUG="./cmake-build-debug-winxp-64"
 DEBUG=0
 OUTDIR="./bin/spice2x"
 OUTDIR_EXTRAS="./bin/spice2x/extras"
@@ -69,12 +75,27 @@ TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEnc
 BUILD_TYPE="Release"
 BUILDDIR_32=${BUILDDIR_32_RELEASE}
 BUILDDIR_64=${BUILDDIR_64_RELEASE}
+BUILDDIR_WINXP_32=${BUILDDIR_WINXP_32_RELEASE}
+BUILDDIR_WINXP_64=${BUILDDIR_WINXP_64_RELEASE}
 if ((DEBUG > 0))
 then
 	BUILD_TYPE="Debug"
 	BUILDDIR_32=${BUILDDIR_32_DEBUG}
 	BUILDDIR_64=${BUILDDIR_64_DEBUG}
+	BUILDDIR_WINXP_32=${BUILDDIR_WINXP_32_DEBUG}
+	BUILDDIR_WINXP_64=${BUILDDIR_WINXP_64_DEBUG}
 	DIST_NAME=$(echo "${DIST_NAME}" | sed 's/\.[^.]*$/-dbg&/')
+fi
+
+# is the XP-compatible toolchain installed?
+XP_MUST_BUILD=0
+BUILD_XP=0
+if [ -f "$TOOLCHAIN_WINXP_32" ] && [ -f "$TOOLCHAIN_WINXP_64" ]; then
+	BUILD_XP=1;
+elif ((XP_MUST_BUILD > 0))
+then
+	echo "WinXP toolchain not available, aborting"
+	exit 1
 fi
 
 # determine number of cores
@@ -90,6 +111,13 @@ echo "Git Branch: $GIT_BRANCH"
 echo "Git Head: $GIT_HEAD"
 echo "Toolchain for 32bit targets: $TOOLCHAIN_32"
 echo "Toolchain for 64bit targets: $TOOLCHAIN_64"
+if ((BUILD_XP > 0))
+then
+	echo "Toolchain for WinXP 32bit targets: $TOOLCHAIN_WINXP_32"
+	echo "Toolchain for WinXP 64bit targets: $TOOLCHAIN_WINXP_64"
+else
+	echo "WinXP toolchain not available, skipping WinXP builds"
+fi
 echo "Distribution Name: $DIST_NAME"
 echo "Build Type: $BUILD_TYPE"
 echo "Cores: $CORES"
@@ -130,10 +158,57 @@ time (
 	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_64}
 	popd > /dev/null
 
+	if ((BUILD_XP > 0))
+	then
+		# 32 bit Windows XP
+		echo "Building 32bit targets (WinXP toolchain)..."
+		echo "========================="
+		if ((CLEAN_BUILD > 0))
+		then
+			rm -rf ${BUILDDIR_WINXP_32}
+		fi
+		mkdir -p ${BUILDDIR_WINXP_32}
+		pushd ${BUILDDIR_WINXP_32} > /dev/null
+		CXXFLAGS="$CXXFLAGS -DSPICE_XP=1" cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_32}
+		popd > /dev/null
+
+		# 64 bit Windows XP
+		echo ""
+		echo "Building 64bit targets (WinXP toolchain)..."
+		echo "========================="
+		if ((CLEAN_BUILD > 0))
+		then
+			rm -rf ${BUILDDIR_WINXP_64}
+		fi
+		mkdir -p ${BUILDDIR_WINXP_64}
+		pushd ${BUILDDIR_WINXP_64} > /dev/null
+		CXXFLAGS="$CXXFLAGS -DSPICE_XP=1" cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_64}
+		popd > /dev/null
+	else
+		echo "Skipping WinXP builds, toolchain not specified"
+	fi
+
 	echo ""
 	echo "Compilation process done :)"
 	echo "==========================="
 )
+
+if ((BUILD_XP > 0))
+then
+	echo ""
+	echo "Checking XP compatibility..."
+	echo "============================="
+	if ! command -v windows_dll_compat_checker &> /dev/null; then
+		echo "WARNING: windows_dll_compat_checker not found, skipping XP compatibility check"
+	else
+		windows_dll_compat_checker -s PREMADE/winxp_x86_64.ini \
+			${BUILDDIR_WINXP_64}/spicetools/64/spice64.exe
+		windows_dll_compat_checker -s PREMADE/winxp_x86_64_32bit_dlls.ini \
+			${BUILDDIR_WINXP_32}/spicetools/spicecfg.exe \
+			${BUILDDIR_WINXP_32}/spicetools/32/spice.exe \
+			${BUILDDIR_WINXP_32}/spicetools/32/spice_laa.exe
+	fi
+fi
 
 # generate PDBs
 if false  # ((DEBUG > 0))
@@ -191,6 +266,10 @@ rm -rf ${OUTDIR_EXTRAS}
 mkdir -p ${OUTDIR_EXTRAS}
 mkdir -p ${OUTDIR_EXTRAS}/largeaddressaware
 mkdir -p ${OUTDIR_EXTRAS}/linux
+if ((BUILD_XP > 0))
+then
+	mkdir -p ${OUTDIR_EXTRAS}/winxp/largeaddressaware
+fi
 
 if false # ((DEBUG > 0))
 then
@@ -226,6 +305,13 @@ else
     cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
+	if ((BUILD_XP > 0))
+	then
+		cp ${BUILDDIR_WINXP_32}/spicetools/spicecfg.exe ${OUTDIR_EXTRAS}/winxp 2>/dev/null
+		cp ${BUILDDIR_WINXP_32}/spicetools/32/spice.exe ${OUTDIR_EXTRAS}/winxp 2>/dev/null
+		cp ${BUILDDIR_WINXP_32}/spicetools/32/spice_laa.exe ${OUTDIR_EXTRAS}/winxp/largeaddressaware/spice.exe 2>/dev/null
+		cp ${BUILDDIR_WINXP_64}/spicetools/64/spice64.exe ${OUTDIR_EXTRAS}/winxp 2>/dev/null
+	fi
 fi
 
 # pack source files to output directory

@@ -1,6 +1,6 @@
 #pragma once
 
-#if SPICE64
+#if SPICE64 && !SPICE_XP
 
 #include "overlay/window.h"
 #include <strmif.h>

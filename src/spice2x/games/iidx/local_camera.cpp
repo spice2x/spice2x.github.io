@@ -1,6 +1,6 @@
 #include "games/iidx/local_camera.h"
 
-#if SPICE64
+#if SPICE64 && !SPICE_XP
 
 #include "util/logging.h"
 #include "util/utils.h"
@@ -128,7 +128,7 @@ namespace games::iidx {
         // TODO: Color space conversion
         // if (SUCCEEDED(hr)) {
         //     hr = pAttributes->SetUINT32(MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, TRUE);
-        // }       
+        // }
         // if (SUCCEEDED(hr)) {
 		// 	hr = pAttributes->SetUINT32(MF_READWRITE_DISABLE_CONVERTERS, FALSE);
         // }
@@ -189,11 +189,11 @@ namespace games::iidx {
                 &pType
                 );
 
-            if (FAILED(hr)) { 
+            if (FAILED(hr)) {
                 if (hr != MF_E_NO_MORE_TYPES) {
                     log_warning("iidx:camhook", "[{}] Cannot get media type {} {:#x}", m_name, i, (ULONG)hr);
                 }
-                break; 
+                break;
             }
 
             hr = TryMediaType(pType, &bestWidth, &bestFrameRate);
@@ -246,7 +246,7 @@ namespace games::iidx {
             pSelectedMediaType = m_pAutoMediaType;
         }
 
-        if (SUCCEEDED(hr)) { 
+        if (SUCCEEDED(hr)) {
             hr = ChangeMediaType(pSelectedMediaType);
         }
 
@@ -281,7 +281,7 @@ namespace games::iidx {
             m_cameraHeight = info.height;
             UpdateDrawRect();
         }
-      
+
         return hr;
     }
 
@@ -395,7 +395,7 @@ namespace games::iidx {
 
         m_device->ColorFill(m_pDestSurf, &targetRect, D3DCOLOR_XRGB(0, 0, 0));
     }
-  
+
     void IIDXLocalCamera::CreateThread() {
         // Create thread
         m_drawThread = new std::thread([this]() {
@@ -411,7 +411,7 @@ namespace games::iidx {
                 if (accumulator > 1.0) {
                     accumulator -= 1.0;
                     floorFrameTimeMicroSec += 1;
-                }                
+                }
                 std::this_thread::sleep_for(std::chrono::microseconds(floorFrameTimeMicroSec));
             }
         });
@@ -430,12 +430,12 @@ namespace games::iidx {
 
         log_misc("iidx:camhook", "[{}] Init camera control", m_name);
 
-        hr = m_pSource->QueryInterface(IID_IAMCameraControl, (void**)&m_pCameraControl); 
-        if (FAILED(hr)) { 
-            // The device does not support IAMCameraControl 
+        hr = m_pSource->QueryInterface(IID_IAMCameraControl, (void**)&m_pCameraControl);
+        if (FAILED(hr)) {
+            // The device does not support IAMCameraControl
             log_warning("iidx:camhook", "[{}] Camera control not supported", m_name);
             return E_FAIL;
-        } 
+        }
 
         for (size_t i = 0; i < CAMERA_CONTROL_PROP_SIZE; i++) {
             long minValue = 0;
@@ -472,9 +472,9 @@ namespace games::iidx {
             CameraControlProp prop = m_controlProps.at(i);
 
             log_misc(
-                "iidx:camhook", "[{}] >> {} range=({}, {}) default={} delta={} dFlags={} value={} vFlags={}", 
+                "iidx:camhook", "[{}] >> {} range=({}, {}) default={} delta={} dFlags={} value={} vFlags={}",
                 m_name,
-                CAMERA_CONTROL_LABELS[i], 
+                CAMERA_CONTROL_LABELS[i],
                 prop.minValue, prop.maxValue,
                 prop.defaultValue,
                 prop.delta,
@@ -570,9 +570,9 @@ namespace games::iidx {
 
         // Get frame rate
         hr = MFGetAttributeRatio(
-            pType, 
-            MF_MT_FRAME_RATE, 
-            (UINT32*)&frameRate.Numerator, 
+            pType,
+            MF_MT_FRAME_RATE,
+            (UINT32*)&frameRate.Numerator,
             (UINT32*)&frameRate.Denominator
         );
         if (FAILED(hr)) { goto done; }
@@ -580,7 +580,7 @@ namespace games::iidx {
         info.frameRate = frameRate.Numerator / frameRate.Denominator;
 
         info.description = fmt::format(
-            "{}x{} @{}FPS {}", 
+            "{}x{} @{}FPS {}",
             info.width,
             info.height,
             (int)info.frameRate,
@@ -606,7 +606,7 @@ namespace games::iidx {
         return "Unknown";
     }
 
-    /** 
+    /**
      * Return values:
      *   S_OK:      this is a "better" media type than the existing one
      *   S_FALSE:   valid media type, but not "better"
@@ -620,17 +620,17 @@ namespace games::iidx {
 
         hr = pType->GetGUID(MF_MT_SUBTYPE, &subtype);
 
-        if (FAILED(hr))  { 
+        if (FAILED(hr))  {
             log_warning("iidx:camhook", "[{}] Failed to get subtype: {:#x}", m_name, (ULONG)hr);
-            return hr;    
+            return hr;
         }
 
         hr = MFGetAttributeSize(pType, MF_MT_FRAME_SIZE, &width, &height);
-        if (FAILED(hr))  { 
+        if (FAILED(hr))  {
             log_warning("iidx:camhook", "[{}] Failed to get frame size: {:#x}", m_name, (ULONG)hr);
             return hr;
         }
-        
+
         // Only support format with converters
         // TODO: verify conversion support with DXVA
         if (subtype != MFVideoFormat_YUY2 && subtype != MFVideoFormat_NV12) {
@@ -639,12 +639,12 @@ namespace games::iidx {
 
         // Frame rate
         hr = MFGetAttributeRatio(
-            pType, 
-            MF_MT_FRAME_RATE, 
-            (UINT32*)&frameRate.Numerator, 
+            pType,
+            MF_MT_FRAME_RATE,
+            (UINT32*)&frameRate.Numerator,
             (UINT32*)&frameRate.Denominator
         );
-        if (FAILED(hr))  { 
+        if (FAILED(hr))  {
             log_warning("iidx:camhook", "[{}] Failed to get frame rate: {:#x}", m_name, (ULONG)hr);
             return hr;
         }
@@ -667,7 +667,7 @@ namespace games::iidx {
         // Check if this format has better resolution / frame rate
         if ((width > *pBestWidth) || (width >= (UINT32)TARGET_SURFACE_WIDTH && frameRateValue >= *pBestFrameRate)) {
             // log_misc(
-            //     "iidx:camhook", "Better media type {} ({}x{}) @({} FPS)", 
+            //     "iidx:camhook", "Better media type {} ({}x{}) @({} FPS)",
             //     GetVideoFormatName(subtype),
             //     width,
             //     height,
@@ -730,7 +730,7 @@ namespace games::iidx {
 
     HRESULT IIDXLocalCamera::FlushDrawCommands() {
         IDirect3DQuery9* pEventQuery = nullptr;
-        // It is necessary to flush the command queue 
+        // It is necessary to flush the command queue
         // or the data is not ready for the receiver to read.
         // Adapted from : https://msdn.microsoft.com/en-us/library/windows/desktop/bb172234%28v=vs.85%29.aspx
         // Also see : http://www.ogre3d.org/forums/viewtopic.php?f=5&t=50486
@@ -784,8 +784,8 @@ namespace games::iidx {
             for (int y = 0; y < TARGET_SURFACE_HEIGHT; y++) {
                 for (int x = 0; x < TARGET_SURFACE_WIDTH; x++) {
                     memcpy(
-                        pDest + x * pixelSize, 
-                        pSrc + (flip_h ? (TARGET_SURFACE_WIDTH - x - 1) : x) * pixelSize, 
+                        pDest + x * pixelSize,
+                        pSrc + (flip_h ? (TARGET_SURFACE_WIDTH - x - 1) : x) * pixelSize,
                         pixelSize
                     );
                 }

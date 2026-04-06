@@ -69,7 +69,7 @@ namespace overlay {
         }
         return ImVec2(apply_scaling(x), apply_scaling(y));
     }
-    
+
     ImVec2 apply_scaling_to_vector(const ImVec2& input) {
         return apply_scaling_to_vector(input.x, input.y);
     }
@@ -350,7 +350,7 @@ void overlay::SpiceOverlay::init() {
     this->window_add(window_config = new overlay::windows::Config(this));
     this->window_add(window_control = new overlay::windows::Control(this));
     this->window_add(window_log = new overlay::windows::Log(this));
-#ifdef SPICE64
+#if SPICE64 && !SPICE_XP
     if (avs::game::is_model("LDJ")) {
         this->window_add(window_camera = new overlay::windows::CameraControl(this));
     }
