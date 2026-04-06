@@ -1,3 +1,6 @@
+// GetDisplayConfigBufferSizes etc is Vista+
+#define _WIN32_WINNT 0x0601
+
 #include "sysutils.h"
 
 #include <cstdlib>
@@ -20,7 +23,7 @@
 
 namespace sysutils {
 
-#pragma pack(push) 
+#pragma pack(push)
 #pragma pack(1)
 
     // from https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemfirmwaretable
@@ -318,7 +321,7 @@ namespace sysutils {
             return;
         }
     }
-        
+
     static std::vector<MonitorEntry> enumerate_monitors_internal() {
         // for WinXP, since these are Vista+ or 7+ APIs
         const auto user32 = LoadLibraryA("user32.dll");
@@ -372,7 +375,7 @@ namespace sysutils {
         for (const auto& path : paths) {
             MonitorEntry entry;
 
-            // device ID (\\.\DISPLAYn) 
+            // device ID (\\.\DISPLAYn)
             DISPLAYCONFIG_SOURCE_DEVICE_NAME source_name = {};
             source_name.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
             source_name.header.size = sizeof(source_name);

@@ -61,7 +61,7 @@ namespace overlay::windows {
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
     constexpr ImVec4 TEXT_COLOR_RED(1.f, 0.f, 0.f, 1.f);
     constexpr uint32_t OPTION_INPUT_TEXT_WIDTH = 512;
-    
+
     std::unique_ptr<AsioDriverList> asio_driver_list;
 
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
@@ -515,7 +515,7 @@ namespace overlay::windows {
 
                 ImGui::BeginChild("SearchOptions", ImVec2(
                         0, ImGui::GetWindowContentRegionMax().y - page_offset), false);
-                        
+
                 // search from all options
                 ImGui::Spacing();
                 ImGui::SetNextItemWidth(420.f);
@@ -633,14 +633,14 @@ namespace overlay::windows {
                         reset_button_to_default(&button, get_keypad_top_row(button));
                     }
                     ImGui::CloseCurrentPopup();
-                }                
+                }
                 ImGui::SameLine();
                 if (ImGui::Button("Remove All")) {
                     for (auto &button : *buttons) {
                         reset_button_to_default(&button, 0xFF);
                     }
                     ImGui::CloseCurrentPopup();
-                }                
+                }
             } else {
                 if (ImGui::Button("Yes")) {
                     for (auto &button : *buttons) {
@@ -789,7 +789,7 @@ namespace overlay::windows {
         // clear button
         if (button_display.size() > 0 || alt_index > 0) {
             ImGui::SameLine();
-            if (ImGui::DeleteButton(button_display.size() > 0 ? "Unbind" : "Delete")) { 
+            if (ImGui::DeleteButton(button_display.size() > 0 ? "Unbind" : "Delete")) {
                 clear_button(button, alt_index);
             }
         }
@@ -1069,7 +1069,7 @@ namespace overlay::windows {
             {"P1 Keypad 00", VK_OEM_MINUS},
             {"P1 Keypad Decimal", VK_OEM_PLUS},
             {"P1 Keypad Insert Card", VK_BACK}};
-        
+
         for (const auto &[key, value] : keypad_top_row_defaults) {
             if (button.getName() == key) {
                 return value;
@@ -1423,7 +1423,7 @@ namespace overlay::windows {
                             }
 
                             for (unsigned short ch = 0; ch < midi->pitch_bend.size(); ch++) {
-                                // check pitch bend down 
+                                // check pitch bend down
                                 if (midi->pitch_bend[ch] < 0) {
 
                                     // bind control
@@ -1629,7 +1629,7 @@ namespace overlay::windows {
                 if (ImGui::Selectable("Empty (Naive)", button->isNaive())) {
                     button->setDeviceIdentifier("");
                     dirty = true;
-                }   
+                }
                 if (button->isNaive()) {
                     ImGui::SetItemDefaultFocus();
                 }
@@ -1713,7 +1713,7 @@ namespace overlay::windows {
                     button->setVelocityThreshold(0);
                     dirty = true;
                 }
-                
+
                 type = button->getAnalogType();
 
                 int midi_channel = 0;
@@ -1760,7 +1760,7 @@ namespace overlay::windows {
                             } else if (0x20 <= midi_index && midi_index < 0x3F) {
                                 midi_index = 0x40;
 
-                            // skip range [0x60, 0x65] 
+                            // skip range [0x60, 0x65]
                             } else if (midi_index == 0x65) {
                                 midi_index = 0x5F;
                             } else if (0x60 <= midi_index && midi_index < 0x65) {
@@ -1844,7 +1844,7 @@ namespace overlay::windows {
                         ImGui::TextDisabled("Min. %d%%", velocity_threshold * 100 / 127);
 
                     } else if (type == ButtonAnalogType::BAT_MIDI_CTRL_PRECISION ||
-                            type == ButtonAnalogType::BAT_MIDI_CTRL_SINGLE) { 
+                            type == ButtonAnalogType::BAT_MIDI_CTRL_SINGLE) {
 
                         ImGui::TextUnformatted("\n");
                         ImGui::AlignTextToFramePadding();
@@ -1912,7 +1912,7 @@ namespace overlay::windows {
                             "Direction",
                             is_up ? "Pitch Up" : "Pitch Down",
                             ImGuiComboFlags_HeightSmall)) {
-                        
+
                         if (ImGui::Selectable("Pitch Up", is_up)) {
                             button->setAnalogType(ButtonAnalogType::BAT_MIDI_PITCH_UP);
                             dirty = true;
@@ -2213,7 +2213,7 @@ namespace overlay::windows {
                     ImGui::SameLine();
                     ImGui::HelpMarker(device->name.c_str());
                 }
-                
+
                 switch (device->type) {
                     case rawinput::MOUSE: {
 
@@ -2283,7 +2283,7 @@ namespace overlay::windows {
                             if (device->midiInfo->pitch_bend_set[ch]) {
                                 control_names.push_back(fmt::format("Pitch Ch.{}", ch + 1));
                                 analogs_midi_indices.push_back(
-                                    ch + 
+                                    ch +
                                     precision.size() +
                                     single.size() +
                                     onoff.size());
@@ -2428,7 +2428,7 @@ namespace overlay::windows {
             if (invert != analog.getInvert()) {
                 analog.setInvert(invert);
             }
-            
+
             if (this->analogs_devices_selected >= 0) {
                 const auto device = this->analogs_devices.at(this->analogs_devices_selected);
                 if (device->type == rawinput::HID) {
@@ -2783,7 +2783,7 @@ namespace overlay::windows {
         bool table_begin = false;
         for (size_t i = 0; i < lights->size(); i++) {
             auto &light = lights->at(i);
-            
+
             if (current_section != light.getCategory()) {
                 current_section = light.getCategory();
                 if (table_begin) {
@@ -2791,7 +2791,7 @@ namespace overlay::windows {
                 }
 
                 render_section_header(current_section.empty() ? "Uncategorized" : current_section);
-                
+
                 table_begin = begin_lights_table();
                 if (!table_begin) {
                     break;
@@ -2813,7 +2813,7 @@ namespace overlay::windows {
                 alt_index++;
             }
 
-            
+
         }
         if (table_begin) {
             ImGui::EndTable();
@@ -2834,7 +2834,7 @@ namespace overlay::windows {
 
         // progress bar
         ImGui::TableNextColumn();
-        
+
         // light name
         if (alt_index == 0) {
             ImGui::ProgressBar(light_state, ImVec2(32.f, 0));
@@ -2865,7 +2865,7 @@ namespace overlay::windows {
         // clear light
         if (light_display.size() > 0 || alt_index > 0) {
             ImGui::SameLine();
-            if (ImGui::DeleteButton(light_display.size() > 0 ? "Unbind" : "Delete")) { 
+            if (ImGui::DeleteButton(light_display.size() > 0 ? "Unbind" : "Delete")) {
                 clear_light(light, alt_index);
             }
         }
@@ -2948,7 +2948,7 @@ namespace overlay::windows {
                 games_list[games_selected], *light,
                 alt_index - 1);
     }
-    
+
     void Config::edit_light_popup(Light &primary_light, Light *light, const int alt_index) {
         if (ImGui::BeginPopupModal("Light Binding", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 
@@ -3748,7 +3748,7 @@ namespace overlay::windows {
 
         return detected_controller;
     }
-    
+
     void Config::build_cards() {
 
         constexpr float TEXT_INPUT_WIDTH = 240.f;
@@ -4078,12 +4078,12 @@ namespace overlay::windows {
                     // verify card number
                     this->keypads_card_file_contents_valid[player] = true;
                     if (this->keypads_card_number[player][0] != 0) {
-                        this->keypads_card_file_contents_valid[player] = 
+                        this->keypads_card_file_contents_valid[player] =
                             validate_ea_card(this->keypads_card_number[player]);
                     }
 
                     // card number box
-                    
+
                     ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
                     ImGui::BeginDisabled();
                     if (this->keypads_card_number[player][0] != 0) {
@@ -4289,7 +4289,9 @@ namespace overlay::windows {
             ImGui::TextUnformatted("Requires restart! Showing all procs in Group 0.");
             ImGui::TextUnformatted("");
             ImGui::TextUnformatted("Pick CPU cores to use:");
-            const uint64_t cpu_count = GetActiveProcessorCount(0);
+            SYSTEM_INFO info;
+            GetSystemInfo(&info);
+            const uint64_t cpu_count = info.dwNumberOfProcessors;
             uint64_t affinity = 0;
             if (!option.value.empty()) {
                 try {
@@ -4333,7 +4335,7 @@ namespace overlay::windows {
                     option.value = fmt::format("0x{:X}", affinity);
                 }
             }
-            
+
             ImGui::EndChild();
             if (option.value.empty()) {
                 ImGui::TextUnformatted("Using all CPUs (option default).");
@@ -4499,7 +4501,7 @@ namespace overlay::windows {
 
     void Config::build_options(
         std::vector<Option> *options, const std::string &category, const std::string *filter) {
-        int options_count;  
+        int options_count;
 
         // category name
         std::string cat = "Options";
@@ -4525,19 +4527,19 @@ namespace overlay::windows {
                 widget_col_width = overlay::apply_scaling(264);
             }
             ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, widget_col_width);
-            
+
             // iterate options
             options_count = 0;
             for (auto &option : *options) {
-                
+
                 // get option definition
                 auto &definition = option.get_definition();
-                
+
                 // check category
                 if (!category.empty() && definition.category != category) {
                     continue;
                 }
-                
+
                 // check hidden option
                 if (!this->options_show_hidden && option.value.empty()) {
                     // skip hidden entries
@@ -4552,7 +4554,7 @@ namespace overlay::windows {
                         continue;
                     }
                 }
-                
+
                 // filter
                 if (filter != nullptr) {
                     if (filter->empty()) {
@@ -4568,7 +4570,7 @@ namespace overlay::windows {
                 }
 
                 options_count += 1;
-                
+
                 // list entry
                 ImGui::PushID(&option);
                 ImGui::TableNextRow();
@@ -4580,10 +4582,10 @@ namespace overlay::windows {
                     if (definition.category.empty()) {
                         ImGui::TextDisabled("-");
                     } else {
-                        ImGui::TextDisabled(definition.category.c_str());
+                        ImGui::TextDisabled("%s", definition.category.c_str());
                     }
                 }
-                
+
                 // option name
                 ImGui::TableNextColumn();
                 ImGui::AlignTextToFramePadding();
@@ -4763,7 +4765,7 @@ namespace overlay::windows {
                                 if (!element.second.empty()) {
                                     label += fmt::format(" ({})", element.second);
                                 }
-                                
+
                                 bool selected = current_item == label;
                                 if (ImGui::Selectable(label.c_str(), selected)) {
                                     this->options_dirty = true;
@@ -4834,7 +4836,7 @@ namespace overlay::windows {
                         ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "%s", definition.title.c_str());
 
                         ImGui::TextUnformatted("");
-                        
+
                         ImGui::TextUnformatted("Current value:");
                         ImGui::BeginDisabled();
                         // keeping it read only; if you want to make this editable, we need to refactor the
@@ -4856,7 +4858,7 @@ namespace overlay::windows {
                         if (ImGui::Button("Save & Close")) {
                             ImGui::CloseCurrentPopup();
                             this->options_dirty = true;
-                            ::Config::getInstance().updateBinding(games_list[games_selected], option);  
+                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
                         }
                         ImGui::EndPopup();
                     }
@@ -4864,7 +4866,7 @@ namespace overlay::windows {
 
                 // row hover detection (invisible selectable that spans entire row)
                 ImGui::InvisibleTableRowSelectable();
-                
+
                 // next item
                 ImGui::PopID();
             }
@@ -4916,7 +4918,7 @@ namespace overlay::windows {
         if (ImGui::TextLink(PROJECT_URL)) {
             launch_shell(PROJECT_URL);
         }
-        
+
         ImGui::TextUnformatted("");
         ImGui::TextUnformatted(resutil::load_file_string_crlf(IDR_README).c_str());
         ImGui::TextUnformatted("");
@@ -5024,7 +5026,7 @@ namespace overlay::windows {
             const ImVec2 popup_pos(
                 ImGui::GetIO().DisplaySize.x / 2 - popup_size.x / 2,
                 ImGui::GetIO().DisplaySize.y / 2 - popup_size.y / 2);
-            
+
             ImGui::SetNextWindowSize(popup_size, ImGuiCond_Appearing);
             ImGui::SetNextWindowPos(popup_pos, ImGuiCond_Appearing);
             bool unused_open2 = true;
@@ -5691,7 +5693,7 @@ namespace overlay::windows {
 
                     ImGui::EndTable();
                 }
-            
+
                 if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
                     ImGui::EndDisabled();
                 }

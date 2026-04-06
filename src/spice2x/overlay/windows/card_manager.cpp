@@ -144,7 +144,7 @@ namespace overlay::windows {
                           "  xxxx xxxx xxxx xxxx  ");
             ImGui::EndDisabled();
         }
-        
+
         ImGui::PopID();
         return clicked;
     }
@@ -152,8 +152,8 @@ namespace overlay::windows {
     void CardManager::open_card_editor() {
         if (this->current_card) {
             const auto card = this->current_card;
-            strcpy_s(this->name_buffer, std::size(this->name_buffer), card->name.c_str());
-            strcpy_s(this->card_buffer, std::size(this->card_buffer), card->id.c_str());
+            snprintf(this->name_buffer, std::size(this->name_buffer), "%s", card->name.c_str());
+            snprintf(this->card_buffer, std::size(this->card_buffer), "%s", card->id.c_str());
             this->color_buffer[0] = card->color[0];
             this->color_buffer[1] = card->color[1];
             this->color_buffer[2] = card->color[2];
@@ -227,7 +227,7 @@ namespace overlay::windows {
                     };
                     generate_search_string(&card);
                     this->cards.emplace_back(card);
-                    
+
                     // mark this card as the selected one
                     this->current_card = &this->cards.back();
                 }
@@ -301,7 +301,7 @@ namespace overlay::windows {
 
         // search for card
         //
-        // setting ImGuiInputTextFlags_CallbackCharFilter and pressing escape doesn't cause below 
+        // setting ImGuiInputTextFlags_CallbackCharFilter and pressing escape doesn't cause below
         // to return true, making it necessary to provide a callback...
         ImGui::SetNextItemWidth(overlay::apply_scaling(240));
         if (ImGui::InputTextWithHint("", "Type here to search..", &this->search_filter)) {
@@ -399,11 +399,11 @@ namespace overlay::windows {
 
             // cards from card manager JSON
             for (auto &card : this->cards) {
-                
+
                 if (!this->search_filter_in_lower_case.empty() && !card.search_string.empty()) {
                     const bool matched =
                     card.search_string.find(this->search_filter_in_lower_case) != std::string::npos;
-                    
+
                     if (!matched) {
                         continue;
                     }

@@ -1,3 +1,6 @@
+// GetDisplayConfigBufferSizes etc is Vista+
+#define _WIN32_WINNT 0x0601
+
 #include <initguid.h>
 
 #include "graphics.h"
@@ -232,9 +235,9 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
             // This allows touches received on subscreen window to be translated correctly.
             update_spicetouch_window_dimensions(hWnd);
             // log_misc(
-            //     "graphics", "detected window change ({}x{} @ {}, {}), updating touch coord-space to match", 
+            //     "graphics", "detected window change ({}x{} @ {}, {}), updating touch coord-space to match",
             //     SPICETOUCH_TOUCH_WIDTH, SPICETOUCH_TOUCH_HEIGHT, SPICETOUCH_TOUCH_X, SPICETOUCH_TOUCH_Y);
-                
+
             // Update SPICETOUCH window if present
             if (SPICETOUCH_TOUCH_HWND) {
                 SetWindowPos(
@@ -371,7 +374,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     if (is_tdj_sub_window) {
         // TDJ windowed mode: remember the subscreen window handle for later
         TDJ_SUBSCREEN_WINDOW = result;
-    
+
         // hook for preventing the closing of subscreen window
         if (GRAPHICS_IIDX_WSUB) {
             graphics_hook_subscreen_window(TDJ_SUBSCREEN_WINDOW);
@@ -530,7 +533,7 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
        if (GRAPHICS_IIDX_WSUB) {
            // (Experimental) Show subscreen in windowed mode
             graphics_load_windowed_subscreen_parameters();
- 
+
             RECT rect {};
             DWORD dwStyle;
 
@@ -1085,7 +1088,7 @@ static std::string get_dmdo_string(DWORD dmdo) {
 }
 
 void change_primary_monitor(const std::string &monitor_name) {
-    log_misc("graphics", "try changing primary monitor to {}...", monitor_name);    
+    log_misc("graphics", "try changing primary monitor to {}...", monitor_name);
 
     // for WinXP, since these are Vista+ or 7+ APIs
     const auto user32 = LoadLibraryA("user32.dll");
@@ -1116,7 +1119,7 @@ void change_primary_monitor(const std::string &monitor_name) {
     std::vector<DISPLAYCONFIG_PATH_INFO> paths;
     std::vector<DISPLAYCONFIG_MODE_INFO> modes;
     bool succeeded = false;
-    
+
     // in a retry loop, try to query for display config
     // retry loop is needed because it can fail with ERROR_INSUFFICIENT_BUFFER
     for (int attempt = 0; attempt < 5; ++attempt) {
