@@ -351,7 +351,7 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
         GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
     }
-    if (options[launcher::Options::DXDisplayAdapter].is_active() && 
+    if (options[launcher::Options::DXDisplayAdapter].is_active() &&
         options[launcher::Options::DXDisplayAdapter].value_uint32() != D3DADAPTER_DEFAULT) {
         D3D9_ADAPTER = options[launcher::Options::DXDisplayAdapter].value_uint32();
 
@@ -1294,19 +1294,25 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // log
-#ifndef SPICE_LINUX
+#if SPICE_LINUX
+    #ifdef SPICE64
+        log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x) for Linux");
+    #else
+        log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x) for Linux");
+    #endif
+#elif SPICE_XP
+    #ifdef SPICE64
+        log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x) for WinXP");
+    #else
+        log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x) for WinXP");
+    #endif
+#else
     #ifdef SPICE64
         log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x)");
     #elif SPICE32_LARGE_ADDRESS_AWARE
         log_info("launcher", "SpiceTools Bootstrap (x32 - Large Address Aware) (spice2x)");
     #else
         log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x)");
-    #endif
-#else
-    #ifdef SPICE64
-        log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x) for Linux");
-    #else
-        log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x) for Linux");
     #endif
 #endif
 
