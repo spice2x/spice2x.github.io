@@ -71,7 +71,6 @@ namespace games::iidx {
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE = std::nullopt;
     std::optional<std::string> SCREEN_MODE = std::nullopt;
     std::optional<std::string> TDJ_CAMERA_OVERRIDE = std::nullopt;
-    std::string TDJ_SUB_MONITOR_OVERRIDE;
 
     // states
     static HKEY real_asio_reg_handle = nullptr;
