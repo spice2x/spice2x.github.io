@@ -1127,6 +1127,9 @@ int main_implementation(int argc, char *argv[]) {
         options[launcher::Options::SDVXWindowedSubscreenAlwaysOnTop].value_bool()) {
         GRAPHICS_WSUB_ALWAYS_ON_TOP = true;
     }
+    if (options[launcher::Options::IIDXSubMonitorOverride].is_active()) {
+        games::iidx::TDJ_SUB_MONITOR_OVERRIDE = options[launcher::Options::IIDXSubMonitorOverride].value_text();
+    }
 
     if (options[launcher::Options::spice2x_JubeatLegacyTouch].value_bool()) {
         games::jb::TOUCH_LEGACY_BOX = true;

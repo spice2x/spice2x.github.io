@@ -2344,6 +2344,16 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // IIDXSubMonitorOverride
+        .title = "IIDX TDJ Subscreen Monitor Override",
+        .name = "iidxsubmonitor",
+        .desc = "Overrides the second monitor used for displaying TDJ subscreen.",
+        .type = OptionType::Text,
+        .setting_name = "\\\\.\\DISPLAY2",
+        .category = "Monitor",
+        .picker = OptionPickerType::Monitor,
+    },
+    {
         // spice2x_IIDXEmulateSubscreenKeypadTouch
         .title = "IIDX TDJ Subscreen Keypad Touch Emulation",
         .name = "sp2x-iidxsubpoke",

@@ -46,6 +46,7 @@ static decltype(RegEnumKeyA) *RegEnumKeyA_orig = nullptr;
 static decltype(RegOpenKeyA) *RegOpenKeyA_orig = nullptr;
 static decltype(RegOpenKeyExA) *RegOpenKeyExA_orig = nullptr;
 static decltype(RegQueryValueExA) *RegQueryValueExA_orig = nullptr;
+static decltype(EnumDisplayDevicesA) *EnumDisplayDevicesA_orig = nullptr;
 
 namespace games::iidx {
 
@@ -70,6 +71,7 @@ namespace games::iidx {
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE = std::nullopt;
     std::optional<std::string> SCREEN_MODE = std::nullopt;
     std::optional<std::string> TDJ_CAMERA_OVERRIDE = std::nullopt;
+    std::string TDJ_SUB_MONITOR_OVERRIDE;
 
     // states
     static HKEY real_asio_reg_handle = nullptr;
@@ -276,6 +278,74 @@ namespace games::iidx {
 
 #endif
 
+    static
+    BOOL
+    WINAPI
+    EnumDisplayDevicesA_hook(
+        LPCSTR lpDevice,
+        DWORD iDevNum,
+        PDISPLAY_DEVICEA lpDisplayDevice,
+        DWORD dwFlags
+    ) {
+        if (EnumDisplayDevicesA_orig == nullptr) {
+            return false;
+        }
+
+        // caller is enumerating monitors (adapters), not devices
+        if (lpDevice != nullptr) {
+            log_misc("iidx", "EnumDisplayDevicesA: returning original results for device {} [{}]", lpDevice, iDevNum);
+            return EnumDisplayDevicesA_orig(lpDevice, iDevNum, lpDisplayDevice, dwFlags);
+        }
+
+        // for the primary monitor, we return the actual primary monitor
+        if (iDevNum == 0) {
+            const auto result = EnumDisplayDevicesA_orig(nullptr, iDevNum, lpDisplayDevice, dwFlags);
+            log_misc(
+                "iidx",
+                "EnumDisplayDevicesA: returning original results for primary monitor [{}], {}, result={}",
+                iDevNum,
+                lpDisplayDevice ? lpDisplayDevice->DeviceName : "???",
+                result);
+            return result;
+        }
+
+        // for the second monitor (subscreen)...
+        if (iDevNum == 1) {
+            int32_t second_monitor = -1;
+            for (int i = 0;; i++) {
+                const auto result = EnumDisplayDevicesA_orig(nullptr, i, lpDisplayDevice, 0);
+                if (!result) {
+                    break;
+                }
+                if (lpDisplayDevice != nullptr &&
+                    lpDisplayDevice->DeviceName == TDJ_SUB_MONITOR_OVERRIDE) {
+                    second_monitor = i;
+                    log_info(
+                        "iidx",
+                        "found second monitor, {} @ index {} (-iidxsubmonitor)",
+                        TDJ_SUB_MONITOR_OVERRIDE,
+                        second_monitor);
+                    break;
+                }
+            }
+
+            if (second_monitor == -1) {
+                log_fatal(
+                    "iidx",
+                    "failed to find second monitor, check -iidxsubmonitor option ({})",
+                    TDJ_SUB_MONITOR_OVERRIDE);
+            }
+            return EnumDisplayDevicesA_orig(nullptr, second_monitor, lpDisplayDevice, dwFlags);
+        }
+
+        // for third+ monitor:
+        // TDJ will attempt to initialize on ALL monitors when calling CreateDeviceEx
+        // and if the user has three or more monitors it will initialize them invalid presentation parameters
+        // which leads to CreateDeviceEx failures and eventually a crash
+        log_misc("iidx", "EnumDisplayDevicesA: hiding display device at index {} to prevent crash", iDevNum);
+        return false;
+    }
+
     IIDXGame::IIDXGame() : Game("Beatmania IIDX") {
         logger::hook_add(log_hook, this);
     }
@@ -422,6 +492,15 @@ namespace games::iidx {
         if (!DISABLE_CAMS.value()) {
             init_legacy_camera_hook(FLIP_CAMS);
         }
+
+#if SPICE64
+
+        if (TDJ_MODE && !TDJ_SUB_MONITOR_OVERRIDE.empty()) {
+            EnumDisplayDevicesA_orig = detour::iat_try(
+                "EnumDisplayDevicesA", EnumDisplayDevicesA_hook, avs::game::DLL_INSTANCE);
+        }
+
+#endif
 
         // init cfgmgr32 hooks
         cfgmgr32hook_init(avs::game::DLL_INSTANCE);

@@ -24,6 +24,7 @@ namespace games::iidx {
     extern bool TDJ_CAMERA;
     extern bool TDJ_CAMERA_PREFER_16_9;
     extern std::optional<std::string> TDJ_CAMERA_OVERRIDE;
+    extern std::string TDJ_SUB_MONITOR_OVERRIDE;
 
     extern bool TDJ_MODE;
     extern bool FORCE_720P;

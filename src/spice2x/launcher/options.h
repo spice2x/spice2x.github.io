@@ -243,6 +243,7 @@ namespace launcher {
             DRSRGBCameraHook,
             spice2x_IIDXNativeTouch,
             spice2x_IIDXNoSub,
+            IIDXSubMonitorOverride,
             spice2x_IIDXEmulateSubscreenKeypadTouch,
             spice2x_AutoCard,
             spice2x_LowLatencySharedAudio,
