@@ -4872,12 +4872,24 @@ namespace overlay::windows {
             // check if empty
             if (options_count == 0) {
                 ImGui::TableNextRow();
+
+                // option category
+                if (filter != nullptr) {
+                    ImGui::TableNextColumn();
+                    ImGui::TextDisabled("-");
+                }
+
+                // name of option
                 ImGui::TableNextColumn();
-                ImGui::Indent(INDENT);
+                if (filter == nullptr) {
+                    ImGui::Indent(INDENT);
+                }
                 ImGui::TextDisabled("-");
-                ImGui::Unindent(INDENT);
-                ImGui::TableNextColumn();
-                ImGui::TextDisabled("-");
+                if (filter == nullptr) {
+                    ImGui::Unindent(INDENT);
+                }
+
+                // widget
                 ImGui::TableNextColumn();
                 ImGui::TextDisabled("-");
             }
