@@ -476,7 +476,7 @@ namespace sysutils {
         // for the second device (subscreen)...
         if (SECOND_MONITOR_OVERRIDE.empty()) {
             // if there is no user override, we find the device with lowest index (that isn't primary)
-            for (DWORD i = 0;; i++) { // adjust the range as needed
+            for (DWORD i = 0;; i++) {
                 DISPLAY_DEVICEA device = {};
                 device.cb = sizeof(device);
                 const auto result = EnumDisplayDevicesA_orig(nullptr, i, &device, 0);
@@ -485,6 +485,10 @@ namespace sysutils {
                 }
                 if (device.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) {
                     // primary, skip this
+                    continue;
+                }
+                if ((device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) == 0) {
+                    // disconnected, skip this as well
                     continue;
                 }
                 if (std::string(lpDisplayDevice->DeviceName) == device.DeviceName) {
