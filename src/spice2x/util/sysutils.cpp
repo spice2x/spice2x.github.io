@@ -7,6 +7,9 @@
 #include <windows.h>
 #undef WIN32_NO_STATUS
 
+#include "hooks/graphics/graphics.h"
+#include "avs/game.h"
+#include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -82,6 +85,9 @@ namespace sysutils {
         DWORD BufferSize
     );
     static GetSystemFirmwareTable_t GetSystemFirmwareTable = nullptr;
+
+    std::string SECOND_MONITOR_OVERRIDE = "";
+    static decltype(EnumDisplayDevicesA) *EnumDisplayDevicesA_orig = nullptr;
 
     void print_smbios() {
         DWORD bytes_written = 0;
@@ -405,5 +411,116 @@ namespace sysutils {
     const std::vector<MonitorEntry>& enumerate_monitors() {
         static const std::vector<MonitorEntry> monitors = enumerate_monitors_internal();
         return monitors;
+    }
+
+    static
+    BOOL
+    __stdcall
+    EnumDisplayDevicesA_hook(
+        LPCSTR lpDevice,
+        DWORD iDevNum,
+        PDISPLAY_DEVICEA lpDisplayDevice,
+        DWORD dwFlags
+    ) {
+        if (EnumDisplayDevicesA_orig == nullptr) {
+            return false;
+        }
+
+        // caller is enumerating monitors (adapters), not devices
+        if (lpDevice != nullptr) {
+            log_misc("sysutils", "EnumDisplayDevicesA: returning original results for device {} [{}]", lpDevice, iDevNum);
+            return EnumDisplayDevicesA_orig(lpDevice, iDevNum, lpDisplayDevice, dwFlags);
+        }
+
+        // call the original first
+        const auto result_orig = EnumDisplayDevicesA_orig(nullptr, iDevNum, lpDisplayDevice, dwFlags);
+        if (!result_orig) {
+            return result_orig;
+        }
+
+        log_misc(
+            "sysutils",
+            "EnumDisplayDevicesA_orig: {} [{}], StateFlags={:#x}",
+            lpDisplayDevice->DeviceName,
+            iDevNum,
+            lpDisplayDevice->StateFlags);
+
+        // this one is not relevant
+        if ((lpDisplayDevice->StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) == 0) {
+            return result_orig;
+        }
+
+        // if this is for the primary device, just return it
+        if (lpDisplayDevice->StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) {
+            log_misc(
+                "sysutils",
+                "EnumDisplayDevicesA: returning original results for primary monitor [{}], {}, result={}",
+                iDevNum,
+                lpDisplayDevice->DeviceName,
+                result_orig);
+            return result_orig;
+        }
+
+        // this is not 100% confirmed, but hope that this helps in cases where second monitors get used
+        // even though NumberOfAdaptersInGroup was set to 1 on hybrid laptops
+        if (GRAPHICS_FORCE_SINGLE_ADAPTER) {
+            lpDisplayDevice->StateFlags &= ~DISPLAY_DEVICE_ATTACHED_TO_DESKTOP;
+            log_info(
+                "sysutils",
+                "hiding this monitor, {} @ index {} (-graphics-single-adapter)",
+                lpDisplayDevice->DeviceName,
+                iDevNum);
+            return result_orig;
+        }
+
+        // for the second device (subscreen)...
+        if (SECOND_MONITOR_OVERRIDE.empty()) {
+            // if there is no user override, we find the device with lowest index (that isn't primary)
+            for (DWORD i = 0;; i++) { // adjust the range as needed
+                DISPLAY_DEVICEA device = {};
+                device.cb = sizeof(device);
+                const auto result = EnumDisplayDevicesA_orig(nullptr, i, &device, 0);
+                if (!result) {
+                    break;
+                }
+                if (device.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) {
+                    // primary, skip this
+                    continue;
+                }
+                if (std::string(lpDisplayDevice->DeviceName) == device.DeviceName) {
+                    log_info(
+                        "sysutils",
+                        "returning second monitor {} @ index {}",
+                        lpDisplayDevice->DeviceName,
+                        iDevNum);
+                    return result_orig;
+                } else {
+                    // otherwise, fall through and hide this monitor
+                    break;
+                }
+            }
+        } else if (SECOND_MONITOR_OVERRIDE == lpDisplayDevice->DeviceName) {
+            // if there is one preferred by the user, use this one, and hide others
+            log_info(
+                "sysutils",
+                "returning second monitor, {} @ index {} (-sysutilssubmonitor)",
+                lpDisplayDevice->DeviceName,
+                iDevNum);
+            return result_orig;
+        }
+
+        // this device should not be used; pretend that it's not connected
+        log_info(
+            "sysutils",
+            "hiding this monitor, {} @ index {}",
+            lpDisplayDevice->DeviceName,
+            iDevNum);
+        lpDisplayDevice->StateFlags &= ~DISPLAY_DEVICE_ATTACHED_TO_DESKTOP;
+        return result_orig;
+    }
+
+    void hook_EnumDisplayDevicesA() {
+        EnumDisplayDevicesA_orig = detour::iat_try(
+             "EnumDisplayDevicesA", EnumDisplayDevicesA_hook, avs::game::DLL_INSTANCE);
     }
 }

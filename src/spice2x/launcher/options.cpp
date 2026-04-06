@@ -932,7 +932,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // SDVXSubMonitorOverride
         .title = "SDVX Subscreen Monitor Override",
         .name = "sdvxsubmonitor",
-        .desc = "If you have three or more monitors, this option MUST be set to tell the game which monitor is the subscreen.",
+        .desc = "If you have three or more monitors, this option can be set to tell the game which monitor is the subscreen.",
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Sound Voltex",
@@ -2358,7 +2358,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // IIDXSubMonitorOverride
         .title = "IIDX TDJ Subscreen Monitor Override",
         .name = "iidxsubmonitor",
-        .desc = "If you have three or more monitors, this option MUST be set to tell the game which monitor is the subscreen.",
+        .desc = "If you have three or more monitors, this option can be set to tell the game which monitor is the subscreen.",
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Beatmania IIDX",

@@ -474,7 +474,7 @@ int main_implementation(int argc, char *argv[]) {
         SUBSCREEN_FORCE_REDRAW = true;
     }
     if (options[launcher::Options::SDVXSubMonitorOverride].is_active()) {
-        games::sdvx::VM_SUB_MONITOR_OVERRIDE = options[launcher::Options::SDVXSubMonitorOverride].value_text();
+        sysutils::SECOND_MONITOR_OVERRIDE = options[launcher::Options::SDVXSubMonitorOverride].value_text();
     }
     if (options[launcher::Options::LoadIIDXModule].value_bool()) {
         attach_iidx = true;
@@ -1131,7 +1131,7 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_WSUB_ALWAYS_ON_TOP = true;
     }
     if (options[launcher::Options::IIDXSubMonitorOverride].is_active()) {
-        games::iidx::TDJ_SUB_MONITOR_OVERRIDE = options[launcher::Options::IIDXSubMonitorOverride].value_text();
+        sysutils::SECOND_MONITOR_OVERRIDE = options[launcher::Options::IIDXSubMonitorOverride].value_text();
     }
 
     if (options[launcher::Options::spice2x_JubeatLegacyTouch].value_bool()) {

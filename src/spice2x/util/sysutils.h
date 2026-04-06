@@ -15,4 +15,7 @@ namespace sysutils {
     };
 
     const std::vector<MonitorEntry> &enumerate_monitors();
+
+    extern std::string SECOND_MONITOR_OVERRIDE;
+    void hook_EnumDisplayDevicesA();    
 }
