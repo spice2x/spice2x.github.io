@@ -334,10 +334,10 @@ then
 	echo "Building dist..."
 	mkdir -p ${DIST_FOLDER}
 	rm -rf "${DIST_FOLDER}/${DIST_NAME}"
-	pushd ${OUTDIR}/.. > /dev/null
-	zip -qrXT9 "$OLDPWD/${DIST_FOLDER}/${DIST_NAME}" spice2x -x "spice2x/extras/*" -z <<< "$DIST_COMMENT"
+	pushd ${OUTDIR} > /dev/null
+	zip -qrXT9 "$OLDPWD/${DIST_FOLDER}/${DIST_NAME}" . -x "extras/*" -z <<< "$DIST_COMMENT"
 	echo "Building extras..."
-	zip -qrXT9 "$OLDPWD/${DIST_FOLDER}/${DIST_NAME_EXTRAS}" spice2x -z <<< "$DIST_COMMENT"
+	zip -qrXT9 "$OLDPWD/${DIST_FOLDER}/${DIST_NAME_EXTRAS}" . -z <<< "$DIST_COMMENT"
 	popd > /dev/null
 fi
 
