@@ -13,6 +13,7 @@
 #include "hooks/graphics/graphics.h"
 #include "avs/game.h"
 #include "util/detour.h"
+#include "util/flags_helper.h"
 #include "util/libutils.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -218,60 +219,87 @@ namespace sysutils {
         return strings;
     }
 
+    static std::string device_flags_to_string(DWORD flags) {
+        FLAGS_START(flags);
+        FLAG(flags, DISPLAY_DEVICE_ATTACHED_TO_DESKTOP);
+        FLAG(flags, DISPLAY_DEVICE_MULTI_DRIVER);
+        FLAG(flags, DISPLAY_DEVICE_PRIMARY_DEVICE);
+        FLAG(flags, DISPLAY_DEVICE_MIRRORING_DRIVER);
+        FLAG(flags, DISPLAY_DEVICE_VGA_COMPATIBLE);
+        FLAG(flags, DISPLAY_DEVICE_REMOVABLE);
+
+#if !defined(DISPLAY_DEVICE_ACC_DRIVER)
+#define DISPLAY_DEVICE_ACC_DRIVER               0x00000040
+#endif
+        FLAG(flags, DISPLAY_DEVICE_ACC_DRIVER);
+       
+        FLAG(flags, DISPLAY_DEVICE_MODESPRUNED);
+        FLAG(flags, DISPLAY_DEVICE_RDPUDD);
+        FLAG(flags, DISPLAY_DEVICE_REMOTE);
+        FLAG(flags, DISPLAY_DEVICE_DISCONNECT);
+        FLAG(flags, DISPLAY_DEVICE_TS_COMPATIBLE);
+
+#if !defined(DISPLAY_DEVICE_UNSAFE_MODES_ON)
+#define DISPLAY_DEVICE_UNSAFE_MODES_ON          0x00080000
+#endif
+        FLAG(flags, DISPLAY_DEVICE_UNSAFE_MODES_ON);
+        FLAGS_END(flags);
+    }
+
+    static std::string monitor_flags_to_string(DWORD flags) {
+        FLAGS_START(flags);
+        FLAG(flags, DISPLAY_DEVICE_ACTIVE);
+        FLAG(flags, DISPLAY_DEVICE_ATTACHED);
+        FLAGS_END(flags);
+    }
+
     static void print_adapter(DWORD index, PDISPLAY_DEVICEA adapter, bool is_monitor) {
-        if (adapter->StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) {
-            return;
+        if (!is_monitor) {
+            log_misc("gpuinfo", "-------- device {} --------", index);
         }
+
         std::string prefix("device");
         if (is_monitor) {
             prefix = "    adapter";
         }
-        log_misc("gpuinfo", "{} {} device name   : {}", prefix.c_str(), index, adapter->DeviceName);
-        log_misc("gpuinfo", "{} {} device string : {}", prefix.c_str(), index, adapter->DeviceString);
-        log_misc("gpuinfo", "{} {} flags         : 0x{:x}", prefix.c_str(), index, adapter->StateFlags);
-
+   
         if (!is_monitor)  {
             // get extended info for better friendly name of monitors
+            std::string friendly_name = "unknown";
             const auto &monitors = enumerate_monitors();
             for (const auto& monitor : monitors) {
                 if (monitor.display_name == adapter->DeviceName) {
-                    const auto friendly = ws2s(monitor.friendly_name.c_str());
-                    log_misc(
-                        "gpuinfo", "{} {} friendly name : {}",
-                        prefix.c_str(),
-                        index,
-                        friendly);
+                    friendly_name = ws2s(monitor.friendly_name.c_str());
                     break;
                 }
             }
+
+            log_misc("gpuinfo", "{} {} name       : {} ({}) @ {}",
+                prefix.c_str(), index,
+                adapter->DeviceName, friendly_name, adapter->DeviceString);
 
             // resolution, refresh rate
             DEVMODEA devmode = {};
             devmode.dmSize = sizeof(devmode);
             if (EnumDisplaySettingsA(adapter->DeviceName, ENUM_CURRENT_SETTINGS, &devmode)) {
                 log_misc(
-                    "gpuinfo",
-                    "{} {} resolution    : {}px * {}px @ {}Hz",
+                    "gpuinfo", "{} {} resolution : {}px * {}px @ {}Hz",
                     prefix.c_str(),
                     index,
                     devmode.dmPelsWidth, devmode.dmPelsHeight,
                     devmode.dmDisplayFrequency);
-            } else {
-                log_misc("gpuinfo", "EnumDisplaySettingsA failed");
             }
+            
+            log_misc("gpuinfo", "{} {} flags      : {}",
+                prefix.c_str(), index, device_flags_to_string(adapter->StateFlags));
 
-            // primary?
-            log_misc(
-                "gpuinfo", "{} {} is primary    : {}",
-                prefix.c_str(),
-                index,
-                (adapter->StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE) ? "yes" : "no");
+        } else {
+            log_misc("gpuinfo", "{} {} name  : {} ({})",
+                prefix.c_str(), index,
+                adapter->DeviceName, adapter->DeviceString);
 
-            log_misc(
-                "gpuinfo", "{} {} is attached   : {}",
-                prefix.c_str(),
-                index,
-                (adapter->StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) ? "yes" : "no");
+            log_misc("gpuinfo", "{} {} flags : {}",
+                prefix.c_str(), index, monitor_flags_to_string(adapter->StateFlags));
         }
     }
 
