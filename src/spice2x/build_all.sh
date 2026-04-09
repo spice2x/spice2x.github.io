@@ -70,6 +70,8 @@ DIST_NAME_EXTRAS="spice2x-$(date +%y)-$(date +%m)-$(date +%d)-full.zip"
 DIST_COMMENT=${DIST_NAME}$'\n'"$GIT_BRANCH - $GIT_HEAD"$'\nThank you for playing.'
 TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_cfg_linux spicetools_spice spicetools_spice_laa spicetools_spice_linux spicetools_stubs_cpusbxpkm"
 TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEncodeAPI64 spicetools_stubs_nvcuvid spicetools_stubs_nvcuda spicetools_spice64 spicetools_spice64_linux"
+TARGETS_XP32="spicetools_cfg spicetools_spice"
+TARGETS_XP64="spicetools_spice64"
 
 # determine build type
 BUILD_TYPE="Release"
@@ -169,7 +171,7 @@ time (
 		fi
 		mkdir -p ${BUILDDIR_WINXP_32}
 		pushd ${BUILDDIR_WINXP_32} > /dev/null
-		CXXFLAGS="$CXXFLAGS -DSPICE_XP=1" cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_32}
+		CXXFLAGS="$CXXFLAGS -DSPICE_XP=1" cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_XP32}
 		popd > /dev/null
 
 		# 64 bit Windows XP
@@ -182,7 +184,7 @@ time (
 		fi
 		mkdir -p ${BUILDDIR_WINXP_64}
 		pushd ${BUILDDIR_WINXP_64} > /dev/null
-		CXXFLAGS="$CXXFLAGS -DSPICE_XP=1" cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_64}
+		CXXFLAGS="$CXXFLAGS -DSPICE_XP=1" cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_XP64}
 		popd > /dev/null
 	else
 		echo "Skipping WinXP builds, toolchain not specified"

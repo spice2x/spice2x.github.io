@@ -37,23 +37,6 @@ XInputGetState(
 
 // end xinput definitions
 
-#if defined(SPICE_XP)
-
-    XInputManager::XInputManager() {}
-    XInputManager::~XInputManager() {}
-    void XInputManager::stop() {}
-    std::vector<uint8_t> XInputManager::get_available_players() {
-        return {};
-    }
-    float XInputManager::get_analog_state(uint8_t player, XInputAnalogEnum analog) {
-        return 0.5f;
-    }
-    bool XInputManager::is_button_pressed(uint8_t player, XInputButtonEnum button) {
-        return false;
-    }
-
-#else
-
     std::string get_button_string(XInputButtonEnum button) {
         switch (button) {
             case XInputButtonEnum::DPAD_UP:
@@ -129,6 +112,23 @@ XInputGetState(
         }
         return fmt::format("Unknown Analog ({})", static_cast<int>(analog));
     }
+
+#if defined(SPICE_XP)
+
+    XInputManager::XInputManager() {}
+    XInputManager::~XInputManager() {}
+    void XInputManager::stop() {}
+    std::vector<uint8_t> XInputManager::get_available_players() {
+        return {};
+    }
+    float XInputManager::get_analog_state(uint8_t player, XInputAnalogEnum analog) {
+        return 0.5f;
+    }
+    bool XInputManager::is_button_pressed(uint8_t player, XInputButtonEnum button) {
+        return false;
+    }
+
+#else
 
     static decltype(XInputGetState) *XInputGetState_addr = nullptr;
 
