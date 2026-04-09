@@ -103,7 +103,7 @@ namespace GameAPI {
             }
         }
 
-        float getState(rawinput::Device *device, Analog &analog);
+        float getState(rawinput::RawInputManager *manager, rawinput::Device *device, Analog &analog);
         float getState(rawinput::RawInputManager *manager, Analog &analog);
         float getState(std::unique_ptr<rawinput::RawInputManager> &manager, Analog &analog);
     }

@@ -70,6 +70,8 @@ void rawinput::set_midi_algorithm(rawinput::MidiNoteAlgorithm new_algo) {
 
 rawinput::RawInputManager::RawInputManager() {
 
+    XINPUT_MGR = std::make_unique<xinput::XInputManager>();
+
     // create input window and load in devices
     this->input_hwnd_create();
     this->devices_reload();
@@ -106,6 +108,8 @@ void rawinput::RawInputManager::stop() {
     // destruct all devices and input window
     this->devices_destruct();
     this->input_hwnd_destroy();
+
+    XINPUT_MGR.reset();
 }
 
 void rawinput::RawInputManager::input_hwnd_create() {
@@ -190,6 +194,8 @@ void rawinput::RawInputManager::devices_reload() {
     if (ENABLE_SMX_DEDICAB) {
         this->devices_scan_smxdedicab();
     }
+
+    this->devices_scan_xinput();
 
     // check for LIT Board
     sextet_register("COM54", "LIT Board", false);
@@ -1006,6 +1012,27 @@ void rawinput::RawInputManager::devices_scan_smxdedicab() {
     } else {
         // remove device since connection failed
         this->devices.pop_back();
+    }
+}
+
+void rawinput::RawInputManager::devices_scan_xinput() {
+    log_misc("rawinput", "scan XInput devices...");
+    const auto players = XINPUT_MGR->get_available_players();
+    for (const auto player : players) {
+        auto *new_xinput_device = new Device();
+        new_xinput_device->type = XINPUT_GAMEPAD;
+        new_xinput_device->name = fmt::format(";XINPUT;{}", player);
+        new_xinput_device->desc = fmt::format("XInput Gamepad P{}", player + 1);
+        new_xinput_device->handle = reinterpret_cast<HANDLE>(player);
+        new_xinput_device->mutex = new std::mutex();
+        new_xinput_device->mutex_out = new std::mutex();
+
+        auto &device = this->devices.emplace_back(*new_xinput_device);
+
+        // notify add
+        for (auto &cb : this->callback_add) {
+            cb.f(cb.data, &device);
+        }
     }
 }
 
@@ -2732,6 +2759,10 @@ void rawinput::RawInputManager::devices_print() {
             }
             case SMX_DEDICAB: {
                 log_misc("rawinput", "device type: SMX_DEDICAB");
+                break;
+            }
+            case XINPUT_GAMEPAD: {
+                log_misc("rawinput", "device type: XINPUT");
                 break;
             }
             case UNKNOWN:

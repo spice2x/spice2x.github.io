@@ -596,6 +596,8 @@ set(SOURCE_FILES ${SOURCE_FILES}
         rawinput/smxstage.h
         rawinput/smxdedicab.cpp
         rawinput/smxdedicab.h
+        rawinput/xinput.cpp
+        rawinput/xinput.h
 
         # reader
         reader/reader.cpp

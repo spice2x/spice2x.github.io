@@ -90,6 +90,8 @@ std::string Analog::getDisplayString(rawinput::RawInputManager *manager) {
                 return "MIDI Unknown Index " + indexString + " (" + device->desc + ")";
             }
         }
+        case rawinput::XINPUT_GAMEPAD:
+            return xinput::get_analog_string(static_cast<xinput::XInputAnalogEnum>(index)) + " (" + device->desc + ")";
         case rawinput::DESTROYED:
             return "Device unplugged (" + indexString + ")";
         default:

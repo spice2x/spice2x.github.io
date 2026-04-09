@@ -417,6 +417,8 @@ std::string Button::getDisplayString(rawinput::RawInputManager* manager) {
             }
             case rawinput::PIUIO_DEVICE:
                 return "PIUIO " + vKeyString;
+            case rawinput::XINPUT_GAMEPAD:
+                return xinput::get_button_string(static_cast<xinput::XInputButtonEnum>(vKey));
             case rawinput::DESTROYED:
                 return "Device unplugged (" + vKeyString + ")";
             default:

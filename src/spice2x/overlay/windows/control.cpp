@@ -732,6 +732,10 @@ namespace overlay::windows {
                             ImGui::Text("Type: PIUIO");
                             break;
                         }
+                        case rawinput::XINPUT_GAMEPAD: {
+                            ImGui::Text("Type: XInput");
+                            break;
+                        }
                         case rawinput::DESTROYED: {
                             ImGui::Text("Disconnected.");
                             break;

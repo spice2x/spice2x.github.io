@@ -2165,6 +2165,9 @@ namespace overlay::windows {
                                 case rawinput::MIDI:
                                     this->analogs_devices.emplace_back(&device);
                                     break;
+                                case rawinput::XINPUT_GAMEPAD:
+                                    this->analogs_devices.emplace_back(&device);
+                                    break;
                                 default:
                                     continue;
                             }
@@ -2289,6 +2292,15 @@ namespace overlay::windows {
                                     onoff.size());
                             }
                         }
+                        break;
+                    }
+                    
+                    case rawinput::XINPUT_GAMEPAD: {
+                        for (int i = 0; i < static_cast<int>(xinput::XInputAnalogEnum::COUNT); i++) {
+                            const auto v = static_cast<xinput::XInputAnalogEnum>(i);
+                            control_names.push_back(xinput::get_analog_string(v));
+                        }
+                        break;
                     }
                     default:
                         break;

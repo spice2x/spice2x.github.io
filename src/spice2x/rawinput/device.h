@@ -31,7 +31,8 @@ namespace rawinput {
         SEXTET_OUTPUT,
         PIUIO_DEVICE,
         SMX_STAGE,
-        SMX_DEDICAB
+        SMX_DEDICAB,
+        XINPUT_GAMEPAD,
     };
 
     enum MouseKeys {

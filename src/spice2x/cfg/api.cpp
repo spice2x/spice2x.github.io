@@ -1,5 +1,6 @@
 #include "api.h"
 
+#include <cassert>
 #include <optional>
 
 #include "launcher/superexit.h"
@@ -389,6 +390,16 @@ GameAPI::Buttons::State GameAPI::Buttons::getState(rawinput::RawInputManager *ma
                 }
                 case rawinput::PIUIO_DEVICE: {
                     state = device->piuioDev->IsPressed(vKey) ? BUTTON_PRESSED : BUTTON_NOT_PRESSED;
+                    break;
+                }
+                case rawinput::XINPUT_GAMEPAD: {
+                    assert(reinterpret_cast<uintptr_t>(device->handle) < XUSER_MAX_COUNT);
+                    const auto player = static_cast<uint8_t>(reinterpret_cast<uintptr_t>(device->handle));
+                    state = manager->XINPUT_MGR->is_button_pressed(
+                        player,
+                        static_cast<xinput::XInputButtonEnum>(vKey)) ?
+                        BUTTON_PRESSED : BUTTON_NOT_PRESSED;
+                    break;
                 }
                 default:
                     break;
@@ -586,7 +597,7 @@ float Buttons::getVelocity(std::unique_ptr<rawinput::RawInputManager> &manager, 
     }
 }
 
-float GameAPI::Analogs::getState(rawinput::Device *device, Analog &analog) {
+float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::Device *device, Analog &analog) {
     float value = 0.5f;
     if (!device) {
         return value;
@@ -767,6 +778,18 @@ float GameAPI::Analogs::getState(rawinput::Device *device, Analog &analog) {
             }
             break;
         }
+        case rawinput::XINPUT_GAMEPAD: {
+            assert(reinterpret_cast<uintptr_t>(device->handle) < XUSER_MAX_COUNT);
+            const auto player = static_cast<uint8_t>(reinterpret_cast<uintptr_t>(device->handle));
+            value = manager->XINPUT_MGR->get_analog_state(
+                player,
+                static_cast<xinput::XInputAnalogEnum>(index));
+            // invert value
+            if (inverted) {
+                value = 1.f - value;
+            }
+            break;
+        }
         default:
             break;
     }
@@ -822,7 +845,7 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, Analog &ana
         return analog.getLastState();
     }
 
-    float state = getState(device, analog);
+    float state = getState(manager, device, analog);
     analog.setLastState(state);
 
     return state;

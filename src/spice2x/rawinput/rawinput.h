@@ -10,6 +10,7 @@
 
 #include "device.h"
 #include "hotplug.h"
+#include "rawinput/xinput.h"
 #include "util/scope_guard.h"
 
 namespace rawinput {
@@ -84,6 +85,7 @@ namespace rawinput {
         void devices_scan_piuio();
         void devices_scan_smxstage();
         void devices_scan_smxdedicab();
+        void devices_scan_xinput();
         void devices_destruct();
         void devices_destruct(Device *device, bool log = true);
         void flush_start();
@@ -101,6 +103,7 @@ namespace rawinput {
     public:
 
         HWND input_hwnd = nullptr;
+        std::unique_ptr<xinput::XInputManager> XINPUT_MGR = nullptr;
 
         RawInputManager();
         ~RawInputManager();
