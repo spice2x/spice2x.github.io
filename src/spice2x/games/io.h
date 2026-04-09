@@ -64,5 +64,5 @@ namespace games {
     std::vector<Analog> *get_analogs(const std::string &game);
     std::vector<Light> *get_lights(const std::string &game);
     std::vector<Option> *get_options(const std::string &game);
-    std::vector<std::string> *get_game_file_hints(const std::string &game);
+    std::vector<std::vector<std::string>> *get_game_file_hints(const std::string &game);
 }

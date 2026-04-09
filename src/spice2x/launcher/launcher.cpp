@@ -1757,11 +1757,17 @@ int main_implementation(int argc, char *argv[]) {
                 break;
             }
 
-            // HELLO! Pop'n Music
             if (check_dll("popn.dll")) {
                 avs::game::DLL_NAME = "popn.dll";
                 attach_io = true;
-                attach_hpm = true;
+
+                if (check_dll("libaio-iob2_video.dll")) {
+                    // pop'n music (pika cabinet)
+                    attach_popn = true;
+                } else {
+                    // HELLO! Pop'n Music
+                    attach_hpm = true;
+                }
                 break;
             }
 
