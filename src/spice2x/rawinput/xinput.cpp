@@ -45,8 +45,11 @@ XInputGetState(
     std::vector<uint8_t> XInputManager::get_available_players() {
         return {};
     }
-    void XInputManager::get_state(uint8_t player, XINPUT_GAMEPAD_STATE *state) {
-        *state = {};
+    float XInputManager::get_analog_state(uint8_t player, XInputAnalogEnum analog) {
+        return 0.5f;
+    }
+    bool XInputManager::is_button_pressed(uint8_t player, XInputButtonEnum button) {
+        return false;
     }
 
 #else
