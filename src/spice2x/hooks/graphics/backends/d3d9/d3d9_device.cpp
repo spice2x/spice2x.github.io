@@ -263,7 +263,6 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
         if (SUCCEEDED(hr) && !sub_swapchain) {
             sub_swapchain = new WrappedIDirect3DSwapChain9(this, *ppSwapChain);
             sub_swapchain->should_run_hooks = false;
-            log_info("graphics::d3d9", "created additional swap chain");
         } else if (FAILED(hr) && !fake_sub_swapchain) {
             log_warning("graphics::d3d9",
                     "failed to create sub swap chain, hr={}, using fake swap chain",

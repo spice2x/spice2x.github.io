@@ -1139,8 +1139,6 @@ static void graphics_d3d9_ldj_init_sub_screen(IDirect3DDevice9Ex *device, D3DPRE
     */
 
     if (GRAPHICS_WINDOWED) {
-        log_info("graphics::d3d9", "creating additional swap chain");
-
         present_params->Windowed = true;
         present_params->FullScreen_RefreshRateInHz = 0;
 
@@ -1149,18 +1147,23 @@ static void graphics_d3d9_ldj_init_sub_screen(IDirect3DDevice9Ex *device, D3DPRE
         hr = device->CreateAdditionalSwapChain(present_params, &SUB_SWAP_CHAIN);
         if (FAILED(hr)) {
             log_warning("graphics::d3d9", "failed to create additional swap chain, hr={}", FMT_HRESULT(hr));
+        } else {
+            log_info("graphics::d3d9", "created additional swap chain for windowed mode");
         }
     } else {
         hr = device->GetSwapChain(1, &SUB_SWAP_CHAIN);
         if (FAILED(hr)) {
             log_warning("graphics::d3d9", "failed to acquire fullscreen sub swap chain, hr={}", FMT_HRESULT(hr));
         } else {
+            log_info("graphics::d3d9", "acquired fullscreen sub swap chain");
             return;
         }
 
         hr = device->CreateAdditionalSwapChain(present_params, &SUB_SWAP_CHAIN);
         if (FAILED(hr)) {
             log_warning("graphics::d3d9", "failed to get additional swap chain, hr={}", FMT_HRESULT(hr));
+        } else {
+            log_info("graphics::d3d9", "created additional swap chain for fullscreen mode");
         }
     }
 }
