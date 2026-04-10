@@ -11,7 +11,7 @@ namespace xinput {
 
     #define XUSER_MAX_COUNT 4
 
-    typedef struct _XINPUT_GAMEPAD_STATE {
+    struct XINPUT_GAMEPAD_STATE {
         uint16_t wButtons;
         uint8_t bLeftTrigger;
         uint8_t bRightTrigger;
@@ -19,9 +19,9 @@ namespace xinput {
         int16_t sThumbLY;
         int16_t sThumbRX;
         int16_t sThumbRY;
-    } XINPUT_GAMEPAD_STATE;
+    };
 
-    typedef struct _XINPUT_GAMEPAD_STATE_NORMALIZED {
+    struct XINPUT_GAMEPAD_STATE_NORMALIZED {
         uint16_t wButtons;
         float bLeftTrigger;
         float bRightTrigger;
@@ -29,9 +29,9 @@ namespace xinput {
         float sThumbLY;
         float sThumbRX;
         float sThumbRY;
-    } XINPUT_GAMEPAD_STATE_NORMALIZED;
+    };
 
-    enum class XInputButtonEnum {
+    enum class XInputButtonEnum : uint16_t {
         // actual buttons
         DPAD_UP,
         DPAD_DOWN,
@@ -75,14 +75,20 @@ namespace xinput {
         COUNT
     };
 
+    struct XINPUT_NEW_BUTTON {
+        uint8_t player;
+        XInputButtonEnum button;
+    };
+
     std::string get_button_string(XInputButtonEnum button);
     std::string get_analog_string(XInputAnalogEnum analog);
+    std::string get_device_desc(uint8_t player);
 
     class XInputManager {
     private:
         bool initialized = false;
         HMODULE xinput_lib = nullptr;
-        void get_state(uint8_t player, XINPUT_GAMEPAD_STATE_NORMALIZED *state);
+        void get_state(uint8_t player, XINPUT_GAMEPAD_STATE_NORMALIZED &state);
     public:
         XInputManager();
         ~XInputManager();
@@ -90,5 +96,6 @@ namespace xinput {
         std::vector<uint8_t> get_available_players();
         bool is_button_pressed(uint8_t player, XInputButtonEnum button);
         float get_analog_state(uint8_t player, XInputAnalogEnum analog);
+        bool get_any_button_pressed(XINPUT_NEW_BUTTON &button);
     };
 }

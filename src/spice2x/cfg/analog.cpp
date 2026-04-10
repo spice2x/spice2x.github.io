@@ -91,7 +91,9 @@ std::string Analog::getDisplayString(rawinput::RawInputManager *manager) {
             }
         }
         case rawinput::XINPUT_GAMEPAD:
-            return xinput::get_analog_string(static_cast<xinput::XInputAnalogEnum>(index)) + " (" + device->desc + ")";
+            return fmt::format("{} ({})",
+                xinput::get_analog_string(static_cast<xinput::XInputAnalogEnum>(index)),
+                device->desc);
         case rawinput::DESTROYED:
             return "Device unplugged (" + indexString + ")";
         default:

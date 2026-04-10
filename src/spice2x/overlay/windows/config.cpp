@@ -673,7 +673,7 @@ namespace overlay::windows {
             // longest column is probably "Toggle Virtual Keypad P1" in Overlay tab
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(220));
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(140));
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(170));
 
             // check if empty
             if (!buttons || buttons->empty()) {
@@ -913,8 +913,8 @@ namespace overlay::windows {
 
         // naive binding
         ImGui::SameLine();
-        std::string naive_string = "Naive " + button_name;
-        if (ImGui::Button("Naive")
+        std::string naive_string = "Naive/XInput " + button_name;
+        if (ImGui::Button("Naive/XInput")
             || (buttons_many_active && buttons_many_active_section == name && !buttons_bind_active
                 && alt_index == 0
                 && buttons_many_naive && buttons_many_index == button_it
@@ -934,9 +934,11 @@ namespace overlay::windows {
         }
         if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
             ImGui::HelpTooltip(
-                "Uses GetAsyncKeyState to check for any keyboard / mouse input. "
+                "Alternate to Bind which uses RawInput APIs.\n\n"
+                "Uses GetAsyncKeyState to check for any keyboard / mouse input, and XInput for controllers.\n\n"
                 "For best performance, Bind should be preferred, but this can be used when:\n"
-                "    * you don't care about which device is used\n"
+                "    * you want to use XInput for gamepads\n"
+                "    * you don't care about which keyboard/mouse is used\n"
                 "    * you want to use input remapping or automation software\n"
                 "    * if you have NKRO issues with Bind");
         }
@@ -998,7 +1000,7 @@ namespace overlay::windows {
                 }
 
                 // Naive Many
-                if (ImGui::MenuItem("Naive (many)")) {
+                if (ImGui::MenuItem("Naive/XInput (many)")) {
                     buttons_many_active = true;
                     buttons_many_index = button_it;
                     buttons_many_naive = true;
@@ -1555,6 +1557,22 @@ namespace overlay::windows {
                 }
             }
 
+            // check xinput
+            if (check_devices) {
+                xinput::XINPUT_NEW_BUTTON xinput;
+                if (RI_MGR->XINPUT_MGR->get_any_button_pressed(xinput)) {
+                    button->setDeviceIdentifier(xinput::get_device_desc(xinput.player));
+                    button->setVKey(static_cast<uint16_t>(xinput.button));
+                    ::Config::getInstance().updateBinding(
+                            games_list[games_selected], *button, alt_index - 1);
+                    inc_buttons_many_index(button_it_max);
+                    buttons_bind_active = false;
+                    ImGui::CloseCurrentPopup();
+                    check_devices = false;
+                }
+            }
+
+            // check GetAsyncKeyState
             if (check_devices) {
                 // get new keyboard state
                 // these are async, and some keys generate multiple vKeys (e.g., VK_SHIFT, VK_LSHIFT)

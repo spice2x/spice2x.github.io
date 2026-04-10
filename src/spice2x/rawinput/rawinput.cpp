@@ -1021,7 +1021,7 @@ void rawinput::RawInputManager::devices_scan_xinput() {
     for (const auto player : players) {
         auto *new_xinput_device = new Device();
         new_xinput_device->type = XINPUT_GAMEPAD;
-        new_xinput_device->name = fmt::format(";XINPUT;{}", player);
+        new_xinput_device->name = xinput::get_device_desc(player);
         new_xinput_device->desc = fmt::format("XInput Gamepad P{}", player + 1);
         new_xinput_device->handle = reinterpret_cast<HANDLE>(player);
         new_xinput_device->mutex = new std::mutex();

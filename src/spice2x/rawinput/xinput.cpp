@@ -30,6 +30,7 @@ typedef struct {
 } XINPUT_STATE;
 
 DWORD
+WINAPI
 XInputGetState(
     DWORD dwUserIndex,
     XINPUT_STATE *pState
@@ -40,13 +41,13 @@ XInputGetState(
     std::string get_button_string(XInputButtonEnum button) {
         switch (button) {
             case XInputButtonEnum::DPAD_UP:
-                return "Up";
+                return "Dpad Up";
             case XInputButtonEnum::DPAD_DOWN:
-                return "Down";
+                return "Dpad Down";
             case XInputButtonEnum::DPAD_LEFT:
-                return "Left";
+                return "Dpad Left";
             case XInputButtonEnum::DPAD_RIGHT:
-                return "Right";
+                return "Dpad Right";
             case XInputButtonEnum::START:
                 return "Start";
             case XInputButtonEnum::BACK:
@@ -72,21 +73,21 @@ XInputGetState(
             case XInputButtonEnum::RIGHT_TRIGGER:
                 return "Right Trigger";
             case XInputButtonEnum::LEFT_STICK_UP:
-                return "Left Stick Up";
+                return "Left Stick, Up";
             case XInputButtonEnum::LEFT_STICK_DOWN:
-                return "Left Stick Down";
+                return "Left Stick, Down";
             case XInputButtonEnum::LEFT_STICK_LEFT:
-                return "Left Stick Left";
+                return "Left Stick, Left";
             case XInputButtonEnum::LEFT_STICK_RIGHT:
-                return "Left Stick Right";
+                return "Left Stick, Right";
             case XInputButtonEnum::RIGHT_STICK_UP:
-                return "Right Stick Up";
+                return "Right Stick, Up";
             case XInputButtonEnum::RIGHT_STICK_DOWN:
-                return "Right Stick Down";
+                return "Right Stick, Down";
             case XInputButtonEnum::RIGHT_STICK_LEFT:
-                return "Right Stick Left";
+                return "Right Stick, Left";
             case XInputButtonEnum::RIGHT_STICK_RIGHT:
-                return "Right Stick Right";
+                return "Right Stick, Right";
             default:
                 break;
         }
@@ -113,6 +114,10 @@ XInputGetState(
         return fmt::format("Unknown Analog ({})", static_cast<int>(analog));
     }
 
+    std::string get_device_desc(uint8_t player) {
+        return fmt::format(";XINPUT;{}", player);
+    }
+
 #if defined(SPICE_XP)
 
     XInputManager::XInputManager() {}
@@ -125,6 +130,9 @@ XInputGetState(
         return 0.5f;
     }
     bool XInputManager::is_button_pressed(uint8_t player, XInputButtonEnum button) {
+        return false;
+    }
+    bool XInputManager::get_any_button_pressed(XINPUT_NEW_BUTTON &button) {
         return false;
     }
 
@@ -155,12 +163,12 @@ XInputGetState(
     }
 
     void XInputManager::stop() {
+        this->initialized = false;
         if (this->xinput_lib) {
             FreeLibrary(this->xinput_lib);
             this->xinput_lib = nullptr;
         }
         XInputGetState_addr = nullptr;
-        this->initialized = false;
         log_info("xinput", "destroyed");
     }
 
@@ -169,17 +177,22 @@ XInputGetState(
         if (!this->initialized) {
             return players;
         }
+        
         for (uint8_t i = 0; i < XUSER_MAX_COUNT; i++) {
             XINPUT_STATE x;
             if (XInputGetState_addr(i, &x) == ERROR_SUCCESS) {
-                players.emplace_back(i);
+                players.push_back(i);
             }
         }
         return players;
     }
 
-    void XInputManager::get_state(uint8_t player, XINPUT_GAMEPAD_STATE_NORMALIZED *state) {
-       *state = {};
+    void XInputManager::get_state(uint8_t player, XINPUT_GAMEPAD_STATE_NORMALIZED &state) {
+        state = {};
+        state.sThumbLX = 0.5f;
+        state.sThumbLY = 0.5f;
+        state.sThumbRX = 0.5f;
+        state.sThumbRY = 0.5f;
         if (!this->initialized) {
             return;
         }
@@ -189,9 +202,9 @@ XInputGetState(
             return;
         }
 
-        state->wButtons = x.Gamepad.wButtons;
-        state->bLeftTrigger = x.Gamepad.bLeftTrigger / 255.0f;
-        state->bRightTrigger = x.Gamepad.bRightTrigger / 255.0f;
+        state.wButtons = x.Gamepad.wButtons;
+        state.bLeftTrigger = x.Gamepad.bLeftTrigger / 255.0f;
+        state.bRightTrigger = x.Gamepad.bRightTrigger / 255.0f;
 
         // left stick circular dead zone
         {
@@ -203,16 +216,16 @@ XInputGetState(
                     (magnitude - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) /
                     (32767.0f - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 
-                state->sThumbLX = (x_raw / magnitude) * scaled;
-                state->sThumbLY = (y_raw / magnitude) * scaled;
+                state.sThumbLX = (x_raw / magnitude) * scaled;
+                state.sThumbLY = (y_raw / magnitude) * scaled;
 
                 // normalize to [0, 1]
-                state->sThumbLX = std::clamp((state->sThumbLX + 1.f) / 2.f, 0.f, 1.f);
-                state->sThumbLY = std::clamp((state->sThumbLY + 1.f) / 2.f, 0.f, 1.f);
+                state.sThumbLX = std::clamp((state.sThumbLX + 1.f) / 2.f, 0.f, 1.f);
+                state.sThumbLY = std::clamp((state.sThumbLY + 1.f) / 2.f, 0.f, 1.f);
             } else {
                 // within deadzone
-                state->sThumbLX = 0.5f;
-                state->sThumbLY = 0.5f;
+                state.sThumbLX = 0.5f;
+                state.sThumbLY = 0.5f;
             }
         }
 
@@ -226,16 +239,16 @@ XInputGetState(
                     (magnitude - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE) /
                     (32767.0f - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
 
-                state->sThumbRX = (x_raw / magnitude) * scaled;
-                state->sThumbRY = (y_raw / magnitude) * scaled;
+                state.sThumbRX = (x_raw / magnitude) * scaled;
+                state.sThumbRY = (y_raw / magnitude) * scaled;
 
                 // normalize to [0, 1]
-                state->sThumbRX = std::clamp((state->sThumbRX + 1.f) / 2.f, 0.f, 1.f);
-                state->sThumbRY = std::clamp((state->sThumbRY + 1.f) / 2.f, 0.f, 1.f);
+                state.sThumbRX = std::clamp((state.sThumbRX + 1.f) / 2.f, 0.f, 1.f);
+                state.sThumbRY = std::clamp((state.sThumbRY + 1.f) / 2.f, 0.f, 1.f);
             } else {
                 // within deadzone
-                state->sThumbRX = 0.5f;
-                state->sThumbRY = 0.5f;
+                state.sThumbRX = 0.5f;
+                state.sThumbRY = 0.5f;
             }
         }
     }
@@ -243,7 +256,7 @@ XInputGetState(
     bool XInputManager::is_button_pressed(uint8_t player, XInputButtonEnum button) {
         XINPUT_GAMEPAD_STATE_NORMALIZED state;
     
-        get_state(player, &state);
+        get_state(player, state);
         switch (button) {
             case XInputButtonEnum::DPAD_UP:
                 return (state.wButtons & XINPUT_GAMEPAD_DPAD_UP) != 0;
@@ -303,7 +316,7 @@ XInputGetState(
     float XInputManager::get_analog_state(uint8_t player, XInputAnalogEnum analog) {
         XINPUT_GAMEPAD_STATE_NORMALIZED state;
     
-        get_state(player, &state);
+        get_state(player, state);
         switch (analog) {
             case XInputAnalogEnum::LEFT_TRIGGER:
                 return state.bLeftTrigger;
@@ -322,6 +335,19 @@ XInputGetState(
         }
 
         return 0.5f;
+    }
+
+    bool XInputManager::get_any_button_pressed(XINPUT_NEW_BUTTON &button) {
+        for (uint8_t player = 0; player < XUSER_MAX_COUNT; player++) {
+            for (uint16_t b = 0; b < static_cast<uint16_t>(XInputButtonEnum::COUNT); b++) {
+                if (is_button_pressed(player, static_cast<XInputButtonEnum>(b))) {
+                    button.player = player;
+                    button.button = static_cast<XInputButtonEnum>(b);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
 #endif
