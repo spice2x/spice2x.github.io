@@ -34,10 +34,6 @@ namespace games::popn {
         uint8_t data[0x108];
     };
 
-    struct AIO_IOB5_POPN {
-        uint8_t data[0x2e8];
-    };
-
     struct AIO_IOB2_BI2X_AC1 {
         uint8_t data[0x4570];
     };
@@ -60,7 +56,7 @@ namespace games::popn {
     };
 
     struct AIO_IOB2_BI2X_AC1__INPUT {
-        uint8_t DevIoCounter;
+        uint8_t DevIoCounter; // 12
         uint8_t bExIoAErr;
         uint8_t bExIoBErr;
         uint8_t bPcPowerOn;
@@ -77,75 +73,17 @@ namespace games::popn {
         uint16_t AnalogCh2;
         uint16_t AnalogCh3;
         uint16_t AnalogCh4;
-        uint8_t CN8_8;
-        uint8_t CN8_9;
-        uint8_t CN8_10;
-        uint8_t CN9_8;
-        uint8_t CN9_9;
-        uint8_t CN9_10;
-        uint8_t CN11_11;
-        uint8_t CN11_12;
-        uint8_t CN11_13;
-        uint8_t CN11_14;
-        uint8_t CN11_15;
-        uint8_t CN11_16;
-        uint8_t CN11_17;
-        uint8_t CN11_18;
-        uint8_t CN11_19;
-        uint8_t CN11_20;
-        uint8_t CN12_11;
-        uint8_t CN12_12;
-        uint8_t CN12_13;
-        uint8_t CN12_14;
-        uint8_t CN12_15;
-        uint8_t CN12_16;
-        uint8_t CN12_17;
-        uint8_t CN12_18;
-        uint8_t CN12_19;
-        uint8_t CN12_20;
-        uint8_t CN12_21;
-        uint8_t CN12_22;
-        uint8_t CN12_23;
-        uint8_t CN12_24;
-        uint8_t CN15_3;
-        uint8_t CN15_4;
-        uint8_t CN15_5;
-        uint8_t CN15_6;
-        uint8_t CN15_7;
-        uint8_t CN15_8;
-        uint8_t CN15_9;
-        uint8_t CN15_10;
-        uint8_t CN15_11;
-        uint8_t CN15_12;
-        uint8_t CN15_13;
-        uint8_t CN15_14;
-        uint8_t CN15_15;
-        uint8_t CN15_16;
-        uint8_t CN15_17;
-        uint8_t CN15_18;
-        uint8_t CN15_19;
-        uint8_t CN15_20;
-        uint8_t CN19_8;
-        uint8_t CN19_9;
-        uint8_t CN19_10;
-        uint8_t CN19_11;
-        uint8_t CN19_12;
-        uint8_t CN19_13;
-        uint8_t CN19_14;
-        uint8_t CN19_15;
-    };
-
-    struct AIO_IOB2_BI2X_AC1__INPUTDATA {
-        uint8_t data[247];
-    };
-
-    struct AIO_IOB2_BI2X_AC1__OUTPUTDATA {
-        uint8_t data[48];
-    };
-
-    struct AIO_IOB2_BI2X_AC1__ICNPIN {
-        uint16_t Ain[4];
-        uint64_t CnPin;
+        uint8_t Reserved0[2];
+        uint8_t TestButton;
+        uint8_t ServiceButton;
+        uint8_t CoinMech;
+        uint8_t Reserved1[23];
+        uint8_t Headphones;
+        uint8_t Recorder; // 63
+        uint8_t Reserved2[14];
+        uint8_t JOYL_SW;
+        uint8_t Reserved3[4];
+        uint8_t JOYR_SW;
     };
 
     struct AIO_IOB2_BI2X_AC1__DEVSTATUS {
@@ -155,22 +93,16 @@ namespace games::popn {
         uint8_t TapeLedCounter;
         uint8_t TapeLedRate[8];
         AIO_IOB2_BI2X_AC1__INPUT Input;
-        AIO_IOB2_BI2X_AC1__INPUTDATA InputData;
-        AIO_IOB2_BI2X_AC1__OUTPUTDATA OutputData;
-        AIO_IOB2_BI2X_AC1__ICNPIN ICnPinHist[20];
-    };
-
-    struct AIO_IOB5_POPN__DEVSTATUS {
-        uint8_t unk[0xB1];
+        uint8_t Reserved[628];
     };
 
     // verified with M39-004-2025121500
     static_assert(sizeof(AIO_NMGR_IOB2) == 0xe18);
     static_assert(sizeof(AIO_NMGR_IOB5) == 0xb10);
     static_assert(sizeof(AIO_SCI_COMM) == 0x108);
-    static_assert(sizeof(AIO_IOB5_POPN) == 0x2e8);
     static_assert(sizeof(AIO_IOB2_BI2X_AC1) == 0x4570);
     static_assert(sizeof(AIO_IOB2_BI2X_WRFIRM) == 0x20450);
+    static_assert(sizeof(AIO_IOB2_BI2X_AC1__DEVSTATUS) == 0x2C8);
 
     /*
      * typedefs
@@ -261,6 +193,7 @@ namespace games::popn {
     /*
      * variables
      */
+    static uint8_t count = 0;
     static AIO_IOB2_BI2X_AC1 *aioIob2Bi2xAc1;
     static AIO_NMGR_IOB2 *aioNmgrIob2;
     static AIO_NMGR_IOB5 *aioNmgrIob5;
@@ -284,6 +217,7 @@ namespace games::popn {
         }
     }
 
+
     void __fastcall aioIob2Bi2xAC1_GetDeviceStatus(AIO_IOB2_BI2X_AC1 *i_pNodeCtl,
                                                    AIO_IOB2_BI2X_AC1__DEVSTATUS *o_DevStatus) {
         
@@ -292,17 +226,36 @@ namespace games::popn {
             return aioIob2Bi2xAC1_GetDeviceStatus_orig(i_pNodeCtl, o_DevStatus);
         }
 
-        memset(o_DevStatus, 0x00, sizeof(AIO_IOB2_BI2X_AC1__DEVSTATUS));
+        memset(o_DevStatus, 0x00, sizeof(*o_DevStatus));
+
+        o_DevStatus->InputCounter = count;
+        o_DevStatus->Input.DevIoCounter = count;
+        count++;
 
         auto &buttons = get_buttons();
-        // struct may be misaligned
-        o_DevStatus->Input.CN8_10 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Test]) ? 0 : 0xFF;
-        o_DevStatus->Input.CN9_8 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Service]) ? 0 : 0xFF;
-        o_DevStatus->Input.CN9_9 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::CoinMech]) ? 0 : 0xFF;
-        o_DevStatus->Input.CN12_14 = GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone]) ? 0xFF : 0;
+
+        if (!GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Test])) {
+            o_DevStatus->Input.TestButton = 1;
+        }
+        if (!GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Service])) {
+            o_DevStatus->Input.ServiceButton = 1;
+        }
+        if (!GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::CoinMech])) {
+            o_DevStatus->Input.CoinMech = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone])) {
+            o_DevStatus->Input.Headphones = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::RedPop])) {
+            o_DevStatus->Input.JOYL_SW = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::BluePop])) {
+            o_DevStatus->Input.JOYR_SW = 1;
+        }
 
         // coin
-        o_DevStatus->Input.Coin1Count = eamuse_coin_get_stock();
+        // TODO: this doesn't work properly
+        o_DevStatus->Input.Coin3Count += eamuse_coin_get_stock();
     }
 
     void __fastcall aioIob2Bi2xAC1_SetWatchDogTimer(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint8_t i_Count) {

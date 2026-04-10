@@ -174,6 +174,7 @@ namespace games::gitadora {
     static_assert(sizeof(AIO_IOB5_Y32D) == 0x2e8);
     static_assert(sizeof(AIO_IOB2_BI2X_AC1) == 0x4570);
     static_assert(sizeof(AIO_IOB2_BI2X_WRFIRM) == 0x20f48);
+    static_assert(sizeof(AIO_IOB2_BI2X_AC1__DEVSTATUS) == 0x2C8);
 
      /*
       * typedefs

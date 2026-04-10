@@ -21,6 +21,8 @@ namespace games::popn {
             Button7,
             Button8,
             Button9,
+            RedPop,
+            BluePop
         };
     }
 

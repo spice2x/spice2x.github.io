@@ -20,7 +20,9 @@ std::vector<Button> &games::popn::get_buttons() {
                 "Button 6",
                 "Button 7",
                 "Button 8",
-                "Button 9"
+                "Button 9",
+                "Red Pop-Kun",
+                "Blue Pop-Kun"
         );
     }
 
@@ -30,8 +32,8 @@ std::vector<Button> &games::popn::get_buttons() {
 std::string games::popn::get_buttons_help() {
     // keep to max 100 characters wide
     return
-        "  2 4 6 8  \n"
-        " 1 3 5 7 9 "
+        "RED   2 4 6 8   BLUE\n"
+        "     1 3 5 7 9"
         ;
 }
 
