@@ -131,7 +131,6 @@ namespace games::popn {
     
     // libaio-iob.dll
     typedef AIO_NMGR_IOB2 *(__fastcall *aioNMgrIob2_Create_t)(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode);
-    typedef void(__fastcall *aioNMgrIob_BeginManage_t)(AIO_NMGR_IOB2 *i_pNodeMgr);
     typedef void (__fastcall *aioNCtlIob_GetNodeInfo_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, AIO_NMGR_IOB__NODEINFO *o_NodeInfo, uint32_t i_cbNodeInfo);
 
     // libaio.dll
@@ -187,7 +186,6 @@ namespace games::popn {
 
     // libaio-iob.dll
     static aioNMgrIob2_Create_t aioNMgrIob2_Create_orig = nullptr;
-    static aioNMgrIob_BeginManage_t aioNMgrIob_BeginManage_orig = nullptr;
     static aioNCtlIob_GetNodeInfo_t aioNCtlIob_GetNodeInfo_orig = nullptr;
 
     /*
@@ -345,14 +343,6 @@ namespace games::popn {
             return aioNmgrIob2;
         } else {
             return aioNMgrIob2_Create_orig(i_pSci, i_bfMode);
-        }
-    }
-
-    static void __fastcall aioNMgrIob_BeginManage(AIO_NMGR_IOB2 *i_pNodeMgr) {
-
-        if (i_pNodeMgr == aioNmgrIob2) {
-        } else {
-            return aioNMgrIob_BeginManage_orig(i_pNodeMgr);
         }
     }
 
@@ -531,8 +521,6 @@ namespace games::popn {
         const auto libaioIobDll = "libaio-iob.dll";
         detour::trampoline_try(libaioIobDll, "aioNMgrIob2_Create",
                                aioNMgrIob2_Create, &aioNMgrIob2_Create_orig);
-        detour::trampoline_try(libaioIobDll, "aioNMgrIob_BeginManage",
-                               aioNMgrIob_BeginManage, &aioNMgrIob_BeginManage_orig);
         detour::trampoline_try(libaioIobDll, "aioNCtlIob_GetNodeInfo",
                                aioNCtlIob_GetNodeInfo, &aioNCtlIob_GetNodeInfo_orig);
 
