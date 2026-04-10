@@ -13,9 +13,74 @@
 #include "launcher/launcher.h"
 #include "launcher/logger.h"
 #include "misc/eamuse.h"
+#include "util/sysutils.h"
 #include "io.h"
 
 namespace games::popn {
+    
+    static decltype(DisplayConfigGetDeviceInfo) *DisplayConfigGetDeviceInfo_orig = nullptr;
+
+    static
+    LONG
+    WINAPI
+    DisplayConfigGetDeviceInfo_hook(DISPLAYCONFIG_DEVICE_INFO_HEADER* requestPacket)
+    {
+        if (requestPacket == nullptr) {
+            return DisplayConfigGetDeviceInfo_orig(requestPacket);
+        }
+        const auto ret = DisplayConfigGetDeviceInfo_orig(requestPacket);
+        log_misc(
+            "popn",
+            "DisplayConfigGetDeviceInfo returned {}, type={}, size={}, id={}, luid={}/{}",
+            ret,
+            static_cast<int>(requestPacket->type),
+            requestPacket->size,
+            requestPacket->id,
+            requestPacket->adapterId.HighPart,
+            requestPacket->adapterId.LowPart);
+        if (ret == ERROR_SUCCESS) {
+            if (requestPacket->type == DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME) {
+                const auto sourceName = reinterpret_cast<DISPLAYCONFIG_SOURCE_DEVICE_NAME*>(requestPacket);
+                log_misc(
+                    "popn",
+                    "... name={}",
+                    ws2s(sourceName->viewGdiDeviceName));
+            } else if (requestPacket->type == DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME) {
+                const auto targetName = reinterpret_cast<DISPLAYCONFIG_TARGET_DEVICE_NAME*>(requestPacket);
+                log_misc(
+                    "popn",
+                    "... flags={}, outputTechnology: {}, connectorInstance={}, friendlyname={} path={}",
+                    targetName->flags.value,
+                    static_cast<int>(targetName->outputTechnology),
+                    targetName->connectorInstance,
+                    ws2s(targetName->monitorFriendlyDeviceName),
+                    ws2s(targetName->monitorDevicePath));
+
+                // need to fix up some values for the primary monitor...
+                const auto monitors = sysutils::enumerate_monitors();
+                for (const auto& monitor : monitors) {
+                    if (monitor.id == targetName->header.id &&
+                        monitor.adapter_id_HighPart == targetName->header.adapterId.HighPart &&
+                        monitor.adapter_id_LowPart == targetName->header.adapterId.LowPart) {
+
+                        if (monitor.is_primary) {
+                            targetName->outputTechnology = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_DISPLAYPORT_EXTERNAL;
+                            targetName->connectorInstance = 2;
+                            log_info(
+                                "popn",
+                                "... overriding primary monitor ({}) to pretend to be DP port #2",
+                                monitor.display_name);
+                        }
+                        break;
+                    }
+                }
+
+                // TODO: what about subscreen?
+                // TODO: what about windowed mode?
+            }
+        }
+        return ret;
+    }
 
     static int __cdecl usbCheckAlive() {
         return 1;
@@ -319,6 +384,10 @@ namespace games::popn {
                                 libutils::try_proc(ezusb, "?usbWdtStart@@YAHH@Z"));
             detour::inline_hook((void *) usbWdtStartDone,
                                 libutils::try_proc(ezusb, "?usbWdtStartDone@@YAHXZ"));
+        }
+    
+        if (is_pikapika_model()) {
+            DisplayConfigGetDeviceInfo_orig = detour::iat_try("DisplayConfigGetDeviceInfo", DisplayConfigGetDeviceInfo_hook, avs::game::DLL_INSTANCE);
         }
     }
 }

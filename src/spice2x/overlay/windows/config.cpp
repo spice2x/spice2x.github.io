@@ -4540,9 +4540,11 @@ namespace overlay::windows {
                     for (const auto &monitor : monitors) {
                         const bool is_selected = option.value == monitor.display_name;
                         auto friendly = wchar_to_u8(monitor.friendly_name.c_str());
-                        if (ImGui::Selectable(
-                                fmt::format("{} ({})", monitor.display_name, friendly).c_str(),
-                                is_selected)) {
+                        auto str = fmt::format("{} ({})", monitor.display_name, friendly);
+                        if (monitor.is_primary) {
+                            str += " [Primary]";
+                        }
+                        if (ImGui::Selectable(str.c_str(), is_selected)) {
                             option.value = monitor.display_name;
                         }
                     }

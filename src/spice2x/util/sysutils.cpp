@@ -409,7 +409,26 @@ namespace sysutils {
 
         std::vector<MonitorEntry> result;
         for (const auto& path : paths) {
-            MonitorEntry entry;
+            MonitorEntry entry = {};
+            entry.adapter_id_LowPart = path.targetInfo.adapterId.LowPart;
+            entry.adapter_id_HighPart = path.targetInfo.adapterId.HighPart;
+            entry.id = path.targetInfo.id;
+
+            // primary monitor?
+            for (const auto& mode : modes) {
+                if (mode.infoType != DISPLAYCONFIG_MODE_INFO_TYPE_SOURCE) {
+                    continue;
+                }
+
+                if (mode.adapterId.HighPart == path.sourceInfo.adapterId.HighPart &&
+                    mode.adapterId.LowPart == path.sourceInfo.adapterId.LowPart &&
+                    mode.id == path.sourceInfo.id) {
+                    if (mode.sourceMode.position.x == 0 && mode.sourceMode.position.y == 0) {
+                        entry.is_primary = true;
+                    }
+                    break;
+                }
+            }
 
             // device ID (\\.\DISPLAYn)
             DISPLAYCONFIG_SOURCE_DEVICE_NAME source_name = {};
