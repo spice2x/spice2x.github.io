@@ -70,13 +70,14 @@ namespace games::popn {
                                 "popn",
                                 "... overriding primary monitor ({}) to pretend to be DP port #2",
                                 monitor.display_name);
+                        } else {
+                            // TODO: is this what the game expects for subscreen?
+                            // TODO: what if there are 3+ monitors?
+                            targetName->outputTechnology = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_HDMI;
                         }
                         break;
                     }
                 }
-
-                // TODO: what about subscreen?
-                // TODO: what about windowed mode?
             }
         }
         return ret;
