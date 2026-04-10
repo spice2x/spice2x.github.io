@@ -383,6 +383,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/shared/twtouch.cpp
         games/popn/popn.cpp
         games/popn/io.cpp
+        games/popn/bi2x_hook.cpp
         games/bbc/bbc.cpp
         games/bbc/io.cpp
         games/hpm/hpm.cpp

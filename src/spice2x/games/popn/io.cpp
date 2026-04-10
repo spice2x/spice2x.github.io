@@ -11,6 +11,7 @@ std::vector<Button> &games::popn::get_buttons() {
                 "Service",
                 "Test",
                 "Coin Mech",
+                "Headphones",
                 "Button 1",
                 "Button 2",
                 "Button 3",

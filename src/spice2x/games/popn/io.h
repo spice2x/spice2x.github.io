@@ -11,6 +11,7 @@ namespace games::popn {
             Service,
             Test,
             CoinMech,
+            Headphone,
             Button1,
             Button2,
             Button3,

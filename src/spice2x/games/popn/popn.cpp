@@ -1,5 +1,6 @@
 #include "avs/game.h"
 #include "popn.h"
+#include "bi2x_hook.h"
 #include <cstdint>
 #include <cstring>
 #include "rawinput/rawinput.h"
@@ -410,6 +411,9 @@ namespace games::popn {
             memcpy(settings.property_hardwareid, property_hardwareid, sizeof(property_hardwareid));
             setupapihook_init(avs::game::DLL_INSTANCE);
             setupapihook_add(settings);
+
+            // test/service/coin buttons, lights
+            bi2x_hook_init();
         }
         
 
