@@ -1026,12 +1026,6 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     //
     // note from MSDN: `pFullscreenDisplayMode` must be NULL for windowed mode.
     if (GRAPHICS_WINDOWED) {
-        // if (avs::game::is_model({"LDJ", "KFC"}) && (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
-        //     log_misc("graphics::d3d9", "disabling adapter group device in windowed mode");
-
-        //     D3D9_BEHAVIOR_DISABLE |= D3DCREATE_ADAPTERGROUP_DEVICE;
-        //     BehaviorFlags &= ~D3DCREATE_ADAPTERGROUP_DEVICE;
-        // }
         if (avs::game::is_model({"LDJ", "KFC", "M39"}) &&
             (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
             log_misc("graphics::d3d9", "disabling adapter group device in windowed mode");

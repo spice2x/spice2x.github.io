@@ -335,7 +335,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
     bool is_tdj_sub_window = avs::game::is_model("LDJ") && window_name.ends_with(" sub");
     bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
-    bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with(" Sub Screen");
+    bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with("Sub Screen");
     bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
 
     // hide maximize button (prevent misaligned touches)
