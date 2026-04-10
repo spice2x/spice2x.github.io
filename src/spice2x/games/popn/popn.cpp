@@ -9,6 +9,7 @@
 #include "util/utils.h"
 #include "cfg/button.h"
 #include "cfg/api.h"
+#include "hooks/setupapihook.h"
 #include "hooks/sleephook.h"
 #include "launcher/launcher.h"
 #include "launcher/logger.h"
@@ -17,7 +18,9 @@
 #include "io.h"
 
 namespace games::popn {
-    
+
+#if SPICE64 && !SPICE_XP
+
     static decltype(DisplayConfigGetDeviceInfo) *DisplayConfigGetDeviceInfo_orig = nullptr;
 
     static
@@ -82,6 +85,8 @@ namespace games::popn {
         }
         return ret;
     }
+
+#endif
 
     static int __cdecl usbCheckAlive() {
         return 1;
@@ -386,9 +391,29 @@ namespace games::popn {
             detour::inline_hook((void *) usbWdtStartDone,
                                 libutils::try_proc(ezusb, "?usbWdtStartDone@@YAHXZ"));
         }
-    
+
+#if SPICE64 && !SPICE_XP
+
         if (is_pikapika_model()) {
+            // monitor hook
             DisplayConfigGetDeviceInfo_orig = detour::iat_try("DisplayConfigGetDeviceInfo", DisplayConfigGetDeviceInfo_hook, avs::game::DLL_INSTANCE);
+
+            // TODO: io emulation
+            SETUPAPI_SETTINGS settings{};
+            settings.class_guid[0] = 0x86E0D1E0;
+            settings.class_guid[1] = 0x11D08089;
+            settings.class_guid[2] = 0x0008E49C;
+            settings.class_guid[3] = 0x731F303E;
+            const char property[] = "1CCF(8050)_000";
+            const char property_hardwareid[] = "USB\\VID_1CCF&PID_8050&MI_00\\000";
+            memcpy(settings.property_devicedesc, property, sizeof(property));
+            memcpy(settings.property_hardwareid, property_hardwareid, sizeof(property_hardwareid));
+            setupapihook_init(avs::game::DLL_INSTANCE);
+            setupapihook_add(settings);
         }
+        
+
+#endif
+
     }
 }
