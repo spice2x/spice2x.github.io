@@ -1764,6 +1764,10 @@ int main_implementation(int argc, char *argv[]) {
                 if (check_dll("libaio-iob2_video.dll")) {
                     // pop'n music (pika cabinet)
                     attach_popn = true;
+                    // automatically show cursor in windowed mode to interact with second window (sub)
+                    if (GRAPHICS_WINDOWED) {
+                        GRAPHICS_SHOW_CURSOR = true;
+                    }
                 } else {
                     // HELLO! Pop'n Music
                     attach_hpm = true;

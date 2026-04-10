@@ -38,6 +38,7 @@ struct CaptureData {
 HWND TDJ_SUBSCREEN_WINDOW = nullptr;
 HWND SDVX_SUBSCREEN_WINDOW = nullptr;
 HWND GFDM_SUBSCREEN_WINDOW = nullptr;
+HWND POPN_SUBSCREEN_WINDOW = nullptr;
 
 // icon
 static HICON WINDOW_ICON = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(MAINICON));
@@ -334,17 +335,18 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
     bool is_tdj_sub_window = avs::game::is_model("LDJ") && window_name.ends_with(" sub");
     bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
+    bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with(" Sub Screen");
     bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
 
     // hide maximize button (prevent misaligned touches)
-    if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window || is_gfdm_sub_window) {
+    if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window || is_gfdm_sub_window || is_popn_sub_window) {
         dwStyle &= ~(WS_MAXIMIZEBOX);
     }
     // mouse clicks become misaligned when resized
     if (is_gfdm_sub_window) {
         dwStyle &= ~(WS_SIZEBOX);
     }
-    if ((is_tdj_sub_window || is_sdvx_sub_window) && GRAPHICS_WSUB_BORDERLESS) {
+    if ((is_tdj_sub_window || is_sdvx_sub_window || is_popn_sub_window) && GRAPHICS_WSUB_BORDERLESS) {
         dwStyle &= ~(WS_OVERLAPPEDWINDOW);
     }
 
@@ -391,6 +393,11 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     if (is_gfdm_sub_window && !games::gitadora::ARENA_SINGLE_WINDOW) {
         GFDM_SUBSCREEN_WINDOW = result;
         graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
+    }
+
+    if (is_popn_sub_window) {
+        POPN_SUBSCREEN_WINDOW = result;
+        graphics_hook_subscreen_window(POPN_SUBSCREEN_WINDOW);
     }
 
     disable_touch_indicators(result);

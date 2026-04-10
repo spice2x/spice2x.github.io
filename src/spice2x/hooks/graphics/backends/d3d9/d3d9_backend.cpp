@@ -15,6 +15,7 @@
 #include "cfg/screen_resize.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
+#include "games/popn/popn.h"
 #include "games/sdvx/sdvx.h"
 #include "games/mfc/mfc.h"
 #include "games/io.h"
@@ -675,6 +676,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetDeviceCaps(UINT Adapter, D3DDEVT
         } else if (GRAPHICS_FORCE_SINGLE_ADAPTER) {
             pCaps->NumberOfAdaptersInGroup = 1;
         }
+    } else if (games::popn::is_pikapika_model()) {
+        if (GRAPHICS_WINDOWED) {
+            pCaps->NumberOfAdaptersInGroup = 2;
+        }
     }
 
     return ret;
@@ -1021,7 +1026,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     //
     // note from MSDN: `pFullscreenDisplayMode` must be NULL for windowed mode.
     if (GRAPHICS_WINDOWED) {
-        if (avs::game::is_model({"LDJ", "KFC"}) && (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
+        // if (avs::game::is_model({"LDJ", "KFC"}) && (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
+        //     log_misc("graphics::d3d9", "disabling adapter group device in windowed mode");
+
+        //     D3D9_BEHAVIOR_DISABLE |= D3DCREATE_ADAPTERGROUP_DEVICE;
+        //     BehaviorFlags &= ~D3DCREATE_ADAPTERGROUP_DEVICE;
+        // }
+        if (avs::game::is_model({"LDJ", "KFC", "M39"}) &&
+            (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
             log_misc("graphics::d3d9", "disabling adapter group device in windowed mode");
 
             D3D9_BEHAVIOR_DISABLE |= D3DCREATE_ADAPTERGROUP_DEVICE;
@@ -1093,7 +1105,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(hFocusWindow, *ppReturnedDeviceInterface);
 
         // initialize sub screen if IIDX/SDVX requested a multi-head context
-        if (avs::game::is_model({"LDJ", "KFC"}) && (orig_behavior_flags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
+        if (avs::game::is_model({"LDJ", "KFC", "M39"}) &&
+            (orig_behavior_flags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
             graphics_d3d9_ldj_init_sub_screen(*ppReturnedDeviceInterface, &pPresentationParameters[1]);
         }
     }
@@ -1396,7 +1409,8 @@ void graphics_d3d9_on_present(
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
     const bool is_gfdm_arena =
         games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW;
-    if (is_vm || is_tdj || is_gfdm_arena) {
+    const bool is_pika = games::popn::is_pikapika_model();
+    if (is_vm || is_tdj || is_gfdm_arena || is_pika) {
         graphics_d3d9_ldj_on_present(wrapped_device);
     }
 
