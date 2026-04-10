@@ -1183,7 +1183,7 @@ namespace avs {
             // hack, both hello! popn and popn hc using popn.dll
             if (games::popn::is_pikapika_model()) {
                 auto old_size = HEAP_SIZE;
-                HEAP_SIZE = 0x8000000;
+                HEAP_SIZE = 0x20000000;
                 DEFAULT_HEAP_SIZE_SET = true;
                 log_info("avs-core", "updated heap size: {} -> {}", old_size, avs::core::HEAP_SIZE);
                 return;
