@@ -119,8 +119,10 @@ namespace rawinput {
                     // success
                     return TRUE;
                 }
-                case 7: { // windows 10 reports this for MIDI?
+                case DBT_DEVNODES_CHANGED: {
+                    // TODO: this can be a little noisy as it gets called on every device
                     this->ri_mgr->devices_scan_midi();
+                    this->ri_mgr->devices_scan_xinput();
                     break;
                 }
             }

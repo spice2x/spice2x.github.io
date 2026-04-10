@@ -85,7 +85,6 @@ namespace rawinput {
         void devices_scan_piuio();
         void devices_scan_smxstage();
         void devices_scan_smxdedicab();
-        void devices_scan_xinput();
         void devices_destruct();
         void devices_destruct(Device *device, bool log = true);
         void flush_start();
@@ -117,6 +116,7 @@ namespace rawinput {
 
         void devices_scan_rawinput(const std::string &device_name = "");
         void devices_scan_midi();
+        void devices_scan_xinput();
         void devices_remove(const std::string &name);
 
         void devices_register();

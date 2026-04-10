@@ -8,6 +8,7 @@
 #include <setupapi.h>
 
 #include "util/logging.h"
+#include "external/robin_hood.h"
 #include "util/time.h"
 #include "util/utils.h"
 
@@ -1017,21 +1018,67 @@ void rawinput::RawInputManager::devices_scan_smxdedicab() {
 
 void rawinput::RawInputManager::devices_scan_xinput() {
     log_misc("rawinput", "scan XInput devices...");
-    const auto players = XINPUT_MGR->get_available_players();
-    for (const auto player : players) {
-        auto *new_xinput_device = new Device();
-        new_xinput_device->type = XINPUT_GAMEPAD;
-        new_xinput_device->name = xinput::get_device_desc(player);
-        new_xinput_device->desc = fmt::format("XInput Gamepad P{}", player + 1);
-        new_xinput_device->handle = reinterpret_cast<HANDLE>(player);
-        new_xinput_device->mutex = new std::mutex();
-        new_xinput_device->mutex_out = new std::mutex();
 
-        auto &device = this->devices.emplace_back(*new_xinput_device);
+    const auto connected_players = XINPUT_MGR->get_available_players();
 
-        // notify add
-        for (auto &cb : this->callback_add) {
-            cb.f(cb.data, &device);
+    // first, destroy missing devices
+    std::vector<std::string> devices_to_remove;
+    for (auto &device : this->devices) {
+        if (device.type != XINPUT_GAMEPAD) {
+            continue;
+        }
+        const uint8_t player = static_cast<uint8_t>(reinterpret_cast<uintptr_t>(device.handle));
+        if (std::find(connected_players.begin(), connected_players.end(), player) == connected_players.end()) {
+            devices_to_remove.push_back(device.name);
+        }
+    }
+    for (const auto &name : devices_to_remove) {
+        this->devices_remove(name);
+    }
+
+    auto create_device = [](const uint8_t player) -> Device {
+        Device device = {};
+        device.type = XINPUT_GAMEPAD;
+        device.name = xinput::get_device_desc(player);
+        device.desc = fmt::format("XInput Gamepad P{}", player + 1);
+        device.handle = reinterpret_cast<HANDLE>(player);
+        device.mutex = new std::mutex();
+        device.mutex_out = new std::mutex();
+        return device;
+    };
+
+    // add new devices
+    for (const auto player : connected_players) {
+        bool duplicate_found = false;
+
+        // check for duplicates first
+        for (auto &prev_device : this->devices) {
+            if (prev_device.name != xinput::get_device_desc(player)) {
+                continue;
+            }
+            if (prev_device.type == DESTROYED) {
+                log_info("rawinput", "overwriting previously destroyed XInput device: {}", prev_device.name);
+                prev_device = create_device(player);
+
+                // notify change
+                for (auto &cb : this->callback_add) {
+                    cb.f(cb.data, &prev_device);
+                }
+            }
+            duplicate_found = true;
+            break;
+        }
+
+        if (!duplicate_found) {
+            // add new device
+            log_info("rawinput", "adding new XInput device: player {}", player + 1);
+            auto new_xinput_device = create_device(player);
+            auto &device = this->devices.emplace_back(new_xinput_device);
+
+            // notify add
+            for (auto &cb : this->callback_add) {
+                cb.f(cb.data, &device);
+            }
         }
     }
 }
