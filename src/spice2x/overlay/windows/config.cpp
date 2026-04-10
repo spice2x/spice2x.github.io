@@ -934,9 +934,8 @@ namespace overlay::windows {
         }
         if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
             ImGui::HelpTooltip(
-                "Alternate to Bind which uses RawInput APIs.\n\n"
-                "Uses GetAsyncKeyState to check for any keyboard / mouse input, and XInput for controllers.\n\n"
-                "For best performance, Bind should be preferred, but this can be used when:\n"
+                "Alternative to Bind, using GetAsyncKeyState for KB/Mouse and XInput for controllers.\n\n"
+                "This can be used when:\n"
                 "    * you want to use XInput for gamepads\n"
                 "    * you don't care about which keyboard/mouse is used\n"
                 "    * you want to use input remapping or automation software\n"
