@@ -927,7 +927,7 @@ void GameAPI::Lights::sortLightsWithCategory(
 }
 
 
-void GameAPI::Lights::writeLight(rawinput::Device *device, int index, float value) {
+void GameAPI::Lights::writeLight(rawinput::RawInputManager *manager, rawinput::Device *device, int index, float value) {
 
     // check device
     if (!device) {
@@ -1014,6 +1014,18 @@ void GameAPI::Lights::writeLight(rawinput::Device *device, int index, float valu
             }
             break;
         }
+        case rawinput::XINPUT_GAMEPAD: {
+            assert(reinterpret_cast<uintptr_t>(device->handle) < XUSER_MAX_COUNT);
+            const auto player = static_cast<uint8_t>(reinterpret_cast<uintptr_t>(device->handle));
+            if (index < static_cast<int>(xinput::XInputOutputEnum::COUNT)) {
+                manager->XINPUT_MGR->set_output_state(
+                    player, static_cast<xinput::XInputOutputEnum>(index), value);
+                // no need to set output_pending; xinput output handled immediately
+            } else {
+                log_warning("api", "invalid xinput light index: {}", index);
+            }
+            break;
+        }
         default:
             break;
     }
@@ -1039,9 +1051,9 @@ void GameAPI::Lights::writeLight(rawinput::RawInputManager *manager, Light &ligh
 
         // write state
         if (light.override_enabled) {
-            writeLight(device, light.getIndex(), light.override_state);
+            writeLight(manager, device, light.getIndex(), light.override_state);
         } else {
-            writeLight(device, light.getIndex(), value);
+            writeLight(manager, device, light.getIndex(), value);
         }
     }
 

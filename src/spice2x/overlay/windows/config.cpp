@@ -2765,6 +2765,7 @@ namespace overlay::windows {
                         case rawinput::PIUIO_DEVICE:
                         case rawinput::SMX_STAGE:
                         case rawinput::SMX_DEDICAB:
+                        case rawinput::XINPUT_GAMEPAD:
                             this->auto_match_devices.emplace_back(&device);
                             break;
                         default:
@@ -2931,6 +2932,7 @@ namespace overlay::windows {
                     case rawinput::PIUIO_DEVICE:
                     case rawinput::SMX_STAGE:
                     case rawinput::SMX_DEDICAB:
+                    case rawinput::XINPUT_GAMEPAD:
                         this->lights_devices.emplace_back(&device);
                         break;
                     default:
@@ -3081,6 +3083,15 @@ namespace overlay::windows {
                         // add all names of SMX dedicab device
                         for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
                             control_names.push_back(rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
+                        }
+                        break;
+                    }
+                    case rawinput::XINPUT_GAMEPAD: {
+
+                        // add all names of XInput gamepad device
+                        for (int i = 0; i < static_cast<int>(xinput::XInputOutputEnum::COUNT); i++) {
+                            control_names.emplace_back(
+                                xinput::get_output_string(static_cast<xinput::XInputOutputEnum>(i)));
                         }
                         break;
                     }
@@ -3626,6 +3637,13 @@ namespace overlay::windows {
                 for (int i = 0; i < rawinput::SmxDedicabDevice::LIGHTS_COUNT; i++) {
                     raw_names.push_back(
                         rawinput::SmxDedicabDevice::GetLightNameByIndex(i));
+                }
+                break;
+            }
+            case rawinput::XINPUT_GAMEPAD: {
+                for (int i = 0; i < static_cast<int>(xinput::XInputOutputEnum::COUNT); i++) {
+                    raw_names.emplace_back(
+                        xinput::get_output_string(static_cast<xinput::XInputOutputEnum>(i)));
                 }
                 break;
             }

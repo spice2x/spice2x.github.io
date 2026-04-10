@@ -85,6 +85,15 @@ std::string Light::getDisplayString(rawinput::RawInputManager* manager) {
 
             return "Invalid SMX Dedicab Light (" + index_string + ")";
         }
+        case rawinput::XINPUT_GAMEPAD: {
+            if (index < static_cast<size_t>(xinput::XInputOutputEnum::COUNT)) {
+                return fmt::format("{} ({})",
+                    xinput::get_output_string(static_cast<xinput::XInputOutputEnum>(index)),
+                    device->desc);
+            }
+
+            return "Invalid XInput Gamepad Light (" + index_string + ")";
+        }
         case rawinput::DESTROYED:
             return "Unplugged device (" + index_string + ")";
         default:

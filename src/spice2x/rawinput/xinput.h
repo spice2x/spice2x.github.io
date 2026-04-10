@@ -75,6 +75,13 @@ namespace xinput {
         COUNT
     };
 
+    enum class XInputOutputEnum : uint16_t {
+        LEFT_RUMBLE,
+        RIGHT_RUMBLE,
+
+        COUNT
+    };
+
     struct XINPUT_NEW_BUTTON {
         uint8_t player;
         XInputButtonEnum button;
@@ -82,6 +89,7 @@ namespace xinput {
 
     std::string get_button_string(XInputButtonEnum button);
     std::string get_analog_string(XInputAnalogEnum analog);
+    std::string get_output_string(XInputOutputEnum output);
     std::string get_device_desc(uint8_t player);
 
     class XInputManager {
@@ -97,5 +105,6 @@ namespace xinput {
         bool is_button_pressed(uint8_t player, XInputButtonEnum button);
         float get_analog_state(uint8_t player, XInputAnalogEnum analog);
         bool get_any_button_pressed(XINPUT_NEW_BUTTON &button);
+        void set_output_state(uint8_t player, XInputOutputEnum output, float value);
     };
 }

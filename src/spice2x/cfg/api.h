@@ -135,7 +135,7 @@ namespace GameAPI {
 
         void sortLightsWithCategory(std::vector<Light> *lights, const std::initializer_list<LightAndCategory> list);
 
-        void writeLight(rawinput::Device *device, int index, float value);
+        void writeLight(rawinput::RawInputManager *manager, rawinput::Device *device, int index, float value);
         void writeLight(rawinput::RawInputManager *manager, Light &light, float value);
         void writeLight(std::unique_ptr<rawinput::RawInputManager> &manager, Light &light, float value);
 

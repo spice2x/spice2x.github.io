@@ -2594,6 +2594,10 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
             device->smxdedicabInfo->Update();
             break;
         }
+        case XINPUT_GAMEPAD: {
+            // nothing - updates to these are instant
+            break;
+        }
         default:
             break;
     }

@@ -36,6 +36,18 @@ XInputGetState(
     XINPUT_STATE *pState
 );
 
+typedef struct {
+    uint16_t wLeftMotorSpeed;
+    uint16_t wRightMotorSpeed;
+} XINPUT_VIBRATION;
+
+DWORD
+WINAPI
+XInputSetState(
+    DWORD dwUserIndex,
+    XINPUT_VIBRATION* pVibration
+);
+
 // end xinput definitions
 
     std::string get_button_string(XInputButtonEnum button) {
@@ -113,6 +125,18 @@ XInputGetState(
         }
         return fmt::format("Unknown Analog ({})", static_cast<int>(analog));
     }
+    
+    std::string get_output_string(XInputOutputEnum output) {
+        switch (output) {
+            case XInputOutputEnum::LEFT_RUMBLE:
+                return "Left Rumble";
+            case XInputOutputEnum::RIGHT_RUMBLE:
+                return "Right Rumble";
+            default:
+                break;
+        }
+        return fmt::format("Unknown Output ({})", static_cast<int>(output));
+    }
 
     std::string get_device_desc(uint8_t player) {
         return fmt::format(";XINPUT;{}", player);
@@ -135,10 +159,14 @@ XInputGetState(
     bool XInputManager::get_any_button_pressed(XINPUT_NEW_BUTTON &button) {
         return false;
     }
+    void XInputManager::set_output_state(uint8_t player, XInputOutputEnum output, float value) {
+        return;
+    }
 
 #else
 
     static decltype(XInputGetState) *XInputGetState_addr = nullptr;
+    static decltype(XInputSetState) *XInputSetState_addr = nullptr;
 
     XInputManager::XInputManager() {
         log_info("xinput", "initialize...");
@@ -151,6 +179,13 @@ XInputGetState(
             GetProcAddress(this->xinput_lib, "XInputGetState"));
         if (!XInputGetState_addr) {
             log_warning("xinput", "failed to get XInputGetState address");
+            this->stop();
+            return;
+        }
+        XInputSetState_addr = reinterpret_cast<decltype(XInputSetState) *>(
+            GetProcAddress(this->xinput_lib, "XInputSetState"));
+        if (!XInputSetState_addr) {
+            log_warning("xinput", "failed to get XInputSetState address");
             this->stop();
             return;
         }
@@ -169,6 +204,7 @@ XInputGetState(
             this->xinput_lib = nullptr;
         }
         XInputGetState_addr = nullptr;
+        XInputSetState_addr = nullptr;
         log_info("xinput", "destroyed");
     }
 
@@ -348,6 +384,22 @@ XInputGetState(
             }
         }
         return false;
+    }
+
+    void XInputManager::set_output_state(uint8_t player, XInputOutputEnum output, float value) {
+        if (!this->initialized) {
+            return;
+        }
+        if (player >= XUSER_MAX_COUNT) {
+            return;
+        }
+        XINPUT_VIBRATION vibration = {};
+        if (output == XInputOutputEnum::LEFT_RUMBLE) {
+            vibration.wLeftMotorSpeed = static_cast<uint16_t>(value * 65535);
+        } else if (output == XInputOutputEnum::RIGHT_RUMBLE) {
+            vibration.wRightMotorSpeed = static_cast<uint16_t>(value * 65535);
+        }
+        XInputSetState_addr(player, &vibration);
     }
 
 #endif
