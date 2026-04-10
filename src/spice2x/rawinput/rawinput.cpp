@@ -1061,7 +1061,7 @@ void rawinput::RawInputManager::devices_scan_xinput() {
                 prev_device = create_device(player);
 
                 // notify change
-                for (auto &cb : this->callback_add) {
+                for (auto &cb : this->callback_change) {
                     cb.f(cb.data, &prev_device);
                 }
             }
