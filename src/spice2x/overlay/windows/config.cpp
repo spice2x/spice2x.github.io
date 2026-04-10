@@ -936,10 +936,10 @@ namespace overlay::windows {
             ImGui::HelpTooltip(
                 "Alternative to Bind, using GetAsyncKeyState for KB/Mouse and XInput for controllers.\n\n"
                 "This can be used when:\n"
-                "    * you want to use XInput for gamepads\n"
+                "    * you want to use XInput for gamepads (for analog triggers)\n"
                 "    * you don't care about which keyboard/mouse is used\n"
                 "    * you want to use input remapping or automation software\n"
-                "    * if you have NKRO issues with Bind");
+                "    * you have NKRO issues with Bind");
         }
 
         naive_button_popup(naive_string, button, button_it_max, alt_index);
