@@ -56,34 +56,35 @@ namespace games::popn {
     };
 
     struct AIO_IOB2_BI2X_AC1__INPUT {
-        uint8_t DevIoCounter; // 12
+        uint8_t DevIoCounter;
         uint8_t bExIoAErr;
         uint8_t bExIoBErr;
         uint8_t bPcPowerOn;
         uint8_t bPcPowerCheck;
-        uint8_t bCoin1Jam;
-        uint8_t bCoin2Jam;
-        uint8_t bCoin3Jam;
-        uint8_t bCoin4Jam;
-        uint8_t Coin1Count;
-        uint8_t Coin2Count;
-        uint8_t Coin3Count;
-        uint8_t Coin4Count;
-        uint16_t AnalogCh1;
-        uint16_t AnalogCh2;
-        uint16_t AnalogCh3;
-        uint16_t AnalogCh4;
-        uint8_t Reserved0[2];
-        uint8_t TestButton;
-        uint8_t ServiceButton;
-        uint8_t CoinMech;
-        uint8_t Reserved1[23];
-        uint8_t Headphones;
-        uint8_t Recorder; // 63
-        uint8_t Reserved2[14];
-        uint8_t JOYL_SW;
-        uint8_t Reserved3[4];
-        uint8_t JOYR_SW;
+        uint8_t bCoin1Jam;  
+        uint8_t bCoin2Jam;  
+        uint8_t bCoin3Jam;  
+        uint8_t bCoin4Jam;  
+        uint8_t Coin1Count; 
+        uint8_t Coin2Count; 
+        uint8_t Coin3Count; 
+        uint8_t Coin4Count; 
+        uint8_t Padding;
+        uint16_t AnalogCh1; 
+        uint16_t AnalogCh2; 
+        uint16_t AnalogCh3; 
+        uint16_t AnalogCh4; 
+        uint8_t Reserved0[2]; 
+        uint8_t TestButton;    // [220]
+        uint8_t ServiceButton; // [221]
+        uint8_t CoinMech;      // [222]
+        uint8_t Buttons[23];   // [222-245]
+        uint8_t Headphones;    // [246]
+        uint8_t Recorder;      // [247]
+        uint8_t Reserved1[14]; // [248-261]
+        uint8_t JOYL_SW;       // [262]
+        uint8_t Reserved2[4];  // [263-266]
+        uint8_t JOYR_SW;       // [267]
     };
 
     struct AIO_IOB2_BI2X_AC1__DEVSTATUS {
@@ -92,7 +93,7 @@ namespace games::popn {
         uint8_t IoResetCounter;
         uint8_t TapeLedCounter;
         uint8_t TapeLedRate[8];
-        AIO_IOB2_BI2X_AC1__INPUT Input;
+        AIO_IOB2_BI2X_AC1__INPUT Input; // offset 12
         uint8_t Reserved[628];
     };
 
@@ -215,7 +216,6 @@ namespace games::popn {
         }
     }
 
-
     void __fastcall aioIob2Bi2xAC1_GetDeviceStatus(AIO_IOB2_BI2X_AC1 *i_pNodeCtl,
                                                    AIO_IOB2_BI2X_AC1__DEVSTATUS *o_DevStatus) {
         
@@ -224,8 +224,9 @@ namespace games::popn {
             return aioIob2Bi2xAC1_GetDeviceStatus_orig(i_pNodeCtl, o_DevStatus);
         }
 
-        memset(o_DevStatus, 0x00, sizeof(*o_DevStatus));
+        memset(o_DevStatus, 0, sizeof(AIO_IOB2_BI2X_AC1__DEVSTATUS));
 
+        // TODO: is this needed?
         o_DevStatus->InputCounter = count;
         o_DevStatus->Input.DevIoCounter = count;
         count++;
@@ -241,9 +242,42 @@ namespace games::popn {
         if (!GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::CoinMech])) {
             o_DevStatus->Input.CoinMech = 1;
         }
+
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Headphone])) {
             o_DevStatus->Input.Headphones = 1;
         }
+
+        // TODO: buttons b1-9 don't work for some reason
+        // see table at 0x1804D7180 in M39-004-2025121500
+        // third integer is 1 for these, setting them to 0 make them work
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button1])) {
+            o_DevStatus->Input.Buttons[13] = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button2])) {
+            o_DevStatus->Input.Buttons[14] = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button3])) {
+            o_DevStatus->Input.Buttons[15] = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button4])) {
+            o_DevStatus->Input.Buttons[16] = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button5])) {
+            o_DevStatus->Input.Buttons[17] = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button6])) {
+            o_DevStatus->Input.Buttons[18] = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button7])) {
+            o_DevStatus->Input.Buttons[19] = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button8])) {
+            o_DevStatus->Input.Buttons[20] = 1;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Button9])) {
+            o_DevStatus->Input.Buttons[21] = 1;
+        }
+
         if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::RedPop])) {
             o_DevStatus->Input.JOYL_SW = 1;
         }
