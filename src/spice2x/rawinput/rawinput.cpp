@@ -938,6 +938,7 @@ void rawinput::RawInputManager::devices_scan_piuio() {
 
     // add device to vector first so pointer is valid
     auto *new_piuio_device = new Device();
+    new_piuio_device->id = this->devices.size() + 1;
     new_piuio_device->type = PIUIO_DEVICE;
     new_piuio_device->name = "piuio";
     new_piuio_device->desc = "PIUIO";
@@ -968,6 +969,7 @@ void rawinput::RawInputManager::devices_scan_smxstage() {
     log_misc("rawinput", "scan SMX Stage devices...");
 
     auto *new_smxstage_device = new Device();
+    new_smxstage_device->id = this->devices.size() + 1;
     new_smxstage_device->type = SMX_STAGE;
     new_smxstage_device->name = "smxstage";
     new_smxstage_device->desc = "SMX Stage";
@@ -994,6 +996,7 @@ void rawinput::RawInputManager::devices_scan_smxdedicab() {
     log_misc("rawinput", "scan SMX Dedicated Cabinet devices...");
 
     auto *new_smxdedicab_device = new Device();
+    new_smxdedicab_device->id = this->devices.size() + 1;
     new_smxdedicab_device->type = SMX_DEDICAB;
     new_smxdedicab_device->name = "smxdedicab";
     new_smxdedicab_device->desc = "SMX Dedicated Cabinet";
@@ -1058,7 +1061,9 @@ void rawinput::RawInputManager::devices_scan_xinput() {
             }
             if (prev_device.type == DESTROYED) {
                 log_info("rawinput", "overwriting previously destroyed XInput device: {}", prev_device.name);
+                const auto old_id = prev_device.id;
                 prev_device = create_device(player);
+                prev_device.id = old_id;
 
                 // notify change
                 for (auto &cb : this->callback_change) {
@@ -1073,6 +1078,7 @@ void rawinput::RawInputManager::devices_scan_xinput() {
             // add new device
             log_info("rawinput", "adding new XInput device: player {}", player + 1);
             auto new_xinput_device = create_device(player);
+            new_xinput_device.id = this->devices.size() + 1;
             auto &device = this->devices.emplace_back(new_xinput_device);
 
             // notify add

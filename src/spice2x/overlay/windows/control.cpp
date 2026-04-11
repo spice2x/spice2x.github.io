@@ -743,6 +743,7 @@ namespace overlay::windows {
                         case rawinput::UNKNOWN:
                         default:
                             ImGui::Text("Type: Unknown");
+                            break;
                     }
                     ImGui::TreePop();
                 }
