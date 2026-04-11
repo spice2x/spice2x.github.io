@@ -401,12 +401,13 @@ namespace games::popn {
 
             // TODO: io emulation
             SETUPAPI_SETTINGS settings{};
+            // GUID_DEVCLASS_USB = {86E0D1E0-11D0-89B0-00A0C9054129}
             settings.class_guid[0] = 0x86E0D1E0;
             settings.class_guid[1] = 0x11D08089;
             settings.class_guid[2] = 0x0008E49C;
             settings.class_guid[3] = 0x731F303E;
-            const char property[] = "1CCF(8050)_000";
-            const char property_hardwareid[] = "USB\\VID_1CCF&PID_8050&MI_00\\000";
+            const char property[] = "1CCF(8058)_000";
+            const char property_hardwareid[] = "USB\\VID_1CCF&PID_8058&MI_00\\000";
             memcpy(settings.property_devicedesc, property, sizeof(property));
             memcpy(settings.property_hardwareid, property_hardwareid, sizeof(property_hardwareid));
             setupapihook_init(avs::game::DLL_INSTANCE);

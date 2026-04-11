@@ -55,7 +55,7 @@ namespace games::popn {
         uint64_t unk[5];
     };
 
-    struct AIO_IOB2_BI2X_AC1__INPUT {
+    struct AIO_IOB5_BI3A__DEVSTATUS__INPUT {
         uint8_t DevIoCounter;
         uint8_t bExIoAErr;
         uint8_t bExIoBErr;
@@ -87,14 +87,18 @@ namespace games::popn {
         uint8_t JOYR_SW;       // [267]
     };
 
-    struct AIO_IOB2_BI2X_AC1__DEVSTATUS {
+    struct AIO_IOB5_BI3A {
+        uint8_t data[0x4FF0];
+    };
+
+    struct AIO_IOB5_BI3A__DEVSTATUS {
         uint8_t InputCounter;
         uint8_t OutputCounter;
         uint8_t IoResetCounter;
         uint8_t TapeLedCounter;
         uint8_t TapeLedRate[8];
-        AIO_IOB2_BI2X_AC1__INPUT Input; // offset 12
-        uint8_t Reserved[628];
+        AIO_IOB5_BI3A__DEVSTATUS__INPUT Input; // offset 12
+        uint8_t Reserved[564];
     };
 
     // verified with M39-004-2025121500
@@ -103,7 +107,8 @@ namespace games::popn {
     static_assert(sizeof(AIO_SCI_COMM) == 0x108);
     static_assert(sizeof(AIO_IOB2_BI2X_AC1) == 0x4570);
     static_assert(sizeof(AIO_IOB2_BI2X_WRFIRM) == 0x20450);
-    static_assert(sizeof(AIO_IOB2_BI2X_AC1__DEVSTATUS) == 0x2C8);
+    static_assert(sizeof(AIO_IOB5_BI3A) == 0x4FF0);
+    static_assert(sizeof(AIO_IOB5_BI3A__DEVSTATUS) == 0x288);
 
     /*
      * typedefs
@@ -113,7 +118,7 @@ namespace games::popn {
     typedef AIO_IOB2_BI2X_AC1 *(__fastcall *aioIob2Bi2xAC1_Create_t)(AIO_NMGR_IOB2 *i_pNodeMgr, uint32_t i_DevId,
                                                                      AIO_IOB2_BI2X_AC1__SETTING *i_Setting);
     typedef void(__fastcall *aioIob2Bi2xAC1_GetDeviceStatus_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl,
-                                                               AIO_IOB2_BI2X_AC1__DEVSTATUS *o_DevStatus);
+                                                               VOID *o_DevStatus);
     typedef void(__fastcall *aioIob2Bi2xAC1_SetWatchDogTimer_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint8_t i_Count);
     typedef void(__fastcall *aioIob2Bi2xAC1_AddCounter_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_Counter,
                                                           uint32_t i_Count);
@@ -132,7 +137,7 @@ namespace games::popn {
     
     // libaio-iob.dll
     typedef AIO_NMGR_IOB2 *(__fastcall *aioNMgrIob2_Create_t)(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode);
-    typedef void (__fastcall *aioNCtlIob_GetNodeInfo_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, AIO_NMGR_IOB__NODEINFO *o_NodeInfo, uint32_t i_cbNodeInfo);
+    typedef void (__fastcall *aioNCtlIob_GetNodeInfo_t)(AIO_IOB5_BI3A *i_pNodeCtl, AIO_NMGR_IOB__NODEINFO *o_NodeInfo, uint32_t i_cbNodeInfo);
 
     // libaio.dll
     typedef AIO_SCI_COMM_T *(__fastcall *aioSciComm_Open_t)(AIO_SCI_COMM_T *unk);
@@ -142,14 +147,16 @@ namespace games::popn {
     typedef int32_t(__fastcall *aioNodeMgr_GetState_t)(AIO_NMGR_IOB5 *i_pNodeMgr);
     typedef bool(__fastcall *aioNodeMgr_IsReady_t)(AIO_NMGR_IOB5 *i_pNodeMgr, int32_t i_State);
     typedef bool(__fastcall *aioNodeMgr_IsError_t)(AIO_NMGR_IOB5 *i_pNodeMgr, int32_t i_State);
-    typedef void (__fastcall *aioNodeCtl_Destroy_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl);
-    typedef int32_t (__fastcall *aioNodeCtl_GetState_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl);
-    typedef bool (__fastcall *aioNodeCtl_IsReady_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, int32_t i_State);
-    typedef bool (__fastcall *aioNodeCtl_IsError_t)(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, int32_t i_State);
+    typedef void (__fastcall *aioNodeCtl_Destroy_t)(AIO_IOB5_BI3A *i_pNodeCtl);
+    typedef int32_t (__fastcall *aioNodeCtl_GetState_t)(AIO_IOB5_BI3A *i_pNodeCtl);
+    typedef bool (__fastcall *aioNodeCtl_IsReady_t)(AIO_IOB5_BI3A *i_pNodeCtl, int32_t i_State);
+    typedef bool (__fastcall *aioNodeCtl_IsError_t)(AIO_IOB5_BI3A *i_pNodeCtl, int32_t i_State);
     typedef void(__fastcall *aioNodeCtl_UpdateDevicesStatus_t)();
 
     // libaio-iob5.dll
     typedef AIO_NMGR_IOB5 *(__fastcall *aioNMgrIob5_Create_t)(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode);
+    typedef AIO_IOB5_BI3A *(__fastcall *aioIob5Bi3a_Create_t)(AIO_NMGR_IOB5 *i_pNodeMgr, uint8_t i, void *p);
+    typedef void(__fastcall *aioIob5Bi3a_GetDeviceStatus_t)(AIO_IOB5_BI3A *i_pNodeCtl, AIO_IOB5_BI3A__DEVSTATUS *o_DevStatus);
 
     /*
      * function pointers
@@ -184,6 +191,8 @@ namespace games::popn {
 
     // libaio-iob5.dll
     static aioNMgrIob5_Create_t aioNMgrIob5_Create_orig = nullptr;
+    static aioIob5Bi3a_Create_t aioIob5Bi3a_Create_orig = nullptr;
+    static aioIob5Bi3a_GetDeviceStatus_t aioIob5Bi3a_GetDeviceStatus_orig = nullptr;
 
     // libaio-iob.dll
     static aioNMgrIob2_Create_t aioNMgrIob2_Create_orig = nullptr;
@@ -192,12 +201,12 @@ namespace games::popn {
     /*
      * variables
      */
-    static uint8_t count = 0;
-    static AIO_IOB2_BI2X_AC1 *aioIob2Bi2xAc1;
+    static int count = 0;
     static AIO_NMGR_IOB2 *aioNmgrIob2;
     static AIO_NMGR_IOB5 *aioNmgrIob5;
     static AIO_SCI_COMM *aioSciComm;
     static AIO_IOB2_BI2X_WRFIRM *aioIob2Bi2xWrfirm;
+    static AIO_IOB5_BI3A *aioIob5Bi3a;
 
     /*
      * implementations
@@ -208,24 +217,252 @@ namespace games::popn {
     static AIO_IOB2_BI2X_AC1 *__fastcall aioIob2Bi2xAC1_Create(AIO_NMGR_IOB2 *i_pNodeMgr, uint32_t i_DevId,
                                                                AIO_IOB2_BI2X_AC1__SETTING *i_Setting) {
                                
-        if (i_pNodeMgr == aioNmgrIob2) {
-            aioIob2Bi2xAc1 = new AIO_IOB2_BI2X_AC1;
-            return aioIob2Bi2xAc1;
-        } else {
-            return aioIob2Bi2xAC1_Create_orig(i_pNodeMgr, i_DevId, i_Setting);
-        }
+        log_fatal("bi2x_hook", "old io");
     }
 
     void __fastcall aioIob2Bi2xAC1_GetDeviceStatus(AIO_IOB2_BI2X_AC1 *i_pNodeCtl,
-                                                   AIO_IOB2_BI2X_AC1__DEVSTATUS *o_DevStatus) {
+                                                   VOID *o_DevStatus) {
         
+        log_fatal("bi2x_hook", "old io");
+    }
+
+    void __fastcall aioIob2Bi2xAC1_SetWatchDogTimer(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint8_t i_Count) {
+        log_fatal("bi2x_hook", "old io");
+    }
+
+    void __fastcall aioIob2Bi2xAC1_AddCounter(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_Counter, uint32_t i_Count) {
+        log_fatal("bi2x_hook", "old io");
+    }
+
+    void __fastcall aioIob2Bi2xAC1_SetOutputData(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_CnPin, uint8_t i_Data) {
+        log_fatal("bi2x_hook", "old io");
+    }
+
+    void __fastcall aioIob2Bi2xAC1_SetTapeLedDataPart(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_TapeLedCh,
+                                                      uint32_t i_Offset, uint8_t *i_pData,
+                                                      uint32_t i_cntTapeLed, bool i_bReverse) {
+        log_fatal("bi2x_hook", "old io");
+    }
+
+    void __fastcall aioIob2Bi2x_SetTapeLedDataLimit(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_Channel,
+                                                    uint8_t i_Scale, uint8_t i_Limit) {
+
+        log_fatal("bi2x_hook", "old io");
+    }
+
+    static AIO_IOB2_BI2X_WRFIRM *__fastcall aioIob2Bi2x_CreateWriteFirmContext(
+        uint32_t i_SerialNumber, uint32_t i_bfIob) {
+
+        log_fatal("bi2x_hook", "old io");
+        aioIob2Bi2xWrfirm = new AIO_IOB2_BI2X_WRFIRM;
+        log_info("bi2x_hook", "aioIob2Bi2x_CreateWriteFirmContext called, returning custom AIO_IOB2_BI2X_WRFIRM: {}", fmt::ptr(aioIob2Bi2xWrfirm));
+        return aioIob2Bi2xWrfirm;
+    }
+
+    static void __fastcall aioIob2Bi2x_DestroyWriteFirmContext(AIO_IOB2_BI2X_WRFIRM *i_pWrFirm) {
+
+        log_fatal("bi2x_hook", "old io");
+        if (i_pWrFirm == aioIob2Bi2xWrfirm) {
+            delete aioIob2Bi2xWrfirm;
+            aioIob2Bi2xWrfirm = nullptr;
+        } else {
+            return aioIob2Bi2x_DestroyWriteFirmContext_orig(i_pWrFirm);
+        }
+    }
+
+    static int32_t __fastcall aioIob2Bi2x_WriteFirmGetState(AIO_IOB2_BI2X_WRFIRM *i_pWrFirm) {
+
+        log_fatal("bi2x_hook", "old io");
+        if (i_pWrFirm == aioIob2Bi2xWrfirm) {
+            return 8;
+        } else {
+            return aioIob2Bi2x_WriteFirmGetState_orig(i_pWrFirm);
+        }
+    }
+
+    static bool __fastcall aioIob2Bi2x_WriteFirmIsCompleted(int32_t i_State) {
+
+        log_fatal("bi2x_hook", "old io");
+        if (aioIob2Bi2xWrfirm != nullptr) {
+            return true;
+        } else {
+            return aioIob2Bi2x_WriteFirmIsCompleted_orig(i_State);
+        }
+    }
+
+    // libaio-iob.dll
+    static AIO_NMGR_IOB2 *__fastcall aioNMgrIob2_Create(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode) {
+        log_fatal("bi2x_hook", "old io");
+    }
+
+    static void __fastcall aioNCtlIob_GetNodeInfo(AIO_IOB5_BI3A *i_pNodeCtl, AIO_NMGR_IOB__NODEINFO *o_NodeInfo, uint32_t i_cbNodeInfo) {
+        log_info("bi2x_hook", "aioNCtlIob_GetNodeInfo called with i_pNodeCtl={}, o_NodeInfo={}, i_cbNodeInfo={}", fmt::ptr(i_pNodeCtl), fmt::ptr(o_NodeInfo), i_cbNodeInfo);
+        if (i_pNodeCtl == aioIob5Bi3a) {
+            memset(o_NodeInfo, 0, sizeof(AIO_NMGR_IOB__NODEINFO));
+        } else {
+            return aioNCtlIob_GetNodeInfo_orig(i_pNodeCtl, o_NodeInfo, i_cbNodeInfo);
+        }
+    }
+
+    // libaio.dll
+
+    static AIO_SCI_COMM_T *__fastcall aioSciComm_Open(AIO_SCI_COMM_T *unk) {
+
+        aioSciComm = new AIO_SCI_COMM;
+        log_info("bi2x_hook", "aioSciComm_Open called, returning custom AIO_SCI_COMM_T: {}", fmt::ptr(unk));
+        memset(unk, 0, sizeof(AIO_SCI_COMM_T));
+        unk->aioSciComm = aioSciComm;
+        return unk;
+    }
+
+    static void __fastcall aioSci_GetCommStatus(AIO_SCI_COMM *i_pNodeMgr, AIO_COMM_STATUS *i_Status) {
+
+        log_info("bi2x_hook", "aioSci_GetCommStatus called with i_pNodeMgr={}, i_Status={}", fmt::ptr(i_pNodeMgr), fmt::ptr(i_Status));
+        if (i_pNodeMgr == aioSciComm) {
+            memset(i_Status, 0, sizeof(AIO_COMM_STATUS));
+        } else {
+            return aioSci_GetCommStatus_orig(i_pNodeMgr, i_Status);
+        }
+    }
+
+    static void __fastcall aioSci_Destroy(AIO_SCI_COMM *i_pNodeMgr) {
+      
+        log_info("bi2x_hook", "aioSci_Destroy called with i_pNodeMgr={}", fmt::ptr(i_pNodeMgr));
+        if (i_pNodeMgr == aioSciComm) {
+            delete aioSciComm;
+        } else {
+            return aioSci_Destroy_orig(i_pNodeMgr);
+        }
+    }
+
+    static void __fastcall aioNodeMgr_Destroy(AIO_NMGR_IOB5 *i_pNodeMgr) {
+
+        log_info("bi2x_hook", "aioNodeMgr_Destroy called with i_pNodeMgr={}", fmt::ptr(i_pNodeMgr));
+
+        if (i_pNodeMgr == aioNmgrIob5 ||
+            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
+
+            delete aioNmgrIob5;
+            aioNmgrIob5 = nullptr;
+        } else {
+            return aioNodeMgr_Destroy_orig(i_pNodeMgr);
+        }
+    }
+
+    static int32_t __fastcall aioNodeMgr_GetState(AIO_NMGR_IOB5 *i_pNodeMgr) {
+
+        log_info("bi2x_hook", "aioNodeMgr_GetState called with i_pNodeMgr={}", fmt::ptr(i_pNodeMgr));
+
+        if (i_pNodeMgr == aioNmgrIob5 ||
+            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
+            return 1;
+        } else {
+            return aioNodeMgr_GetState_orig(i_pNodeMgr);
+        }
+    }
+
+    static bool __fastcall aioNodeMgr_IsReady(AIO_NMGR_IOB5 *i_pNodeMgr, int32_t i_State) {
+
+        log_info("bi2x_hook", "aioNodeMgr_IsReady called with i_pNodeMgr={}, i_State={}", fmt::ptr(i_pNodeMgr), i_State);
+
+        if (i_pNodeMgr == aioNmgrIob5 ||
+            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
+
+            return true;
+        } else {
+            return aioNodeMgr_IsReady_orig(i_pNodeMgr, i_State);
+        }
+    }
+
+    static bool __fastcall aioNodeMgr_IsError(AIO_NMGR_IOB5 *i_pNodeMgr, int32_t i_State) {
+
+        log_info("bi2x_hook", "aioNodeMgr_IsError called with i_pNodeMgr={}, i_State={}", fmt::ptr(i_pNodeMgr), i_State);
+
+        if (i_pNodeMgr == aioNmgrIob5 ||
+            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
+
+            return false;
+        } else {
+            return aioNodeMgr_IsError_orig(i_pNodeMgr, i_State);
+        }
+    }
+
+    static void __fastcall aioNodeCtl_Destroy(AIO_IOB5_BI3A *i_pNodeCtl) {
+
+        log_info("bi2x_hook", "aioNodeCtl_Destroy called with i_pNodeCtl={}", fmt::ptr(i_pNodeCtl));
+
+        if (i_pNodeCtl != aioIob5Bi3a) {
+            return aioNodeCtl_Destroy_orig(i_pNodeCtl);
+        }
+        delete aioIob5Bi3a;
+        aioIob5Bi3a = nullptr;
+    }
+
+    static int32_t __fastcall aioNodeCtl_GetState(AIO_IOB5_BI3A *i_pNodeCtl) {
+        log_info("bi2x_hook", "aioNodeCtl_GetState called with i_pNodeCtl={}", fmt::ptr(i_pNodeCtl));
+
+        if (i_pNodeCtl == aioIob5Bi3a) {
+            return 1;
+        }
+        return aioNodeCtl_GetState_orig(i_pNodeCtl);
+    }
+
+    static bool __fastcall aioNodeCtl_IsReady(AIO_IOB5_BI3A *i_pNodeCtl, int32_t i_State) {
+        log_info("bi2x_hook", "aioNodeCtl_IsReady called with i_pNodeCtl={}, i_State={}", fmt::ptr(i_pNodeCtl), i_State);
+        if (i_pNodeCtl == aioIob5Bi3a) {
+            return true;
+        }
+        return aioNodeCtl_IsReady_orig(i_pNodeCtl, i_State);
+    }
+
+    static bool __fastcall aioNodeCtl_IsError(AIO_IOB5_BI3A *i_pNodeCtl, int32_t i_State) {
+        log_info("bi2x_hook", "aioNodeCtl_IsError called with i_pNodeCtl={}, i_State={}", fmt::ptr(i_pNodeCtl), i_State);
+        if (i_pNodeCtl == aioIob5Bi3a) {
+            return false;
+        }
+        return aioNodeCtl_IsError_orig(i_pNodeCtl, i_State);
+    }
+
+    static void __fastcall aioNodeCtl_UpdateDevicesStatus() {
+    }
+
+    // libaio-iob5.dll
+
+    static AIO_NMGR_IOB5 *__fastcall aioNMgrIob5_Create(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode) {
+
+        if (i_pSci == aioSciComm) {
+            aioNmgrIob5 = new AIO_NMGR_IOB5;
+            log_info("bi2x_hook", "aioNMgrIob5_Create called, returning custom AIO_NMGR_IOB5: {}", fmt::ptr(aioNmgrIob5));
+            return aioNmgrIob5;
+        } else {
+            return aioNMgrIob5_Create_orig(i_pSci, i_bfMode);
+        }
+    }
+
+    static AIO_IOB5_BI3A *__fastcall aioIob5Bi3a_Create(AIO_NMGR_IOB5 *i_pNodeMgr, uint8_t i, void *p) {
+
+        log_info("bi2x_hook", "aioIob5Bi3a_Create called with i_pNodeMgr={}, i={}, p={}", fmt::ptr(i_pNodeMgr), i, fmt::ptr(p));
+
+        if (i_pNodeMgr == aioNmgrIob5) {
+            aioIob5Bi3a = new AIO_IOB5_BI3A;
+            log_info("bi2x_hook", "aioIob5Bi3a_Create: returning custom AIO_IOB5_BI3A: {}", fmt::ptr(aioIob5Bi3a));
+            return aioIob5Bi3a;
+        } else {
+            return aioIob5Bi3a_Create_orig(i_pNodeMgr, i, p);
+        }
+    }
+
+    static void __fastcall aioIob5Bi3a_GetDeviceStatus(AIO_IOB5_BI3A *i_pNodeCtl, AIO_IOB5_BI3A__DEVSTATUS *o_DevStatus) {
+
+        log_info("bi2x_hook", "aioIob5Bi3a_GetDeviceStatus called with i_pNodeCtl={}, o_DevStatus={}", fmt::ptr(i_pNodeCtl), fmt::ptr(o_DevStatus));
+
         RI_MGR->devices_flush_output();
-        if (i_pNodeCtl != aioIob2Bi2xAc1) {
-            return aioIob2Bi2xAC1_GetDeviceStatus_orig(i_pNodeCtl, o_DevStatus);
+        if (i_pNodeCtl != aioIob5Bi3a) {
+            return aioIob5Bi3a_GetDeviceStatus_orig(i_pNodeCtl, o_DevStatus);
         }
 
-        memset(o_DevStatus, 0, sizeof(AIO_IOB2_BI2X_AC1__DEVSTATUS));
-
+        memset(o_DevStatus, 0, sizeof(*o_DevStatus));
+        
         // TODO: is this needed?
         o_DevStatus->InputCounter = count;
         o_DevStatus->Input.DevIoCounter = count;
@@ -290,224 +527,6 @@ namespace games::popn {
         o_DevStatus->Input.Coin3Count += eamuse_coin_get_stock();
     }
 
-    void __fastcall aioIob2Bi2xAC1_SetWatchDogTimer(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint8_t i_Count) {
-
-        if (i_pNodeCtl != aioIob2Bi2xAc1) {
-            return aioIob2Bi2xAC1_SetWatchDogTimer_orig(i_pNodeCtl, i_Count);
-        }
-    }
-
-    void __fastcall aioIob2Bi2xAC1_AddCounter(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_Counter, uint32_t i_Count) {
-
-        if (i_pNodeCtl == aioIob2Bi2xAc1 && i_Count == 0) {
-            eamuse_coin_set_stock((uint16_t)i_Count);
-        } else {
-            return aioIob2Bi2xAC1_AddCounter_orig(i_pNodeCtl, i_Counter, i_Count);
-        }
-    }
-
-    void __fastcall aioIob2Bi2xAC1_SetOutputData(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_CnPin, uint8_t i_Data) {
-
-        if (i_pNodeCtl != aioIob2Bi2xAc1) {
-            return aioIob2Bi2xAC1_SetOutputData_orig(i_pNodeCtl, i_CnPin, i_Data);
-        }
-
-        // TODO: lights?
-    }
-
-    void __fastcall aioIob2Bi2xAC1_SetTapeLedDataPart(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_TapeLedCh,
-                                                      uint32_t i_Offset, uint8_t *i_pData,
-                                                      uint32_t i_cntTapeLed, bool i_bReverse) {
-
-        if (i_pNodeCtl != aioIob2Bi2xAc1) {
-            return aioIob2Bi2xAC1_SetTapeLedDataPart_orig(i_pNodeCtl, i_TapeLedCh, i_Offset, i_pData, i_cntTapeLed, i_bReverse);
-        }
-
-        // TODO: lights?
-    }
-
-    void __fastcall aioIob2Bi2x_SetTapeLedDataLimit(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, uint32_t i_Channel,
-                                                    uint8_t i_Scale, uint8_t i_Limit) {
-
-        if (i_pNodeCtl != aioIob2Bi2xAc1) {
-            return aioIob2Bi2x_SetTapeLedDataLimit_orig(i_pNodeCtl, i_Channel, i_Scale, i_Limit);
-        }
-    }
-
-    static AIO_IOB2_BI2X_WRFIRM *__fastcall aioIob2Bi2x_CreateWriteFirmContext(
-        uint32_t i_SerialNumber, uint32_t i_bfIob) {
-
-        aioIob2Bi2xWrfirm = new AIO_IOB2_BI2X_WRFIRM;
-        return aioIob2Bi2xWrfirm;
-    }
-
-    static void __fastcall aioIob2Bi2x_DestroyWriteFirmContext(AIO_IOB2_BI2X_WRFIRM *i_pWrFirm) {
-
-        if (i_pWrFirm == aioIob2Bi2xWrfirm) {
-            delete aioIob2Bi2xWrfirm;
-            aioIob2Bi2xWrfirm = nullptr;
-        } else {
-            return aioIob2Bi2x_DestroyWriteFirmContext_orig(i_pWrFirm);
-        }
-    }
-
-    static int32_t __fastcall aioIob2Bi2x_WriteFirmGetState(AIO_IOB2_BI2X_WRFIRM *i_pWrFirm) {
-
-        if (i_pWrFirm == aioIob2Bi2xWrfirm) {
-            return 8;
-        } else {
-            return aioIob2Bi2x_WriteFirmGetState_orig(i_pWrFirm);
-        }
-    }
-
-    static bool __fastcall aioIob2Bi2x_WriteFirmIsCompleted(int32_t i_State) {
-
-        if (aioIob2Bi2xWrfirm != nullptr) {
-            return true;
-        } else {
-            return aioIob2Bi2x_WriteFirmIsCompleted_orig(i_State);
-        }
-    }
-
-    // libaio-iob.dll
-    static AIO_NMGR_IOB2 *__fastcall aioNMgrIob2_Create(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode) {
-
-        if (i_pSci == aioSciComm) {
-            aioNmgrIob2 = new AIO_NMGR_IOB2;
-            return aioNmgrIob2;
-        } else {
-            return aioNMgrIob2_Create_orig(i_pSci, i_bfMode);
-        }
-    }
-
-    static void __fastcall aioNCtlIob_GetNodeInfo(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, AIO_NMGR_IOB__NODEINFO *o_NodeInfo, uint32_t i_cbNodeInfo) {
-        if (i_pNodeCtl == aioIob2Bi2xAc1) {
-            memset(o_NodeInfo, 0, sizeof(AIO_NMGR_IOB__NODEINFO));
-        } else {
-            return aioNCtlIob_GetNodeInfo_orig(i_pNodeCtl, o_NodeInfo, i_cbNodeInfo);
-        }
-    }
-
-    // libaio.dll
-
-    static AIO_SCI_COMM_T *__fastcall aioSciComm_Open(AIO_SCI_COMM_T *unk) {
-
-        aioSciComm = new AIO_SCI_COMM;
-        memset(unk, 0, sizeof(AIO_SCI_COMM_T));
-        unk->aioSciComm = aioSciComm;
-        return unk;
-    }
-
-    static void __fastcall aioSci_GetCommStatus(AIO_SCI_COMM *i_pNodeMgr, AIO_COMM_STATUS *i_Status) {
-
-        if (i_pNodeMgr == aioSciComm) {
-            memset(i_Status, 0, sizeof(AIO_COMM_STATUS));
-        } else {
-            return aioSci_GetCommStatus_orig(i_pNodeMgr, i_Status);
-        }
-    }
-
-    static void __fastcall aioSci_Destroy(AIO_SCI_COMM *i_pNodeMgr) {
-      
-        if (i_pNodeMgr == aioSciComm) {
-            delete aioSciComm;
-        } else {
-            return aioSci_Destroy_orig(i_pNodeMgr);
-        }
-    }
-
-    static void __fastcall aioNodeMgr_Destroy(AIO_NMGR_IOB5 *i_pNodeMgr) {
-
-        if (i_pNodeMgr == aioNmgrIob5 ||
-            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioIob2Bi2xAc1 ||
-            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
-
-            delete aioNmgrIob5;
-            aioNmgrIob5 = nullptr;
-        } else {
-            return aioNodeMgr_Destroy_orig(i_pNodeMgr);
-        }
-    }
-
-    static int32_t __fastcall aioNodeMgr_GetState(AIO_NMGR_IOB5 *i_pNodeMgr) {
-
-        if (i_pNodeMgr == aioNmgrIob5 ||
-            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioIob2Bi2xAc1 ||
-            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
-            return 1;
-        } else {
-            return aioNodeMgr_GetState_orig(i_pNodeMgr);
-        }
-    }
-
-    static bool __fastcall aioNodeMgr_IsReady(AIO_NMGR_IOB5 *i_pNodeMgr, int32_t i_State) {
-
-        if (i_pNodeMgr == aioNmgrIob5 ||
-            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioIob2Bi2xAc1 ||
-            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
-
-            return true;
-        } else {
-            return aioNodeMgr_IsReady_orig(i_pNodeMgr, i_State);
-        }
-    }
-
-    static bool __fastcall aioNodeMgr_IsError(AIO_NMGR_IOB5 *i_pNodeMgr, int32_t i_State) {
-
-        if (i_pNodeMgr == aioNmgrIob5 ||
-            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioIob2Bi2xAc1 ||
-            i_pNodeMgr == (AIO_NMGR_IOB5 *)aioNmgrIob2) {
-
-            return false;
-        } else {
-            return aioNodeMgr_IsError_orig(i_pNodeMgr, i_State);
-        }
-    }
-
-    static void __fastcall aioNodeCtl_Destroy(AIO_IOB2_BI2X_AC1 *i_pNodeCtl) {
-        if (i_pNodeCtl != aioIob2Bi2xAc1) {
-            return aioNodeCtl_Destroy_orig(i_pNodeCtl);
-        }
-        delete aioIob2Bi2xAc1;
-        aioIob2Bi2xAc1 = nullptr;
-    }
-
-    static int32_t __fastcall aioNodeCtl_GetState(AIO_IOB2_BI2X_AC1 *i_pNodeCtl) {
-        if (i_pNodeCtl == aioIob2Bi2xAc1) {
-            return 1;
-        }
-        return aioNodeCtl_GetState_orig(i_pNodeCtl);
-    }
-
-    static bool __fastcall aioNodeCtl_IsReady(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, int32_t i_State) {
-        if (i_pNodeCtl == aioIob2Bi2xAc1) {
-            return true;
-        }
-        return aioNodeCtl_IsReady_orig(i_pNodeCtl, i_State);
-    }
-
-    static bool __fastcall aioNodeCtl_IsError(AIO_IOB2_BI2X_AC1 *i_pNodeCtl, int32_t i_State) {
-        if (i_pNodeCtl == aioIob2Bi2xAc1) {
-            return false;
-        }
-        return aioNodeCtl_IsError_orig(i_pNodeCtl, i_State);
-    }
-
-    static void __fastcall aioNodeCtl_UpdateDevicesStatus() {
-    }
-
-    // libaio-iob5.dll
-
-    static AIO_NMGR_IOB5 *__fastcall aioNMgrIob5_Create(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode) {
-
-        if (i_pSci == aioSciComm) {
-            aioNmgrIob5 = new AIO_NMGR_IOB5;
-            return aioNmgrIob5;
-        } else {
-            return aioNMgrIob5_Create_orig(i_pSci, i_bfMode);
-        }
-    }
-
     void bi2x_hook_init() {
 
         // avoid double init
@@ -525,6 +544,10 @@ namespace games::popn {
         const auto libaioIob5Dll = "libaio-iob5.dll";
         detour::trampoline_try(libaioIob5Dll, "aioNMgrIob5_Create",
                                aioNMgrIob5_Create, &aioNMgrIob5_Create_orig);
+        detour::trampoline_try(libaioIob5Dll, "aioIob5Bi3a_Create",
+                               aioIob5Bi3a_Create, &aioIob5Bi3a_Create_orig);
+        detour::trampoline_try(libaioIob5Dll, "aioIob5Bi3a_GetDeviceStatus",
+                               aioIob5Bi3a_GetDeviceStatus, &aioIob5Bi3a_GetDeviceStatus_orig);
 
         // libaio-iob2_video.dll
         const auto libaioIob2VideoDll = "libaio-iob2_video.dll";
