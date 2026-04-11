@@ -13,6 +13,13 @@
 #include "util/tapeled.h"
 #include <typeinfo>
 
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
 namespace games::popn {
 
     /*
@@ -92,6 +99,9 @@ namespace games::popn {
     typedef AIO_NMGR_IOB5 *(__fastcall *aioNMgrIob5_Create_t)(AIO_SCI_COMM *i_pSci, uint32_t i_bfMode);
     typedef AIO_IOB5_BI3A *(__fastcall *aioIob5Bi3a_Create_t)(AIO_NMGR_IOB5 *i_pNodeMgr, uint8_t i, void *p);
     typedef void(__fastcall *aioIob5Bi3a_GetDeviceStatus_t)(AIO_IOB5_BI3A *i_pNodeCtl, AIO_IOB5_BI3A__DEVSTATUS *o_DevStatus);
+    typedef void(__fastcall *aioIob5Bi3a_SetOutputData_t)(AIO_IOB5_BI3A *a1, unsigned int a2, unsigned __int8 a3);
+    typedef void(__fastcall *aioIob5Bi3a_SetTapeLedDataPart_t)(AIO_IOB5_BI3A *a1, unsigned int a2, char a3, const void *a4, unsigned int a5, bool a6);
+    typedef int64_t (__fastcall *aioIob5Bi3a_SetTapeLedDataLimit_t)(AIO_IOB5_BI3A *i_pNodeCtl, uint32_t i_Channel, uint8_t i_Scale, uint8_t i_Limit);
 
     /*
      * function pointers
@@ -115,6 +125,9 @@ namespace games::popn {
     static aioNMgrIob5_Create_t aioNMgrIob5_Create_orig = nullptr;
     static aioIob5Bi3a_Create_t aioIob5Bi3a_Create_orig = nullptr;
     static aioIob5Bi3a_GetDeviceStatus_t aioIob5Bi3a_GetDeviceStatus_orig = nullptr;
+    static aioIob5Bi3a_SetOutputData_t aioIob5Bi3a_SetOutputData_orig = nullptr;
+    static aioIob5Bi3a_SetTapeLedDataPart_t aioIob5Bi3a_SetTapeLedDataPart_orig = nullptr;
+    static aioIob5Bi3a_SetTapeLedDataLimit_t aioIob5Bi3a_SetTapeLedDataLimit_orig = nullptr;
 
     /*
      * variables
@@ -316,6 +329,128 @@ namespace games::popn {
         // TODO: coin
     }
 
+    static void __fastcall aioIob5Bi3a_SetOutputData(AIO_IOB5_BI3A *i_pNodeCtl, uint32_t i_CnPin, uint8_t i_Data) {
+        if (i_pNodeCtl != aioIob5Bi3a) {
+            return aioIob5Bi3a_SetOutputData_orig(i_pNodeCtl, i_CnPin, i_Data);
+        }
+
+        //  7 = IC_CARD_R
+        //  8 = IC_CARD_G
+        //  9 = IC_CARD_B
+        // 10 = WOOFER_R
+        // 11 = WOOFER_G
+        // 12 = WOOFER_B
+        // values = 0 to 255 in test menu 
+
+        std::optional<Lights::popn_lights_t> light;
+        switch (i_CnPin) {
+            case 10:
+                light = Lights::WooferLED_R;
+                break;
+            case 11:
+                light = Lights::WooferLED_G;
+                break;
+            case 12:
+                light = Lights::WooferLED_B;
+                break;
+            default:
+                break;
+        }
+        if (light.has_value()) {
+            auto &lights = get_lights();
+            GameAPI::Lights::writeLight(RI_MGR, lights.at(light.value()), i_Data / 255.f);
+        }
+
+        return;
+    }
+
+    static int64_t __fastcall aioIob5Bi3a_SetTapeLedDataLimit(
+        AIO_IOB5_BI3A *i_pNodeCtl, uint32_t i_Channel, uint8_t i_Scale, uint8_t i_Limit) {
+
+        if (i_pNodeCtl != aioIob5Bi3a) {
+            return aioIob5Bi3a_SetTapeLedDataLimit_orig(i_pNodeCtl, i_Channel, i_Scale, i_Limit);
+        }
+        return 0;
+    }
+
+    struct PopnLight {
+        int data_index;
+        Lights::popn_lights_t light;
+        PopnLight(
+            int data_index, Lights::popn_lights_t light) :
+                data_index(data_index), light(light) {}
+    };
+
+    static void __fastcall aioIob5Bi3a_SetTapeLedDataPart(
+        AIO_IOB5_BI3A *i_pNodeCtl, uint32_t i_CnPin, char i_LedType, const void *i_pData, uint32_t i_DataSize, bool i_bIsLast) {
+
+        if (i_pNodeCtl != aioIob5Bi3a) {
+            return aioIob5Bi3a_SetTapeLedDataPart_orig(i_pNodeCtl, i_CnPin, i_LedType, i_pData, i_DataSize, i_bIsLast);
+        }
+
+        auto number_of_leds = i_DataSize;
+        // buttons 1-9, but game passes in wrong length; fix it up
+        if (i_CnPin == 0 && i_DataSize == 9) {
+            number_of_leds = i_DataSize * 3;
+        }
+
+        if (FALSE) {
+            std::string data;
+            for (uint32_t i = 0; i < number_of_leds; i++) {
+                auto dataByte = ((uint8_t *)i_pData)[i];
+                data += fmt::format("{:02X} ", dataByte);
+            }
+            
+            log_info(
+                "bi3a_hook",
+                "aioIob5Bi3a_SetTapeLedDataPart Pin={}, Size={}, data@{} = {}",
+                i_CnPin, number_of_leds, fmt::ptr(i_pData), data);
+        }
+
+        auto &lights = get_lights();
+
+        // special handling converting to non-RGB lights
+        // take the max(R, G, B) and use it to write the light value
+        if (i_CnPin == 0 && number_of_leds == 9 * 3) {
+            uint8_t light_value[9] = { 0 };
+            for (uint32_t i = 0; i < number_of_leds; i += 3) {
+                light_value[i / 3] =
+                    std::max({ ((uint8_t *)i_pData)[i], ((uint8_t *)i_pData)[i + 1], ((uint8_t *)i_pData)[i + 2] });
+            }
+
+            constexpr Lights::popn_lights_t legacy_button_lights[] = {
+                Lights::popn_lights_t::Button1,
+                Lights::popn_lights_t::Button2,
+                Lights::popn_lights_t::Button3,
+                Lights::popn_lights_t::Button4,
+                Lights::popn_lights_t::Button5,
+                Lights::popn_lights_t::Button6,
+                Lights::popn_lights_t::Button7,
+                Lights::popn_lights_t::Button8,
+                Lights::popn_lights_t::Button9
+            };
+
+            for (size_t light = 0; light < 9; light++) {
+                // on the new cab, buttons are colorless plastic and they rely on RGB to be lit at all times, even when "off"
+                // when translating to legacy on/off lights, treat anything above ~60% brightness as fully on,
+                // otherwise off, to avoid dimly lit "off" state
+                GameAPI::Lights::writeLight(
+                    RI_MGR,
+                    lights.at(legacy_button_lights[light]),
+                    light_value[light] > 150 ? 1.f : 0.f);
+            }
+        }
+
+        // pin 0 = buttons 1-3, size 9 (but it's actually triple that in reality - game passes in wrong length), values 0-0xFF
+        // pin 1 = left pop (red pop kun), size 16, values 0-0xFF
+        // pin 2 = right pop (blue pop kun), size 16, values 0-0xFF
+        // pin 3 = title, size 44, values 0-0xFF
+        // pin 4 = speaker, size 40, values 0-0xFF - U region only
+        // pin 5 = monitor, size 18, values 0-0x7F - U region only
+        // pin 6 = control panel, size 28, values 0-0x7F - U region only
+        // pin 7 = cabinet, size 22, values 0-0x7F - U region only
+    }
+
     void bi3a_hook_init() {
 
         // avoid double init
@@ -337,7 +472,12 @@ namespace games::popn {
                                aioIob5Bi3a_Create, &aioIob5Bi3a_Create_orig);
         detour::trampoline_try(libaioIob5Dll, "aioIob5Bi3a_GetDeviceStatus",
                                aioIob5Bi3a_GetDeviceStatus, &aioIob5Bi3a_GetDeviceStatus_orig);
-        // TODO: lights
+        detour::trampoline_try(libaioIob5Dll, "aioIob5Bi3a_SetOutputData",
+                               aioIob5Bi3a_SetOutputData, &aioIob5Bi3a_SetOutputData_orig);
+        detour::trampoline_try(libaioIob5Dll, "aioIob5Bi3a_SetTapeLedDataPart",
+                               aioIob5Bi3a_SetTapeLedDataPart, &aioIob5Bi3a_SetTapeLedDataPart_orig);
+        detour::trampoline_try(libaioIob5Dll, "aioIob5Bi3a_SetTapeLedDataLimit",
+                               aioIob5Bi3a_SetTapeLedDataLimit, &aioIob5Bi3a_SetTapeLedDataLimit_orig);
 
         // libaio.dll
         const auto libaioDll = "libaio.dll";

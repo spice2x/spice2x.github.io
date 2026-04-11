@@ -28,7 +28,7 @@ namespace games::popn {
 
     // all lights in correct order
     namespace Lights {
-        enum {
+        typedef enum {
             Button1,
             Button2,
             Button3,
@@ -85,7 +85,7 @@ namespace games::popn {
             WooferLED_R,
             WooferLED_G,
             WooferLED_B,
-        };
+        } popn_lights_t;
     }
 
     // getters
