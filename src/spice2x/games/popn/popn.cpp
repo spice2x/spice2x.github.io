@@ -1,6 +1,6 @@
 #include "avs/game.h"
 #include "popn.h"
-#include "bi2x_hook.h"
+#include "bi3a_hook.h"
 #include <cstdint>
 #include <cstring>
 #include "rawinput/rawinput.h"
@@ -399,9 +399,8 @@ namespace games::popn {
             // monitor hook
             DisplayConfigGetDeviceInfo_orig = detour::iat_try("DisplayConfigGetDeviceInfo", DisplayConfigGetDeviceInfo_hook, avs::game::DLL_INSTANCE);
 
-            // TODO: io emulation
-            SETUPAPI_SETTINGS settings{};
             // GUID_DEVCLASS_USB = {86E0D1E0-11D0-89B0-00A0C9054129}
+            SETUPAPI_SETTINGS settings{};
             settings.class_guid[0] = 0x86E0D1E0;
             settings.class_guid[1] = 0x11D08089;
             settings.class_guid[2] = 0x0008E49C;
@@ -412,9 +411,7 @@ namespace games::popn {
             memcpy(settings.property_hardwareid, property_hardwareid, sizeof(property_hardwareid));
             setupapihook_init(avs::game::DLL_INSTANCE);
             setupapihook_add(settings);
-
-            // test/service/coin buttons, lights
-            bi2x_hook_init();
+            bi3a_hook_init();
         }
         
 
