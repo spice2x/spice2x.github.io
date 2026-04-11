@@ -245,7 +245,7 @@ XInputSetState(
         // left stick circular dead zone
         {
             const auto x_raw = x.Gamepad.sThumbLX;
-            const auto y_raw = x.Gamepad.sThumbLY;
+            const auto y_raw = -x.Gamepad.sThumbLY; // flip to make [down = positive]
             const float magnitude = sqrtf(x_raw * x_raw + y_raw * y_raw);
             if (magnitude > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
                 const float scaled =
@@ -268,7 +268,7 @@ XInputSetState(
         // right stick circular dead zone
         {
             const auto x_raw = x.Gamepad.sThumbRX;
-            const auto y_raw = x.Gamepad.sThumbRY;
+            const auto y_raw = -x.Gamepad.sThumbRY; // flip to make [down = positive]
             const float magnitude = sqrtf(x_raw * x_raw + y_raw * y_raw);
             if (magnitude > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE) {
                 const float scaled =
