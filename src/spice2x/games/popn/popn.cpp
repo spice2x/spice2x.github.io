@@ -89,6 +89,8 @@ namespace games::popn {
 
 #endif
 
+#if !SPICE64
+
     static int __cdecl usbCheckAlive() {
         return 1;
     }
@@ -299,6 +301,8 @@ namespace games::popn {
         return MMSYSERR_NOERROR;
     }
 
+#endif
+
     static bool log_hook(void *user, const std::string &data, logger::Style style, std::string &out) {
 
         // get rid of the log spam
@@ -321,6 +325,8 @@ namespace games::popn {
     void POPNGame::pre_attach() {
         Game::pre_attach();
 
+#if !SPICE64
+
         // only needed for older versions (19-21, inclusive) but create them anyway since 21 and above are all M39
         fileutils::dir_create_recursive_log("popn", "dev\\raw\\bookkeeping");
         fileutils::dir_create_recursive_log("popn", "dev\\raw\\ranking");
@@ -329,11 +335,15 @@ namespace games::popn {
         // load without resolving references
         // makes game not trigger DLLMain which results in an error due to missing EZUSB device
         LoadLibraryExW((MODULE_PATH / "ezusb.dll").c_str(), nullptr, DONT_RESOLVE_DLL_REFERENCES);
+
+#endif
+
     }
 
     void POPNGame::attach() {
         Game::attach();
 
+#if !SPICE64
         /*
          * Fast Boot (TM) Patch
          * Game tries to create some directories and if it fails it will sleep for 1 second
@@ -393,27 +403,28 @@ namespace games::popn {
                                 libutils::try_proc(ezusb, "?usbWdtStartDone@@YAHXZ"));
         }
 
+#endif
+
 #if SPICE64 && !SPICE_XP
 
-        if (is_pikapika_model()) {
-            // monitor hook
-            DisplayConfigGetDeviceInfo_orig = detour::iat_try("DisplayConfigGetDeviceInfo", DisplayConfigGetDeviceInfo_hook, avs::game::DLL_INSTANCE);
+        // monitor hook
+        DisplayConfigGetDeviceInfo_orig =
+            detour::iat_try("DisplayConfigGetDeviceInfo",
+                DisplayConfigGetDeviceInfo_hook, avs::game::DLL_INSTANCE);
 
-            // GUID_DEVCLASS_USB = {86E0D1E0-11D0-89B0-00A0C9054129}
-            SETUPAPI_SETTINGS settings{};
-            settings.class_guid[0] = 0x86E0D1E0;
-            settings.class_guid[1] = 0x11D08089;
-            settings.class_guid[2] = 0x0008E49C;
-            settings.class_guid[3] = 0x731F303E;
-            const char property[] = "1CCF(8058)_000";
-            const char property_hardwareid[] = "USB\\VID_1CCF&PID_8058&MI_00\\000";
-            memcpy(settings.property_devicedesc, property, sizeof(property));
-            memcpy(settings.property_hardwareid, property_hardwareid, sizeof(property_hardwareid));
-            setupapihook_init(avs::game::DLL_INSTANCE);
-            setupapihook_add(settings);
-            bi3a_hook_init();
-        }
-        
+        // GUID_DEVCLASS_USB = {86E0D1E0-11D0-89B0-00A0C9054129}
+        SETUPAPI_SETTINGS settings{};
+        settings.class_guid[0] = 0x86E0D1E0;
+        settings.class_guid[1] = 0x11D08089;
+        settings.class_guid[2] = 0x0008E49C;
+        settings.class_guid[3] = 0x731F303E;
+        const char property[] = "1CCF(8058)_000";
+        const char property_hardwareid[] = "USB\\VID_1CCF&PID_8058&MI_00\\000";
+        memcpy(settings.property_devicedesc, property, sizeof(property));
+        memcpy(settings.property_hardwareid, property_hardwareid, sizeof(property_hardwareid));
+        setupapihook_init(avs::game::DLL_INSTANCE);
+        setupapihook_add(settings);
+        bi3a_hook_init();
 
 #endif
 
