@@ -30,6 +30,8 @@ static decltype(GetLocaleInfoEx) *GetLocaleInfoEx_orig = nullptr;
 static decltype(GetSystemDefaultLCID) *GetSystemDefaultLCID_orig = nullptr;
 static decltype(IsDBCSLeadByte) *IsDBCSLeadByte_orig = nullptr;
 static decltype(WideCharToMultiByte) *WideCharToMultiByte_orig = nullptr;
+static decltype(GetLocaleInfoA) *GetLocaleInfoA_orig = nullptr;
+static decltype(GetThreadLocale) *GetThreadLocale_orig = nullptr;
 #endif
 
 static NTSTATUS NTAPI RtlMultiByteToUnicodeN_hook(
@@ -91,6 +93,10 @@ static UINT WINAPI GetOEMCP_hook() {
 static LCID WINAPI GetSystemDefaultLCID_hook() {
     // ja-JP per https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-lcid/a9eac961-e77d-41a6-90a5-ce1a8b0cdb9c
     // this is passed to LCMapStringA for kana conversions (e.g., for subscreen song search)
+    return 0x411;
+}
+
+static LCID WINAPI GetThreadLocale_hook() {
     return 0x411;
 }
 
@@ -214,6 +220,31 @@ WideCharToMultiByte_hook(
         lpUsedDefaultChar);
 }
 
+int
+WINAPI
+GetLocaleInfoA_hook(
+    LCID Locale,
+    LCTYPE LCType,
+    LPSTR lpLCData,
+    int cchData) {
+
+    if (LCType == LOCALE_SISO639LANGNAME && lpLCData != NULL && cchData >= 3) {
+        log_misc("hooks::lang", "GetLocaleInfoA_hook hit ({:#x}, LOCALE_SISO639LANGNAME), return `ja`", Locale);
+        strcpy(lpLCData, "ja");
+        return 3;
+    }
+
+    if (LCType == LOCALE_SISO3166CTRYNAME && lpLCData != NULL && cchData >= 3) {
+        log_misc("hooks::lang",
+                 "GetLocaleInfoA_hook hit ({:#x}, LOCALE_SISO3166CTRYNAME), return `JP`", Locale);
+        strcpy(lpLCData, "JP");
+        return 3;
+    }
+    
+    log_misc("hooks::lang", "GetLocaleInfoA_hook hit, {:#x}, {:#x}", Locale, LCType);
+    return GetLocaleInfoA_orig(Locale, LCType, lpLCData, cchData);
+}
+
 #endif
 
 void hooks::lang::early_init() {
@@ -244,6 +275,27 @@ void hooks::lang::early_init() {
     }
 
 #ifdef SPICE64
+
+    if (avs::game::is_model("UJK")) {
+        // CCJ build of Unity calls GetThreadLocale,
+        // and then GetLocaleInfoA to figure out the locale; eventually this is
+        // used to figure out the decimal separator, which is then used in parsing
+        // Double values - which fails carding in if it isn't "."
+        log_info("hooks::lang", "hooking GetThreadLocale");
+        detour::trampoline_try(
+            "kernel32.dll",
+            "GetThreadLocale",
+            GetThreadLocale_hook,
+            &GetThreadLocale_orig);
+
+        log_info("hooks::lang", "hooking GetLocaleInfoA");
+        detour::trampoline_try(
+            "kernel32.dll",
+            "GetLocaleInfoA",
+            GetLocaleInfoA_hook,
+            &GetLocaleInfoA_orig);
+    }
+
     // for TDJ subscreen search keyboard
     if (avs::game::is_model("LDJ") && games::iidx::TDJ_MODE) {
         log_info("hooks::lang", "hooking IsDBCSLeadByte");
