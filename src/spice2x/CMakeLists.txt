@@ -583,6 +583,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         overlay/windows/log.cpp
         overlay/windows/midi.cpp
         overlay/windows/patch_manager.cpp
+        overlay/windows/popn_sub.cpp
         overlay/windows/wnd_manager.cpp
 
         # rawinput

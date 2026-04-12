@@ -4,6 +4,7 @@
 #include "util/logging.h"
 #include "games/iidx/iidx.h"
 #include "games/gitadora/gitadora.h"
+#include "games/popn/popn.h"
 
 namespace overlay::windows {
 
@@ -72,6 +73,8 @@ namespace overlay::windows {
             sub = "Show DRS Dance Floor";
         } else if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
             sub = "Show GITADORA Subscreen";
+        } else if (games::popn::is_pikapika_model()) {
+            sub = "Show Pop'n Subscreen";
         }
 
         build_button(this->overlay->window_sub, sub, size, NextItem::NEW_LINE, false);

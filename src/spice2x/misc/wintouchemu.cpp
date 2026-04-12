@@ -12,6 +12,7 @@
 #include "cfg/screen_resize.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
+#include "games/popn/popn.h"
 #include "hooks/graphics/graphics.h"
 #include "overlay/overlay.h"
 #include "overlay/windows/generic_sub.h"
@@ -404,6 +405,10 @@ namespace wintouchemu {
                     // overlay subscreen in IIDX
                     // use mouse position as ImGui overlay will block the touch window  
                     log_info("wintouchemu", "use mouse cursor API for ldj overlay subscreen");
+                    USE_MOUSE = true;
+                } else if (games::popn::is_pikapika_model()) {
+                    // same as iidx case above
+                    log_info("wintouchemu", "use mouse cursor API for popn overlay subscreen");
                     USE_MOUSE = true;
                 } else if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
                     log_info("wintouchemu", "use mouse cursor API for gitadora overlay subscreen");

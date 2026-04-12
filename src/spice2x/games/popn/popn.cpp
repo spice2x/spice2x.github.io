@@ -3,6 +3,7 @@
 #include "bi3a_hook.h"
 #include <cstdint>
 #include <cstring>
+#include "hooks/graphics/graphics.h"
 #include "rawinput/rawinput.h"
 #include "util/detour.h"
 #include "util/fileutils.h"
@@ -17,11 +18,15 @@
 #include "misc/eamuse.h"
 #include "util/sysutils.h"
 #include "io.h"
+#include "util/deferlog.h"
+#include "misc/wintouchemu.h"
 
 namespace games::popn {
 
+    bool SHOW_PIKA_MONITOR_WARNING = false;
+    
 #if SPICE64 && !SPICE_XP
-
+    
     static decltype(DisplayConfigGetDeviceInfo) *DisplayConfigGetDeviceInfo_orig = nullptr;
 
     static
@@ -406,6 +411,29 @@ namespace games::popn {
 #endif
 
 #if SPICE64 && !SPICE_XP
+        if (!GRAPHICS_WINDOWED && D3D9_ADAPTER.has_value()) {
+            SHOW_PIKA_MONITOR_WARNING = true;
+            log_warning(
+                "popn",
+                "\n\n"
+                "!!! using -dxmainadapter option is NOT recommended due to known     !!!\n"
+                "!!! compatibility issues with the game                              !!!\n"
+                "!!!                                                                 !!!\n"
+                "!!!   * game may launch in wrong resolution or refresh rate         !!!\n"
+                "!!!   * touch / mouse input may stop working in subscreen / overlay !!!\n"
+                "!!!                                                                 !!!\n"
+                "!!! recommendation is to use the Change Main Monitor (-mainmonitor) !!!\n"
+                "!!! option instead of -dxmainadapter                                !!!\n\n"
+                );
+
+            deferredlogs::defer_error_messages({
+                "-dxmainadapter option is NOT recommended due to known compatibility ",
+                " issues with the game!",
+                "      * game may launch in wrong resolution or refresh rate",
+                "      * touch / mouse input may stop working in subscreen / overlay",
+                "    use Change Main Monitor (-mainmonitor) option instead"
+                });
+        }
 
         // monitor hook
         DisplayConfigGetDeviceInfo_orig =
@@ -444,6 +472,10 @@ namespace games::popn {
         //       00000080 0000000A 00000001  (button 8)
         //       00000100 0000000B 00000001  (button 9)
         //       set third column to 0 and it will work with BIO2
+
+        wintouchemu::FORCE = true;
+        wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
+        wintouchemu::hook_title_ends("", "Main Screen", avs::game::DLL_INSTANCE);
 
 #endif
 

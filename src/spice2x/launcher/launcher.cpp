@@ -590,6 +590,10 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::PopnMusicForceSDMode].value_bool()) {
         avs::ea3::PCB_TYPE = 0;
     }
+    if (options[launcher::Options::PopnNoSub].value_bool()) {
+        GRAPHICS_FORCE_SINGLE_ADAPTER = true;
+        GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
+    }
     if (options[launcher::Options::LoadMetalGearArcadeModule].value_bool()) {
         attach_mga = true;
     }

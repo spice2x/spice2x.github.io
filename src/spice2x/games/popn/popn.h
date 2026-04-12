@@ -9,6 +9,8 @@ namespace games::popn {
         return (avs::game::is_model("M39") && avs::game::SPEC[0] == 'D');
     }
 
+    extern bool SHOW_PIKA_MONITOR_WARNING;
+
     class POPNGame : public games::Game {
     public:
         POPNGame();

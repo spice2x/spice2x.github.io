@@ -989,6 +989,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // PopnNoSub
+        .title = "Pop'n Music PikaPika Subscreen Disable",
+        .name = "popnnosub",
+        .desc = "Prevents PikaPika model subscreen from launching a separate window.",
+        .type = OptionType::Bool,
+        .game_name = "Pop'n Music",
+        .category = "Game Options",
+    },
+    {
         .title = "Force Load HELLO! Pop'n Music Module",
         .name = "hpm",
         .desc = "Manually enable HELLO! Pop'n Music module.",

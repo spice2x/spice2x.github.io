@@ -5,6 +5,7 @@
 #include "games/io.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
+#include "games/popn/popn.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/eamuse.h"
 #include "touch/touch.h"
@@ -35,6 +36,7 @@
 #include "windows/iopanel_ddr.h"
 #include "windows/iopanel_gfdm.h"
 #include "windows/iopanel_iidx.h"
+#include "windows/popn_sub.h"
 #include "windows/sdvx_sub.h"
 #include "windows/keypad.h"
 #include "windows/log.h"
@@ -415,6 +417,8 @@ void overlay::SpiceOverlay::init() {
             window_sub = new overlay::windows::SDVXSubScreen(this);
         } else if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
             window_sub = new overlay::windows::GitaDoraSubScreen(this);
+        } else if (games::popn::is_pikapika_model()) {
+            window_sub = new overlay::windows::PopnSubScreen(this);
         }
 
         if (window_sub) {
