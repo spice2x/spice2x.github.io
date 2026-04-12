@@ -349,6 +349,10 @@ void ImGui_ImplSpice_NewFrame() {
     io.DeltaTime = (float) (current_time - g_Time) / g_TicksPerSecond;
     g_Time = current_time;
 
+    // only process new input from devices if window is in focus
+    // (when not in focus, all mouse/keyboard events are treated as released)
+    const auto accept_new_input = superexit::has_focus() && !rawinput::OS_WINDOW_ACTIVE;
+
     // remember old state
     std::array<BYTE, VKEY_MAX> KeysDownOld;
     for (size_t i = 0; i < VKEY_MAX; i++) {
@@ -361,11 +365,6 @@ void ImGui_ImplSpice_NewFrame() {
     g_MouseDown.fill(false);
     g_KeysDown.fill(false);
 
-    // early quit if window not in focus
-    if (!superexit::has_focus() || rawinput::OS_WINDOW_ACTIVE) {
-        return;
-    }
-
     // apply windows mouse buttons
     g_MouseDown[ImGuiMouseButton_Left] |= (get_async_primary_mouse()) != 0;
     g_MouseDown[ImGuiMouseButton_Right] |= (get_async_secondary_mouse()) != 0;
@@ -374,7 +373,7 @@ void ImGui_ImplSpice_NewFrame() {
     // read new keys state
     static long mouse_wheel_last = 0;
     long mouse_wheel = 0;
-    if (RI_MGR != nullptr) {
+    if (RI_MGR != nullptr && accept_new_input) {
         auto devices = RI_MGR->devices_get();
         for (auto &device : devices) {
             switch (device.type) {
@@ -471,7 +470,9 @@ void ImGui_ImplSpice_NewFrame() {
 
     // update OS mouse position
     const auto old_mouse_pos = io.MousePos;
-    ImGui_ImplSpice_UpdateMousePos();
+    if (accept_new_input) {
+        ImGui_ImplSpice_UpdateMousePos();
+    }
     const auto new_mouse_pos = io.MousePos;
 
     // update mouse buttons
