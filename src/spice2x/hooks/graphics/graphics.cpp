@@ -368,6 +368,10 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         }
     }
 
+    if (GRAPHICS_WINDOWED) {
+        graphics_window_check_bounds_before_creation(x, y, nWidth, nHeight);
+    }
+
     // call original
     HWND result = CreateWindowExA_orig(dwExStyle, lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight,
             hWndParent, hMenu, hInstance, lpParam);
@@ -466,6 +470,10 @@ static HWND WINAPI CreateWindowExW_hook(DWORD dwExStyle, LPCWSTR lpClassName, LP
         if (!lpWindowName) {
             lpWindowName = L"Dance Evolution";
         }
+    }
+
+    if (GRAPHICS_WINDOWED) {
+        graphics_window_check_bounds_before_creation(x, y, nWidth, nHeight);
     }
 
     // call original

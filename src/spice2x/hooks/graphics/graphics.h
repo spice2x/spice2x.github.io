@@ -108,6 +108,7 @@ bool graphics_window_decoration_change_crashes_game();
 bool graphics_window_resize_breaks_game();
 bool graphics_window_move_and_resize_breaks_game();
 void graphics_load_windowed_subscreen_parameters();
+void graphics_window_check_bounds_before_creation(int &x, int &y, const int width, const int height);
 
 void change_primary_monitor(const std::string &monitor_name);
 void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate);
