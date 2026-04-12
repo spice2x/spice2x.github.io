@@ -576,20 +576,19 @@ void graphics_window_check_bounds_before_creation(int &x, int &y, const int widt
 
     log_warning(
         "graphics-windowed",
-        "window is out of bounds, resetting position: ({}, {}) => (0, 0)",
+        "window is completely out of bounds, resetting position: ({}, {}) => (0, 0)",
         x, y);
     x = 0;
     y = 0;
+    rect = {
+        .left = x,
+        .top = y,
+        .right = x + width,
+        .bottom = y + height
+    };
 
     mon = MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
-    if (mon== nullptr) {
-        log_warning(
-            "graphics-windowed",
-            "failed to find nearest monitor for out of bounds window");
-        return;
-    }
-
-    MONITORINFO mi;
+    MONITORINFO mi = {};
     mi.cbSize = sizeof(mi);
     if (!GetMonitorInfo(mon, &mi)) {
         log_warning(
@@ -604,8 +603,6 @@ void graphics_window_check_bounds_before_creation(int &x, int &y, const int widt
         mi.rcWork.left, mi.rcWork.top, mi.rcWork.right, mi.rcWork.bottom);
 
     RECT bounds = mi.rcWork;
-    RECT intersection;
-    IntersectRect(&intersection, &rect, &bounds);
     const bool fully_visible =
         (rect.left   >= bounds.left &&
          rect.top    >= bounds.top &&
