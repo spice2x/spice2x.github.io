@@ -15,9 +15,11 @@ namespace overlay::windows {
             this->disabled_message = "Game did not launch as Pikapika Pop-kun (invalid <spec>)!";
         } else if (games::popn::SHOW_PIKA_MONITOR_WARNING) {
             this->disabled_message = "Subscreen overlay is not compatible with -dxmainadapter option, use -mainmonitor instead";
+        } else if (GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+            this->disabled_message = "Subscren overlay was not enabled in spicecfg. Use the second window (ALT+TAB).";
         }
 
-        this->resize_callback = keep_10_by_16;
+        this->resize_callback = keep_16_by_10;
         float size = 0.5f;
         this->init_size = ImVec2(
             ImGui::GetIO().DisplaySize.x * size,

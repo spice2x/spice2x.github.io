@@ -677,12 +677,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetDeviceCaps(UINT Adapter, D3DDEVT
             pCaps->NumberOfAdaptersInGroup = 1;
         }
     } else if (games::popn::is_pikapika_model()) {
-        if (GRAPHICS_WINDOWED && GRAPHICS_PREVENT_SECONDARY_WINDOW) {
-            // user wants windowed mode but does not want subscreen at all
-            pCaps->NumberOfAdaptersInGroup = 1;
-        } else {
-            // in both full screen and windowed mode, use 2 so that the game draws the subscreen
-            // (if this is 1, the game won't even draw the second window, causing subscreen overlay to not work)
+        if (GRAPHICS_WINDOWED) {
             pCaps->NumberOfAdaptersInGroup = 2;
         }
     }

@@ -16,6 +16,7 @@
 #include "games/ddr/ddr.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
+#include "games/popn/popn.h"
 #include "hooks/graphics/backends/d3d9/d3d9_backend.h"
 #include "launcher/shutdown.h"
 #include "overlay/overlay.h"
@@ -401,7 +402,9 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
     if (is_popn_sub_window) {
         POPN_SUBSCREEN_WINDOW = result;
-        graphics_hook_subscreen_window(POPN_SUBSCREEN_WINDOW);
+        if (!GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+            graphics_hook_subscreen_window(POPN_SUBSCREEN_WINDOW);
+        }
     }
 
     disable_touch_indicators(result);
@@ -667,6 +670,13 @@ static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
     if (games::gitadora::is_arena_model() &&
         games::gitadora::ARENA_SINGLE_WINDOW &&
         hWnd != GRAPHICS_HOOKED_WINDOW) {
+        log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
+        return true;
+    }
+
+    if (games::popn::is_pikapika_model() &&
+        GRAPHICS_PREVENT_SECONDARY_WINDOW &&
+        hWnd == POPN_SUBSCREEN_WINDOW) {
         log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
         return true;
     }

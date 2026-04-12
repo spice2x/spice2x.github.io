@@ -15,8 +15,8 @@ namespace overlay::windows {
         void touch_transform(const ImVec2 xy_in, LONG *x_out, LONG *y_out) override;
 
     private:
-        static void keep_10_by_16(ImGuiSizeCallbackData* data) {
-            data->DesiredSize.y = (data->DesiredSize.x * 16.f / 10.f) + ImGui::GetFrameHeight();
+        static void keep_16_by_10(ImGuiSizeCallbackData* data) {
+            data->DesiredSize.y = (data->DesiredSize.x * 10.f / 16.f) + ImGui::GetFrameHeight();
         }
     };
 }
