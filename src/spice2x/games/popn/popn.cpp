@@ -477,6 +477,10 @@ namespace games::popn {
         wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
         wintouchemu::hook_title_ends("", "Main Screen", avs::game::DLL_INSTANCE);
 
+        // still don't know why newer versions of sdvx and this game need this
+        // but without this, second monitor will not refresh often enough when in fullscreen
+        SUBSCREEN_FORCE_REDRAW = true;
+
 #endif
 
     }
