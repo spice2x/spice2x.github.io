@@ -2,6 +2,7 @@
 
 #include "avs/game.h"
 #include "games/game.h"
+#include "util/tapeled.h"
 
 namespace games::popn {
 
@@ -14,6 +15,11 @@ namespace games::popn {
 #endif
 
     }
+
+#if SPICE64
+    constexpr int POPN_TAPELED_TOTAL = 4;
+    extern tapeledutils::tape_led TAPELED_MAPPING[POPN_TAPELED_TOTAL];
+#endif
 
     extern bool SHOW_PIKA_MONITOR_WARNING;
 

@@ -32,6 +32,46 @@ namespace games::popn {
     constexpr LONG FAKE_MONITOR_WIDTH = 1280;
     constexpr LONG FAKE_MONITOR_HEIGHT = 800;
 
+    // pin 0 = buttons 1-3, size 9 (but it's actually triple that in reality - game passes in wrong length), values 0-0xFF
+    // pin 1 = left pop (red pop kun), size 16, values 0-0xFF
+    // pin 2 = right pop (blue pop kun), size 16, values 0-0xFF
+    // pin 3 = title, size 44, values 0-0xFF
+    // pin 4 = speaker, size 40, values 0-0xFF - U region only
+    // pin 5 = monitor, size 18, values 0-0x7F - U region only
+    // pin 6 = control panel, size 28, values 0-0x7F - U region only
+    // pin 7 = cabinet, size 22, values 0-0x7F - U region only
+    tapeledutils::tape_led TAPELED_MAPPING[POPN_TAPELED_TOTAL] = {
+        {
+            0, // these are button lights and handled specially
+            0,
+            0,
+            0,
+            "Invalid"
+        },
+        {
+            5, // 5*3; game reports 16 but make it 15
+            Lights::popn_lights_t::RedPopKun_R,
+            Lights::popn_lights_t::RedPopKun_G,
+            Lights::popn_lights_t::RedPopKun_B,
+            "Red Pop-Kun"
+        },
+        {
+            5, // 5*3; game reports 16 but make it 15
+            Lights::popn_lights_t::BluePopKun_R,
+            Lights::popn_lights_t::BluePopKun_G,
+            Lights::popn_lights_t::BluePopKun_B,
+            "Blue Pop-Kun"
+        },
+        {
+            14, // 14*3; game reports 44 but make it 42; these are lights above the banner
+            Lights::popn_lights_t::TopLED_R,
+            Lights::popn_lights_t::TopLED_G,
+            Lights::popn_lights_t::TopLED_B,
+            "Top"
+        },
+    };
+
+
     static decltype(GetDisplayConfigBufferSizes) *GetDisplayConfigBufferSizes_orig = nullptr;
     static decltype(QueryDisplayConfig) *QueryDisplayConfig_orig = nullptr;
     static decltype(DisplayConfigGetDeviceInfo) *DisplayConfigGetDeviceInfo_orig = nullptr;
