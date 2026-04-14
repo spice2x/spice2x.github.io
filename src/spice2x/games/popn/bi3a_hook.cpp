@@ -492,11 +492,12 @@ namespace games::popn {
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_g], rgb.g);
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_b], rgb.b);
 
-            for (size_t i = 0; i < data_size; i++) {
-                map.data[i].r = ((uint8_t *)i_pData)[i * 3];
-                map.data[i].g = ((uint8_t *)i_pData)[i * 3 + 1];
-                map.data[i].b = ((uint8_t *)i_pData)[i * 3 + 2];
-            }
+            // tape LED output over API not implemented
+            // for (size_t i = 0; i < data_size; i++) {
+            //     map.data[i].r = ((uint8_t *)i_pData)[i * 3];
+            //     map.data[i].g = ((uint8_t *)i_pData)[i * 3 + 1];
+            //     map.data[i].b = ((uint8_t *)i_pData)[i * 3 + 2];
+            // }
         }
     }
 
