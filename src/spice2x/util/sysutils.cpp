@@ -576,7 +576,13 @@ namespace sysutils {
     }
 
     void hook_EnumDisplayDevicesA() {
-        EnumDisplayDevicesA_orig = detour::iat_try(
-             "EnumDisplayDevicesA", EnumDisplayDevicesA_hook, avs::game::DLL_INSTANCE);
+        // the goal is to trick DX9 into thinking that some monitors are not attached
+        // so we need to trampoline hook at user32 instead of IAT at game level
+        log_misc("sysutils", "hooking EnumDisplayDevicesA to hide if there are more than 3 monitors...");
+        detour::trampoline_try(
+            "user32.dll",
+            "EnumDisplayDevicesA",
+            (void*)EnumDisplayDevicesA_hook,
+            (void**)&EnumDisplayDevicesA_orig);
     }
 }

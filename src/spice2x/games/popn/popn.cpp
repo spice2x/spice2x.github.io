@@ -232,6 +232,7 @@ namespace games::popn {
                             // TODO: is this what the game expects for subscreen?
                             // TODO: what if there are 3+ monitors?
                             targetName->outputTechnology = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_HDMI;
+                            targetName->connectorInstance = 0;
                         }
                         break;
                     }
@@ -633,6 +634,8 @@ namespace games::popn {
             wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
             wintouchemu::hook_title_ends("", "Main Screen", avs::game::DLL_INSTANCE);
         }
+
+        sysutils::hook_EnumDisplayDevicesA();
 
 #endif
 

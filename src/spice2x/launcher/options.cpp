@@ -998,6 +998,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // PopnSubMonitorOverride
+        .title = "Pop'n Music PikaPika Subscreen Monitor Override",
+        .name = "popnsubmonitor",
+        .desc = "If you have three or more monitors, this option can be set to tell the game which monitor is the subscreen.",
+        .type = OptionType::Text,
+        .setting_name = "\\\\.\\DISPLAY3",
+        .game_name = "Pop'n Music",
+        .category = "Monitor",
+        .picker = OptionPickerType::Monitor,
+    },
+    {
         .title = "Force Load HELLO! Pop'n Music Module",
         .name = "hpm",
         .desc = "Manually enable HELLO! Pop'n Music module.",

@@ -594,6 +594,9 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
         GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
     }
+    if (options[launcher::Options::PopnSubMonitorOverride].is_active()) {
+        sysutils::SECOND_MONITOR_OVERRIDE = options[launcher::Options::PopnSubMonitorOverride].value_text();
+    }
     if (options[launcher::Options::LoadMetalGearArcadeModule].value_bool()) {
         attach_mga = true;
     }
