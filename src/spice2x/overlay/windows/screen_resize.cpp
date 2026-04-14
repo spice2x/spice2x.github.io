@@ -213,7 +213,7 @@ namespace overlay::windows {
         ImGui::SameLine();
         ImGui::HelpMarker(
             "Change window decoration. Resizable Window may not cause your mouse cursor to change, "
-            "but you can still drag to resize. Disabled for some games due to incompatibility.");
+            "but you can still drag to resize. Disabled for some games due to incompatibility; change in spicecfg instead.");
 
         if (ImGui::Checkbox("Always On Top", &cfg::SCREENRESIZE->window_always_on_top) ) {
             graphics_update_z_order(window, cfg::SCREENRESIZE->window_always_on_top);

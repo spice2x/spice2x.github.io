@@ -101,7 +101,7 @@ std::string graphics_screenshot_genpath();
 // graphics_windowed.cpp
 void graphics_windowed_wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void graphics_capture_initial_window(HWND hWnd);
-void graphics_update_window_style(HWND hWnd);
+void graphics_update_window_style(HWND hWnd, bool force_update=false);
 void graphics_update_z_order(HWND hWnd, bool always_on_top);
 void graphics_move_resize_window(HWND hWnd);
 bool graphics_window_options_breaks_game();

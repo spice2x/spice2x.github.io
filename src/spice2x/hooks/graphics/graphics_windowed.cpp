@@ -121,13 +121,12 @@ void graphics_capture_initial_window(HWND hWnd) {
             cfg::SCREENRESIZE->client_height);
         graphics_move_resize_window(hWnd);
     }
-    // ddr hangs when window frame doesn't have overlapped
     if (cfg::SCREENRESIZE->window_decoration != cfg::WindowDecorationMode::Default) {
         log_info(
             "graphics-windowed", "[{}] change window style - decoration: {}",
             fmt::ptr(hWnd),
             cfg::SCREENRESIZE->window_decoration);
-        graphics_update_window_style(hWnd);
+        graphics_update_window_style(hWnd, true); // force
     }
     if (cfg::SCREENRESIZE->window_always_on_top) {
         log_info("graphics-windowed", "[{}] change window z-order - always on top", fmt::ptr(hWnd));
@@ -385,11 +384,11 @@ void graphics_wm_sizing_aspect_ratio(int edge, RECT& rect) {
     log_debug("graphics-windowed", "graphics_wm_sizing_aspect_ratio returned");
 }
 
-void graphics_update_window_style(HWND hWnd) {
+void graphics_update_window_style(HWND hWnd, bool force_update) {
     if (!GRAPHICS_WINDOWED) {
         return;
     }
-    if (graphics_window_decoration_change_crashes_game()) {
+    if (!force_update && graphics_window_decoration_change_crashes_game()) {
         return;
     }
 
@@ -504,7 +503,14 @@ bool graphics_window_decoration_change_crashes_game() {
     static bool result = false;
     std::call_once(flag, []() {
         // ddr crashes when frame style changes
-        result = avs::game::is_model("MDX");
+        if (avs::game::is_model("MDX")) {
+            result = true;
+        }
+
+        // arena model hangs immediately when decoration changes
+        if (games::gitadora::is_arena_model()) {
+            result = true;
+        }
 
         // changing window decoration also changes dimensions and position
         // so this must be prevented
