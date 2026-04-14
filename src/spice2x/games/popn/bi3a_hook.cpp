@@ -1,6 +1,6 @@
 #include "bi3a_hook.h"
 
-#if SPICE64
+#if SPICE64 && !SPICE_XP
 
 #include <optional>
 #include <cstdint>
