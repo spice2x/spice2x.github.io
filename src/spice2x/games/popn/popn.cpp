@@ -19,11 +19,13 @@
 #include "util/sysutils.h"
 #include "io.h"
 #include "util/deferlog.h"
+#include "misc/nativetouchhook.h"
 #include "misc/wintouchemu.h"
 
 namespace games::popn {
 
     bool SHOW_PIKA_MONITOR_WARNING = false;
+    bool NATIVE_TOUCH = false;
     
 #if SPICE64 && !SPICE_XP
 
@@ -670,9 +672,13 @@ namespace games::popn {
         //       set third column to 0 and it will work with BIO2
         
         if (!GRAPHICS_WINDOWED) {
-            wintouchemu::FORCE = true;
-            wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
-            wintouchemu::hook_title_ends("", "Main Screen", avs::game::DLL_INSTANCE);
+            if (NATIVE_TOUCH) {
+                nativetouchhook::hook(avs::game::DLL_INSTANCE);
+            } else {
+                wintouchemu::FORCE = true;
+                wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
+                wintouchemu::hook_title_ends("", "Main Screen", avs::game::DLL_INSTANCE);
+            }
         }
 
         sysutils::hook_EnumDisplayDevicesA();

@@ -1009,6 +1009,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .picker = OptionPickerType::Monitor,
     },
     {
+        // PopnNativeTouch
+        .title = "Pop'n Music PikaPika Native Touch Handling",
+        .name = "popnnativetouch",
+        .desc = "Disables touch hooks and lets the game access a touch screen directly. "
+                "Requires a touch screen to be connected as a secondary monitor. "
+                "Touch input must be routed to the primary screen via Windows Tablet PC settings. "
+                "Enable this when you get duplicate touch inputs from an actual touch screen.",
+        .type = OptionType::Bool,
+        .game_name = "Pop'n Music",
+        .category = "Game Options (Advanced)",
+    },
+    {
         .title = "Force Load HELLO! Pop'n Music Module",
         .name = "hpm",
         .desc = "Manually enable HELLO! Pop'n Music module.",

@@ -101,6 +101,7 @@ namespace launcher {
             PopnMusicForceSDMode,
             PopnNoSub,
             PopnSubMonitorOverride,
+            PopnNativeTouch,
             LoadHelloPopnMusicModule,
             LoadGitaDoraModule,
             GitaDoraTwoChannelAudio,

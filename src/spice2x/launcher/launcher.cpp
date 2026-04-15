@@ -597,6 +597,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::PopnSubMonitorOverride].is_active()) {
         sysutils::SECOND_MONITOR_OVERRIDE = options[launcher::Options::PopnSubMonitorOverride].value_text();
     }
+    if (options[launcher::Options::PopnNativeTouch].value_bool()) {
+        games::popn::NATIVE_TOUCH = true;
+    }
     if (options[launcher::Options::LoadMetalGearArcadeModule].value_bool()) {
         attach_mga = true;
     }
