@@ -479,6 +479,10 @@ void graphics_update_z_order(HWND hWnd, bool always_on_top) {
 }
 
 void graphics_set_corner_preference(HWND hWnd, bool disable) {
+    if (!GRAPHICS_WINDOWED) {
+        return;
+    }
+
 #if !SPICE_XP
     log_debug("graphics-windowed", "graphics_set_corner_preference called");
 
