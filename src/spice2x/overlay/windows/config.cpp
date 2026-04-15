@@ -17,6 +17,7 @@
 #include "external/imgui/misc/cpp/imgui_stdlib.h"
 #include "games/io.h"
 #include "games/sdvx/sdvx.h"
+#include "games/popn/popn.h"
 #include "avs/core.h"
 #include "avs/ea3.h"
 #include "avs/game.h"
@@ -283,18 +284,8 @@ namespace overlay::windows {
 
                 // keypad buttons
                 ImGui::TextUnformatted("");
-                if (this->games_selected_name == "Beatmania IIDX") {
-                    ImGui::Indent(INDENT);
-                    ImGui::TextColored(
-                        ImVec4(1, 0.5f, 0.5f, 1.f),
-                        "WARNING: Lightning Model (TDJ) I/O will ignore the keypad!");
-                    ImGui::TextWrapped(
-                        "Use Toggle Sub Screen button to show the overlay and use your mouse, "
-                        "connect using SpiceCompanion app, or connect a touch screen to enter "
-                        "the PIN.");
-                    ImGui::Unindent(INDENT);
-                    ImGui::TextUnformatted("");
-                }
+                this->build_keypad_warning();
+
                 auto keypad_buttons = games::get_buttons_keypads(this->games_selected_name);
                 auto keypad_count = eamuse_get_game_keypads_name();
                 if (keypad_count == 1) {
@@ -600,6 +591,34 @@ namespace overlay::windows {
                 launch_shell(PROJECT_URL);
             }
         }
+    }
+
+    void Config::build_keypad_warning() {
+        // not checking the -iidxtdj option here, we could do that in the future
+        const bool is_tdj = this->games_selected_name == "Beatmania IIDX";
+
+        // not using games::popn::is_pikapika_model() here since that always returns false on 32-bit
+        const bool is_popn = this->games_selected_name == "Pop'n Music" && avs::game::SPEC[0] == 'D';
+        if (!is_tdj && !is_popn) {
+            return;
+        }
+        
+        ImGui::Indent(INDENT);
+        if (is_tdj) {
+            ImGui::TextColored(
+                ImVec4(1, 0.5f, 0.5f, 1.f),
+                "WARNING: Lightning Model (TDJ) I/O will ignore keypad number input!");
+        } else if (is_popn) {
+            ImGui::TextColored(
+                ImVec4(1, 0.5f, 0.5f, 1.f),
+                "WARNING: PikaPika Pop-Kun model will ignore keypad number input!");
+        }
+        ImGui::TextWrapped(
+            "Use Toggle Sub Screen button (Overlay tab) to show the overlay and use your mouse, "
+            "connect using SpiceCompanion app, or connect a touch screen to enter "
+            "the PIN.");
+        ImGui::Unindent(INDENT);
+        ImGui::TextUnformatted("");
     }
 
     void Config::build_buttons(const std::string &name, std::vector<Button> *buttons, int min, int max) {

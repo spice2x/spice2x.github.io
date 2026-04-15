@@ -193,13 +193,15 @@ namespace overlay::windows {
             std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr);
         void build_about();
         void build_launcher();
-        void launch_shell(LPCSTR app, LPCSTR file=nullptr);
+        void build_keypad_warning();
 
+        void launch_shell(LPCSTR app, LPCSTR file=nullptr);
+        
         void build_menu(int *game_selected);
         void shutdown_system(bool force, bool reboot_instead);
-
+        
         void set_alternating_row_colors(const int row_index);
-
+        
         bool validate_ea_card(char card_number[16]);
 
     public:
