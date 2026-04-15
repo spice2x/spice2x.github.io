@@ -35,24 +35,33 @@ struct ICCA_STATUS_LA9 {
 static_assert(sizeof(struct ICCA_STATUS) == 24, "ICCA_STATUS must be 24 bytes");
 
 enum ICCA_WORKFLOW {
-    STEP,
-    SLEEP,
-    START,
-    INIT,
-    READY,
-    GET_USERID,
-    ACTIVE,
-    EJECT,
-    EJECT_CHECK,
-    END,
-    CLOSE_EJECT,
-    CLOSE_E_CHK,
-    CLOSE_END,
-    ERR_GETUID = -2
+    STEP = 0,
+    SLEEP = 1,
+    START = 2,
+    INIT = 3,
+    READY = 4,
+    GET_USERID = 5,
+    ACTIVE = 6,
+    EJECT = 7,
+    EJECT_CHECK = 8,
+    END = 9,
+    CLOSE_EJECT = 10,
+    CLOSE_E_CHK = 11,
+    CLOSE_END = 12,
+    ERR_GETUID = -2,
+    ERR_REMOVED = -11
 };
+
+// used by RA as the status_code
+enum ICCA_STATUS_CODE {
+    EMPTY = 1,
+    ENGAGED = 2
+};
+
 struct ICCA_UNIT {
     struct ICCA_STATUS status {};
     enum ICCA_WORKFLOW state = STEP;
+    enum ICCA_WORKFLOW state_jdz = SLEEP;
     bool card_cmd_pressed = false;
     bool card_in = false;
     double card_in_time = 0.0;
@@ -75,6 +84,11 @@ static inline int icca_get_active_count() {
 }
 
 static inline int icca_get_unit_id(int unit_id) {
+    // on RA the unit_id is zero-indexed
+    if (avs::game::is_model("JDZ")) {
+        return unit_id;
+    }
+
     if (icca_get_active_count() < 2)
         return 1;
     else {
@@ -122,9 +136,15 @@ static inline void update_card(int unit_id) {
                     IS_LAST_CARD_FELICA = is_card_uid_felica(unit->status.uid);
 
                     unit->state = acio::ICCA_COMPAT_ACTIVE ? START : ACTIVE;
+                    unit->state_jdz = ACTIVE;
                     unit->status.error = 0;
+                    unit->status.front_sensor = 1;
+                    unit->status.rear_sensor = 1;
                 } else {
                     unit->state = ERR_GETUID;
+                    unit->state_jdz = ERR_GETUID;
+                    unit->status.front_sensor = 1;
+                    unit->status.rear_sensor = 1;
                     memset(unit->status.uid, 0, 8);
                 }
                 unit->card_in = true;
@@ -132,10 +152,25 @@ static inline void update_card(int unit_id) {
             } else if (unit->state == EJECT_CHECK) {
                 unit->state = SLEEP;
                 unit->card_in = false;
+                unit->status.front_sensor = 0;
+                unit->status.rear_sensor = 0;
+            } else if (unit->state_jdz == READY) {
+                unit->state = GET_USERID;
+                unit->state_jdz = GET_USERID;
+                unit->status.error = 0;
+                unit->status.front_sensor = 1;
+                unit->status.rear_sensor = 1;
+                unit->card_in = true;
+                unit->card_in_time = get_performance_seconds();
             }
         } else {
             unit->state = acio::ICCA_COMPAT_ACTIVE ? START : ACTIVE;
+            if (unit->state_jdz == READY) {
+                unit->state_jdz = GET_USERID;
+            }
             unit->status.error = 0;
+            unit->status.front_sensor = 1;
+            unit->status.rear_sensor = 1;
             unit->card_in = true;
             unit->card_in_time = get_performance_seconds();
         }
@@ -144,6 +179,12 @@ static inline void update_card(int unit_id) {
         unit->state = CLOSE_EJECT;
         if (fabs(get_performance_seconds() - unit->card_in_time) > CARD_TIMEOUT) {
             unit->card_in = false;
+            memset(unit->status.uid, 0, 8);
+            if (unit->state_jdz == ACTIVE || unit->state_jdz == GET_USERID) {
+                unit->state_jdz = ERR_REMOVED;
+            }
+            unit->status.front_sensor = 0;
+            unit->status.rear_sensor = 0;
         }
     }
 
@@ -302,7 +343,11 @@ static char __cdecl ac_io_icca_get_status(void *a1, void *a2) {
 
     // copy state to output buffer
     ICCA_UNIT *unit = &ICCA_UNITS[unit_id];
-    unit->status.status_code = unit->state;
+    if (avs::game::is_model("JDZ")) {
+        unit->status.status_code = unit->card_in ? ENGAGED : EMPTY;
+    } else {
+        unit->status.status_code = unit->state;
+    }
     memcpy(status, &unit->status, sizeof(struct ICCA_STATUS));
 
     // funny workaround
@@ -387,6 +432,11 @@ static char __cdecl ac_io_icca_req_uid(int unit_id) {
 static int __cdecl ac_io_icca_req_uid_isfinished(int unit_id, DWORD *read_state) {
     unit_id = icca_get_unit_id(unit_id);
     ICCA_UNIT *unit = &ICCA_UNITS[unit_id];
+    if (avs::game::is_model("JDZ")) {
+        // hack for RA - only ever seen it as this
+        *read_state = 8;
+        return 1;
+    }
     if (unit->card_in) {
         if (fabs(get_performance_seconds() - unit->card_in_time) < CARD_TIMEOUT) {
             unit->state = END;
@@ -403,16 +453,61 @@ static int __cdecl ac_io_icca_send_keep_alive_packet(int a1, int a2, int a3) {
     return 0;
 }
 
+static int __cdecl ac_io_icca_workflow_jdz(int workflow, int unit_id) {
+
+    unit_id = icca_get_unit_id(unit_id);
+    ICCA_UNIT *unit = &ICCA_UNITS[unit_id];
+    switch (workflow) {
+        // RA uses "STEP" as more of a polling thing it seems
+        case STEP:
+            switch (unit->state_jdz) {
+                case CLOSE_EJECT:
+                    unit->state_jdz = CLOSE_E_CHK;
+                    break;
+                case CLOSE_E_CHK:
+                    unit->state_jdz = CLOSE_END;
+                    break;
+                case CLOSE_END:
+                    unit->state_jdz = SLEEP;
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case SLEEP:
+            unit->state = SLEEP;
+            break;
+        case START:
+            unit->state_jdz = INIT;
+            break;
+        case INIT:
+        case READY:
+            unit->state_jdz = READY;
+            break;
+        case CLOSE_EJECT:
+            unit->state_jdz = CLOSE_EJECT;
+            return CLOSE_E_CHK;
+        case CLOSE_END:
+            unit->state_jdz = SLEEP;
+            break;
+        default:
+            // should probably log a warning here
+            break;
+    }
+    return unit->state_jdz;
+}
+
 static int __cdecl ac_io_icca_workflow(int workflow, int unit_id) {
+    // RA uses a different workflow process for the slotted readers; treat it differently
+    if (avs::game::is_model("JDZ")) {
+        return ac_io_icca_workflow_jdz(workflow, unit_id);
+    }
 
     unit_id = icca_get_unit_id(unit_id);
     ICCA_UNIT *unit = &ICCA_UNITS[unit_id];
     switch (workflow) {
         case STEP:
-            if (avs::game::is_model("JDZ"))
-                unit->state = SLEEP;
-            else
-                unit->state = STEP;
+            unit->state = STEP;
             break;
         case SLEEP:
             unit->state = SLEEP;
@@ -441,7 +536,6 @@ static int __cdecl ac_io_icca_workflow(int workflow, int unit_id) {
         default:
             break;
     }
-
     return unit->state;
 }
 
@@ -466,6 +560,14 @@ acio::ICCAModule::ICCAModule(HMODULE module, acio::HookMode hookMode) : ACIOModu
 
 void acio::ICCAModule::attach() {
     ACIOModule::attach();
+
+    // workaround for RA; ac_io_icca_cardunit_init is never called so treat like both are initialized
+    if (avs::game::is_model("JDZ")) {
+        ICCA_UNITS[0].initialized = true;
+        ICCA_UNITS[1].initialized = true;
+
+        CARD_TIMEOUT = 10.0; // keep the card in the slot for longer
+    }
 
     // hooks
     ACIO_MODULE_HOOK(ac_io_icca_cardunit_init);
