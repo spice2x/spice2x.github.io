@@ -7,6 +7,9 @@
 
 #include <windows.h>
 #include <d3d9.h>
+#if !SPICE_XP
+#include <dwmapi.h>
+#endif
 
 #include "external/toojpeg/toojpeg.h"
 
@@ -50,6 +53,7 @@ extern std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_WINDOW_SIZE;
 extern std::optional<std::string> GRAPHICS_WINDOW_POS;
 extern bool GRAPHICS_WINDOW_ALWAYS_ON_TOP;
 extern bool GRAPHICS_WINDOW_BACKBUFFER_SCALE;
+extern bool GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS;
 extern std::optional<HWND> GRAPHICS_HOOKED_WINDOW;
 
 extern bool GRAPHICS_IIDX_WSUB;
@@ -103,6 +107,7 @@ void graphics_windowed_wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
 void graphics_capture_initial_window(HWND hWnd);
 void graphics_update_window_style(HWND hWnd, bool force_update=false);
 void graphics_update_z_order(HWND hWnd, bool always_on_top);
+void graphics_set_corner_preference(HWND hWnd, bool disable);
 void graphics_move_resize_window(HWND hWnd);
 bool graphics_window_options_breaks_game();
 bool graphics_window_decoration_change_crashes_game();

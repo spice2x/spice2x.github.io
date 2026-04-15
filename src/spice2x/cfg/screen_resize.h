@@ -60,6 +60,7 @@ namespace cfg {
         //     window = rectangle including the frame
         //     client = just the content area without frames.
         bool window_always_on_top = false;
+        bool window_disable_round_corners = false;
         bool client_keep_aspect_ratio = true;
         bool enable_window_resize = false;
         int window_decoration = 0; // enum type WindowDecorationMode

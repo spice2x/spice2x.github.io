@@ -232,6 +232,7 @@ namespace launcher {
             spice2x_WindowPosition,
             spice2x_WindowAlwaysOnTop,
             WindowForceScaling,
+            WindowDisableRoundedCorners,
             spice2x_IIDXWindowedSubscreenSize,
             spice2x_IIDXWindowedSubscreenPosition,
             IIDXWindowedSubscreenBorderless,

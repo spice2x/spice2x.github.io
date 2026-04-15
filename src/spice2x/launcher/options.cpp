@@ -2219,6 +2219,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Windowed)",
     },
     {
+        // WindowDisableRoundedCorners
+        .title = "Disable Round Window Corners",
+        .name = "windownoroundcorners",
+        .desc = "Windows 11 and above only: Disables rounded corners on the game window(s).",
+        .type = OptionType::Bool,
+        .category = "Graphics (Windowed)",
+    },
+    {
         // spice2x_IIDXWindowedSubscreenSize
         .title = "IIDX Windowed Subscreen Size",
         .name = "iidxwsubsize",

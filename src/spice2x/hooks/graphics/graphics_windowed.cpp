@@ -24,6 +24,7 @@ std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_WINDOW_SIZE;
 std::optional<std::string> GRAPHICS_WINDOW_POS;
 bool GRAPHICS_WINDOW_ALWAYS_ON_TOP = false;
 bool GRAPHICS_WINDOW_BACKBUFFER_SCALE = false;
+bool GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS = false;
 std::optional<HWND> GRAPHICS_HOOKED_WINDOW;
 
 // IIDX Windowed Subscreen - starts out as false, enabled by IIDX module on pre-attach as needed
@@ -132,6 +133,10 @@ void graphics_capture_initial_window(HWND hWnd) {
         log_info("graphics-windowed", "[{}] change window z-order - always on top", fmt::ptr(hWnd));
         graphics_update_z_order(hWnd, true);
     }
+    if (cfg::SCREENRESIZE->window_disable_round_corners) {
+        log_info("graphics-windowed", "[{}] disabling rounded corners", fmt::ptr(hWnd));
+        graphics_set_corner_preference(hWnd, true);
+    }
 
     // ensure spicetouch coordinates are initialized
     update_spicetouch_window_dimensions(hWnd);
@@ -179,6 +184,10 @@ void graphics_load_windowed_parameters() {
     // only override if true; don't stomp on user setting
     if (GRAPHICS_WINDOW_ALWAYS_ON_TOP) {
         cfg::SCREENRESIZE->window_always_on_top = true;
+    }
+
+    if (GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS) {
+        cfg::SCREENRESIZE->window_disable_round_corners = true;
     }
 
     log_debug("graphics-windowed", "graphics_load_windowed_parameters returned");
@@ -467,6 +476,23 @@ void graphics_update_z_order(HWND hWnd, bool always_on_top) {
         flags);
     
     log_debug("graphics-windowed", "graphics_update_z_order returned");
+}
+
+void graphics_set_corner_preference(HWND hWnd, bool disable) {
+#if !SPICE_XP
+    log_debug("graphics-windowed", "graphics_set_corner_preference called");
+
+    DWM_WINDOW_CORNER_PREFERENCE corner_preference = disable ? DWMWCP_DONOTROUND : DWMWCP_DEFAULT;
+    DwmSetWindowAttribute(
+        hWnd,
+        DWMWA_WINDOW_CORNER_PREFERENCE,
+        &corner_preference, sizeof(corner_preference));
+    
+    log_debug("graphics-windowed", "graphics_set_corner_preference returned");
+#else
+    // don't link against DwmSetWindowAttribute on XP
+    log_debug("graphics-windowed", "graphics_set_corner_preference called; ignoring");
+#endif
 }
 
 void graphics_move_resize_window(HWND hWnd) {

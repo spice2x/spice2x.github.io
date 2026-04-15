@@ -924,6 +924,9 @@ void graphics_hook_subscreen_window(HWND hWnd) {
     if (GRAPHICS_WSUB_ALWAYS_ON_TOP) {
         graphics_update_z_order(hWnd, true);
     }
+    if (GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS) {
+        graphics_set_corner_preference(hWnd, true);
+    }
 }
 
 void graphics_screens_register(int screen) {

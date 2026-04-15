@@ -1117,6 +1117,7 @@ int main_implementation(int argc, char *argv[]) {
     }
     GRAPHICS_WINDOW_ALWAYS_ON_TOP = options[launcher::Options::spice2x_WindowAlwaysOnTop].value_bool();
     GRAPHICS_WINDOW_BACKBUFFER_SCALE = options[launcher::Options::WindowForceScaling].value_bool();
+    GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS = options[launcher::Options::WindowDisableRoundedCorners].value_bool();
 
     // IIDX/SDVX Windowed Subscreen
     if (options[launcher::Options::spice2x_IIDXWindowedSubscreenSize].is_active()) {
