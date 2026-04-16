@@ -219,20 +219,21 @@ intptr_t replace_pattern(HMODULE module, const std::string &signature,
     strreplace(pattern_str, "??", "00");
     auto pattern_bin = std::make_unique<uint8_t[]>(signature.length() / 2);
     if (!hex2bin(pattern_str.c_str(), pattern_bin.get())) {
-        return false;
+        return 0;
     }
 
     // build signature mask
-    std::ostringstream signature_mask;
+    std::string signature_mask;
+    signature_mask.reserve(signature.size() / 2);
     for (size_t i = 0; i < signature.length(); i += 2) {
         if (signature[i] == '?') {
             if (signature[i + 1] == '?') {
-                signature_mask << '?';
+                signature_mask += '?';
             } else {
-                return false;
+                return 0;
             }
         } else {
-            signature_mask << 'X';
+            signature_mask += 'X';
         }
     }
 
@@ -241,20 +242,21 @@ intptr_t replace_pattern(HMODULE module, const std::string &signature,
     strreplace(replace_data_str, "??", "00");
     auto replace_data_bin = std::make_unique<uint8_t[]>(replacement.length() / 2);
     if (!hex2bin(replace_data_str.c_str(), replace_data_bin.get())) {
-        return false;
+        return 0;
     }
 
     // build replace mask
-    std::ostringstream replace_mask;
+    std::string replace_mask;
+    replace_mask.reserve(replacement.size() / 2);
     for (size_t i = 0; i < replacement.length(); i += 2) {
         if (replacement[i] == '?') {
             if (replacement[i + 1] == '?') {
-                replace_mask << '?';
+                replace_mask += '?';
             } else {
-                return false;
+                return 0;
             }
         } else {
-            replace_mask << 'X';
+            replace_mask += 'X';
         }
     }
 
@@ -262,11 +264,11 @@ intptr_t replace_pattern(HMODULE module, const std::string &signature,
     return replace_pattern(
             module,
             pattern_bin.get(),
-            signature_mask.str().c_str(),
+            signature_mask.c_str(),
             offset,
             usage,
             replace_data_bin.get(),
-            replace_mask.str().c_str()
+            replace_mask.c_str()
     );
 }
 
