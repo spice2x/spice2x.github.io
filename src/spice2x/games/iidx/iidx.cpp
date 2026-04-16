@@ -915,8 +915,7 @@ namespace games::iidx {
                 log_warning(
                     "iidx",
                     "Failed to apply ASIO compatibility fix for iidx32+. "
-                    "Unless patches are applied, your ASIO device ({}) may hang or fail to work",
-                    ASIO_DRIVER->c_str());
+                    "Unless patches are applied, your ASIO device may hang or fail to work");
             } else {
                 log_info(
                     "iidx",
