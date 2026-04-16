@@ -1835,9 +1835,7 @@ int main_implementation(int argc, char *argv[]) {
                 attach_ftt = true;
 
                 // the game is windowed by default unless we set the env
-                if (GRAPHICS_WINDOWED) {
-                    GRAPHICS_WINDOWED = false;
-                } else {
+                if (!GRAPHICS_WINDOWED) {
                     SetEnvironmentVariable("DAMAC_VIEWER_FULLSCREEN", "0");
                 }
 

@@ -532,8 +532,8 @@ bool graphics_window_decoration_change_crashes_game() {
     static std::once_flag flag;
     static bool result = false;
     std::call_once(flag, []() {
-        // ddr crashes when frame style changes
-        if (avs::game::is_model("MDX")) {
+        // ddr and ftt crash when frame style changes
+        if (avs::game::is_model("MDX") || avs::game::is_model("MMD")) {
             result = true;
         }
 

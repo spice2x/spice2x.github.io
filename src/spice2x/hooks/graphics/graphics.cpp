@@ -476,6 +476,14 @@ static HWND WINAPI CreateWindowExW_hook(DWORD dwExStyle, LPCWSTR lpClassName, LP
         }
     }
 
+    // FTT
+    if (avs::game::is_model("MMD")) {
+        // set window name
+        if (!lpWindowName) {
+            lpWindowName = L"Future TomTom";
+        }
+    }
+
     if (GRAPHICS_WINDOWED) {
         graphics_window_check_bounds_before_creation(x, y, nWidth, nHeight);
     }
