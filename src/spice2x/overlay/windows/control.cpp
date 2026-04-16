@@ -628,13 +628,12 @@ namespace overlay::windows {
                             ImGui::Text("Wheel: %ld", mouse->pos_wheel);
 
                             // keys
-                            std::stringstream keys;
-                            keys << "[";
+                            std::string keys = "[";
                             for (auto key : mouse->key_states) {
-                                keys << (key ? "1," : "0,");
+                                keys += (key ? "1," : "0,");
                             }
-                            keys << "]";
-                            ImGui::Text("Keys: %s", keys.str().c_str());
+                            keys += "]";
+                            ImGui::Text("Keys: %s", keys.c_str());
 
                             break;
                         }
@@ -643,15 +642,14 @@ namespace overlay::windows {
                             ImGui::Text("Type: Keyboard");
 
                             // keys
-                            std::stringstream keys;
-                            keys << "[";
+                            std::string keys = "[";
                             for (size_t i = 0; i < std::size(keyboard->key_states); i++) {
                                 if (keyboard->key_states[i]) {
-                                    keys << i << ",";
+                                    keys += std::to_string(i) + ",";
                                 }
                             }
-                            keys << "]";
-                            ImGui::Text("Keys: %s", keys.str().c_str());
+                            keys += "]";
+                            ImGui::Text("Keys: %s", keys.c_str());
 
                             break;
                         }

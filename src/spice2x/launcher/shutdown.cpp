@@ -86,13 +86,12 @@ namespace launcher {
         if (LAUNCHER_ARGC > 0) {
 
             // build cmd line
-            std::stringstream cmd_line;
-            cmd_line << "START \"\" ";
+            std::string cmd_line = "START \"\" ";
             for (int i = 0; i < LAUNCHER_ARGC; i++)
-                cmd_line << " \"" << LAUNCHER_ARGV[i] << "\"";
+                cmd_line += " \"" + std::string(LAUNCHER_ARGV[i]) + "\"";
 
             // run command
-            system(cmd_line.str().c_str());
+            system(cmd_line.c_str());
         }
     }
 
