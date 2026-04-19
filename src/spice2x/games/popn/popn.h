@@ -17,7 +17,7 @@ namespace games::popn {
     }
 
 #if SPICE64
-    constexpr int POPN_TAPELED_TOTAL = 4;
+    constexpr int POPN_TAPELED_TOTAL = 8;
     extern tapeledutils::tape_led TAPELED_MAPPING[POPN_TAPELED_TOTAL];
 #endif
 

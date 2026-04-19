@@ -25,13 +25,33 @@ namespace tapeledutils {
     struct tape_led {
         std::vector<rgb_float3_t> data;
         int index_r, index_g, index_b; // Averaged RGB light output indexes
+        uint8_t max_value;
         std::string lightName;
 
-        tape_led(size_t data_size, int index_r, int index_g, int index_b, std::string lightName)
-        : data(std::vector<rgb_float3_t>(data_size)), index_r(index_r), index_g(index_g), index_b(index_b), lightName(std::move(lightName)) {}
+        tape_led(
+            size_t data_size,
+            int index_r, int index_g, int index_b,
+            std::string lightName)
+        : data(
+            std::vector<rgb_float3_t>(data_size)),
+            index_r(index_r), index_g(index_g), index_b(index_b),
+            max_value(0),
+            lightName(std::move(lightName)) {}
+
+        tape_led(
+            size_t data_size,
+            int index_r, int index_g, int index_b,
+            uint8_t max_value,
+            std::string lightName)
+        : data(
+            std::vector<rgb_float3_t>(data_size)),
+            index_r(index_r), index_g(index_g), index_b(index_b),
+            max_value(max_value),
+            lightName(std::move(lightName)) {}
     };
 
     bool is_enabled();
+    rgb_float3_t pick_color_from_led_tape(tape_led &light, uint8_t *data, size_t data_size);
     rgb_float3_t pick_color_from_led_tape(uint8_t *data, size_t data_size);
     size_t get_led_index_using_avg_algo(size_t data_size);
 }

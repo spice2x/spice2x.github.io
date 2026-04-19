@@ -136,6 +136,18 @@ std::vector<Light> &games::popn::get_lights() {
                 {"Pika", "IC Card R"},
                 {"Pika", "IC Card G"},
                 {"Pika", "IC Card B"},
+                {"Pika", "Speakers R"},
+                {"Pika", "Speakers G"},
+                {"Pika", "Speakers B"},
+                {"Pika", "Monitor R"},
+                {"Pika", "Monitor G"},
+                {"Pika", "Monitor B"},
+                {"Pika", "Control Panel R"},
+                {"Pika", "Control Panel G"},
+                {"Pika", "Control Panel B"},
+                {"Pika", "Cabinet R"},
+                {"Pika", "Cabinet G"},
+                {"Pika", "Cabinet B"},
         });
     }
 

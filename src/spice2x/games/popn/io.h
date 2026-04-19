@@ -121,6 +121,18 @@ namespace games::popn {
             IC_Card_R,
             IC_Card_G,
             IC_Card_B,
+            Speaker_R,
+            Speaker_G,
+            Speaker_B,
+            Monitor_R,
+            Monitor_G,
+            Monitor_B,
+            ControlPanel_R,
+            ControlPanel_G,
+            ControlPanel_B,
+            Cabinet_R,
+            Cabinet_G,
+            Cabinet_B,
         } popn_lights_t;
     }
 

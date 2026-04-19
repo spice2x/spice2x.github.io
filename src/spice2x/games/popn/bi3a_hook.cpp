@@ -484,7 +484,7 @@ namespace games::popn {
             const auto data_size = std::min(map.data.capacity(), (size_t)number_of_leds / 3);
 
             // pick a color to use
-            const auto rgb = tapeledutils::pick_color_from_led_tape((uint8_t *)i_pData, data_size);
+            const auto rgb = tapeledutils::pick_color_from_led_tape(map, (uint8_t *)i_pData, data_size);
 
             // program the lights into API
             auto &lights = get_lights();

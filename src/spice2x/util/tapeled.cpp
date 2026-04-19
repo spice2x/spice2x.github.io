@@ -9,7 +9,7 @@ namespace tapeledutils {
     }
 
     // for bi2x-style byte array of all colors and LEDs at once
-    rgb_float3_t pick_color_from_led_tape(uint8_t *data, size_t data_size) {
+    static rgb_float3_t pick_color_from_led_tape_internal(uint8_t *data, size_t data_size, uint8_t divisor) {
         rgb_float3_t result = {0.f, 0.f, 0.f};
         if (TAPE_LED_ALGORITHM == TAPE_LED_USE_AVERAGE) {
 
@@ -25,7 +25,7 @@ namespace tapeledutils {
             }
 
             // normalize
-            const float avg_mult = 1.f / (data_size * 255);
+            const float avg_mult = 1.f / (data_size * divisor);
             result.r = avg_ri * avg_mult;
             result.g = avg_gi * avg_mult;
             result.b = avg_bi * avg_mult;
@@ -50,12 +50,21 @@ namespace tapeledutils {
             }
 
             // normalize
-            const float single_mult = 1.f / 255;
+            const float single_mult = 1.f / divisor;
             result.r = color[0] * single_mult;
             result.g = color[1] * single_mult;
             result.b = color[2] * single_mult;
         }
         return result;
+    }
+
+    rgb_float3_t pick_color_from_led_tape(tape_led &light, uint8_t *data, size_t data_size) {
+        const auto max_value = (light.max_value > 0) ? light.max_value : 0xFF;
+        return pick_color_from_led_tape_internal(data, data_size, max_value);
+    }
+
+    rgb_float3_t pick_color_from_led_tape(uint8_t *data, size_t data_size) {
+        return pick_color_from_led_tape_internal(data, data_size, 0xFF);
     }
 
     // for bi2a-style that calls for each individual LED
