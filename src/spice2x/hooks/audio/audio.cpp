@@ -66,14 +66,15 @@ static HRESULT STDAPICALLTYPE CoCreateInstance_hook(
     if (FAILED(ret)) {
         if (IsEqualCLSID(rclsid, CLSID_MMDeviceEnumerator)) {
             log_warning("audio", "CoCreateInstance failed for CLSID_MMDeviceEnumerator, hr={}", FMT_HRESULT(ret));
-        }
-        
-        // Windows 11 KB5052093 issue - reverb DMO went missing from dsdmo.dll (fails with 0x80040154)
-        if (IsEqualCLSID(rclsid, CLSID_DirectSoundI3DL2ReverbDMO) && ret == (HRESULT)0x80040154) {
-            log_warning(
-                "audio",
-                "CoCreateInstance for CLSID_DirectSoundI3DL2ReverbDMO failed with 0x80040154, swap with CLSID_DirectSoundWavesReverbDMO "
-                "(workaround for Windows 11 KB5052093 issue); REVERB EX replaced with REVERB");
+        } else if (IsEqualCLSID(rclsid, CLSID_DirectSoundI3DL2ReverbDMO)) {
+            // deal with reverb DMO missing from dsdmo.dll (usually fails with 0x80040154)
+            static std::once_flag printed;
+            std::call_once(printed, [ret]() {
+                log_warning(
+                    "audio",
+                    "CoCreateInstance for CLSID_DirectSoundI3DL2ReverbDMO failed with {}, swap with CLSID_DirectSoundWavesReverbDMO...",
+                    FMT_HRESULT(ret));
+            });
             ret = CoCreateInstance_orig(CLSID_DirectSoundWavesReverbDMO, pUnkOuter, dwClsContext, riid, ppv);
             if (FAILED(ret)) {
                 log_warning("audio", "CoCreateInstance(CLSID_DirectSoundWavesReverbDMO...) failed, hr={}", FMT_HRESULT(ret));
