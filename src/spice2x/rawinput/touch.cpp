@@ -99,7 +99,7 @@ namespace rawinput::touch {
 
         // check type
         if (device->type != HID) {
-            log_fatal("rawinput", "touch update called on non HID device");
+            log_warning("rawinput", "touch update called on non HID device");
             return;
         }
 

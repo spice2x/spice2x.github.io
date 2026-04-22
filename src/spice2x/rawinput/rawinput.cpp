@@ -605,16 +605,6 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
                     value_caps.LogicalMax = 255;
                 }
 
-                // fix min and max values
-                if (value_caps.BitSize > 0 && value_caps.BitSize <= sizeof(value_caps.LogicalMin) * 8) {
-                    auto shift_size = sizeof(value_caps.LogicalMin) * 8 - value_caps.BitSize + 1;
-                    auto mask = ((uint64_t) 1 << value_caps.BitSize) - 1;
-                    value_caps.LogicalMin &= mask;
-                    value_caps.LogicalMin <<= shift_size;
-                    value_caps.LogicalMin >>= shift_size;
-                    value_caps.LogicalMax &= mask;
-                }
-
                 // fix up hat switch to initially report as neutral position
                 if (value_caps.UsagePage == 0x1 && value_caps.Range.UsageMin == 0x39) {
                     value_states[value_cap_num] = -1.f;
@@ -1914,8 +1904,6 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                             LONG value_min = value_caps.LogicalMin;
                             LONG value_max = value_caps.LogicalMax;
 
-                            log_misc("xxx_rawinput", "[{}] before: {}, ({}, {})", cap_num, value_raw, value_min, value_max);
-
                             // fix sign bits for signed values
                             if (value_caps.LogicalMin < 0 &&
                                 0 < value_caps.BitSize && value_caps.BitSize < 32) {
@@ -1949,8 +1937,6 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
                                 // scale to float
                                 value = (float) (value_raw - value_min) / (float) (value_max - value_min);
-                                
-                            log_misc("xxx_rawinput", "[{}] after: {}, ({}, {}) (result: {})", cap_num, value_raw, value_min, value_max, value);
                             }
 
                             // store value
