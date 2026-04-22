@@ -67,7 +67,8 @@ static HRESULT STDAPICALLTYPE CoCreateInstance_hook(
         if (IsEqualCLSID(rclsid, CLSID_MMDeviceEnumerator)) {
             log_warning("audio", "CoCreateInstance failed for CLSID_MMDeviceEnumerator, hr={}", FMT_HRESULT(ret));
         } else if (IsEqualCLSID(rclsid, CLSID_DirectSoundI3DL2ReverbDMO)) {
-            // deal with reverb DMO missing from dsdmo.dll (usually fails with 0x80040154)
+            // deal with reverb DMO missing from dsdmo.dll
+            // it usually fails with 0x80040154 (REGDB_E_CLASSNOTREG), but we have also seen 0x8007007e (ERROR_MOD_NOT_FOUND) 
             static std::once_flag printed;
             std::call_once(printed, [ret]() {
                 log_warning(
