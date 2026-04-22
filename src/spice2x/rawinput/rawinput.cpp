@@ -1914,13 +1914,15 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                             LONG value_min = value_caps.LogicalMin;
                             LONG value_max = value_caps.LogicalMax;
 
+                            log_misc("xxx_rawinput", "[{}] before: {}, ({}, {})", cap_num, value_raw, value_min, value_max);
+
                             // fix sign bits for signed values
                             if (value_caps.LogicalMin < 0 &&
-                                    value_caps.BitSize > 0 &&
-                                    value_caps.BitSize <= sizeof(value_caps.LogicalMin) * 8) {
-                                auto shift_size = sizeof(value_caps.LogicalMin) * 8 - value_caps.BitSize + 1;
-                                value_raw <<= shift_size;
-                                value_raw >>= shift_size;
+                                0 < value_caps.BitSize && value_caps.BitSize < 32) {
+
+                                ULONG raw = static_cast<ULONG>(value_raw) & ((1u << value_caps.BitSize) - 1u);
+                                const ULONG sign_bit = 1u << (value_caps.BitSize - 1);
+                                value_raw = static_cast<LONG>((raw ^ sign_bit) - sign_bit);
                             }
 
                             float value;
@@ -1947,6 +1949,8 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
                                 // scale to float
                                 value = (float) (value_raw - value_min) / (float) (value_max - value_min);
+                                
+                            log_misc("xxx_rawinput", "[{}] after: {}, ({}, {}) (result: {})", cap_num, value_raw, value_min, value_max, value);
                             }
 
                             // store value
