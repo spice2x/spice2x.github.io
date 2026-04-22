@@ -17,6 +17,7 @@ namespace overlay::windows {
         bool invert = false;
         double debounce_up = 0.0;
         double debounce_down = 0.0;
+        int bat_threshold = 0;
         unsigned short velocity_threshold = 0;
 
         bool is_naive() const { return device_identifier.empty() && vKey != INVALID_VKEY; }
@@ -31,6 +32,7 @@ namespace overlay::windows {
             e.invert = btn.getInvert();
             e.debounce_up = btn.getDebounceUp();
             e.debounce_down = btn.getDebounceDown();
+            e.bat_threshold = btn.getBatThreshold();
             e.velocity_threshold = btn.getVelocityThreshold();
             return e;
         }

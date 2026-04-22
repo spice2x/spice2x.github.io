@@ -199,9 +199,19 @@ GameAPI::Buttons::State GameAPI::Buttons::getState(rawinput::RawInputManager *ma
                             if (vKey < value_states->size()) {
                                 auto value = value_states->at(vKey);
                                 if (current_button->getAnalogType() == BAT_POSITIVE) {
-                                    state = value > 0.6f ? BUTTON_PRESSED : BUTTON_NOT_PRESSED;
+                                    float threshold = 0.6f;
+                                    if (current_button->getBatThreshold() > 0) {
+                                        threshold = std::clamp(current_button->getBatThreshold() / 100.f, 0.01f, 0.99f);
+                                    }
+                                    state = value > threshold ? BUTTON_PRESSED : BUTTON_NOT_PRESSED;
+
                                 } else if (current_button->getAnalogType() == BAT_NEGATIVE) {
-                                    state = value < 0.4f ? BUTTON_PRESSED : BUTTON_NOT_PRESSED;
+                                    float threshold = 0.4f;
+                                    if (current_button->getBatThreshold() > 0) {
+                                        threshold = std::clamp((100 - current_button->getBatThreshold()) / 100.f, 0.01f, 0.99f);
+                                    }
+                                    state = value < threshold ? BUTTON_PRESSED : BUTTON_NOT_PRESSED;
+
                                 } else {
                                     state = value > 0.01f ? BUTTON_PRESSED : BUTTON_NOT_PRESSED;
                                 }

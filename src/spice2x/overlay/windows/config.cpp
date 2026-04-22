@@ -1063,6 +1063,7 @@ namespace overlay::windows {
         button->setAnalogType(BAT_NONE);
         button->setDebounceUp(0.0);
         button->setDebounceDown(0.0);
+        button->setBatThreshold(0);
         button->setVelocityThreshold(0);
         button->setInvert(false);
         button->setLastState(GameAPI::Buttons::BUTTON_NOT_PRESSED);
@@ -1265,6 +1266,7 @@ namespace overlay::windows {
                                         button->setAnalogType(bat);
                                         button->setDebounceUp(0.0);
                                         button->setDebounceDown(0.0);
+                                        button->setBatThreshold(0);
                                         button->setVelocityThreshold(0);
                                         ::Config::getInstance().updateBinding(
                                                 games_list[games_selected], *button,
@@ -1313,6 +1315,7 @@ namespace overlay::windows {
                                         button->setAnalogType(buffer[0]);
                                         button->setDebounceUp(0.0);
                                         button->setDebounceDown(0.0);
+                                        button->setBatThreshold(0);
                                         button->setVelocityThreshold(0);
                                         ::Config::getInstance().updateBinding(
                                                 games_list[games_selected], *button,
@@ -1360,6 +1363,7 @@ namespace overlay::windows {
                                     button->setAnalogType(BAT_NONE);
                                     button->setDebounceUp(0.0);
                                     button->setDebounceDown(0.0);
+                                    button->setBatThreshold(0);
                                     // same idea as setMidiVKey - keep velocity threshold consistent
                                     button->setVelocityThreshold(
                                         device->midiInfo->v2_velocity_threshold[button->getVKey()]);
@@ -1385,6 +1389,7 @@ namespace overlay::windows {
                                         button->setAnalogType(BAT_MIDI_CTRL_PRECISION);
                                         button->setDebounceUp(0.0);
                                         button->setDebounceDown(0.0);
+                                        button->setBatThreshold(0);
                                         button->setVelocityThreshold(0);
                                         ::Config::getInstance().updateBinding(
                                                 games_list[games_selected], *button,
@@ -1411,6 +1416,7 @@ namespace overlay::windows {
                                         button->setAnalogType(BAT_MIDI_CTRL_SINGLE);
                                         button->setDebounceUp(0.0);
                                         button->setDebounceDown(0.0);
+                                        button->setBatThreshold(0);
                                         button->setVelocityThreshold(0);
                                         ::Config::getInstance().updateBinding(
                                                 games_list[games_selected], *button,
@@ -1437,6 +1443,7 @@ namespace overlay::windows {
                                         button->setAnalogType(BAT_MIDI_CTRL_ONOFF);
                                         button->setDebounceUp(0.0);
                                         button->setDebounceDown(0.0);
+                                        button->setBatThreshold(0);
                                         button->setVelocityThreshold(0);
                                         ::Config::getInstance().updateBinding(
                                                 games_list[games_selected], *button,
@@ -1462,6 +1469,7 @@ namespace overlay::windows {
                                     button->setAnalogType(BAT_MIDI_PITCH_DOWN);
                                     button->setDebounceUp(0.0);
                                     button->setDebounceDown(0.0);
+                                    button->setBatThreshold(0);
                                     button->setVelocityThreshold(0);
                                     ::Config::getInstance().updateBinding(
                                             games_list[games_selected], *button,
@@ -1482,6 +1490,7 @@ namespace overlay::windows {
                                     button->setAnalogType(BAT_MIDI_PITCH_UP);
                                     button->setDebounceUp(0.0);
                                     button->setDebounceDown(0.0);
+                                    button->setBatThreshold(0);
                                     button->setVelocityThreshold(0);
                                     ::Config::getInstance().updateBinding(
                                             games_list[games_selected], *button,
@@ -1511,6 +1520,7 @@ namespace overlay::windows {
                                     button->setAnalogType(BAT_NONE);
                                     button->setDebounceUp(0.0);
                                     button->setDebounceDown(0.0);
+                                    button->setBatThreshold(0);
                                     button->setVelocityThreshold(0);
                                     ::Config::getInstance().updateBinding(
                                             games_list[games_selected], *button,
@@ -1635,6 +1645,7 @@ namespace overlay::windows {
                         button->setVKey(vKey);
                         button->setDebounceUp(0.0);
                         button->setDebounceDown(0.0);
+                        button->setBatThreshold(0);
                         button->setVelocityThreshold(0);
                         ::Config::getInstance().updateBinding(
                                 games_list[games_selected], *button,
@@ -2050,9 +2061,46 @@ namespace overlay::windows {
 
             // invert
             bool invert = button->getInvert();
-            if (ImGui::Checkbox("Invert", &invert)) {
+            if (ImGui::Checkbox("Invert Resulting Value", &invert)) {
                 button->setInvert(invert);
                 dirty = true;
+            }
+
+            // bat threshold
+            if (device->type == rawinput::HID &&
+                (button->getAnalogType() == BAT_POSITIVE || button->getAnalogType() == BAT_NEGATIVE)) {
+                int bat_threshold = button->getBatThreshold();
+                
+                bool is_active = (bat_threshold > 0);
+                if (ImGui::Checkbox("Custom Analog Threshold", &is_active)) {
+                    if (!is_active) {
+                        button->setBatThreshold(0);
+                    } else if (bat_threshold == 0) {
+                        button->setBatThreshold(60);
+                    }
+                    dirty = true;
+                }
+                ImGui::SameLine();
+                ImGui::HelpMarker(
+                    "Assuming that 50% is the center, value exceeding 60% triggers the button by default. "
+                    "With this option, you can customize the trigger threshold.\n\n"
+                    "Setting this to 51% means tiny movements will trigger the button (small deadzone), "
+                    "while setting this to 99% means the button will only trigger at maximum value (large deadzone).\n\n"
+                    "Setting this to below 50% adjusts the neutral / center position.");
+
+                if (is_active) {
+                    if (ImGui::SliderInt(
+                            "Analog Threshold",
+                            &bat_threshold,
+                            1, 99,
+                            "%d%%",
+                            ImGuiSliderFlags_AlwaysClamp)) {
+                        button->setBatThreshold(bat_threshold);
+                    }
+                    if (ImGui::IsItemDeactivatedAfterEdit()) {
+                        dirty = true;
+                    }
+                }
             }
 
             // state display
@@ -5283,6 +5331,7 @@ namespace overlay::windows {
                             btn.setInvert(entry->invert);
                             btn.setDebounceUp(entry->debounce_up);
                             btn.setDebounceDown(entry->debounce_down);
+                            btn.setBatThreshold(entry->bat_threshold);
                             btn.setVelocityThreshold(entry->velocity_threshold);
                             ::Config::getInstance().updateBinding(game, btn, -1);
                         } else {
@@ -5293,6 +5342,7 @@ namespace overlay::windows {
                             alt_btn.setInvert(entry->invert);
                             alt_btn.setDebounceUp(entry->debounce_up);
                             alt_btn.setDebounceDown(entry->debounce_down);
+                            alt_btn.setBatThreshold(entry->bat_threshold);
                             alt_btn.setVelocityThreshold(entry->velocity_threshold);
                             alt_btn.setTemporary(true);
                             btn.getAlternatives().push_back(alt_btn);

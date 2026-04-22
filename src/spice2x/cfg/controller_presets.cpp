@@ -24,6 +24,7 @@ namespace overlay::windows {
         el->SetAttribute("invert", entry.invert);
         el->SetAttribute("debounce_up", entry.debounce_up);
         el->SetAttribute("debounce_down", entry.debounce_down);
+        el->SetAttribute("bat_threshold", entry.bat_threshold);
         el->SetAttribute("velocity_threshold", entry.velocity_threshold);
         parent->InsertEndChild(el);
     }
@@ -48,6 +49,10 @@ namespace overlay::windows {
         int vel = 0;
         el->QueryIntAttribute("velocity_threshold", &vel);
         entry.velocity_threshold = (unsigned short)vel;
+
+        int bat = 0;
+        el->QueryIntAttribute("bat_threshold", &bat);
+        entry.bat_threshold = bat;
 
         return entry;
     }

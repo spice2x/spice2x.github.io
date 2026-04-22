@@ -56,6 +56,7 @@ private:
     ButtonAnalogType analog_type = BAT_NONE;
     double debounce_up = 0.0;
     double debounce_down = 0.0;
+    int bat_threshold = 0; // for positive/negative only, value in percentage, zero is default
     bool invert = false;
     bool is_temporary = false;
 
@@ -109,6 +110,7 @@ public:
         alternatives.clear();
         device_identifier = "";
         analog_type = BAT_NONE;
+        bat_threshold = 0;
     }
 
     std::string getDisplayString(rawinput::RawInputManager* manager);
@@ -167,6 +169,14 @@ public:
 
     inline void setDebounceDown(double debounce_time_down) {
         this->debounce_down = debounce_time_down;
+    }
+
+    inline void setBatThreshold(int bat_threshold) {
+        this->bat_threshold = bat_threshold;
+    }
+
+    inline int getBatThreshold() const {
+        return this->bat_threshold;
     }
 
     inline bool getInvert() const {

@@ -162,6 +162,7 @@ bool Config::addGame(Game &game) {
                     auto analogType = (int) BAT_NONE;
                     double debounce_up = 0.0;
                     double debounce_down = 0.0;
+                    int bat_threshold = 0;
                     int velocity_threshold = 0;
                     bool invert = false;
                     tinyxml2::XMLError attrError = gameButtonNode->QueryIntAttribute("vkey", &vKey);
@@ -169,6 +170,7 @@ bool Config::addGame(Game &game) {
                     gameButtonNode->QueryIntAttribute("analogtype", &analogType);
                     gameButtonNode->QueryDoubleAttribute("debounce_up", &debounce_up);
                     gameButtonNode->QueryDoubleAttribute("debounce_down", &debounce_down);
+                    gameButtonNode->QueryIntAttribute("bat_threshold", &bat_threshold);
                     gameButtonNode->QueryIntAttribute("velocity_threshold", &velocity_threshold);
                     gameButtonNode->QueryBoolAttribute("invert", &invert);
                     if (attrError != tinyxml2::XMLError::XML_SUCCESS) {
@@ -180,6 +182,7 @@ bool Config::addGame(Game &game) {
                         gameButtonNode->SetAttribute("devid", button->getDeviceIdentifier().c_str());
                         gameButtonNode->SetAttribute("debounce_up", debounce_up);
                         gameButtonNode->SetAttribute("debounce_down", debounce_down);
+                        gameButtonNode->SetAttribute("bat_threshold", bat_threshold);
                         gameButtonNode->SetAttribute("velocity_threshold", velocity_threshold);
                         gameButtonNode->SetAttribute("invert", invert);
                         gameButtonsNode->InsertEndChild(gameButtonNode);
@@ -188,6 +191,7 @@ bool Config::addGame(Game &game) {
                         button->setAnalogType((ButtonAnalogType) analogType);
                         button->setDebounceUp(debounce_up);
                         button->setDebounceDown(debounce_down);
+                        button->setBatThreshold(bat_threshold);
                         button->setVelocityThreshold(velocity_threshold);
                         button->setInvert(invert);
                         if (devid) {
@@ -207,6 +211,7 @@ bool Config::addGame(Game &game) {
                 gameButtonNode->SetAttribute("analogtype", (int) it.getAnalogType());
                 gameButtonNode->SetAttribute("debounce_up", it.getDebounceUp());
                 gameButtonNode->SetAttribute("debounce_down", it.getDebounceDown());
+                gameButtonNode->SetAttribute("bat_threshold", it.getBatThreshold());
                 gameButtonNode->SetAttribute("velocity_threshold", it.getVelocityThreshold());
                 gameButtonNode->SetAttribute("invert", it.getInvert());
                 gameButtonNode->SetAttribute("devid", it.getDeviceIdentifier().c_str());
@@ -432,6 +437,7 @@ bool Config::addGame(Game &game) {
             gameButtonNode->SetAttribute("analogtype", it.getAnalogType());
             gameButtonNode->SetAttribute("debounce_up", it.getDebounceUp());
             gameButtonNode->SetAttribute("debounce_down", it.getDebounceDown());
+            gameButtonNode->SetAttribute("bat_threshold", it.getBatThreshold());
             gameButtonNode->SetAttribute("velocity_threshold", it.getVelocityThreshold());
             gameButtonNode->SetAttribute("invert", it.getInvert());
             gameButtonNode->SetAttribute("devid", it.getDeviceIdentifier().c_str());
@@ -535,6 +541,7 @@ bool Config::updateBinding(const Game &game, const Button &button, int alternati
                 gameButtonNode->SetAttribute("analogtype", (int) button.getAnalogType());
                 gameButtonNode->SetAttribute("debounce_up", button.getDebounceUp());
                 gameButtonNode->SetAttribute("debounce_down", button.getDebounceDown());
+                gameButtonNode->SetAttribute("bat_threshold", button.getBatThreshold());
                 gameButtonNode->SetAttribute("velocity_threshold", button.getVelocityThreshold());
                 gameButtonNode->SetAttribute("invert", button.getInvert());
                 gameButtonNode->SetAttribute("devid", button.getDeviceIdentifier().c_str());
@@ -551,6 +558,7 @@ bool Config::updateBinding(const Game &game, const Button &button, int alternati
             gameButtonNode->SetAttribute("analogtype", 0);
             gameButtonNode->SetAttribute("debounce_up", 0.0);
             gameButtonNode->SetAttribute("debounce_down", 0.0);
+            gameButtonNode->SetAttribute("bat_threshold", 0);
             gameButtonNode->SetAttribute("velocity_threshold", 0);
             gameButtonNode->SetAttribute("invert", false);
             gameButtonNode->SetAttribute("devid", "");
@@ -946,12 +954,14 @@ std::vector<Button> Config::getButtons(const std::string &gameName) {
                 auto analogType = (int) BAT_NONE;
                 double debounce_up = 0.0;
                 double debounce_down = 0.0;
+                int bat_threshold = 0;
                 int velocity_threshold = 0;
                 bool invert = false;
                 gameButtonNode->QueryIntAttribute("vkey", &vKey);
                 gameButtonNode->QueryIntAttribute("analogtype", &analogType);
                 gameButtonNode->QueryDoubleAttribute("debounce_up", &debounce_up);
                 gameButtonNode->QueryDoubleAttribute("debounce_down", &debounce_down);
+                gameButtonNode->QueryIntAttribute("bat_threshold", &bat_threshold);
                 gameButtonNode->QueryIntAttribute("velocity_threshold", &velocity_threshold);
                 gameButtonNode->QueryBoolAttribute("invert", &invert);
                 const char *devid = gameButtonNode->Attribute("devid");
@@ -966,6 +976,7 @@ std::vector<Button> Config::getButtons(const std::string &gameName) {
                         alt.setAnalogType((ButtonAnalogType) analogType);
                         alt.setDebounceUp(debounce_up);
                         alt.setDebounceDown(debounce_down);
+                        alt.setBatThreshold(bat_threshold);
                         alt.setVelocityThreshold(velocity_threshold);
                         alt.setInvert(invert);
                         if (devid) {
@@ -984,6 +995,7 @@ std::vector<Button> Config::getButtons(const std::string &gameName) {
                     button.setAnalogType((ButtonAnalogType) analogType);
                     button.setDebounceUp(debounce_up);
                     button.setDebounceDown(debounce_down);
+                    button.setBatThreshold(bat_threshold);
                     button.setVelocityThreshold(velocity_threshold);
                     button.setInvert(invert);
                     if (devid) {
