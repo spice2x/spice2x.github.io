@@ -217,8 +217,10 @@ namespace avs {
                 ea3_config_name = "prop/eamuse-config.xml";
             }
 
-            if (avs::core::file_exists(ea3_config_name)) {
-                log_info("avs-ea3", "booting (using {})", ea3_config_name);
+            if (fileutils::file_exists(ea3_config_name)) {
+                log_info("avs-ea3", "found {} on disk", ea3_config_name);
+            } else if (CFG_PATH.size()) {
+                log_fatal("avs-ea3", "user-specified ea3 config file is missing: {}", ea3_config_name);
             } else {
                 log_warning("avs-ea3", "looked for the following files in order:");
                 log_warning("avs-ea3", "  * prop/ea3-config.xml");
