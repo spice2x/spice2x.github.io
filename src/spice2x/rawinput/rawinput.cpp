@@ -1904,15 +1904,6 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                             LONG value_min = value_caps.LogicalMin;
                             LONG value_max = value_caps.LogicalMax;
 
-                            // fix sign bits for signed values
-                            if (value_caps.LogicalMin < 0 &&
-                                0 < value_caps.BitSize && value_caps.BitSize < 32) {
-
-                                ULONG raw = static_cast<ULONG>(value_raw) & ((1u << value_caps.BitSize) - 1u);
-                                const ULONG sign_bit = 1u << (value_caps.BitSize - 1);
-                                value_raw = static_cast<LONG>((raw ^ sign_bit) - sign_bit);
-                            }
-
                             float value;
                             // 0x1 == generic desktop, 0x39 == hat switch
                             if (value_caps.UsagePage == 0x1 && value_caps.Range.UsageMin == 0x39) {
@@ -1925,6 +1916,16 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                                     value = -1.f;
                                 }
                             } else {
+
+                                // fix sign bits for signed values
+                                if (value_caps.LogicalMin < 0 &&
+                                    0 < value_caps.BitSize && value_caps.BitSize < 32) {
+
+                                    ULONG raw = static_cast<ULONG>(value_raw) & ((1u << value_caps.BitSize) - 1u);
+                                    const ULONG sign_bit = 1u << (value_caps.BitSize - 1);
+                                    value_raw = static_cast<LONG>((raw ^ sign_bit) - sign_bit);
+                                }
+
                                 // automatic calibration
                                 if (value_raw < value_min) {
                                     value_caps.LogicalMin = value_raw;
