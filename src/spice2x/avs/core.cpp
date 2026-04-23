@@ -1921,6 +1921,15 @@ namespace avs {
             // create nvram and raw directories if possible for mounttable configurations
             create_avs_config_fs_table(config, config_node);
 
+#if !SPICE64
+            // sdvx4 bad log config fix
+            if (avs::game::DLL_NAME == "soundvoltex.dll" &&  // it's too early for avs::game::is_model
+                property_search_safe(config, config_node, "/log/enable_console")) {
+                log_info("avs-core", "applying SDVX4 avs-config.xml fix for <log><enable_console>");
+                property_search_remove_safe(config, config_node, "/log/enable_console");
+            }
+#endif
+
             // set log level
             if (!LOG_LEVEL_CUSTOM.empty()) {
                 property_search_remove_safe(config, config_node, "/log/level");
