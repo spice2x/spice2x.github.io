@@ -10,6 +10,7 @@ namespace overlay::windows {
         size_t unit = 0;
         void build_keypad();
         void build_tdj_keypad();
+        void build_popn_pika_keypad();
 
     public:
 

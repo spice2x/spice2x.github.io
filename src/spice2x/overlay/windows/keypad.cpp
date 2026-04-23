@@ -3,6 +3,7 @@
 
 #include "avs/game.h"
 #include "games/iidx/iidx.h"
+#include "games/popn/popn.h"
 #include "misc/eamuse.h"
 #include "util/logging.h"
 #include "overlay/imgui/extensions.h"
@@ -42,6 +43,8 @@ namespace overlay::windows {
     void Keypad::build_content() {
         if (avs::game::is_model("LDJ") && games::iidx::TDJ_MODE) {
             build_tdj_keypad();
+        } else if (games::popn::is_pikapika_model) {
+            build_popn_pika_keypad();
         } else {
             build_keypad();
         }
@@ -123,6 +126,28 @@ namespace overlay::windows {
             "Windowed mode: look for the second window in the taskbar (or ALT+TAB).\n\n"
             "Windowed mode with -iidxnosub: bring up the subscreen overlay (default Page Up).\n\n"
             );
+
+        ImGui::Spacing();
+
+        if (ImGui::Button("Insert Card")) {
+            eamuse_set_keypad_overrides_overlay(this->unit, 1 << EAM_IO_INSERT);
+        } else {
+            eamuse_set_keypad_overrides_overlay(this->unit, 0);
+        }
+    }
+
+    void Keypad::build_popn_pika_keypad() {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("Keypad disabled in Pop'n Pikapika model!\nUse subscreen overlay.");
+        ImGui::SameLine();
+        ImGui::WarnMarker(
+            nullptr,
+            "Pop'n Music Pikapika cabinets do not have any keypads; they use the subscreen.\n\n"
+            "Fullscreen mode: bind a key in Overlay tab, and press it in game to show the subscreen, "
+            "then use your mouse to click. Page Up button is the default binding.\n\n"
+            "Windowed mode: look for the second window in the taskbar (or ALT+TAB).\n\n"
+            "Windowed mode with -popnnosub: bring up the subscreen overlay (default Page Up).\n\n"
+        );
 
         ImGui::Spacing();
 
