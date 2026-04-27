@@ -297,15 +297,20 @@ namespace games::ddr {
         }
         const auto value = GameAPI::Analogs::getState(RI_MGR, analog);
 
-        if (0.8f < value) {
+        // stepmania linux source:
+        // https://github.com/stepmania/stepmania/blob/d55acb1ba26f1c5b5e3048d6d6c0bd116625216f/src/arch/InputHandler/InputHandler_Linux_Event.cpp#L410
+
+        // for example, value cap with range [0, 255]:
+        // 127 = 0.498, neutral
+        // 128 = 0.502, both
+        // apparently some adapters report values like above
+        if (0.5001f < value && value < 0.75f) {
+            less |= true;
             more |= true;
-        } else if (value < 0.2f) {
+
+        } else if (value <= 0.25f) {
             less |= true;
-        } else if (0.49 <= value && value <= 0.51f) {
-            // neutral
-        } else {
-            // infamous stepmania "axis fix" for crappy DDR pads
-            less |= true;
+        } else if (value >= 0.75f) {
             more |= true;
         }
     }
