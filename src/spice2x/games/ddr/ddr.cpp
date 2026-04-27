@@ -290,4 +290,58 @@ namespace games::ddr {
         // dispose device hook
         devicehook_dispose();
     }
+
+    void get_analog_x_axis(int player, bool &left, bool &right) {
+        if (player != 1 && player != 2) {
+            log_fatal("ddr", "invalid player number: {}, expected 1 or 2", player);
+            return;
+        }
+
+        auto &analogs = get_analogs().at(
+            player == 1 ? Analogs::P1_LEFT_RIGHT : Analogs::P2_LEFT_RIGHT);
+
+        if (!analogs.isSet()) {
+            return;
+        }
+
+        const auto value = GameAPI::Analogs::getState(RI_MGR, analogs);
+        if (0.8f < value) {
+            right = true;
+        } else if (value < 0.2f) {
+            left = true;
+        } else if (0.49 <= value && value <= 0.51f) {
+            // neutral
+        } else {
+            // infamous stepmania "axis fix" for crappy DDR pads
+            left = true;
+            right = true;
+        }
+    }
+
+    void get_analog_y_axis(int player, bool &up, bool &down) {
+        if (player != 1 && player != 2) {
+            log_fatal("ddr", "invalid player number: {}, expected 1 or 2", player);
+            return;
+        }
+
+        auto &analogs = get_analogs().at(
+            player == 1 ? Analogs::P1_UP_DOWN : Analogs::P2_UP_DOWN);
+
+        if (!analogs.isSet()) {
+            return;
+        }
+
+        const auto value = GameAPI::Analogs::getState(RI_MGR, analogs);
+        if (0.8f < value) {
+            down = true;
+        } else if (value < 0.2f) {
+            up = true;
+        } else if (0.49 <= value && value <= 0.51f) {
+            // neutral
+        } else {
+            // infamous stepmania "axis fix" for crappy DDR pads
+            up = true;
+            down = true;
+        }
+    }
 }

@@ -1206,6 +1206,16 @@ namespace overlay::windows {
                         case rawinput::HID: {
                             auto hid = device->hidInfo;
 
+                            struct temp_button {
+                                std::string device_name;
+                                unsigned short vkey;
+                                ButtonAnalogType analog_type;
+                            };
+
+                            // use this to prioritize button binding over value types
+                            // (for controllers that output both)
+                            std::optional<temp_button> button_to_bind;
+
                             // ignore touchscreen and digitizer button inputs
                             // digitizer has funky stuff like "Touch Valid" "Data Valid" always held high
                             if (!rawinput::touch::is_touchscreen(device) &&
@@ -1219,18 +1229,11 @@ namespace overlay::windows {
 
                                         // check if button is down
                                         if (button_states[i]) {
-
-                                            // bind key
-                                            button->setDeviceIdentifier(device->name);
-                                            button->setVKey(static_cast<unsigned short>(button_index + i));
-                                            button->setAnalogType(BAT_NONE);
-                                            ::Config::getInstance().updateBinding(
-                                                    games_list[games_selected], *button,
-                                                    alt_index - 1);
-                                            ImGui::CloseCurrentPopup();
-                                            buttons_bind_active = false;
-                                            inc_buttons_many_index(button_it_max);
-                                            RI_MGR->devices_midi_freeze(false);
+                                            button_to_bind = {
+                                                device->name,
+                                                static_cast<unsigned short>(button_index + i),
+                                                BAT_NONE
+                                            };
                                             break;
                                         }
                                     }
@@ -1239,95 +1242,98 @@ namespace overlay::windows {
                             }
 
                             // value caps
-                            auto value_states = &hid->value_states;
-                            auto bind_value_states = &hid->bind_value_states;
-                            auto value_names = &hid->value_caps_names;
-                            for (size_t i = 0; i < value_states->size(); i++) {
-                                auto &state = value_states->at(i);
-                                auto &bind_state = bind_value_states->at(i);
-                                auto &value_name = value_names->at(i);
+                            if (!button_to_bind.has_value()) {
+                                auto value_states = &hid->value_states;
+                                auto bind_value_states = &hid->bind_value_states;
+                                auto value_names = &hid->value_caps_names;
+                                for (size_t i = 0; i < value_states->size(); i++) {
+                                    auto &state = value_states->at(i);
+                                    auto &bind_state = bind_value_states->at(i);
+                                    auto &value_name = value_names->at(i);
 
-                                // check for valid axis names
-                                if (value_name == "X" ||
-                                    value_name == "Y" ||
-                                    value_name == "Rx" ||
-                                    value_name == "Ry" ||
-                                    value_name == "Z")
-                                {
-                                    // check if axis is in activation area
-                                    float normalized = (state - 0.5f) * 2.f;
-                                    float diff = std::fabs(state - bind_state);
-                                    if (std::fabs(normalized) > 0.9f && diff > 0.1f) {
-                                        auto bat = normalized > 0 ? BAT_POSITIVE : BAT_NEGATIVE;
+                                    // check for valid axis names
+                                    if (value_name == "X" ||
+                                        value_name == "Y" ||
+                                        value_name == "Rx" ||
+                                        value_name == "Ry" ||
+                                        value_name == "Z")
+                                    {
+                                        // check if axis is in activation area
+                                        float normalized = (state - 0.5f) * 2.f;
+                                        float diff = std::fabs(state - bind_state);
+                                        if (std::fabs(normalized) > 0.9f && diff > 0.1f) {
+                                            auto bat = normalized > 0 ? BAT_POSITIVE : BAT_NEGATIVE;
 
-                                        // bind value
-                                        button->setDeviceIdentifier(device->name);
-                                        button->setVKey(static_cast<unsigned short>(i));
-                                        button->setAnalogType(bat);
-                                        button->setDebounceUp(0.0);
-                                        button->setDebounceDown(0.0);
-                                        button->setBatThreshold(0);
-                                        button->setVelocityThreshold(0);
-                                        ::Config::getInstance().updateBinding(
-                                                games_list[games_selected], *button,
-                                                alt_index - 1);
-                                        ImGui::CloseCurrentPopup();
-                                        buttons_bind_active = false;
-                                        inc_buttons_many_index(button_it_max);
-                                        RI_MGR->devices_midi_freeze(false);
+                                            // bind value
+                                            button_to_bind = {
+                                                device->name,
+                                                static_cast<unsigned short>(i),
+                                                bat
+                                            };
 
-                                        // usually, turntables are X, knobs are X and Y
-                                        // gamepad triggers are Z, and Rx/Ry are right thumb stick
-                                        // one day we will label all I/O modules and flag which one are button-as-analog
-                                        // so that we don't have to do string comparions like below
-                                        if ((value_name == "X" || value_name == "Y") &&
-                                            (button->getName().find("Press") == std::string::npos) && // museca
-                                            (button->getName().find("Slowdown") == std::string::npos) && // bishibashi
-                                            (button->getName().find("TT+") != std::string::npos ||
-                                             button->getName().find("TT-") != std::string::npos || // iidx
-                                             button->getName().find("Knob") != std::string::npos || // gitadora guitar
-                                             button->getName().find("Disk") != std::string::npos || // museca, bishibashi
-                                             button->getName().find("VOL-") != std::string::npos)) { // sdvx
-                                            this->analog_as_button_warning_show_next_frame =
-                                                std::make_pair(button->getName(), alt_index);
+                                            // usually, turntables are X, knobs are X and Y
+                                            // gamepad triggers are Z, and Rx/Ry are right thumb stick
+                                            // one day we will label all I/O modules and flag which one are button-as-analog
+                                            // so that we don't have to do string comparions like below
+                                            if ((value_name == "X" || value_name == "Y") &&
+                                                (button->getName().find("Press") == std::string::npos) && // museca
+                                                (button->getName().find("Slowdown") == std::string::npos) && // bishibashi
+                                                (button->getName().find("TT+") != std::string::npos ||
+                                                button->getName().find("TT-") != std::string::npos || // iidx
+                                                button->getName().find("Knob") != std::string::npos || // gitadora guitar
+                                                button->getName().find("Disk") != std::string::npos || // museca, bishibashi
+                                                button->getName().find("VOL-") != std::string::npos)) { // sdvx
+                                                this->analog_as_button_warning_show_next_frame =
+                                                    std::make_pair(button->getName(), alt_index);
+                                            }
+                                            break;
+
+                                        } else if (diff > 0.3f) {
+                                            bind_state = state;
                                         }
-                                        break;
-
-                                    } else if (diff > 0.3f) {
-                                        bind_state = state;
                                     }
-                                }
 
-                                // hat switch
-                                if (value_name == "Hat switch") {
+                                    // hat switch
+                                    if (value_name == "Hat switch") {
 
-                                    // get hat switch values
-                                    ButtonAnalogType buffer[3], buffer_bind[3];
-                                    Button::getHatSwitchValues(state, buffer);
-                                    Button::getHatSwitchValues(bind_state, buffer_bind);
+                                        // get hat switch values
+                                        ButtonAnalogType buffer[3], buffer_bind[3];
+                                        Button::getHatSwitchValues(state, buffer);
+                                        Button::getHatSwitchValues(bind_state, buffer_bind);
 
-                                    // check the first entry only
-                                    if (buffer[0] != BAT_NONE && buffer[0] != buffer_bind[0]) {
+                                        // check the first entry only
+                                        if (buffer[0] != BAT_NONE && buffer[0] != buffer_bind[0]) {
 
-                                        // bind value
-                                        button->setDeviceIdentifier(device->name);
-                                        button->setVKey(static_cast<unsigned short>(i));
-                                        button->setAnalogType(buffer[0]);
-                                        button->setDebounceUp(0.0);
-                                        button->setDebounceDown(0.0);
-                                        button->setBatThreshold(0);
-                                        button->setVelocityThreshold(0);
-                                        ::Config::getInstance().updateBinding(
-                                                games_list[games_selected], *button,
-                                                alt_index - 1);
-                                        ImGui::CloseCurrentPopup();
-                                        buttons_bind_active = false;
-                                        inc_buttons_many_index(button_it_max);
-                                        RI_MGR->devices_midi_freeze(false);
-                                        break;
+                                            // bind value
+                                            button_to_bind = {
+                                                device->name,
+                                                static_cast<unsigned short>(i),
+                                                buffer[0]
+                                            };
+                                            break;
+                                        }
                                     }
                                 }
                             }
+
+                            if (button_to_bind.has_value()) {
+                                const auto &b = button_to_bind.value();
+                                button->setDeviceIdentifier(b.device_name);
+                                button->setVKey(b.vkey);
+                                button->setAnalogType(b.analog_type);
+                                button->setDebounceUp(0.0);
+                                button->setDebounceDown(0.0);
+                                button->setBatThreshold(0);
+                                button->setVelocityThreshold(0);
+                                ::Config::getInstance().updateBinding(
+                                        games_list[games_selected], *button,
+                                        alt_index - 1);
+                                ImGui::CloseCurrentPopup();
+                                buttons_bind_active = false;
+                                inc_buttons_many_index(button_it_max);
+                                RI_MGR->devices_midi_freeze(false);
+                            }
+
                             break;
                         }
                         case rawinput::MIDI: {

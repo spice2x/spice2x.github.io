@@ -2,6 +2,7 @@
 #include "mdxf_poll.h"
 
 #include "avs/game.h"
+#include "games/ddr/ddr.h"
 #include "games/ddr/io.h"
 #include "launcher/launcher.h"
 #include "rawinput/rawinput.h"
@@ -357,14 +358,17 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
 
         // decide on button map
         const size_t *button_map = nullptr;
+        int player = 0;
         switch (node) {
             case 17:
             case 25:
                 button_map = &buttons_p1[0];
+                player = 1;
                 break;
             case 18:
             case 26:
                 button_map = &buttons_p2[0];
+                player = 2;
                 break;
         }
         
@@ -374,19 +378,27 @@ static bool __cdecl ac_io_mdxf_update_control_status_buffer_impl(int node, MDXFP
         if (source == EXTERNAL_POLL) {
             // get buttons
             auto &buttons = games::ddr::get_buttons();
+            
+            // get analogs
+            bool analog_left = false;
+            bool analog_right = false;
+            games::ddr::get_analog_x_axis(player, analog_left, analog_right);
+            bool analog_up = false;
+            bool analog_down = false;
+            games::ddr::get_analog_y_axis(player, analog_up, analog_down);
+            
             uint8_t up_down = 0;
             uint8_t left_right = 0;
-            
-            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[0]))) {
+            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[0])) || analog_up) {
                 up_down |= 0xF0;
             }
-            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[1]))) {
+            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[1])) || analog_down) {
                 up_down |= 0x0F;
             }
-            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[2]))) {
+            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[2])) || analog_left) {
                 left_right |= 0xF0;
             }
-            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[3]))) {
+            if (GameAPI::Buttons::getState(RI_MGR, buttons.at(button_map[3])) || analog_right) {
                 left_right |= 0x0F;
             }
             current_state = (uint16_t(up_down) << 8) | left_right;

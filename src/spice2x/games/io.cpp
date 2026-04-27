@@ -92,6 +92,9 @@ namespace games {
         games.push_back(ddr);
         buttons.insert({ ddr, ddr::get_buttons() });
         lights.insert({ ddr, ddr::get_lights() });
+        buttons_help.insert({ ddr, ddr::get_buttons_help() });
+        analogs_help.insert({ ddr, ddr::get_analogs_help() });
+        analogs.insert({ ddr, ddr::get_analogs() });
         file_hints[ddr].push_back({"ddr.dll"});
         file_hints[ddr].push_back({"mdxja_945.dll"});
         file_hints[ddr].push_back({"arkmdxp3.dll"});

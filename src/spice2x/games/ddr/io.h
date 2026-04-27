@@ -33,6 +33,16 @@ namespace games::ddr {
         };
     }
 
+    // all analogs in correct order
+    namespace Analogs {
+        enum {
+            P1_LEFT_RIGHT,
+            P1_UP_DOWN,
+            P2_LEFT_RIGHT,
+            P2_UP_DOWN
+        };
+    }
+
     // all lights in correct order
     namespace Lights {
         enum {
@@ -177,5 +187,8 @@ namespace games::ddr {
 
     // getters
     std::vector<Button> &get_buttons();
+    std::string get_buttons_help();
+    std::string get_analogs_help();
+    std::vector<Analog> &get_analogs();
     std::vector<Light> &get_lights();
 }

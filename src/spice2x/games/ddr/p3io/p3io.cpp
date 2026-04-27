@@ -498,31 +498,79 @@ int games::ddr::DDRP3IOHandle::device_io(
 
         // shift table
         static size_t shift_table[] = {
-                30, 28, 29, 8, 9, 10, 11, 12, 24, 25, 14, 15, 16, 17, 18, 19, 20, 26, 27, 22, 23
+                30, 28, 29,     // service, test, coin
+                8,              // p1 start
+                9, 10, 11, 12,  // p1 panel
+                24, 25, 14, 15, // p1 menu
+                16,             // p2 start
+                17, 18, 19, 20, // p2 panel
+                26, 27, 22, 23  // p2 menu 
         };
         static size_t button_table[] = {
                 Buttons::SERVICE,
                 Buttons::TEST,
                 Buttons::COIN_MECH,
+
                 Buttons::P1_START,
+
                 Buttons::P1_PANEL_UP,
                 Buttons::P1_PANEL_DOWN,
                 Buttons::P1_PANEL_LEFT,
                 Buttons::P1_PANEL_RIGHT,
+
                 Buttons::P1_MENU_UP,
                 Buttons::P1_MENU_DOWN,
                 Buttons::P1_MENU_LEFT,
                 Buttons::P1_MENU_RIGHT,
+
                 Buttons::P2_START,
+
                 Buttons::P2_PANEL_UP,
                 Buttons::P2_PANEL_DOWN,
                 Buttons::P2_PANEL_LEFT,
                 Buttons::P2_PANEL_RIGHT,
+
                 Buttons::P2_MENU_UP,
                 Buttons::P2_MENU_DOWN,
                 Buttons::P2_MENU_LEFT,
                 Buttons::P2_MENU_RIGHT,
         };
+
+        // get analogs
+        struct {
+            bool up;
+            bool down;
+            bool left;
+            bool right;
+        } analog_values[2];
+        games::ddr::get_analog_x_axis(1, analog_values[0].left, analog_values[0].right);
+        games::ddr::get_analog_y_axis(1, analog_values[0].up, analog_values[0].down);
+        games::ddr::get_analog_x_axis(2, analog_values[1].left, analog_values[1].right);
+        games::ddr::get_analog_y_axis(2, analog_values[1].up, analog_values[1].down);
+        if (analog_values[0].up) {
+            controls |= 1 << 9;
+        }
+        if (analog_values[0].down) {
+            controls |= 1 << 10;
+        }
+        if (analog_values[0].left) {
+            controls |= 1 << 11;
+        }
+        if (analog_values[0].right) {
+            controls |= 1 << 12;
+        }
+        if (analog_values[1].up) {
+            controls |= 1 << 17;
+        }
+        if (analog_values[1].down) {
+            controls |= 1 << 18;
+        }
+        if (analog_values[1].left) {
+            controls |= 1 << 19;
+        }
+        if (analog_values[1].right) {
+            controls |= 1 << 20;
+        }
 
         // update states
         auto &buttons = get_buttons();

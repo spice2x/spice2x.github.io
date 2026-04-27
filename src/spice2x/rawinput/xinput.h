@@ -32,21 +32,26 @@ namespace xinput {
     };
 
     enum class XInputButtonEnum : uint16_t {
+        // the order here is used by get_any_button_pressed to determine priority
+        // we want to prefer buttons over dpad analog values (for controllers that output both)
+
         // actual buttons
-        DPAD_UP,
-        DPAD_DOWN,
-        DPAD_LEFT,
-        DPAD_RIGHT,
+        BUTTON_A,
+        BUTTON_B,
+        BUTTON_X,
+        BUTTON_Y,
         START,
         BACK,
         LEFT_STICK,
         RIGHT_STICK,
         LEFT_SHOULDER,
         RIGHT_SHOULDER,
-        BUTTON_A,
-        BUTTON_B,
-        BUTTON_X,
-        BUTTON_Y,
+
+        // dpad
+        DPAD_UP,
+        DPAD_DOWN,
+        DPAD_LEFT,
+        DPAD_RIGHT,
 
         // analog values that can be used as buttons
         LEFT_TRIGGER,
@@ -102,7 +107,7 @@ namespace xinput {
         ~XInputManager();
         void stop();
         std::vector<uint8_t> get_available_players();
-        bool is_button_pressed(uint8_t player, XInputButtonEnum button);
+        bool is_button_pressed(uint8_t player, XInputButtonEnum button, XINPUT_GAMEPAD_STATE_NORMALIZED *state_in=nullptr);
         float get_analog_state(uint8_t player, XInputAnalogEnum analog);
         bool get_any_button_pressed(XINPUT_NEW_BUTTON &button);
         void set_output_state(uint8_t player, XInputOutputEnum output, float value);

@@ -23,4 +23,7 @@ namespace games::ddr {
     private:
         void register_codecs();
     };
+
+    void get_analog_x_axis(int player, bool &left, bool &right);
+    void get_analog_y_axis(int player, bool &up, bool &down);
 }
