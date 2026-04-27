@@ -605,6 +605,24 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
                     value_caps.LogicalMax = 255;
                 }
 
+                // fix up invalid max values (seen on xbox controllers where max is 0xffffffff despite being 16-bit)
+                if (value_caps.LogicalMin == 0 && value_caps.BitSize > 0 && value_caps.BitSize < 32) {
+                    const uint32_t field_max = (1u << value_caps.BitSize) - 1u;
+                    const uint32_t logical_max = static_cast<uint32_t>(value_caps.LogicalMax);
+
+                    if (logical_max > field_max) {
+                        log_info(
+                            "rawinput",
+                            "value cap {} LogicalMax exceeds bit width, fixing it up: {} -> {}",
+                            value_cap_num,
+                            value_caps.LogicalMax,
+                            field_max
+                        );
+
+                        value_caps.LogicalMax = static_cast<LONG>(field_max);
+                    }
+                }
+
                 // fix up hat switch to initially report as neutral position
                 if (value_caps.UsagePage == 0x1 && value_caps.Range.UsageMin == 0x39) {
                     value_states[value_cap_num] = -1.f;
