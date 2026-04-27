@@ -542,7 +542,7 @@ int games::ddr::DDRP3IOHandle::device_io(
             bool down;
             bool left;
             bool right;
-        } analog_values[2];
+        } analog_values[2] = {};
         games::ddr::get_analog_x_axis(1, analog_values[0].left, analog_values[0].right);
         games::ddr::get_analog_y_axis(1, analog_values[0].up, analog_values[0].down);
         games::ddr::get_analog_x_axis(2, analog_values[1].left, analog_values[1].right);

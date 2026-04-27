@@ -291,31 +291,33 @@ namespace games::ddr {
         devicehook_dispose();
     }
 
+    static void get_analog_xy_axis(Analog &analog, bool &less, bool &more) {
+        if (!analog.isSet()) {
+            return;
+        }
+        const auto value = GameAPI::Analogs::getState(RI_MGR, analog);
+
+        if (0.8f < value) {
+            more |= true;
+        } else if (value < 0.2f) {
+            less |= true;
+        } else if (0.49 <= value && value <= 0.51f) {
+            // neutral
+        } else {
+            // infamous stepmania "axis fix" for crappy DDR pads
+            less |= true;
+            more |= true;
+        }
+    }
+
     void get_analog_x_axis(int player, bool &left, bool &right) {
         if (player != 1 && player != 2) {
             log_fatal("ddr", "invalid player number: {}, expected 1 or 2", player);
             return;
         }
 
-        auto &analogs = get_analogs().at(
-            player == 1 ? Analogs::P1_LEFT_RIGHT : Analogs::P2_LEFT_RIGHT);
-
-        if (!analogs.isSet()) {
-            return;
-        }
-
-        const auto value = GameAPI::Analogs::getState(RI_MGR, analogs);
-        if (0.8f < value) {
-            right = true;
-        } else if (value < 0.2f) {
-            left = true;
-        } else if (0.49 <= value && value <= 0.51f) {
-            // neutral
-        } else {
-            // infamous stepmania "axis fix" for crappy DDR pads
-            left = true;
-            right = true;
-        }
+        auto &analog = get_analogs().at(player == 1 ? Analogs::P1_LEFT_RIGHT : Analogs::P2_LEFT_RIGHT);
+        get_analog_xy_axis(analog, left, right);
     }
 
     void get_analog_y_axis(int player, bool &up, bool &down) {
@@ -324,24 +326,7 @@ namespace games::ddr {
             return;
         }
 
-        auto &analogs = get_analogs().at(
-            player == 1 ? Analogs::P1_UP_DOWN : Analogs::P2_UP_DOWN);
-
-        if (!analogs.isSet()) {
-            return;
-        }
-
-        const auto value = GameAPI::Analogs::getState(RI_MGR, analogs);
-        if (0.8f < value) {
-            down = true;
-        } else if (value < 0.2f) {
-            up = true;
-        } else if (0.49 <= value && value <= 0.51f) {
-            // neutral
-        } else {
-            // infamous stepmania "axis fix" for crappy DDR pads
-            up = true;
-            down = true;
-        }
+        auto &analog = get_analogs().at(player == 1 ? Analogs::P1_UP_DOWN : Analogs::P2_UP_DOWN);
+        get_analog_xy_axis(analog, up, down);
     }
 }
