@@ -1282,6 +1282,8 @@ namespace overlay::windows {
                                                 button->getName().find("TT-") != std::string::npos || // iidx
                                                 button->getName().find("Knob") != std::string::npos || // gitadora guitar
                                                 button->getName().find("Disk") != std::string::npos || // museca, bishibashi
+                                                button->getName().find("P1 Panel") != std::string::npos || // ddr
+                                                button->getName().find("P2 Panel") != std::string::npos || // ddr
                                                 button->getName().find("VOL-") != std::string::npos)) { // sdvx
                                                 this->analog_as_button_warning_show_next_frame =
                                                     std::make_pair(button->getName(), alt_index);

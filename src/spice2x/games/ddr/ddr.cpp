@@ -303,7 +303,9 @@ namespace games::ddr {
         // for example, value cap with range [0, 255]:
         // 127 = 0.498, neutral
         // 128 = 0.502, both
-        // apparently some adapters report values like above
+        // apparently some adapters report values like above; this obviously makes a lot of
+        // assumptions about bit width of the HID value cap and how the adapter reports
+        // neutral/both values, but this is good enough for parity with stepmania and its many forks
         if (0.5001f < value && value < 0.75f) {
             less |= true;
             more |= true;

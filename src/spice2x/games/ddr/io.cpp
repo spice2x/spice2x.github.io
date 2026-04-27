@@ -71,8 +71,8 @@ std::string games::ddr::get_analogs_help() {
     return
         "Only use this if your DDR pad outputs analog axis for arrows.\n\n"
         "If the pad uses face buttons (A/B/X/Y), use Buttons tab instead.\n\n"
-        "Spice will treat values >0.75 as Right, <0.25 as Left, ~=0.5 as neutral,\n"
-        "and value between 0.5 and 0.75 as both arrows.\n\n"
+        "Spice will treat values <=25% as Left, >=75% as Right, ~=50% as neutral,\n"
+        "and value between 50% and 75% as both arrows.\n\n"
         "This is the classic Stepmania \"Axis Fix\" which may or may not work with your controller."
         ;
 }
