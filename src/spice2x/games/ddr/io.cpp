@@ -39,7 +39,7 @@ std::vector<Button> &games::ddr::get_buttons() {
 std::string games::ddr::get_buttons_help() {
     // keep to max 100 characters wide
     return
-        "For DDR pad arrows, double check if simultaneous Left+Right and Up+Down are detected.\n\n"
+        "For DDR pad arrows, double check that simultaneous Left+Right and Up+Down are detected.\n\n"
         "  - If your controller uses face buttons (A/B/X/Y), bind buttons below.\n"
         "    (this is should just work)\n\n"
         "  - If your controller uses analog axis for arrows, bind axes in Analogs tab\n"
@@ -73,7 +73,7 @@ std::string games::ddr::get_analogs_help() {
         "If the pad uses face buttons (A/B/X/Y), use Buttons tab instead.\n\n"
         "Spice will treat values <=25% as Left, >=75% as Right, ~=50% as neutral,\n"
         "and value between 50% and 75% as both arrows.\n\n"
-        "This is the classic Stepmania \"Axis Fix\" which may or may not work with your controller."
+        "This is the classic Stepmania \"Axis Fix\" which may or may not work with your dance pad."
         ;
 }
 
