@@ -380,13 +380,49 @@ XInputSetState(
     }
 
     bool XInputManager::get_any_button_pressed(XINPUT_NEW_BUTTON &button) {
+
+        constexpr std::array<XInputButtonEnum, static_cast<size_t>(XInputButtonEnum::COUNT)> button_priority = {
+            // the ordering here is important; we want to check buttons first, then dpad, then analog
+            // this is to help with cases like DDR pads that output multiple at the same time for arrows
+
+            // actual buttons
+            XInputButtonEnum::BUTTON_A,
+            XInputButtonEnum::BUTTON_B,
+            XInputButtonEnum::BUTTON_X,
+            XInputButtonEnum::BUTTON_Y,
+            XInputButtonEnum::START,
+            XInputButtonEnum::BACK,
+            XInputButtonEnum::LEFT_STICK,
+            XInputButtonEnum::RIGHT_STICK,
+            XInputButtonEnum::LEFT_SHOULDER,
+            XInputButtonEnum::RIGHT_SHOULDER,
+
+            // dpad
+            XInputButtonEnum::DPAD_UP,
+            XInputButtonEnum::DPAD_DOWN,
+            XInputButtonEnum::DPAD_LEFT,
+            XInputButtonEnum::DPAD_RIGHT,
+
+            // analog values that can be used as buttons
+            XInputButtonEnum::LEFT_TRIGGER,
+            XInputButtonEnum::RIGHT_TRIGGER,
+            XInputButtonEnum::LEFT_STICK_UP,
+            XInputButtonEnum::LEFT_STICK_DOWN,
+            XInputButtonEnum::LEFT_STICK_LEFT,
+            XInputButtonEnum::LEFT_STICK_RIGHT,
+            XInputButtonEnum::RIGHT_STICK_UP,
+            XInputButtonEnum::RIGHT_STICK_DOWN,
+            XInputButtonEnum::RIGHT_STICK_LEFT,
+            XInputButtonEnum::RIGHT_STICK_RIGHT,
+        };
+
         for (uint8_t player = 0; player < XUSER_MAX_COUNT; player++) {
             XINPUT_GAMEPAD_STATE_NORMALIZED state;
             get_state(player, state);
             for (uint16_t b = 0; b < static_cast<uint16_t>(XInputButtonEnum::COUNT); b++) {
-                if (is_button_pressed(player, static_cast<XInputButtonEnum>(b), &state)) {
+                if (is_button_pressed(player, button_priority[b], &state)) {
                     button.player = player;
-                    button.button = static_cast<XInputButtonEnum>(b);
+                    button.button = button_priority[b];
                     return true;
                 }
             }

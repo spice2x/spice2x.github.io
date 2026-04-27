@@ -31,27 +31,24 @@ namespace xinput {
         float sThumbRY;
     };
 
+    // the order of this enum is used for vkey mapping (saved in config file)
+    // therefore it can never be changed
     enum class XInputButtonEnum : uint16_t {
-        // the order here is used by get_any_button_pressed to determine priority
-        // we want to prefer buttons over dpad analog values (for controllers that output both)
-
         // actual buttons
-        BUTTON_A,
-        BUTTON_B,
-        BUTTON_X,
-        BUTTON_Y,
+        DPAD_UP,
+        DPAD_DOWN,
+        DPAD_LEFT,
+        DPAD_RIGHT,
         START,
         BACK,
         LEFT_STICK,
         RIGHT_STICK,
         LEFT_SHOULDER,
         RIGHT_SHOULDER,
-
-        // dpad
-        DPAD_UP,
-        DPAD_DOWN,
-        DPAD_LEFT,
-        DPAD_RIGHT,
+        BUTTON_A,
+        BUTTON_B,
+        BUTTON_X,
+        BUTTON_Y,
 
         // analog values that can be used as buttons
         LEFT_TRIGGER,
