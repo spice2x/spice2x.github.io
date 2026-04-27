@@ -290,12 +290,13 @@ XInputSetState(
     }
 
     bool XInputManager::is_button_pressed(uint8_t player, XInputButtonEnum button, XINPUT_GAMEPAD_STATE_NORMALIZED *state_in) {
+        XINPUT_GAMEPAD_STATE_NORMALIZED state_on_stack;
         XINPUT_GAMEPAD_STATE_NORMALIZED *state;
     
         if (state_in) {
             state = state_in;
         } else {
-            state = reinterpret_cast<XINPUT_GAMEPAD_STATE_NORMALIZED*>(alloca(sizeof(*state)));
+            state = &state_on_stack;
             get_state(player, *state);
         }
 
