@@ -21,7 +21,7 @@ namespace cfg {
         if (SCREEN_RESIZE_CFG_PATH_OVERRIDE.has_value()) {
             this->config_path = SCREEN_RESIZE_CFG_PATH_OVERRIDE.value();
             if (fileutils::file_exists(this->config_path)) {
-                log_info("ScreenResize", "loading config from: {}", this->config_path.string());
+                log_info("ScreenResize", "loading config from: {}", this->config_path);
                 file_exists = true;
             }
         } else {
@@ -35,7 +35,7 @@ namespace cfg {
 
     ScreenResize::~ScreenResize() {
     }
-    
+
     void ScreenResize::config_load() {
         std::string config = fileutils::text_read(this->config_path);
         if (config.empty()) {
@@ -78,7 +78,7 @@ namespace cfg {
             eamuse_get_game(),
             use_game_setting,
             root);
-        
+
         load_bool_value(doc, root + "enable_screen_resize", this->enable_screen_resize);
         if (this->enable_screen_resize) {
             log_misc("ScreenResize", "enabled by config file");

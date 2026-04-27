@@ -87,7 +87,7 @@ bool eamuse_get_card(const std::filesystem::path &path, uint8_t *card, int index
     std::unique_lock<std::mutex> lock(CARD_OVERRIDES_LOCK);
     const auto card_override = CARD_OVERRIDES[index];
     lock.unlock();
-    
+
     // Check if card overrides are present
     if (!card_override.empty()) {
 
@@ -131,7 +131,7 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
     // open file
     std::ifstream f(path);
     if (!f) {
-        log_warning("eamuse", "{} can not be opened!", path.string());
+        log_warning("eamuse", "{} can not be opened!", path);
         return false;
     }
 
@@ -142,7 +142,7 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
 
     // check size
     if (length < 16) {
-        log_warning("eamuse", "{} is too small (must be at least 16 characters)", path.string());
+        log_warning("eamuse", "{} is too small (must be at least 16 characters)", path);
         return false;
     }
 
@@ -160,14 +160,14 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
         if (!digit && !character_big && !character_small) {
             log_warning("eamuse",
                 "{} contains an invalid character sequence at byte {} (16 characters, 0-9/A-F only)",
-                path.string(), n);
+                path, n);
 
             return false;
         }
     }
 
     // info
-    log_info("eamuse", "[P{}] Inserted {}: {}", index+1, path.string(), buffer);
+    log_info("eamuse", "[P{}] Inserted {}: {}", index+1, path, buffer);
 
     // convert hex to bytes
     hex2bin(buffer, card);
@@ -454,7 +454,7 @@ uint16_t eamuse_get_keypad_state(size_t unit) {
     if (unit >= std::size(KEYPAD_STATE)) {
         return 0;
     }
-    
+
     // reset
     KEYPAD_STATE[unit] = KEYPAD_STATE_OVERRIDES[unit];
     KEYPAD_STATE[unit] |= KEYPAD_STATE_OVERRIDES_BT5[unit];

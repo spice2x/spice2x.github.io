@@ -1,5 +1,6 @@
 #include "libutils.h"
 
+#include <cstring>
 #include <windows.h>
 #include <psapi.h>
 #include <shlwapi.h>
@@ -38,7 +39,7 @@ std::filesystem::path libutils::module_file_name(HMODULE module) {
     return std::filesystem::path(std::move(buf));
 }
 
-static inline void load_library_fail(const std::string &file_name, bool fatal) {
+static inline void load_library_fail(const std::filesystem::path &file_name, bool fatal) {
     std::string info_str { fmt::format(
         "DLL failed to load - this is a common error. Please carefully read ALL of the following steps for a fix:\n"
         " 1. Confirm if the file ({}) exists on the disk and check the file permissions.\n"
@@ -76,9 +77,9 @@ HMODULE libutils::load_library(const std::filesystem::path &path, bool fatal) {
     HMODULE module = LoadLibraryW(path.c_str());
 
     if (!module) {
-        log_warning("libutils", "'{}' couldn't be loaded: {}", path.string(), get_last_error_string());
+        log_warning("libutils", "'{}' couldn't be loaded: {}", path, get_last_error_string());
         dependencies::walk(path);
-        load_library_fail(path.filename().string(), fatal);
+        load_library_fail(path.filename(), fatal);
     }
 
     return module;
@@ -236,7 +237,7 @@ intptr_t libutils::rva2offset(const std::filesystem::path &path, intptr_t rva) {
     HANDLE dll_mapping = CreateFileMappingW(dll_file, nullptr, PAGE_READONLY, 0, 0, nullptr);
     if (!dll_mapping) {
         CloseHandle(dll_file);
-        log_warning("libutils", "could not create file mapping for {}", path.string());
+        log_warning("libutils", "could not create file mapping for {}", path);
         return -1;
     }
 
@@ -245,7 +246,7 @@ intptr_t libutils::rva2offset(const std::filesystem::path &path, intptr_t rva) {
     if (!dll_file_base) {
         CloseHandle(dll_file);
         CloseHandle(dll_mapping);
-        log_warning("libutils", "could not map view of file for {}", path.string());
+        log_warning("libutils", "could not map view of file for {}", path);
         return -1;
     }
 
@@ -306,7 +307,7 @@ intptr_t libutils::offset2rva(const std::filesystem::path &path, intptr_t offset
     // create file mapping
     HANDLE dll_mapping = CreateFileMappingW(dll_file, nullptr, PAGE_READONLY, 0, 0, nullptr);
     if (!dll_mapping) {
-        log_warning("libutils", "could not create file mapping for {}: {}", path.string(), get_last_error_string());
+        log_warning("libutils", "could not create file mapping for {}: {}", path, get_last_error_string());
         CloseHandle(dll_file);
         return -1;
     }
@@ -314,7 +315,7 @@ intptr_t libutils::offset2rva(const std::filesystem::path &path, intptr_t offset
     // map view of file
     LPVOID dll_file_base = MapViewOfFile(dll_mapping, FILE_MAP_READ, 0, 0, 0);
     if (!dll_file_base) {
-        log_warning("libutils", "could not map view of file for {}: {}", path.string(), get_last_error_string());
+        log_warning("libutils", "could not map view of file for {}: {}", path, get_last_error_string());
         CloseHandle(dll_file);
         CloseHandle(dll_mapping);
         return -1;
@@ -344,9 +345,9 @@ void libutils::check_duplicate_dlls() {
 
     for (const auto &file : std::filesystem::directory_iterator(MODULE_PATH)) {
         const auto &filename = file.path().filename();
-        const auto extension = strtolower(filename.extension().string());
+        const auto extension = filename.extension().wstring();
 
-        if (extension == ".dll" &&
+        if (wcsicmp(extension.c_str(), L".dll") == 0 &&
             fileutils::file_exists(spice_bin_path / filename)) {
             log_warning(
                 "libutils",
@@ -361,9 +362,9 @@ void libutils::check_duplicate_dlls() {
                 "this has unintended consequences and may crash your game!\n"
                 "resolve the conflict by deleting the stale copy of the DLL\n"
                 "-------------------------------------------------------------------\n\n\n",
-                filename.string(),
-                (spice_bin_path / filename).string(),
-                (MODULE_PATH / filename).string());
+                filename,
+                (spice_bin_path / filename),
+                (MODULE_PATH / filename));
         }
     }
 }
@@ -384,22 +385,22 @@ void libutils::warn_if_dll_exists(const std::string &file_name) {
 
 void libutils::print_dll_info(std::filesystem::path filename) {
     DWORD handle;
-    const auto size = GetFileVersionInfoSizeA(filename.string().c_str(), &handle);
+    const auto size = GetFileVersionInfoSizeW(filename.wstring().c_str(), &handle);
     if (size == 0) {
         log_debug(
             "libutils",
             "GetFileVersionInfoSizeA failed for {}: {}",
-            filename.filename().string(),
+            filename.filename(),
             get_last_error_string());
         return;
     }
 
     auto data = util::make_unique_plain<VOID>(size);
-    if (!GetFileVersionInfoA(filename.string().c_str(), handle, size, data.get())) {
+    if (!GetFileVersionInfoW(filename.wstring().c_str(), handle, size, data.get())) {
         log_debug(
             "libutils",
             "GetFileVersionInfoA failed for {}: {}",
-            filename.filename().string(),
+            filename.filename(),
             get_last_error_string());
         return;
     }
@@ -414,7 +415,7 @@ void libutils::print_dll_info(std::filesystem::path filename) {
         log_debug(
             "libutils",
             "VerQueryValueA failed for {}: {}",
-            filename.filename().string(),
+            filename.filename(),
             get_last_error_string());
         return;
     }
@@ -422,7 +423,7 @@ void libutils::print_dll_info(std::filesystem::path filename) {
         log_debug(
             "libutils",
             "VerQueryValueA returned invalid results for {}",
-            filename.filename().string());
+            filename.filename());
         return;
     }
 
@@ -457,7 +458,7 @@ void libutils::print_dll_info(std::filesystem::path filename) {
             "libutils",
             "VerQueryValueA({}) failed for {}: {}",
             subBlock,
-            filename.filename().string(),
+            filename.filename(),
             get_last_error_string());
         return "";
     };
@@ -469,7 +470,7 @@ void libutils::print_dll_info(std::filesystem::path filename) {
     log_info(
         "libutils",
         "DLL info for {}: CompanyName = {}, ProductName = {}, Version = {}",
-        filename.filename().string(),
+        filename.filename(),
         company_name.empty() ? "?" : company_name,
         product_name.empty() ? "?" : product_name,
         version_str.empty() ? "?" : version_str);

@@ -58,7 +58,7 @@ namespace api::modules {
 
         // check if file exists in modules
         if (!fileutils::file_exists(dll_path)) {
-            return error(res, "Couldn't find " + dll_path.string());
+            return error(res, fmt::format("Couldn't find {}", dll_path));
         }
 
         // get module
@@ -118,7 +118,7 @@ namespace api::modules {
 
         // check if file exists in modules
         if (!fileutils::file_exists(dll_path)) {
-            return error(res, "Couldn't find " + dll_path.string());
+            return error(res, fmt::format("Couldn't find {}", dll_path));
         }
 
         // get module
@@ -196,7 +196,7 @@ namespace api::modules {
 
         // check if file exists in modules
         if (!fileutils::file_exists(dll_path)) {
-            return error(res, "Couldn't find " + dll_path.string());
+            return error(res, fmt::format("Couldn't find {}", dll_path));
         }
 
         // get module

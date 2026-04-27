@@ -26,7 +26,6 @@ namespace fileutils {
     bool dir_create_log(const std::string_view &module, const std::filesystem::path &dir_path);
     bool dir_create_recursive(const std::filesystem::path &dir_path);
     bool dir_create_recursive_log(const std::string_view &module, const std::filesystem::path &dir_path);
-    void dir_scan(const std::string &path, std::vector<std::string> &vec, bool recursive);
 
     // IO
     bool text_write(const std::filesystem::path &file_path, std::string text);

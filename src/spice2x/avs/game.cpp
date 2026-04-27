@@ -73,11 +73,10 @@ namespace avs {
 
             // load game instance
             const auto dll_path = MODULE_PATH / DLL_NAME;
-            const auto dll_path_s = dll_path.string();
-            log_info("avs-game", "DLL path: {}", dll_path_s.c_str());
+            log_info("avs-game", "DLL path: {}", dll_path);
 
             // MAX_PATH is 260
-            if (130 <= dll_path_s.length()) {
+            if (const auto dll_path_len = dll_path.wstring().length(); 130 <= dll_path_len) {
                 log_warning(
                     "avs-game",
                     "PATH TOO LONG WARNING\n\n"
@@ -93,7 +92,7 @@ namespace avs {
                     "long, often resulting in random crashes. Move the game contents to\n"
                     "a directory with shorter path.\n"
                     "-------------------------------------------------------------------\n\n",
-                    dll_path_s, dll_path_s.length());
+                    dll_path, dll_path_len);
             }
 
             // ddr gamemdx.dll user error
@@ -112,7 +111,7 @@ namespace avs {
 
             // file not found on disk
             if (!fileutils::file_exists(dll_path)) {
-                log_warning("avs-game", "game DLL could not be found on disk: {}", dll_path.string().c_str());
+                log_warning("avs-game", "game DLL could not be found on disk: {}", dll_path);
                 log_warning("avs-game", "double check -exec and -modules parameters; unless you know what you're doing, leave them blank");
             }
 

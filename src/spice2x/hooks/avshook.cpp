@@ -291,7 +291,7 @@ static int avs_fs_mount(const char *mountpoint, const char *fsroot, const char *
         std::filesystem::create_directories(mapped_path, err);
 
         if (err) {
-            log_warning("hooks::avs", "failed to create '{}': {}", mapped_path.string(), err.message());
+            log_warning("hooks::avs", "failed to create '{}': {}", mapped_path, err.message());
         } else {
 
             // if this is the `e:\`, then create the special directories
@@ -305,7 +305,7 @@ static int avs_fs_mount(const char *mountpoint, const char *fsroot, const char *
 
             log_misc("hooks::avs", "source directory '{}' remapped to '{}'",
                     fsroot,
-                    mapped_path.string());
+                    mapped_path);
         }
 
         new_fs_root = mapped_path.string();

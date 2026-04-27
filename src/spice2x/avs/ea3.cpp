@@ -151,8 +151,8 @@ namespace avs {
                         "    * It's also possible that you have incomplete game data\n"
                         "    * Do NOT copy over random DLLs from another game installation; DLL must match game version\n"
                         "\n"
-                    , DLL_NAME, MODULE_PATH.string()) };
-                    
+                    , DLL_NAME, MODULE_PATH) };
+
                     log_warning("avs-ea3", "{}", info_str);
                     log_fatal("avs-ea3", "Failed to find critical ea3 DLL on disk (avs2-ea3.dll OR {})", DLL_NAME);
                 }

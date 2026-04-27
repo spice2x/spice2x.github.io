@@ -23,6 +23,7 @@
 #include "p3io/usbmem.h"
 
 #include "p4io/p4io.h"
+#include <cstring>
 
 using namespace acioemu;
 
@@ -53,9 +54,9 @@ namespace games::ddr {
         return SendMessage_real(hWnd, Msg, wParam, lParam);
     }
 
-    bool contains_only_ascii(const std::string& str) {
+    bool contains_only_ascii(const std::wstring& str) {
         for (auto c: str) {
-            if (static_cast<unsigned char>(c) > 127) {
+            if (c > 127) {
                 return false;
             }
         }
@@ -80,24 +81,24 @@ namespace games::ddr {
         }
 
         if (fileutils::dir_exists(dir)) {
-            log_info("ddr", "looking for codecs in this directory: {}", dir.string());
+            log_info("ddr", "looking for codecs in this directory: {}", dir);
         } else {
-            log_info("ddr", "codecs directory not found: {}", dir.string());
+            log_info("ddr", "codecs directory not found: {}", dir);
             return;
         }
 
         for (const auto &file : std::filesystem::directory_iterator(dir)) {
             const auto &filename = file.path().filename();
-            const auto extension = strtolower(filename.extension().string());
+            const auto extension = filename.extension().wstring();
 
-            if (extension != ".dll") {
+            if (wcsicmp(extension.c_str(), L".dll") != 0) {
                 continue;
             }
 
-            log_info("ddr", "found DLL: {}, size: {} bytes", filename.string(), file.file_size());
-            if (filename == "k-clvsd.dll" || filename.string().find("xactengine") == 0) {
+            log_info("ddr", "found DLL: {}, size: {} bytes", filename, file.file_size());
+            if (filename == "k-clvsd.dll" || filename.wstring().find(L"xactengine") == 0) {
                 const std::wstring wcmd = L"regsvr32.exe /s \"" + file.path().wstring() + L"\"";
-                const std::string cmd = "regsvr32.exe /s \"" + file.path().string() + "\"";
+                const std::string cmd = fmt::format("regsvr32.exe /s \"{}\"", file.path());
 
                 int result = 0;
                 std::thread t([wcmd, &result]() {
@@ -111,12 +112,12 @@ namespace games::ddr {
                     log_warning("ddr", "`{}` failed, returned {}", cmd, result);
                     deferredlogs::defer_error_messages({
                         "DDR codec registration failure",
-                        fmt::format("    {} failed to register with error {}", filename.string(), result)});
+                        fmt::format("    {} failed to register with error {}", filename, result)});
                 }
 
                 static std::once_flag printed;
                 std::call_once(printed, [file]() {
-                    if (!contains_only_ascii(file.path().string())) {
+                    if (!contains_only_ascii(file.path().wstring())) {
                         log_warning(
                             "ddr",
                             "BAD PATH ERROR\n\n"

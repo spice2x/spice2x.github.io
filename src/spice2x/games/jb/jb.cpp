@@ -167,7 +167,7 @@ namespace games::jb {
     void JBGame::pre_attach() {
         if (!cfg::CONFIGURATOR_STANDALONE) {
             const auto current_path = std::filesystem::current_path();
-            log_misc("jubeat", "current working directory: {}", current_path.string());
+            log_misc("jubeat", "current working directory: {}", current_path);
             if (current_path.parent_path() == current_path.root_path()) {
                 log_warning(
                     "jubeat",
@@ -178,7 +178,7 @@ namespace games::jb {
                     "    c:\\jubeat\\contents\\spice.exe  <- OK\n\n"
                     "To fix this, create a new directory and move ALL game files there.\n\n"
                     "Your current working directory: {}\n",
-                    current_path.string());
+                    current_path);
 
                 log_fatal(
                     "jubeat",

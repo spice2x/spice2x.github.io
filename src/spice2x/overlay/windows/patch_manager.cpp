@@ -95,6 +95,10 @@ namespace overlay::windows {
     }
 
     // utility
+    std::string displayPath(const std::filesystem::path &path) {
+        return fmt::format(FMT_STRING("{}"), path);
+    }
+
     std::string getFromUrl(const std::string& dll_name, const std::string& url) {
         log_info("patchmanager", "getting patches from URL: {}, for file: {}", url, dll_name);
         std::string result;
@@ -226,7 +230,7 @@ namespace overlay::windows {
 
         if (PATCH_MANAGER_CFG_PATH_OVERRIDE.has_value()) {
             this->config_path = PATCH_MANAGER_CFG_PATH_OVERRIDE.value();
-            log_info("patchmanager", "using custom config file path: {}", this->config_path.string().c_str());
+            log_info("patchmanager", "using custom config file path: {}", this->config_path);
         } else {
             this->config_path =
                 fileutils::get_config_file_path("patchmanager", "spicetools_patch_manager.json");
@@ -330,7 +334,7 @@ namespace overlay::windows {
             "Wrong path? Run spicecfg from the correct directory, or fix your modules parameter before launching spicecfg.\n"
             "Make sure you're not using a different one when launching the game.");
         ImGui::SameLine();
-        ImGui::Text("Modules Path: %s", MODULE_PATH.string().c_str());
+        ImGui::Text("Modules Path: %s", displayPath(MODULE_PATH).c_str());
 
         ImGui::AlignTextToFramePadding();
         ImGui::DummyMarker();
@@ -878,7 +882,7 @@ namespace overlay::windows {
     }
 
     void PatchManager::hard_apply_patches() {
-        std::vector<std::string> written_list;
+        std::vector<std::filesystem::path> written_list;
         for (auto& patch : patches) {
             switch (patch.type) {
             case PatchType::Memory:
@@ -1218,7 +1222,7 @@ namespace overlay::windows {
             log_info(
                 "patchmanager",
                 "file: {}, patch id: {}, build timestamp of dll: {:%Y-%m-%d %H:%M}",
-                dll_path.has_filename() ? dll_path.filename().string() : dll_path.string(),
+                dll_path.has_filename() ? dll_path.filename() : dll_path,
                 identifier,
                 time);
         }
@@ -1623,7 +1627,7 @@ namespace overlay::windows {
                 // save to file
                 std::filesystem::path save_path = LOCAL_PATCHES_PATH / (identifier + ".json");
                 fileutils::text_write(save_path, patches_json);
-                log_info("patchmanager", "remotely fetched JSON saved to: {}", save_path.string());
+                log_info("patchmanager", "remotely fetched JSON saved to: {}", save_path);
                 return true;
             } else {
                 log_warning("patchmanager", "failed to fetch patches JSON for {}", dll_name);
@@ -1675,19 +1679,19 @@ namespace overlay::windows {
         const size_t patches_size_previous = patches.size();
         for (const std::filesystem::path& patches_json_path: LOCAL_PATCHES_JSON_PATHS) {
             if (!fileutils::file_exists(patches_json_path)) {
-                log_misc("patchmanager", "file does not exist, skipping: {}", patches_json_path.string());
+                log_misc("patchmanager", "file does not exist, skipping: {}", patches_json_path);
                 continue;
             }
 
-            log_misc("patchmanager", "reading from patches.json: {}", patches_json_path.string());
+            log_misc("patchmanager", "reading from patches.json: {}", patches_json_path);
             std::string content = fileutils::text_read(patches_json_path);
             append_patches(content, apply_patches, filter);
 
             const auto new_patches = patches.size() - patches_size_previous;
-            log_info("patchmanager", "loaded {} patches from: {}", new_patches, patches_json_path.string());
+            log_info("patchmanager", "loaded {} patches from: {}", new_patches, patches_json_path);
             if (0 < new_patches) {
                 ret = true;
-                ACTIVE_JSON_FILE = patches_json_path.string();
+                ACTIVE_JSON_FILE = displayPath(patches_json_path);
                 break;
             }
         }
@@ -1723,21 +1727,21 @@ namespace overlay::windows {
 
         if (fileutils::file_exists(firstPath) || !extraDlls.empty()) {
             if (fileutils::file_exists(firstPath)) {
-                log_info("patchmanager", "loaded patches for {} from {}", firstDll, firstPath.string());
+                log_info("patchmanager", "loaded patches for {} from {}", firstDll, firstPath);
                 std::string content = fileutils::text_read(firstPath);
                 append_patches(content, apply_patches, nullptr, first_id);
-                ACTIVE_JSON_FILE = firstPath.string();
+                ACTIVE_JSON_FILE = displayPath(firstPath);
             }
             for (const std::string& dll : extraDlls) {
                 auto extraId = get_game_identifier(MODULE_PATH / dll);
                 auto extraPath = std::filesystem::path(fmt::format("patches/{}.json", extraId));
-                log_info("patchmanager", "loaded patches for {} from {}", dll, extraPath.string());
+                log_info("patchmanager", "loaded patches for {} from {}", dll, extraPath);
                 std::string content = fileutils::text_read(extraPath);
                 append_patches(content, apply_patches, nullptr, extraId);
                 if (ACTIVE_JSON_FILE.empty()) {
-                    ACTIVE_JSON_FILE = extraPath.string();
+                    ACTIVE_JSON_FILE = displayPath(extraPath);
                 } else {
-                    ACTIVE_JSON_FILE += ", " + extraPath.string();
+                    ACTIVE_JSON_FILE += ", " + displayPath(extraPath);
                 }
             }
         } else {
@@ -3024,22 +3028,23 @@ namespace overlay::windows {
     }
 
     void create_dll_backup(
-        std::vector<std::string>& written_list, const std::filesystem::path& dll_path) {
+        std::vector<std::filesystem::path>& written_list, const std::filesystem::path& dll_path) {
 
         // if dll_path is not in written_list, create a file backup.
-        if (std::find(written_list.begin(), written_list.end(), dll_path.string()) == written_list.end()) {
-            written_list.push_back(dll_path.string());
-            auto dll_bak_path = std::filesystem::path(dll_path.string() + ".bak");
+        if (std::find(written_list.begin(), written_list.end(), dll_path) == written_list.end()) {
+            written_list.push_back(dll_path);
+            auto dll_bak_path = dll_path;
+            dll_bak_path += ".bak";
             try {
                 if (!fileutils::file_exists(dll_bak_path)) {
                     std::filesystem::copy(dll_path, dll_bak_path);
                 }
-                log_info("patchmanager", "created DLL backup for: {}", dll_path.string());
+                log_info("patchmanager", "created DLL backup for: {}", dll_path);
             } catch (const std::filesystem::filesystem_error& e) {
                 log_warning(
                     "patchmanager",
                     "filesystem error while creating DLL backup for {}, error: {}",
-                    dll_path.string(), e.what());
+                    dll_path, e.what());
             }
         }
     }
@@ -3065,14 +3070,14 @@ namespace overlay::windows {
         /// check if file exists
         auto dll_path = MODULE_PATH / dll_name;
         if (!fileutils::file_exists(dll_path)) {
-            log_warning("patchmanager", "{} does not exist", dll_path.string());
+            log_warning("patchmanager", "{} does not exist", dll_path);
             return nullptr;
         }
 
         // get module
         auto module = libutils::try_module(dll_path);
         if (!module) {
-            log_warning("patchmanager", "cannot get module: {}", dll_path.string());
+            log_warning("patchmanager", "cannot get module: {}", dll_path);
             return nullptr;
         }
 
@@ -3081,7 +3086,7 @@ namespace overlay::windows {
         if (offset == -1) {
             log_warning(
                 "patchmanager", "cannot convert offset to RVA: {}, {}",
-                dll_path.string(), data_offset);
+                dll_path, data_offset);
             return nullptr;
         }
 
@@ -3095,7 +3100,7 @@ namespace overlay::windows {
 
             log_warning(
                 "patchmanager", "GetModuleInformation failed for {}, gle: {}",
-                dll_path.string(), GetLastError());
+                dll_path, GetLastError());
 
             return nullptr;
         }

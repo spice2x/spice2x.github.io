@@ -28,7 +28,7 @@ Config::Config() {
     this->status = false;
     if (CONFIG_PATH_OVERRIDE.length() > 0) {
         this->configLocation = CONFIG_PATH_OVERRIDE;
-        log_info("cfg", "using custom config file: {}", this->configLocation.string());
+        log_info("cfg", "using custom config file: {}", this->configLocation);
     } else {
         this->configLocation = std::filesystem::path(_wgetenv(L"APPDATA")) / L"spicetools.xml";
         // avoids logging the expanded appdata path as it contains user name
@@ -57,7 +57,7 @@ Config::Config() {
                 this->firstFillConfigFile();
                 break;
             case tinyxml2::XMLError::XML_ERROR_FILE_COULD_NOT_BE_OPENED:
-                log_fatal("cfg", "could not open config file: {}", this->configLocation.string());
+                log_fatal("cfg", "could not open config file: {}", this->configLocation);
                 break;
             case tinyxml2::XMLError::XML_ERROR_FILE_NOT_FOUND:
                 this->createConfigFile();
@@ -72,7 +72,7 @@ Config::Config() {
             case tinyxml2::XMLError::XML_ERROR_PARSING_UNKNOWN:
             case tinyxml2::XMLError::XML_ERROR_MISMATCHED_ELEMENT:
             case tinyxml2::XMLError::XML_ERROR_PARSING:
-                log_warning("cfg", "Couldn't read config file: {}", this->configLocation.string());
+                log_warning("cfg", "Couldn't read config file: {}", this->configLocation);
                 this->createConfigFile();
                 this->firstFillConfigFile();
                 break;
@@ -1327,7 +1327,7 @@ void Config::saveConfigFile() {
     // create a .tmp file and write to it...
     const auto xml_result = this->configFile.SaveFile(this->configLocationTemp.c_str(), false);
     if (xml_result != tinyxml2::XMLError::XML_SUCCESS) {
-        log_info("cfg", "failed to write file: {}", this->configLocationTemp.string());
+        log_info("cfg", "failed to write file: {}", this->configLocationTemp);
         return;
     }
     // copy the .tmp file to the main file...

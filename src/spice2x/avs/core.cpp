@@ -1168,7 +1168,7 @@ namespace avs {
             // Ongaku Paradise
             {"arkjc9.dll", 0xA00000},
 
-            // KAMUNITY 
+            // KAMUNITY
             {"kamunity.dll", 33554432},
         };
 
@@ -1516,7 +1516,7 @@ namespace avs {
                         "    * It's also possible that you have incomplete game data\n"
                         "    * Do NOT copy over random DLLs from another game installation; DLL must match game version\n"
                         "\n"
-                    , DLL_NAME, MODULE_PATH.string()) };
+                    , DLL_NAME, MODULE_PATH) };
                     log_warning("avs-ea3", "{}", info_str);
                     log_fatal("avs-ea3", "Failed to find critical avs DLL on disk (avs2-core.dll OR {})", DLL_NAME);
                 }
@@ -1757,9 +1757,9 @@ namespace avs {
         {
             deferredlogs::defer_error_messages({
                 "AVS filesystem initialization failure was previously detected during boot!",
-                fmt::format("    ERROR: directory could not be created: {}", src_path.string().c_str()),
-                fmt::format("    if you see a crash, it may have been caused by bad <mounttable> contents in {}", avs::core::CFG_PATH.c_str()),
-                "    fix the XML file and try again"  
+                fmt::format("    ERROR: directory could not be created: {}", src_path),
+                fmt::format("    if you see a crash, it may have been caused by bad <mounttable> contents in {}", avs::core::CFG_PATH),
+                "    fix the XML file and try again"
             });
         }
 
@@ -1780,14 +1780,14 @@ namespace avs {
             auto created = std::filesystem::create_directories(real_path, err);
 
             if (created) {
-                log_info("avs-core", "created '{}' at '{}'", avs_path, real_path.string());
+                log_info("avs-core", "created '{}' at '{}'", avs_path, real_path);
             }
 
             if (err) {
                 avs_dir_err(real_path);
                 log_warning("avs-core", "failed to create '{}' folder at '{}': {}",
                         avs_path,
-                        real_path.string(),
+                        real_path,
                         err.message());
             }
         }

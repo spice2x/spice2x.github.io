@@ -82,14 +82,14 @@ bool fileutils::verify_header_pe(const std::filesystem::path &file_path) {
                 if (!valid) {
                     log_fatal("fileutils",
                             "{} (32 bit) can't be loaded using spice64.exe - please use spice.exe for this game.",
-                            file_path.string());
+                            file_path);
                 }
 #else
                 valid = dll_file_header->Machine == IMAGE_FILE_MACHINE_I386;
                 if (!valid) {
                     log_fatal("fileutils",
                             "{} (64 bit) can't be loaded using spice.exe - please use spice64.exe for this game.",
-                            file_path.string());
+                            file_path);
                 }
 #endif
             }
@@ -156,9 +156,9 @@ bool fileutils::dir_create_log(const std::string_view &module, const std::filesy
     auto ret = std::filesystem::create_directory(dir_path, err);
 
     if (err) {
-        log_warning(module, "failed to create directory '{}': {}", dir_path.string(), err.message());
+        log_warning(module, "failed to create directory '{}': {}", dir_path, err.message());
     } else if (ret) {
-        log_misc(module, "created directory '{}'", dir_path.string());
+        log_misc(module, "created directory '{}'", dir_path);
     }
 
     return ret && !err;
@@ -178,37 +178,12 @@ bool fileutils::dir_create_recursive_log(const std::string_view &module, const s
     auto ret = std::filesystem::create_directories(dir_path, err);
 
     if (err) {
-        log_warning(module, "failed to create directory (recursive) '{}': {}", dir_path.string(), err.message());
+        log_warning(module, "failed to create directory (recursive) '{}': {}", dir_path, err.message());
     } else if (ret) {
-        log_misc(module, "created directory (recursive) '{}'", dir_path.string());
+        log_misc(module, "created directory (recursive) '{}'", dir_path);
     }
 
     return ret && !err;
-}
-
-void fileutils::dir_scan(const std::string &path, std::vector<std::string> &vec, bool recursive) {
-
-    // check directory
-    if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
-        if (recursive) {
-            for (const auto &entry : std::filesystem::recursive_directory_iterator(path)) {
-                if (!std::filesystem::is_directory(entry)) {
-                    auto path = entry.path().string();
-                    vec.emplace_back(std::move(path));
-                }
-            }
-        } else {
-            for (const auto &entry : std::filesystem::directory_iterator(path)) {
-                if (!std::filesystem::is_directory(entry)) {
-                    auto path = entry.path().string();
-                    vec.emplace_back(std::move(path));
-                }
-            }
-        }
-    }
-
-    // determinism
-    std::sort(vec.begin(), vec.end());
 }
 
 bool fileutils::text_write(const std::filesystem::path &file_path, std::string text) {
@@ -296,22 +271,24 @@ std::filesystem::path fileutils::get_config_file_path(const std::string module, 
 
 bool fileutils::write_config_file(const std::string_view &module, const std::filesystem::path path, std::string text) {
     // attempt to undo %appdata% expansion to hide user name
-    const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")).string();
-    auto censored = path.string();
+    const auto appdata = std::filesystem::path(_wgetenv(L"APPDATA")).wstring();
+    auto censored = path.wstring();
     const auto substr_offset = censored.find(appdata);
     if (substr_offset != std::string::npos) {
-        censored.replace(substr_offset, appdata.length(), "%appdata%");
+        censored.replace(substr_offset, appdata.length(), L"%appdata%");
     }
+
+    auto censored_display = fmt::detail::to_utf8<wchar_t>(censored, fmt::detail::to_utf8_error_policy::replace);
 
     // create directory path up to where the config file lives
     if (!path.parent_path().empty() && !std::filesystem::exists(path.parent_path())) {
-        log_misc(module, "creating directory path to config file: {}", censored);
+        log_misc(module, "creating directory path to config file: {}", censored_display);
         if (!fileutils::dir_create_recursive(path.parent_path())) {
             return false;
         }
     }
 
     // save file
-    log_info(module, "saving config file: {}", censored);
+    log_info(module, "saving config file: {}", censored_display);
     return fileutils::text_write(path, text);
 }

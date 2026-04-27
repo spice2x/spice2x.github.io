@@ -275,7 +275,7 @@ intptr_t replace_pattern(HMODULE module, const std::string &signature,
 bool get_pe_identifier(const std::filesystem::path& dll_path, uint32_t* time_date_stamp, uint32_t* address_of_entry_point) {
     std::ifstream file(dll_path, std::ios::binary);
     if (!file) {
-        log_warning("sigscan", "Failed to open file: {}", dll_path.string().c_str());
+        log_warning("sigscan", "Failed to open file: {}", dll_path);
         return false;
     }
 
@@ -283,7 +283,7 @@ bool get_pe_identifier(const std::filesystem::path& dll_path, uint32_t* time_dat
     IMAGE_DOS_HEADER dos_header;
     file.read(reinterpret_cast<char*>(&dos_header), sizeof(dos_header));
     if (dos_header.e_magic != IMAGE_DOS_SIGNATURE) {
-        log_warning("sigscan", "Invalid DOS signature: {}", dll_path.string().c_str());
+        log_warning("sigscan", "Invalid DOS signature: {}", dll_path);
         return false;
     }
 
@@ -294,7 +294,7 @@ bool get_pe_identifier(const std::filesystem::path& dll_path, uint32_t* time_dat
     IMAGE_NT_HEADERS nt_headers;
     file.read(reinterpret_cast<char*>(&nt_headers), sizeof(nt_headers));
     if (nt_headers.Signature != IMAGE_NT_SIGNATURE) {
-        log_warning("sigscan", "Invalid NT signature: {}", dll_path.string().c_str());
+        log_warning("sigscan", "Invalid NT signature: {}", dll_path);
         return false;
     }
 

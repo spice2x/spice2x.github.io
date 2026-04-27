@@ -733,13 +733,13 @@ void overlay::SpiceOverlay::add_font(const char* font, ImFontConfig* config, con
     full_path += font;
 
     if (fileutils::file_exists(full_path)) {
-        log_misc("overlay", "loading font: {}", full_path.string());
+        log_misc("overlay", "loading font: {}", full_path);
         ImGui::GetIO().Fonts->AddFontFromFileTTF(
             full_path.string().c_str(),
             13.0f,
             config,
             glyphs);
     } else {
-        log_misc("overlay", "font not found: {}", full_path.string());
+        log_misc("overlay", "font not found: {}", full_path);
     }
 }
