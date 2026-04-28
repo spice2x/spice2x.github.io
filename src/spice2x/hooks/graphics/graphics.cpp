@@ -232,7 +232,7 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
     switch (uMsg) {
         case WM_MOVE:
-        case WM_SIZE: {
+        case WM_SIZE:
             // Update SPICETOUCH space when the main window changes size or moves.
             // The update happens regardless of whether the "fake" spicetouch window is present or not.
             // This allows touches received on subscreen window to be translated correctly.
@@ -249,7 +249,16 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                     SPICETOUCH_TOUCH_WIDTH, SPICETOUCH_TOUCH_HEIGHT,
                     SWP_NOZORDER | SWP_NOREDRAW | SWP_NOREPOSITION | SWP_NOACTIVATE);
             }
-        }
+            break;
+        case WM_ACTIVATEAPP:
+            if (wParam) {
+                // regained focus
+                // this *can* get called twice in a row when restoring, but update_monitor_at_runtime
+                // is idempotent (checks current display settings to see if changes are needed),
+                // so it shouldn't cause any issues
+                update_monitor_at_runtime();
+            }
+            break;
         default:
             break;
     }
@@ -1261,7 +1270,7 @@ void change_primary_monitor(const std::string &monitor_name) {
     Sleep(2000);
 }
 
-void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
+void update_monitor(bool is_boot, std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
     // note: all of this is only being done for the primary motnior
 
     // get current settings
@@ -1330,7 +1339,7 @@ void update_monitor_on_boot(std::optional<graphics_orientation> target_orientati
     }
 
     // update refresh rate
-    if (target_refresh_rate > 0) {
+    if (target_refresh_rate > 0 && target_refresh_rate != dm.dmDisplayFrequency) {
         log_misc("graphics",
             "current refresh rate {} => desired refresh rate {}",
             dm.dmDisplayFrequency, target_refresh_rate);
@@ -1342,25 +1351,50 @@ void update_monitor_on_boot(std::optional<graphics_orientation> target_orientati
 
     if (!needs_update) {
         // nothing to do
+        log_misc("graphics", "display settings are already up to date, no changes needed");
         return;
     }
 
     const auto result = ChangeDisplaySettings(&dm, CDS_FULLSCREEN);
     if (result != DISP_CHANGE_SUCCESSFUL) {
-        log_fatal(
-            "graphics",
-            "failed to update display settings ({}px x {}px @ {}Hz): error {}, double check options",
-            dm.dmPelsWidth,
-            dm.dmPelsHeight,
-            dm.dmDisplayFrequency,
-            result);
+        if (is_boot) {
+            log_fatal(
+                "graphics",
+                "failed to update display settings ({}px x {}px @ {}Hz): error {}, double check options",
+                dm.dmPelsWidth,
+                dm.dmPelsHeight,
+                dm.dmDisplayFrequency,
+                result);
+        } else {
+            log_warning(
+                "graphics",
+                "failed to update display settings ({}px x {}px @ {}Hz): error {}, double check options",
+                dm.dmPelsWidth,
+                dm.dmPelsHeight,
+                dm.dmDisplayFrequency,
+                result);
+        }
     } else {
+        // sleep for a little bit after changing monitor settings to delay game launch/resume
+        Sleep(1000);
         log_info("graphics", "display settings updated successfully ({}px x {}px @ {}Hz)",
             dm.dmPelsWidth,
             dm.dmPelsHeight,
             dm.dmDisplayFrequency);
     }
+}
 
-    // sleep for a little bit after changing monitor settings to delay game launch
-    Sleep(1000);
+static std::optional<graphics_orientation> target_orientation_on_boot;
+static UINT target_refresh_rate_on_boot = 0;
+
+void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
+    target_orientation_on_boot = target_orientation;
+    target_refresh_rate_on_boot = target_refresh_rate;
+    log_misc("graphics", "applying monitor updates at boot...");
+    update_monitor(true, target_orientation, target_refresh_rate);
+}
+
+void update_monitor_at_runtime() {
+    log_misc("graphics", "applying monitor updates at runtime as window regained focus...");
+    update_monitor(false, target_orientation_on_boot, target_refresh_rate_on_boot);   
 }
