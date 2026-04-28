@@ -61,7 +61,7 @@ static std::condition_variable GRAPHICS_CAPTURE_CV[GRAPHICS_CAPTURE_SCREEN_NO] {
 
 static std::optional<graphics_orientation> target_orientation_on_boot;
 static UINT target_refresh_rate_on_boot = 0;
-static bool monitor_setting_needs_reset = false;
+static bool monitor_settings_changed = false;
 static bool monitor_layout_needs_reset = false;
 
 // flag settings
@@ -1383,6 +1383,7 @@ void update_monitor(bool is_boot, std::optional<graphics_orientation> target_ori
                 result);
         }
     } else {
+        monitor_settings_changed = true;
         // sleep for a little bit after changing monitor settings to delay game launch/resume
         Sleep(1000);
         log_info("graphics", "display settings updated successfully ({}px x {}px @ {}Hz)",
@@ -1395,14 +1396,15 @@ void update_monitor(bool is_boot, std::optional<graphics_orientation> target_ori
 void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
     target_orientation_on_boot = target_orientation;
     target_refresh_rate_on_boot = target_refresh_rate;
-    monitor_setting_needs_reset = true;
     log_misc("graphics", "applying monitor updates at boot...");
     update_monitor(true, target_orientation, target_refresh_rate);
 }
 
 void update_monitor_at_runtime() {
-    log_misc("graphics", "applying monitor updates at runtime as window regained focus...");
-    update_monitor(false, target_orientation_on_boot, target_refresh_rate_on_boot);   
+    if (monitor_settings_changed) {
+        log_misc("graphics", "applying monitor updates at runtime as window regained focus...");
+        update_monitor(false, target_orientation_on_boot, target_refresh_rate_on_boot);   
+    }
 }
 
 void reset_monitor_on_exit() {
@@ -1410,8 +1412,8 @@ void reset_monitor_on_exit() {
     // while CDS_FULLSCREEN is *supposed* to be temporary & the OS attempts to
     // restore the original settings on exit, it can sometimes fail to do that;
     // therefore, we try our best to clean things up on the way out
-    if (monitor_setting_needs_reset) {
-        monitor_setting_needs_reset = false;
+    if (monitor_settings_changed) {
+        monitor_settings_changed = false;
         log_misc("graphics", "resetting monitor settings on exit...");
         ChangeDisplaySettingsW(nullptr, 0);
     }
