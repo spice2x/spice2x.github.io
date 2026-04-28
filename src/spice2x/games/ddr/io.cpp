@@ -39,14 +39,13 @@ std::vector<Button> &games::ddr::get_buttons() {
 std::string games::ddr::get_buttons_help() {
     // keep to max 100 characters wide
     return
-        "For DDR pad arrows, double check that simultaneous Left+Right and Up+Down are detected.\n"
+        "For DDR pad arrows, double check that simultaneous Left+Right and Up+Down can be detected.\n"
         "You should boot the game, enter test menu, and use Foot Panel Check.\n\n"
-        "  - If your controller uses face buttons (A/B/X/Y), bind buttons below.\n"
-        "    (this is should just work)\n\n"
-        "  - If your controller uses analog axis for arrows, bind axes in Analogs tab\n"
-        "    (this only works for some pads and adapters)\n\n"
-        "  - If your controller only uses D-pad, try XInput, which only works for some;\n"
-        "    otherwise, you will need to use remapping software or get an adapter."
+        "When mapping arrows, try the following in order:\n\n"
+        "  1. If your controller uses face buttons (A/B/X/Y), bind them here.\n"
+        "  2. If your controller supports XInput, use that.\n"
+        "  3. If your controller uses analog axis for arrows, try Analogs tab.\n"
+        "  4. Otherwise, you will need to use remapping software or get a better adapter."
         ;
 }
 

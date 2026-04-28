@@ -2192,9 +2192,9 @@ namespace overlay::windows {
         ImGui::Separator();
         if (ImGui::BeginTable("AnalogsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
 
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(220));
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(240));
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
-            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(100));
+            ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(80));
 
             // check if empty
             if (!analogs || analogs->empty()) {
