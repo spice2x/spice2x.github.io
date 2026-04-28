@@ -14,8 +14,6 @@ namespace xinput {
 #define XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
 #define XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
 
-#define XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD 0.2f
-
 #define XINPUT_GAMEPAD_DPAD_UP          0x0001
 #define XINPUT_GAMEPAD_DPAD_DOWN        0x0002
 #define XINPUT_GAMEPAD_DPAD_LEFT        0x0004
@@ -30,6 +28,10 @@ namespace xinput {
 #define XINPUT_GAMEPAD_B                0x2000
 #define XINPUT_GAMEPAD_X                0x4000
 #define XINPUT_GAMEPAD_Y                0x8000
+
+// custom
+
+static constexpr float GAMEPAD_THUMB_DIGITAL_THRESHOLD = 0.2f;
 
 typedef struct {
     uint32_t dwPacketNumber;
@@ -345,21 +347,21 @@ XInputSetState(
             case XInputButtonEnum::RIGHT_TRIGGER:
                 return state->bRightTrigger >= XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
             case XInputButtonEnum::LEFT_STICK_UP:
-            return state->sThumbLY < (0.5f - XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+            return state->sThumbLY < (0.5f - GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_DOWN:
-            return state->sThumbLY > (0.5f + XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+            return state->sThumbLY > (0.5f + GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_LEFT:
-                return state->sThumbLX < (0.5f - XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+                return state->sThumbLX < (0.5f - GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_RIGHT:
-                return state->sThumbLX > (0.5f + XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+                return state->sThumbLX > (0.5f + GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::RIGHT_STICK_UP:
-                return state->sThumbRY < (0.5f - XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+                return state->sThumbRY < (0.5f - GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::RIGHT_STICK_DOWN:
-                return state->sThumbRY > (0.5f + XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+                return state->sThumbRY > (0.5f + GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::RIGHT_STICK_LEFT:
-                return state->sThumbRX < (0.5f - XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+                return state->sThumbRX < (0.5f - GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::RIGHT_STICK_RIGHT:
-                return state->sThumbRX > (0.5f + XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+                return state->sThumbRX > (0.5f + GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             default:
                 break;
         }
