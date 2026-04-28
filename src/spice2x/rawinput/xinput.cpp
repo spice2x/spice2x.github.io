@@ -1,6 +1,11 @@
 #include "rawinput/xinput.h"
 #include "util/logging.h"
 
+// std::min
+#ifdef min
+#undef min
+#endif
+
 namespace xinput {
 
 // this is all we need to emulate xinput.h which we avoid including here...
@@ -8,6 +13,8 @@ namespace xinput {
 #define XINPUT_GAMEPAD_TRIGGER_THRESHOLD (30 / 255.0f)
 #define XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE  7849
 #define XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 8689
+
+#define XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD 0.2f
 
 #define XINPUT_GAMEPAD_DPAD_UP          0x0001
 #define XINPUT_GAMEPAD_DPAD_DOWN        0x0002
@@ -223,6 +230,40 @@ XInputSetState(
         return players;
     }
 
+    static void normalize_stick(
+        SHORT raw_x,
+        SHORT raw_y,
+        float deadzone,
+        float &out_x,
+        float &out_y) {
+
+        const int x_i = static_cast<int>(raw_x);
+        const int y_i = -static_cast<int>(raw_y);
+
+        const float x_f = static_cast<float>(x_i);
+        const float y_f = static_cast<float>(y_i);
+        const float magnitude = std::sqrt(x_f * x_f + y_f * y_f);
+
+        // within deadzone; ignore
+        if (magnitude <= deadzone) {
+            out_x = 0.5f;
+            out_y = 0.5f;
+            return;
+        }
+
+        // scale value starting with 0 from deadzone border
+        const float magnitude_clamped = std::min(magnitude, 32767.0f);
+        const float scaled = (magnitude_clamped - deadzone) / (32767.0f - deadzone);
+
+        // normalize
+        const float normalized_x = (x_f / magnitude) * scaled;
+        const float normalized_y = (y_f / magnitude) * scaled;
+
+        // convert range to [0, 1] with 0.5 as center
+        out_x = std::clamp((normalized_x + 1.f) / 2.f, 0.f, 1.f);
+        out_y = std::clamp((normalized_y + 1.f) / 2.f, 0.f, 1.f);
+    }
+
     void XInputManager::get_state(uint8_t player, XINPUT_GAMEPAD_STATE_NORMALIZED &state) {
         state = {};
         state.sThumbLX = 0.5f;
@@ -233,7 +274,7 @@ XInputSetState(
             return;
         }
         
-        XINPUT_STATE x;
+        XINPUT_STATE x = {};
         if (XInputGetState_addr(player, &x) != ERROR_SUCCESS) {
             return;
         }
@@ -242,51 +283,21 @@ XInputSetState(
         state.bLeftTrigger = x.Gamepad.bLeftTrigger / 255.0f;
         state.bRightTrigger = x.Gamepad.bRightTrigger / 255.0f;
 
-        // left stick circular dead zone
-        {
-            const auto x_raw = x.Gamepad.sThumbLX;
-            const auto y_raw = -x.Gamepad.sThumbLY; // flip to make [down = positive]
-            const float magnitude = sqrtf(x_raw * x_raw + y_raw * y_raw);
-            if (magnitude > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
-                const float scaled =
-                    (magnitude - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) /
-                    (32767.0f - XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+        // apply circular deadzone logic to left stick
+        normalize_stick(
+            x.Gamepad.sThumbLX,
+            x.Gamepad.sThumbLY,
+            static_cast<float>(XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE),
+            state.sThumbLX,
+            state.sThumbLY);
 
-                state.sThumbLX = (x_raw / magnitude) * scaled;
-                state.sThumbLY = (y_raw / magnitude) * scaled;
-
-                // normalize to [0, 1]
-                state.sThumbLX = std::clamp((state.sThumbLX + 1.f) / 2.f, 0.f, 1.f);
-                state.sThumbLY = std::clamp((state.sThumbLY + 1.f) / 2.f, 0.f, 1.f);
-            } else {
-                // within deadzone
-                state.sThumbLX = 0.5f;
-                state.sThumbLY = 0.5f;
-            }
-        }
-
-        // right stick circular dead zone
-        {
-            const auto x_raw = x.Gamepad.sThumbRX;
-            const auto y_raw = -x.Gamepad.sThumbRY; // flip to make [down = positive]
-            const float magnitude = sqrtf(x_raw * x_raw + y_raw * y_raw);
-            if (magnitude > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE) {
-                const float scaled =
-                    (magnitude - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE) /
-                    (32767.0f - XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
-
-                state.sThumbRX = (x_raw / magnitude) * scaled;
-                state.sThumbRY = (y_raw / magnitude) * scaled;
-
-                // normalize to [0, 1]
-                state.sThumbRX = std::clamp((state.sThumbRX + 1.f) / 2.f, 0.f, 1.f);
-                state.sThumbRY = std::clamp((state.sThumbRY + 1.f) / 2.f, 0.f, 1.f);
-            } else {
-                // within deadzone
-                state.sThumbRX = 0.5f;
-                state.sThumbRY = 0.5f;
-            }
-        }
+        // apply circular deadzone logic to right stick
+        normalize_stick(
+            x.Gamepad.sThumbRX,
+            x.Gamepad.sThumbRY,
+            static_cast<float>(XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE),
+            state.sThumbRX,
+            state.sThumbRY);
     }
 
     bool XInputManager::is_button_pressed(uint8_t player, XInputButtonEnum button, XINPUT_GAMEPAD_STATE_NORMALIZED *state_in) {
@@ -334,21 +345,21 @@ XInputSetState(
             case XInputButtonEnum::RIGHT_TRIGGER:
                 return state->bRightTrigger >= XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
             case XInputButtonEnum::LEFT_STICK_UP:
-                return state->sThumbLY > 0.6f;
+            return state->sThumbLY < (0.5f - XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_DOWN:
-                return state->sThumbLY < 0.4f;
+            return state->sThumbLY > (0.5f + XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_LEFT:
-                return state->sThumbLX < 0.4f;
+                return state->sThumbLX < (0.5f - XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_RIGHT:
-                return state->sThumbLX > 0.6f;
+                return state->sThumbLX > (0.5f + XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::RIGHT_STICK_UP:
-                return state->sThumbRY > 0.6f;
+                return state->sThumbRY < (0.5f - XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::RIGHT_STICK_DOWN:
-                return state->sThumbRY < 0.4f;
+                return state->sThumbRY > (0.5f + XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::RIGHT_STICK_LEFT:
-                return state->sThumbRX < 0.4f;
+                return state->sThumbRX < (0.5f - XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::RIGHT_STICK_RIGHT:
-                return state->sThumbRX > 0.6f;
+                return state->sThumbRX > (0.5f + XINPUT_GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             default:
                 break;
         }
