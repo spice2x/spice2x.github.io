@@ -347,9 +347,9 @@ XInputSetState(
             case XInputButtonEnum::RIGHT_TRIGGER:
                 return state->bRightTrigger >= XINPUT_GAMEPAD_TRIGGER_THRESHOLD;
             case XInputButtonEnum::LEFT_STICK_UP:
-            return state->sThumbLY < (0.5f - GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+                return state->sThumbLY < (0.5f - GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_DOWN:
-            return state->sThumbLY > (0.5f + GAMEPAD_THUMB_DIGITAL_THRESHOLD);
+                return state->sThumbLY > (0.5f + GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_LEFT:
                 return state->sThumbLX < (0.5f - GAMEPAD_THUMB_DIGITAL_THRESHOLD);
             case XInputButtonEnum::LEFT_STICK_RIGHT:
