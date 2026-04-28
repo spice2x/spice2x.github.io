@@ -119,3 +119,4 @@ void graphics_window_check_bounds_before_creation(int &x, int &y, const int widt
 void change_primary_monitor(const std::string &monitor_name);
 void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate);
 void update_monitor_at_runtime();
+void reset_monitor_on_exit();

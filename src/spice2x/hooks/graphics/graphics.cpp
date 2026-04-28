@@ -59,6 +59,11 @@ static CaptureData GRAPHICS_CAPTURE_BUFFER[GRAPHICS_CAPTURE_SCREEN_NO] {};
 static std::mutex GRAPHICS_CAPTURE_BUFFER_M[GRAPHICS_CAPTURE_SCREEN_NO] {};
 static std::condition_variable GRAPHICS_CAPTURE_CV[GRAPHICS_CAPTURE_SCREEN_NO] {};
 
+static std::optional<graphics_orientation> target_orientation_on_boot;
+static UINT target_refresh_rate_on_boot = 0;
+static bool monitor_setting_needs_reset = false;
+static bool monitor_layout_needs_reset = false;
+
 // flag settings
 bool GRAPHICS_CAPTURE_CURSOR = false;
 bool GRAPHICS_LOG_HRESULT = false;
@@ -104,6 +109,7 @@ static decltype(SetWindowLongA) *SetWindowLongA_orig = nullptr;
 static decltype(SetWindowLongW) *SetWindowLongW_orig = nullptr;
 static decltype(SetWindowPos) *SetWindowPos_orig = nullptr;
 static decltype(ShowWindow) *ShowWindow_orig = nullptr;
+static decltype(SetDisplayConfig) *SetDisplayConfig_addr = nullptr;
 
 static void reset_window_hook(HWND hWnd) {
     overlay::destroy(hWnd);
@@ -1151,7 +1157,7 @@ void change_primary_monitor(const std::string &monitor_name) {
     const auto DisplayConfigGetDeviceInfo_addr =
         reinterpret_cast<decltype(DisplayConfigGetDeviceInfo) *>(
             GetProcAddress(user32, "DisplayConfigGetDeviceInfo"));
-    const auto SetDisplayConfig_addr =
+    SetDisplayConfig_addr =
         reinterpret_cast<decltype(SetDisplayConfig) *>(
             GetProcAddress(user32, "SetDisplayConfig"));
     if (GetDisplayConfigBufferSizes_addr == nullptr || QueryDisplayConfig_addr == nullptr ||
@@ -1265,6 +1271,8 @@ void change_primary_monitor(const std::string &monitor_name) {
     if (status != ERROR_SUCCESS) {
         log_fatal("graphics", "SetDisplayConfig failed, check -mainmonitor option: {}", status);
     }
+
+    monitor_layout_needs_reset = true;
 
     // a little extra time for windows to settle and redraw things
     Sleep(2000);
@@ -1384,12 +1392,10 @@ void update_monitor(bool is_boot, std::optional<graphics_orientation> target_ori
     }
 }
 
-static std::optional<graphics_orientation> target_orientation_on_boot;
-static UINT target_refresh_rate_on_boot = 0;
-
 void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
     target_orientation_on_boot = target_orientation;
     target_refresh_rate_on_boot = target_refresh_rate;
+    monitor_setting_needs_reset = true;
     log_misc("graphics", "applying monitor updates at boot...");
     update_monitor(true, target_orientation, target_refresh_rate);
 }
@@ -1397,4 +1403,30 @@ void update_monitor_on_boot(std::optional<graphics_orientation> target_orientati
 void update_monitor_at_runtime() {
     log_misc("graphics", "applying monitor updates at runtime as window regained focus...");
     update_monitor(false, target_orientation_on_boot, target_refresh_rate_on_boot);   
+}
+
+void reset_monitor_on_exit() {
+
+    // while CDS_FULLSCREEN is *supposed* to be temporary & the OS attempts to
+    // restore the original settings on exit, it can sometimes fail to do that;
+    // therefore, we try our best to clean things up on the way out
+    if (monitor_setting_needs_reset) {
+        monitor_setting_needs_reset = false;
+        log_misc("graphics", "resetting monitor settings on exit...");
+        ChangeDisplaySettingsW(nullptr, 0);
+    }
+
+    // same for this one.
+    if (monitor_layout_needs_reset) {
+        monitor_layout_needs_reset = false;
+        log_misc("graphics", "restoring primary monitor on exit...");
+        if (SetDisplayConfig_addr != nullptr) {
+            SetDisplayConfig_addr(
+                0,
+                nullptr,
+                0,
+                nullptr,
+                SDC_APPLY | SDC_USE_DATABASE_CURRENT);
+        }
+    }
 }
