@@ -85,14 +85,15 @@ namespace GameAPI {
                 const std::vector<Analog> &analogs,
                 const std::vector<std::string> &analog_names);
 
-        template<typename T>
-        void sortAnalogs(std::vector<Analog> *analogs, T t) {
-            const std::vector<std::string> analog_names { t };
+        struct AnalogWithType {
+            const std::string name;
+            const AnalogType type;
 
-            if (analogs) {
-                *analogs = GameAPI::Analogs::sortAnalogs(*analogs, analog_names);
-            }
-        }
+            AnalogWithType(std::string name, AnalogType type) :
+                name(std::move(name)), type(type) {}
+        };
+
+        void sortAnalogsWithType(std::vector<Analog> *analogs, const std::initializer_list<AnalogWithType> list);
 
         template<typename T, typename... Rest>
         void sortAnalogs(std::vector<Analog> *analogs, T t, Rest... rest) {

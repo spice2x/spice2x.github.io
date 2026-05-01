@@ -13,6 +13,13 @@ namespace rawinput {
     class RawInputManager;
 }
 
+namespace GameAPI::Analogs {
+    enum class AnalogType {
+        Circular = 0, // default
+        Linear
+    };
+}
+
 struct AnalogMovingAverage {
     double time_in_ms;
     float sine;
@@ -20,6 +27,7 @@ struct AnalogMovingAverage {
 };
 
 class Analog {
+
 private:
     std::string name;
     std::string device_identifier = "";
@@ -31,10 +39,11 @@ private:
     float last_state = 0.5f;
     bool sensitivity_set = false;
     bool deadzone_set = false;
+    GameAPI::Analogs::AnalogType type = GameAPI::Analogs::AnalogType::Circular;
     
     // smoothing function
     bool smoothing = false;
-    std::array<AnalogMovingAverage, ANALOG_HISTORY_CNT> vector_history;
+    std::array<AnalogMovingAverage, ANALOG_HISTORY_CNT> vector_history = {};
     int vector_history_index = 0;
     float smoothed_last_state = 0.f;
 
@@ -66,7 +75,8 @@ public:
     float override_state = 0.5f;
 
     explicit Analog(std::string name) : name(std::move(name)) {
-        vector_history.fill({0.0, 0.f, 0.f});
+    };
+    explicit Analog(std::string name, GameAPI::Analogs::AnalogType type) : name(std::move(name)), type(type) {
     };
 
     std::string getDisplayString(rawinput::RawInputManager* manager);
@@ -213,5 +223,13 @@ public:
 
     inline std::queue<float> &getDelayBuffer() {
         return this->delay_buffer;
+    }
+
+    inline GameAPI::Analogs::AnalogType getType() const {
+        return this->type;
+    }
+
+    inline void setType(GameAPI::Analogs::AnalogType type) {
+        this->type = type;
     }
 };

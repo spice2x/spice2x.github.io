@@ -2600,10 +2600,12 @@ namespace overlay::windows {
             ImGui::ProgressBar(value);
 
             // centered knob preview
-            const float knob_size = 64.f;
-            auto width = ImGui::GetContentRegionAvail().x - knob_size;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (width / 2));
-            ImGui::Knob(value, knob_size);
+            if (analog.getType() == GameAPI::Analogs::AnalogType::Circular) {
+                const float knob_size = 64.f;
+                auto width = ImGui::GetContentRegionAvail().x - knob_size;
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (width / 2));
+                ImGui::Knob(value, knob_size);
+            }
 
             // update analog
             if (analogs_devices_selected >= 0 && analogs_devices_selected < (int) analogs_devices.size()) {

@@ -839,6 +839,42 @@ std::vector<Analog> GameAPI::Analogs::sortAnalogs(
     return sorted;
 }
 
+static std::vector<Analog> sortAnalogsWithTypeInternal(
+    std::vector<Analog> &analogs,
+    const std::initializer_list<GameAPI::Analogs::AnalogWithType> list) {
+
+    std::vector<Analog> sorted;
+
+    bool analog_found;
+    for (auto &a : list) {
+        analog_found = false;
+
+        for (auto &analog : analogs) {
+            if (a.name == analog.getName()) {
+                analog_found = true;
+                analog.setType(a.type);
+                sorted.push_back(analog);
+                break;
+            }
+        }
+
+        if (!analog_found) {
+            sorted.emplace_back(a.name, a.type);
+        }
+    }
+
+    return sorted;
+}
+
+void GameAPI::Analogs::sortAnalogsWithType(
+    std::vector<Analog> *analogs,
+    const std::initializer_list<AnalogWithType> list) {
+
+    if (analogs) {
+        *analogs = sortAnalogsWithTypeInternal(*analogs, list);
+    }
+}
+
 float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, Analog &analog) {
 
     // check override
@@ -935,7 +971,6 @@ void GameAPI::Lights::sortLightsWithCategory(
         *lights = sortLightsWithCategoryInternal(*lights, list);
     }
 }
-
 
 void GameAPI::Lights::writeLight(rawinput::RawInputManager *manager, rawinput::Device *device, int index, float value) {
 

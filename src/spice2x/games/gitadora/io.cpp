@@ -89,16 +89,16 @@ std::vector<Analog> &games::gitadora::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("GitaDora");
 
-        GameAPI::Analogs::sortAnalogs(&analogs,
-                "Guitar P1 Wail X",
-                "Guitar P1 Wail Y",
-                "Guitar P1 Wail Z",
-                "Guitar P1 Knob",
-                "Guitar P2 Wail X",
-                "Guitar P2 Wail Y",
-                "Guitar P2 Wail Z",
-                "Guitar P2 Knob"
-        );
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            {"Guitar P1 Wail X", GameAPI::Analogs::AnalogType::Linear},
+            {"Guitar P1 Wail Y", GameAPI::Analogs::AnalogType::Linear},
+            {"Guitar P1 Wail Z", GameAPI::Analogs::AnalogType::Linear},
+            {"Guitar P1 Knob", GameAPI::Analogs::AnalogType::Circular},
+            {"Guitar P2 Wail X", GameAPI::Analogs::AnalogType::Linear},
+            {"Guitar P2 Wail Y", GameAPI::Analogs::AnalogType::Linear},
+            {"Guitar P2 Wail Z", GameAPI::Analogs::AnalogType::Linear},
+            {"Guitar P2 Knob", GameAPI::Analogs::AnalogType::Circular}
+        });
     }
 
     return analogs;
