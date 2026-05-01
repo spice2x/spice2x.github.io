@@ -2456,9 +2456,7 @@ namespace overlay::windows {
                         "Use your knob/slider/pedal and try again.");
                 }
 
-                if (device->type == rawinput::HID && 
-                    analog.getType() == GameAPI::Analogs::AnalogType::Circular) {
-                    
+                if (device->type == rawinput::HID) {
                     auto multiplier = analog.getMultiplier();
                     int multiplier_index = 7; // 1:1
                     if (multiplier < -1) {
@@ -2508,10 +2506,16 @@ namespace overlay::windows {
                     const bool value_changed =
                         ImGui::SliderFloat("Sensitivity", &sensitivity, 0.f, 2.f, "%.3f");
                     ImGui::SameLine();
-                    ImGui::HelpMarker(
-                        "Adjust floating point multiplier to relative movement.\n\n"
-                        "Value is squared before being multiplied (e.g., 1.44 is 2x sensitivity, 2.00 is 4x).\n\n"
-                        "Dependent on how often the game polls for input. Intended for angular input (knobs, turntables)");
+                    if (device->type == rawinput::HID && analog.getType() != GameAPI::Analogs::AnalogType::Circular) {
+                        ImGui::HelpMarker(
+                            "Adjust the analog sensitivity curve; "
+                            "values <1.0 are less sensitive around neutral, "
+                            "values >1.0 are more sensitive.");
+                    } else {
+                        ImGui::HelpMarker(
+                            "Adjust floating point multiplier to relative movement.\n\n"
+                            "Value is squared before being multiplied (e.g., 1.44 is 2x sensitivity, 2.00 is 4x).");
+                    }
                     if (value_changed) {
                         analog.setSensitivity(sensitivity * sensitivity);
                     }

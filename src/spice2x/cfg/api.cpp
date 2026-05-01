@@ -753,11 +753,49 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
                 } else {
                     // sensitivity
                     if (analog.isSensitivitySet()) {
-                        if (analog.getType() == AnalogType::LinearPositive) {
-                            value = value * analog.getSensitivity();
-                        } else {
-                            value = (value - 0.5f) * (analog.getSensitivity()) + 0.5f;
+                        // adjust curve
+                        // values < 1.f : less sensitive around neutral
+                        // values > 1.f : more sensitive around neutral
+                        float curve = analog.getSensitivity();
+                        if (curve <= 0.f) {
+                            curve = 0.01f;
                         }
+                        curve = 1.f / curve;
+
+                        if (analog.getType() == AnalogType::LinearPositive) {
+                            value = powf(value, curve);
+
+                        } else {
+                            // convert 0.0..1.0 to -1.0..+1.0
+                            float signed_raw = (value - 0.5f) * 2.0f;
+                            // apply curve
+                            float sign = signed_raw < 0.0f ? -1.0f : 1.0f;
+                            float magnitude = fabsf(signed_raw);
+                            float curved = sign * powf(magnitude, curve);
+                            // convert back to 0.0..1.0
+                            value = curved * 0.5f + 0.5f;
+                        }
+
+                        value = std::clamp(value, 0.f, 1.f);
+                    }
+
+                    // multiplier / divisor
+                    if (analog.getMultiplier() < -1) {
+                        if (analog.getType() == AnalogType::LinearCentered) {
+                            value = (value - 0.5f) / (-analog.getMultiplier()) + 0.5f;
+                        } else {
+                            value /= -analog.getMultiplier();
+                        }
+
+                        value = std::clamp(value, 0.f, 1.f);
+
+                    } else if (analog.getMultiplier() > 1) {
+                        if (analog.getType() == AnalogType::LinearCentered) {
+                            value = (value - 0.5f) * analog.getMultiplier() + 0.5f;
+                        } else {
+                            value *= analog.getMultiplier();
+                        }
+
                         value = std::clamp(value, 0.f, 1.f);
                     }
                 }
