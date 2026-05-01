@@ -2522,21 +2522,26 @@ namespace overlay::windows {
                 }
                 if (device->type == rawinput::HID || device->type == rawinput::MIDI) {
                     auto deadzone = analog.getDeadzone();
+
+                    // for back compat (before each analog had a type)
+                    if (deadzone < 0.f) {
+                        deadzone = -deadzone;
+                        analog.setDeadzone(deadzone);
+                    }
+                   
                     const bool value_changed =
-                        ImGui::SliderFloat("Deadzone", &deadzone, -0.999f, 0.999f, "%.3f");
+                        ImGui::SliderFloat("Deadzone", &deadzone, 0.f, 0.999f, "%.3f");
                     if (value_changed) {
                         analog.setDeadzone(deadzone);
                     }
                     ImGui::SameLine();
-                    ImGui::HelpMarker("Positive values specify a deadzone around the middle.\n"
-                                    "Negative values specify a deadzone from the minimum value.");
+                    ImGui::HelpMarker("Specify the deadzone that gets applied to at-rest (neutral) value.");
 
                     // deadzone mirror
                     bool deadzone_mirror = analog.getDeadzoneMirror();
                     ImGui::Checkbox("Deadzone Mirror", &deadzone_mirror);
                     ImGui::SameLine();
-                    ImGui::HelpMarker("Positive deadzone values cut off at edges instead.\n"
-                                    "Negative deadzone values cut off at maximum value instead.");
+                    ImGui::HelpMarker("Apply deeadzone to extreme value(s) instead of neutral.");
                     if (deadzone_mirror != analog.getDeadzoneMirror()) {
                         analog.setDeadzoneMirror(deadzone_mirror);
                     }

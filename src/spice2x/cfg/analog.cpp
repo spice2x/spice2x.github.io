@@ -227,8 +227,17 @@ float Analog::normalizeAnalogValue(float value) {
 
 float Analog::applyDeadzone(float raw_value) {
     float value = raw_value;
-    const auto deadzone = this->getDeadzone();
-    if (deadzone > 0) {
+    auto deadzone = this->getDeadzone();
+
+    // in the past, positive deadzone applied in the center, negative deadzone applied to 0
+    // after each analog value received a type (circular/linear) this has been simpliifed to
+    // positive values only since we can figure out where the rest value is
+    // for back compat, treat negative value as positive
+    if (deadzone < 0.f) {
+        deadzone = -deadzone;
+    }
+
+    if (getType() != GameAPI::Analogs::AnalogType::LinearPositive) {
 
         // calculate values
         const auto delta = value - 0.5f;
@@ -261,7 +270,7 @@ float Analog::applyDeadzone(float raw_value) {
             }
         }
 
-    } else if (deadzone < 0) {
+    } else {
 
         // invert for mirror
         if (this->getDeadzoneMirror()) {
@@ -269,8 +278,8 @@ float Analog::applyDeadzone(float raw_value) {
         }
 
         // deadzone from minimum value
-        if (deadzone > -1 && value > -deadzone) {
-            value = std::min(1.f, (value + deadzone) / (1.f + deadzone));
+        if (deadzone < 1.f && deadzone < value) {
+            value = std::max(0.f, (value - deadzone) / (1.f - deadzone));
         } else {
             value = 0.f;
         }

@@ -15,7 +15,7 @@ namespace rawinput {
 
 namespace GameAPI::Analogs {
     enum class AnalogType {
-        // default; values warp around (below 0 turns into 1, over 1 is 0)
+        // default; values wrap around (below 0 turns into 1, over 1 is 0)
         // knobs, turntables
         Circular = 0,
 
@@ -35,7 +35,6 @@ struct AnalogMovingAverage {
 };
 
 class Analog {
-
 private:
     std::string name;
     std::string device_identifier = "";

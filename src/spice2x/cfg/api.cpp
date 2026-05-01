@@ -1039,6 +1039,7 @@ void GameAPI::Lights::sortLightsWithCategory(
     }
 }
 
+
 void GameAPI::Lights::writeLight(rawinput::RawInputManager *manager, rawinput::Device *device, int index, float value) {
 
     // check device
