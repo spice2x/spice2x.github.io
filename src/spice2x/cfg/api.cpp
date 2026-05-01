@@ -679,125 +679,107 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
             }
 
             // deadzone
-            if (analog.isDeadzoneSet()) {
+            // do not apply deadzone to circular analogs since it doesn't make sense (except in relative mode)
+            if (analog.isDeadzoneSet() &&
+                (analog.getType() != AnalogType::Circular || analog.isRelativeMode())) {
                 value = analog.applyDeadzone(value);
             }
 
-            if (analog.getType() == AnalogType::Circular) {
-                if (analog.isRelativeMode()) {
-                    float relative_delta = value - 0.5f;
-                    // built-in scaling to make values reasonable
-                    relative_delta /= 80.f;
+            if (analog.isRelativeMode()) {
+                float relative_delta = value - 0.5f;
+                // built-in scaling to make values reasonable
+                relative_delta /= 80.f;
 
-                    // integer multiplier/divisor
-                    const auto mult = analog.getMultiplier();
-                    if (mult < -1) {
-                        relative_delta /= -mult;
-                    } else if (1 < mult) {
-                        relative_delta *= mult;
-                    }
-
-                    // sensitivity (ranges from 0.0 to 4.0)
-                    if (analog.isSensitivitySet()) {
-                        relative_delta *= analog.getSensitivity();
-                    }
-
-                    // translate relative movement to absolute value
-                    value = analog.getAbsoluteValue(relative_delta);
-
-                } else {
-                    // integer multiplier
-                    value = analog.applyMultiplier(value);
-
-                    // smoothing/sensitivity
-                    if (analog.getSmoothing() || analog.isSensitivitySet()) {
-                        float rads = value * (float) M_TAU;
-
-                        // smoothing
-                        if (analog.getSmoothing()) {
-
-                            // preserve direction
-                            if (rads >= M_TAU) {
-                                rads -= 0.0001f;
-                            }
-
-                            // calculate angle
-                            rads = analog.getSmoothedValue(rads);
-                        }
-
-                        // sensitivity
-                        if (analog.isSensitivitySet()) {
-                            rads = analog.applyAngularSensitivity(rads);
-                        }
-
-                        // apply to value
-                        value = rads * (float) M_1_TAU;
-                    }
+                // integer multiplier/divisor
+                const auto mult = analog.getMultiplier();
+                if (mult < -1) {
+                    relative_delta /= -mult;
+                } else if (1 < mult) {
+                    relative_delta *= mult;
                 }
-            } else if (analog.getType() == AnalogType::LinearCentered ||
-                analog.getType() == AnalogType::LinearPositive) {
 
-                if (analog.isRelativeMode()) {
-                    float relative_delta = value - 0.5f;
-                    // built-in scaling to make values reasonable
-                    relative_delta /= 80.f;
+                // sensitivity (ranges from 0.0 to 4.0)
+                if (analog.isSensitivitySet()) {
+                    relative_delta *= analog.getSensitivity();
+                }
 
-                    // sensitivity (ranges from 0.0 to 4.0)
-                    if (analog.isSensitivitySet()) {
-                        relative_delta *= analog.getSensitivity();
+                // translate relative movement to absolute value
+                value = analog.getAbsoluteValue(relative_delta);
+
+            } else if (analog.getType() == AnalogType::Circular) {
+                // integer multiplier
+                value = analog.applyMultiplier(value);
+
+                // smoothing/sensitivity
+                if (analog.getSmoothing() || analog.isSensitivitySet()) {
+                    float rads = value * (float) M_TAU;
+
+                    // smoothing
+                    if (analog.getSmoothing()) {
+
+                        // preserve direction
+                        if (rads >= M_TAU) {
+                            rads -= 0.0001f;
+                        }
+
+                        // calculate angle
+                        rads = analog.getSmoothedValue(rads);
                     }
 
-                    // translate relative movement to absolute value
-                    value = analog.getAbsoluteValue(relative_delta);
-
-                } else {
                     // sensitivity
                     if (analog.isSensitivitySet()) {
-                        // adjust curve
-                        // values < 1.f : less sensitive around neutral
-                        // values > 1.f : more sensitive around neutral
-                        float curve = analog.getSensitivity();
-                        if (curve <= 0.f) {
-                            curve = 0.01f;
-                        }
-                        curve = 1.f / curve;
-
-                        if (analog.getType() == AnalogType::LinearPositive) {
-                            value = powf(value, curve);
-
-                        } else {
-                            // convert 0.0..1.0 to -1.0..+1.0
-                            float signed_raw = (value - 0.5f) * 2.0f;
-                            // apply curve
-                            float sign = signed_raw < 0.0f ? -1.0f : 1.0f;
-                            float magnitude = fabsf(signed_raw);
-                            float curved = sign * powf(magnitude, curve);
-                            // convert back to 0.0..1.0
-                            value = curved * 0.5f + 0.5f;
-                        }
-
-                        value = std::clamp(value, 0.f, 1.f);
+                        rads = analog.applyAngularSensitivity(rads);
                     }
 
-                    // multiplier / divisor
-                    if (analog.getMultiplier() < -1) {
-                        if (analog.getType() == AnalogType::LinearCentered) {
-                            value = (value - 0.5f) / (-analog.getMultiplier()) + 0.5f;
-                        } else {
-                            value /= -analog.getMultiplier();
-                        }
-
-                        value = std::clamp(value, 0.f, 1.f);
-
-                    } else if (analog.getMultiplier() > 1) {
-                        if (analog.getType() == AnalogType::LinearCentered) {
-                            value = (value - 0.5f) * analog.getMultiplier() + 0.5f;
-                        } else {
-                            value *= analog.getMultiplier();
-                        }
-
-                        value = std::clamp(value, 0.f, 1.f);
+                    // apply to value
+                    value = rads * (float) M_1_TAU;
+                }
+            } else {
+                // sensitivity
+                if (analog.isSensitivitySet()) {
+                    // adjust curve
+                    // values < 1.f : less sensitive around neutral
+                    // values > 1.f : more sensitive around neutral
+                    float curve = analog.getSensitivity();
+                    if (curve <= 0.f) {
+                        curve = 0.01f;
                     }
+                    curve = 1.f / curve;
+
+                    if (analog.getType() == AnalogType::LinearCentered) {
+                        // convert 0.0..1.0 to -1.0..+1.0
+                        float signed_raw = (value - 0.5f) * 2.0f;
+                        // apply curve
+                        float sign = signed_raw < 0.0f ? -1.0f : 1.0f;
+                        float magnitude = fabsf(signed_raw);
+                        float curved = sign * powf(magnitude, curve);
+                        // convert back to 0.0..1.0
+                        value = curved * 0.5f + 0.5f;
+                    } else {
+                        value = powf(value, curve);
+                    }
+
+                    value = std::clamp(value, 0.f, 1.f);
+                }
+
+                // multiplier / divisor
+                if (analog.getMultiplier() < -1) {
+                    if (analog.getType() == AnalogType::LinearCentered) {
+                        value = (value - 0.5f) / (-analog.getMultiplier()) + 0.5f;
+                    } else {
+                        value /= -analog.getMultiplier();
+                    }
+
+                    value = std::clamp(value, 0.f, 1.f);
+
+                } else if (analog.getMultiplier() > 1) {
+                    if (analog.getType() == AnalogType::LinearCentered) {
+                        value = (value - 0.5f) * analog.getMultiplier() + 0.5f;
+                    } else {
+                        value *= analog.getMultiplier();
+                    }
+
+                    value = std::clamp(value, 0.f, 1.f);
                 }
             }
 

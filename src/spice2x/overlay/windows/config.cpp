@@ -2520,7 +2520,10 @@ namespace overlay::windows {
                         analog.setSensitivity(sensitivity * sensitivity);
                     }
                 }
-                if (device->type == rawinput::HID || device->type == rawinput::MIDI) {
+
+                // hide deadzone for circular analog since it doesn't make any sense (unless in relative mode)
+                if ((device->type == rawinput::HID || device->type == rawinput::MIDI) &&
+                    ((analog.getType() != GameAPI::Analogs::AnalogType::Circular) || analog.isRelativeMode())) {
                     auto deadzone = analog.getDeadzone();
 
                     // for back compat (before each analog had a type)
@@ -2541,7 +2544,7 @@ namespace overlay::windows {
                     bool deadzone_mirror = analog.getDeadzoneMirror();
                     ImGui::Checkbox("Deadzone Mirror", &deadzone_mirror);
                     ImGui::SameLine();
-                    ImGui::HelpMarker("Apply deeadzone to extreme value(s) instead of neutral.");
+                    ImGui::HelpMarker("Apply deadzone to extreme value(s) instead of neutral.");
                     if (deadzone_mirror != analog.getDeadzoneMirror()) {
                         analog.setDeadzoneMirror(deadzone_mirror);
                     }
