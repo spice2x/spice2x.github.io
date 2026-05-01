@@ -2078,7 +2078,7 @@ namespace overlay::windows {
             }
 
             // bat threshold
-            if (device->type == rawinput::HID &&
+            if (device != nullptr && device->type == rawinput::HID &&
                 (button->getAnalogType() == BAT_POSITIVE || button->getAnalogType() == BAT_NEGATIVE)) {
                 int bat_threshold = button->getBatThreshold();
                 
