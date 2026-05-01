@@ -2456,7 +2456,9 @@ namespace overlay::windows {
                         "Use your knob/slider/pedal and try again.");
                 }
 
-                if (device->type == rawinput::HID) {
+                if (device->type == rawinput::HID && 
+                    analog.getType() == GameAPI::Analogs::AnalogType::Circular) {
+                    
                     auto multiplier = analog.getMultiplier();
                     int multiplier_index = 7; // 1:1
                     if (multiplier < -1) {
@@ -2579,8 +2581,7 @@ namespace overlay::windows {
 
                     // delay buffer
                     int delay = analog.getDelayBufferDepth();
-                    ImGui::InputInt("Delay (experimental)", &delay, 1, 10);
-                    if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    if (ImGui::InputInt("Delay (experimental)", &delay, 1, 10)) {
                         delay = CLAMP(delay, 0, 256);
                         analog.setDelayBufferDepth(delay);
                     }

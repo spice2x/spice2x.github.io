@@ -683,54 +683,77 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
                 value = analog.applyDeadzone(value);
             }
 
-            if (analog.isRelativeMode()) {
-                float relative_delta = value - 0.5f;
-                // built-in scaling to make values reasonable
-                relative_delta /= 80.f;
+            if (analog.getType() == AnalogType::Circular) {
+                if (analog.isRelativeMode()) {
+                    float relative_delta = value - 0.5f;
+                    // built-in scaling to make values reasonable
+                    relative_delta /= 80.f;
 
-                // integer multiplier/divisor
-                const auto mult = analog.getMultiplier();
-                if (mult < -1) {
-                    relative_delta /= -mult;
-                } else if (1 < mult) {
-                    relative_delta *= mult;
-                }
+                    // integer multiplier/divisor
+                    const auto mult = analog.getMultiplier();
+                    if (mult < -1) {
+                        relative_delta /= -mult;
+                    } else if (1 < mult) {
+                        relative_delta *= mult;
+                    }
 
-                // sensitivity (ranges from 0.0 to 4.0)
-                if (analog.isSensitivitySet()) {
-                    relative_delta *= analog.getSensitivity();
-                }
+                    // sensitivity (ranges from 0.0 to 4.0)
+                    if (analog.isSensitivitySet()) {
+                        relative_delta *= analog.getSensitivity();
+                    }
 
-                // translate relative movement to absolute value
-                value = analog.getAbsoluteValue(relative_delta);
+                    // translate relative movement to absolute value
+                    value = analog.getAbsoluteValue(relative_delta);
 
-            } else {
-                // integer multiplier
-                value = analog.applyMultiplier(value);
+                } else {
+                    // integer multiplier
+                    value = analog.applyMultiplier(value);
 
-                // smoothing/sensitivity
-                if (analog.getSmoothing() || analog.isSensitivitySet()) {
-                    float rads = value * (float) M_TAU;
+                    // smoothing/sensitivity
+                    if (analog.getSmoothing() || analog.isSensitivitySet()) {
+                        float rads = value * (float) M_TAU;
 
-                    // smoothing
-                    if (analog.getSmoothing()) {
+                        // smoothing
+                        if (analog.getSmoothing()) {
 
-                        // preserve direction
-                        if (rads >= M_TAU) {
-                            rads -= 0.0001f;
+                            // preserve direction
+                            if (rads >= M_TAU) {
+                                rads -= 0.0001f;
+                            }
+
+                            // calculate angle
+                            rads = analog.getSmoothedValue(rads);
                         }
 
-                        // calculate angle
-                        rads = analog.getSmoothedValue(rads);
+                        // sensitivity
+                        if (analog.isSensitivitySet()) {
+                            rads = analog.applyAngularSensitivity(rads);
+                        }
+
+                        // apply to value
+                        value = rads * (float) M_1_TAU;
+                    }
+                }
+            } else if (analog.getType() == AnalogType::Linear) {
+                if (analog.isRelativeMode()) {
+                    float relative_delta = value - 0.5f;
+                    // built-in scaling to make values reasonable
+                    relative_delta /= 80.f;
+
+                    // sensitivity (ranges from 0.0 to 4.0)
+                    if (analog.isSensitivitySet()) {
+                        relative_delta *= analog.getSensitivity();
                     }
 
+                    // translate relative movement to absolute value
+                    value = analog.getAbsoluteValue(relative_delta);
+
+                } else {
                     // sensitivity
                     if (analog.isSensitivitySet()) {
-                        rads = analog.applyAngularSensitivity(rads);
+                        value = (value - 0.5f) * (analog.getSensitivity()) + 0.5f;
+                        value = std::clamp(value, 0.f, 1.f);
                     }
-
-                    // apply to value
-                    value = rads * (float) M_1_TAU;
                 }
             }
 

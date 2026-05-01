@@ -207,16 +207,22 @@ float Analog::applyMultiplier(float value) {
 }
 
 float Analog::normalizeAnalogValue(float value) {
-    // effectively the same as fmodf(value, 1.f)
-    // for small values, this is MUCH faster than fmodf.
-    float new_value = value;
-    while (new_value > 1.f) {
-        new_value -= 1.f;
+    if (getType() == GameAPI::Analogs::AnalogType::Circular) {
+        // effectively the same as fmodf(value, 1.f)
+        // for small values, this is MUCH faster than fmodf.
+        float new_value = value;
+        while (new_value > 1.f) {
+            new_value -= 1.f;
+        }
+        while (new_value < 0.f) {
+            new_value += 1.f;
+        }
+        return new_value;
+
+    } else {
+        // clamp to [0, 1] range
+        return CLAMP(value, 0.f, 1.f);
     }
-    while (new_value < 0.f) {
-        new_value += 1.f;
-    }
-    return new_value;
 }
 
 float Analog::applyDeadzone(float raw_value) {
