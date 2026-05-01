@@ -2566,20 +2566,20 @@ namespace overlay::windows {
                         if (smoothing != analog.getSmoothing()) {
                             analog.setSmoothing(smoothing);
                         }
+                    }
 
-                        // relative input mode
-                        bool relative_analog = analog.isRelativeMode();
-                        ImGui::Checkbox("Relative Axis", &relative_analog);
-                        ImGui::SameLine();
-                        ImGui::HelpMarker(
-                            "Use relative directional input instead of positional values.\n\n"
-                            "Can be used to translate analog sticks to knob input, for example.\n\n"
-                            "WARNING: speed depends on how often the game polls for input! "
-                            "Strongly recommended that you go into the game's test menu instead "
-                            "of adjusting in spicecfg.");
-                        if (relative_analog != analog.isRelativeMode()) {
-                            analog.setRelativeMode(relative_analog);
-                        }
+                    // relative input mode
+                    bool relative_analog = analog.isRelativeMode();
+                    ImGui::Checkbox("Relative Axis", &relative_analog);
+                    ImGui::SameLine();
+                    ImGui::HelpMarker(
+                        "Use relative directional input instead of positional values.\n\n"
+                        "Can be used to translate analog sticks to knob input, for example.\n\n"
+                        "WARNING: speed depends on how often the game polls for input! "
+                        "Strongly recommended that you go into the game's test menu instead "
+                        "of adjusting in spicecfg.");
+                    if (relative_analog != analog.isRelativeMode()) {
+                        analog.setRelativeMode(relative_analog);
                     }
 
                     // delay buffer

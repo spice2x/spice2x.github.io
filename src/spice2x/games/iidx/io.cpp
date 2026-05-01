@@ -69,7 +69,6 @@ std::vector<Analog> &games::iidx::get_analogs() {
             { "Turntable P1", AnalogType::Circular },
             { "Turntable P2", AnalogType::Circular },
             { "VEFX", AnalogType::LinearPositive },
-            { "Effect", AnalogType::LinearPositive },
             { "Low-EQ", AnalogType::LinearPositive },
             { "Hi-EQ", AnalogType::LinearPositive },
             { "Filter", AnalogType::LinearPositive },
