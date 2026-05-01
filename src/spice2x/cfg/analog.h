@@ -15,8 +15,16 @@ namespace rawinput {
 
 namespace GameAPI::Analogs {
     enum class AnalogType {
-        Circular = 0, // default
-        Linear
+        // default; values warp around (below 0 turns into 1, over 1 is 0)
+        // knobs, turntables
+        Circular = 0,
+
+        // typical joystick that rests at the center and caps at [0, 1]
+        LinearCentered = 1,
+
+        // one-directional value (sliders and instruments like piano/drum velocity)
+        // starts at 0 and goes up to 1
+        LinearPositive = 2,
     };
 }
 

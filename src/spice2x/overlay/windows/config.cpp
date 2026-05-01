@@ -2551,37 +2551,40 @@ namespace overlay::windows {
             if (this->analogs_devices_selected >= 0) {
                 const auto device = this->analogs_devices.at(this->analogs_devices_selected);
                 if (device->type == rawinput::HID) {
-                    // smoothing
-                    bool smoothing = analog.getSmoothing();
-                    ImGui::BeginDisabled(analog.isRelativeMode());
-                    ImGui::Checkbox("Smooth Axis (adds latency)", &smoothing);
-                    ImGui::SameLine();
-                    ImGui::HelpMarker(
-                        "Apply a moving average algorithm; intended for angular input (knobs, turntables). "
-                        "Adds a slight bit of latency to input as the algorithm averages out recent input. "
-                        "Only use in dire situations where the input is too jittery for the game.");
-                    ImGui::EndDisabled();
-                    if (smoothing != analog.getSmoothing()) {
-                        analog.setSmoothing(smoothing);
-                    }
 
-                    // relative input mode
-                    bool relative_analog = analog.isRelativeMode();
-                    ImGui::Checkbox("Relative Axis (experimental)", &relative_analog);
-                    ImGui::SameLine();
-                    ImGui::HelpMarker(
-                        "Use relative directional input instead of positional values.\n\n"
-                        "Can be used to translate analog sticks to knob input, for example.\n\n"
-                        "WARNING: speed depends on how often the game polls for input! "
-                        "Strongly recommended that you go into the game's test menu instead "
-                        "of adjusting in spicecfg.");
-                    if (relative_analog != analog.isRelativeMode()) {
-                        analog.setRelativeMode(relative_analog);
+                    if (analog.getType() == GameAPI::Analogs::AnalogType::Circular) {
+                        // smoothing
+                        bool smoothing = analog.getSmoothing();
+                        ImGui::BeginDisabled(analog.isRelativeMode());
+                        ImGui::Checkbox("Smooth Axis (adds latency)", &smoothing);
+                        ImGui::SameLine();
+                        ImGui::HelpMarker(
+                            "Apply a moving average algorithm; intended for angular input (knobs, turntables). "
+                            "Adds a slight bit of latency to input as the algorithm averages out recent input. "
+                            "Only use in dire situations where the input is too jittery for the game.");
+                        ImGui::EndDisabled();
+                        if (smoothing != analog.getSmoothing()) {
+                            analog.setSmoothing(smoothing);
+                        }
+
+                        // relative input mode
+                        bool relative_analog = analog.isRelativeMode();
+                        ImGui::Checkbox("Relative Axis", &relative_analog);
+                        ImGui::SameLine();
+                        ImGui::HelpMarker(
+                            "Use relative directional input instead of positional values.\n\n"
+                            "Can be used to translate analog sticks to knob input, for example.\n\n"
+                            "WARNING: speed depends on how often the game polls for input! "
+                            "Strongly recommended that you go into the game's test menu instead "
+                            "of adjusting in spicecfg.");
+                        if (relative_analog != analog.isRelativeMode()) {
+                            analog.setRelativeMode(relative_analog);
+                        }
                     }
 
                     // delay buffer
                     int delay = analog.getDelayBufferDepth();
-                    if (ImGui::InputInt("Delay (experimental)", &delay, 1, 10)) {
+                    if (ImGui::InputInt("Delay", &delay, 1, 10)) {
                         delay = CLAMP(delay, 0, 256);
                         analog.setDelayBufferDepth(delay);
                     }

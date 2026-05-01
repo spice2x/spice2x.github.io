@@ -734,7 +734,9 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
                         value = rads * (float) M_1_TAU;
                     }
                 }
-            } else if (analog.getType() == AnalogType::Linear) {
+            } else if (analog.getType() == AnalogType::LinearCentered ||
+                analog.getType() == AnalogType::LinearPositive) {
+
                 if (analog.isRelativeMode()) {
                     float relative_delta = value - 0.5f;
                     // built-in scaling to make values reasonable
@@ -751,7 +753,11 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
                 } else {
                     // sensitivity
                     if (analog.isSensitivitySet()) {
-                        value = (value - 0.5f) * (analog.getSensitivity()) + 0.5f;
+                        if (analog.getType() == AnalogType::LinearPositive) {
+                            value = value * analog.getSensitivity();
+                        } else {
+                            value = (value - 0.5f) * (analog.getSensitivity()) + 0.5f;
+                        }
                         value = std::clamp(value, 0.f, 1.f);
                     }
                 }

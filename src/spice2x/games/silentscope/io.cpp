@@ -31,11 +31,12 @@ std::vector<Analog> &games::silentscope::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Silent Scope: Bone Eater");
 
-        GameAPI::Analogs::sortAnalogs(
-            &analogs,
-            "Gun X",
-            "Gun Y"
-        );
+        using GameAPI::Analogs::AnalogType;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Gun X", AnalogType::LinearCentered },
+            { "Gun Y", AnalogType::LinearCentered }
+        });
     }
 
     return analogs;

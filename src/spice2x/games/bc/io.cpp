@@ -38,11 +38,12 @@ std::vector<Analog> &games::bc::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Busou Shinki: Armored Princess Battle Conductor");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Stick X",
-                "Stick Y"
-        );
+        using GameAPI::Analogs::AnalogType;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Stick X", AnalogType::LinearCentered },
+            { "Stick Y", AnalogType::LinearCentered }
+        });
     }
 
     return analogs;

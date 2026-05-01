@@ -31,13 +31,14 @@ std::vector<Analog> &games::sc::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Steel Chronicle");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Left Stick X",
-                "Left Stick Y",
-                "Right Stick X",
-                "Right Stick Y"
-        );
+        using GameAPI::Analogs::AnalogType;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Left Stick X", AnalogType::LinearCentered },
+            { "Left Stick Y", AnalogType::LinearCentered },
+            { "Right Stick X", AnalogType::LinearCentered },
+            { "Right Stick Y", AnalogType::LinearCentered }
+        });
     }
 
     return analogs;

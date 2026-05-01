@@ -45,13 +45,14 @@ std::vector<Analog> &games::ccj::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Chase Chase Jokers");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Joystick X",
-                "Joystick Y",
-                "Trackball DX",
-                "Trackball DY"
-        );
+        using GameAPI::Analogs::AnalogType;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Joystick X", AnalogType::LinearCentered },
+            { "Joystick Y", AnalogType::LinearCentered },
+            { "Trackball DX", AnalogType::LinearCentered },
+            { "Trackball DY", AnalogType::LinearCentered }
+        });
     }
 
     return analogs;

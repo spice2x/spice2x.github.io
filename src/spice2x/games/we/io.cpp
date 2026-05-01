@@ -50,13 +50,14 @@ std::vector<Analog> &games::we::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Winning Eleven");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Pad Stick Left X",
-                "Pad Stick Left Y",
-                "Pad Stick Right X",
-                "Pad Stick Right Y"
-        );
+        using GameAPI::Analogs::AnalogType;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Pad Stick Left X", AnalogType::LinearCentered },
+            { "Pad Stick Left Y", AnalogType::LinearCentered },
+            { "Pad Stick Right X", AnalogType::LinearCentered },
+            { "Pad Stick Right Y", AnalogType::LinearCentered }
+        });
     }
 
     return analogs;

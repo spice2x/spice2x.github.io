@@ -36,11 +36,11 @@ std::vector<Analog> &games::mga::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Metal Gear");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Joy X",
-                "Joy Y"
-        );
+        using namespace GameAPI::Analogs;
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Joy X", AnalogType::LinearCentered },
+            { "Joy Y", AnalogType::LinearCentered }
+        });
     }
 
     return analogs;

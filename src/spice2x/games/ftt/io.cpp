@@ -35,13 +35,14 @@ std::vector<Analog> &games::ftt::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("FutureTomTom");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Pad 1",
-                "Pad 2",
-                "Pad 3",
-                "Pad 4"
-        );
+        using GameAPI::Analogs::AnalogType;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Pad 1", AnalogType::LinearPositive },
+            { "Pad 2", AnalogType::LinearPositive },
+            { "Pad 3", AnalogType::LinearPositive },
+            { "Pad 4", AnalogType::LinearPositive }
+        });
     }
 
     return analogs;

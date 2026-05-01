@@ -165,37 +165,38 @@ std::vector<Analog> &games::nost::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Nostalgia");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Key 1",
-                "Key 2",
-                "Key 3",
-                "Key 4",
-                "Key 5",
-                "Key 6",
-                "Key 7",
-                "Key 8",
-                "Key 9",
-                "Key 10",
-                "Key 11",
-                "Key 12",
-                "Key 13",
-                "Key 14",
-                "Key 15",
-                "Key 16",
-                "Key 17",
-                "Key 18",
-                "Key 19",
-                "Key 20",
-                "Key 21",
-                "Key 22",
-                "Key 23",
-                "Key 24",
-                "Key 25",
-                "Key 26",
-                "Key 27",
-                "Key 28"
-        );
+        using namespace GameAPI::Analogs;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Key 1", AnalogType::LinearPositive },
+            { "Key 2", AnalogType::LinearPositive },
+            { "Key 3", AnalogType::LinearPositive },
+            { "Key 4", AnalogType::LinearPositive },
+            { "Key 5", AnalogType::LinearPositive },
+            { "Key 6", AnalogType::LinearPositive },
+            { "Key 7", AnalogType::LinearPositive },
+            { "Key 8", AnalogType::LinearPositive },
+            { "Key 9", AnalogType::LinearPositive },
+            { "Key 10", AnalogType::LinearPositive },
+            { "Key 11", AnalogType::LinearPositive },
+            { "Key 12", AnalogType::LinearPositive },
+            { "Key 13", AnalogType::LinearPositive },
+            { "Key 14", AnalogType::LinearPositive },
+            { "Key 15", AnalogType::LinearPositive },
+            { "Key 16", AnalogType::LinearPositive },
+            { "Key 17", AnalogType::LinearPositive },
+            { "Key 18", AnalogType::LinearPositive },
+            { "Key 19", AnalogType::LinearPositive },
+            { "Key 20", AnalogType::LinearPositive },
+            { "Key 21", AnalogType::LinearPositive },
+            { "Key 22", AnalogType::LinearPositive },
+            { "Key 23", AnalogType::LinearPositive },
+            { "Key 24", AnalogType::LinearPositive },
+            { "Key 25", AnalogType::LinearPositive },
+            { "Key 26", AnalogType::LinearPositive },
+            { "Key 27", AnalogType::LinearPositive },
+            { "Key 28", AnalogType::LinearPositive }
+        });
     }
     return analogs;
 }

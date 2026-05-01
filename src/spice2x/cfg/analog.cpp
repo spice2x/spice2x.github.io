@@ -221,7 +221,7 @@ float Analog::normalizeAnalogValue(float value) {
 
     } else {
         // clamp to [0, 1] range
-        return CLAMP(value, 0.f, 1.f);
+        return std::clamp(value, 0.f, 1.f);
     }
 }
 

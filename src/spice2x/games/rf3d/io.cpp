@@ -35,12 +35,13 @@ std::vector<Analog> &games::rf3d::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Road Fighters 3D");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Wheel",
-                "Accelerate",
-                "Brake"
-        );
+        using GameAPI::Analogs::AnalogType;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Wheel", AnalogType::LinearCentered },
+            { "Accelerate", AnalogType::LinearPositive },
+            { "Brake", AnalogType::LinearPositive }
+        });
     }
 
     return analogs;

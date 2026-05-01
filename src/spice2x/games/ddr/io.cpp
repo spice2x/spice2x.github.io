@@ -55,13 +55,14 @@ std::vector<Analog> &games::ddr::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Dance Dance Revolution");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "P1 Left-Right (Axis Fix)",
-                "P1 Up-Down (Axis Fix)",
-                "P2 Left-Right (Axis Fix)",
-                "P2 Up-Down (Axis Fix)"
-        );
+        using namespace GameAPI::Analogs;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "P1 Left-Right (Axis Fix)", AnalogType::LinearCentered },
+            { "P1 Up-Down (Axis Fix)", AnalogType::LinearCentered },
+            { "P2 Left-Right (Axis Fix)", AnalogType::LinearCentered },
+            { "P2 Up-Down (Axis Fix)", AnalogType::LinearCentered }
+        });
     }
     return analogs;
 }

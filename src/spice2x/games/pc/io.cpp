@@ -51,11 +51,12 @@ std::vector<Analog> &games::pc::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Polaris Chord");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Fader-L",
-                "Fader-R"
-        );
+        using GameAPI::Analogs::AnalogType;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Fader-L", AnalogType::LinearCentered },
+            { "Fader-R", AnalogType::LinearCentered }
+        });
     }
 
     return analogs;

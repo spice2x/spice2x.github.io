@@ -63,16 +63,18 @@ std::vector<Analog> &games::iidx::get_analogs() {
     if (analogs.empty()) {
         analogs = GameAPI::Analogs::getAnalogs("Beatmania IIDX");
 
-        GameAPI::Analogs::sortAnalogs(
-                &analogs,
-                "Turntable P1",
-                "Turntable P2",
-                "VEFX",
-                "Low-EQ",
-                "Hi-EQ",
-                "Filter",
-                "Play Volume"
-        );
+        using namespace GameAPI::Analogs;
+
+        GameAPI::Analogs::sortAnalogsWithType(&analogs, {
+            { "Turntable P1", AnalogType::Circular },
+            { "Turntable P2", AnalogType::Circular },
+            { "VEFX", AnalogType::LinearPositive },
+            { "Effect", AnalogType::LinearPositive },
+            { "Low-EQ", AnalogType::LinearPositive },
+            { "Hi-EQ", AnalogType::LinearPositive },
+            { "Filter", AnalogType::LinearPositive },
+            { "Play Volume", AnalogType::LinearPositive }
+        });
     }
     return analogs;
 }
