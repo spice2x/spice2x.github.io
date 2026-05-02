@@ -2003,6 +2003,7 @@ namespace overlay::windows {
                 int vKey = button->getVKey();
                 if (ImGui::InputInt(button->isNaive() ? "Virtual Key" : "Index", &vKey, 1, 1)) {
                     button->setVKey(vKey);
+                    button->setInvert(false);
                 }
                 if (ImGui::IsItemDeactivatedAfterEdit()) {
                     dirty = true;
