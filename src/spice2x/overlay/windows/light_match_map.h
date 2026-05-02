@@ -74,6 +74,23 @@ namespace overlay::windows {
         {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_27", "", "", true, "Key 27", ""},
         {"Nostroller (Lights 15-28)", "Nostalgia", 0, 0, "LED_28", "", "", true, "Key 28", ""},
 
+        // icedragon.io snek board, ddr mode
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "neon", "", "", false, "Neon", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "mar p1 upper", "", "", false, "P1 Halogen Upper", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "mar p1 lower", "", "", false, "P1 Halogen Lower", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "mar p2 upper", "", "", false, "P2 Halogen Upper", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "mar p2 lower", "", "", false, "P2 Halogen Lower", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p1 buttons", "", "", false, "P1 Button", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p2 buttons", "", "", false, "P2 Button", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p1 up", "", "", false, "P1 Foot Up", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p1 down", "", "", false, "P1 Foot Down", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p1 left", "", "", false, "P1 Foot Left", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p1 right", "", "", false, "P1 Foot Right", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p2 up", "", "", false, "P2 Foot Up", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p2 down", "", "", false, "P2 Foot Down", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p2 left", "", "", false, "P2 Foot Left", ""},
+        {"snek lights", "Dance Dance Revolution", 0x2e8a, 0x10a8, "p2 right", "", "", false, "P2 Foot Right", ""},
+
     };
 
     static const int LIGHT_MATCH_MAP_COUNT =
