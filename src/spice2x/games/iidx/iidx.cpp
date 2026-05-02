@@ -67,6 +67,8 @@ namespace games::iidx {
     std::optional<std::string> SOUND_OUTPUT_DEVICE = std::nullopt;
     std::optional<std::string> SOUND_OUTPUT_DEVICE_IN_EFFECT = std::nullopt;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
+    uint32_t TT_DELAY_P1 = 0;
+    uint32_t TT_DELAY_P2 = 0;
     uint8_t DIGITAL_TT_SENS = 4;
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE = std::nullopt;
     std::optional<std::string> SCREEN_MODE = std::nullopt;
@@ -781,7 +783,26 @@ namespace games::iidx {
         }
 
         // return higher 8 bit
-        return (uint8_t) (ret_value >> 2);
+        uint8_t result = (uint8_t) (ret_value >> 2);
+
+        // delay
+        if ((player == 0 && TT_DELAY_P1 > 0) ||
+            (player == 1 && TT_DELAY_P2 > 0)) {
+
+            static std::queue<uint8_t> delay_queue[2];
+            auto &queue = delay_queue[player];
+
+            const auto max_size =
+                static_cast<size_t>((player == 0) ? TT_DELAY_P1 : TT_DELAY_P2) + 1;
+
+            queue.push(result);
+            while (queue.size() > max_size) {
+                queue.pop();
+            }
+            result = queue.front();
+        }
+
+        return result;
     }
 
     unsigned char get_slider(uint8_t slider) {

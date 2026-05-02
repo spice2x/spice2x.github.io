@@ -31,6 +31,8 @@ namespace games::iidx {
     extern bool NATIVE_TOUCH;
     extern std::optional<std::string> SOUND_OUTPUT_DEVICE;
     extern std::optional<std::string> ASIO_DRIVER;
+    extern uint32_t TT_DELAY_P1;
+    extern uint32_t TT_DELAY_P2;
     extern uint8_t DIGITAL_TT_SENS;
     extern std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
     extern std::optional<std::string> SCREEN_MODE;

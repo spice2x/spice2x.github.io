@@ -518,6 +518,12 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::IIDXTDJMode].value_bool()) {
         games::iidx::TDJ_MODE = true;
     }
+    if (options[launcher::Options::IIDXTTDelayP1].is_active()) {
+        games::iidx::TT_DELAY_P1 = options[launcher::Options::IIDXTTDelayP1].value_uint32();
+    }
+    if (options[launcher::Options::IIDXTTDelayP2].is_active()) {
+        games::iidx::TT_DELAY_P2 = options[launcher::Options::IIDXTTDelayP2].value_uint32();
+    }
     if (options[launcher::Options::spice2x_IIDXDigitalTTSensitivity].is_active()) {
         games::iidx::DIGITAL_TT_SENS = (uint8_t)
             options[launcher::Options::spice2x_IIDXDigitalTTSensitivity].value_uint32();

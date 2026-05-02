@@ -69,6 +69,8 @@ namespace launcher {
             IIDXAsioDriver,
             IIDXBIO2FW,
             IIDXTDJMode,
+            IIDXTTDelayP1,
+            IIDXTTDelayP2,
             spice2x_IIDXDigitalTTSensitivity,
             IIDXDigitalTTSocd,
             spice2x_IIDXLDJForce720p,
