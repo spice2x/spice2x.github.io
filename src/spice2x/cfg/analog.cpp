@@ -237,8 +237,7 @@ float Analog::applyDeadzone(float raw_value) {
         deadzone = -deadzone;
     }
 
-    // relative mode assumes that user is using a stick, so center is neutral regardless of analog type
-    if (getType() != GameAPI::Analogs::AnalogType::LinearPositive || isRelativeMode()) {
+    if (getType() != GameAPI::Analogs::AnalogType::LinearPositive) {
 
         // calculate values
         const auto delta = value - 0.5f;

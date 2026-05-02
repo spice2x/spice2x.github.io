@@ -679,34 +679,12 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
             }
 
             // deadzone
-            // do not apply deadzone to circular analogs since it doesn't make sense (except in relative mode)
-            if (analog.isDeadzoneSet() &&
-                (analog.getType() != AnalogType::Circular || analog.isRelativeMode())) {
+            // do not apply deadzone to circular analogs since it doesn't make sense
+            if (analog.isDeadzoneSet() && analog.getType() != AnalogType::Circular) {
                 value = analog.applyDeadzone(value);
             }
 
-            if (analog.isRelativeMode()) {
-                float relative_delta = value - 0.5f;
-                // built-in scaling to make values reasonable
-                relative_delta /= 80.f;
-
-                // integer multiplier/divisor
-                const auto mult = analog.getMultiplier();
-                if (mult < -1) {
-                    relative_delta /= -mult;
-                } else if (1 < mult) {
-                    relative_delta *= mult;
-                }
-
-                // sensitivity (ranges from 0.0 to 4.0)
-                if (analog.isSensitivitySet()) {
-                    relative_delta *= analog.getSensitivity();
-                }
-
-                // translate relative movement to absolute value
-                value = analog.getAbsoluteValue(relative_delta);
-
-            } else if (analog.getType() == AnalogType::Circular) {
+            if (analog.getType() == AnalogType::Circular) {
                 // integer multiplier
                 value = analog.applyMultiplier(value);
 
@@ -782,29 +760,6 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
                     value = std::clamp(value, 0.f, 1.f);
                 }
             }
-
-            // delay
-            if (0 < analog.getDelayBufferDepth()) {
-                auto& queue = analog.getDelayBuffer();
-
-                // ensure the queue isn't too long; drop old values
-                while (analog.getDelayBufferDepth() <= (int)queue.size()) {
-                    queue.pop();
-                }
-
-                // always push new value
-                queue.push(value);
-
-                // get a new value to return
-                if ((int)queue.size() < analog.getDelayBufferDepth()) {
-                    // not enough in the queue, stall for now, shouldn't happen often
-                    value = analog.getLastState();
-                } else {
-                    value = queue.front();
-                    queue.pop();
-                }
-            }
-
             break;
         }
         case rawinput::MIDI: {

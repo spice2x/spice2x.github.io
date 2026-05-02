@@ -63,14 +63,6 @@ private:
     float divisor_previous_value = 0.5f;
     unsigned short divisor_region = 0;
 
-    // relative input mode
-    float absolute_value_for_rel_mode = 0.5f;
-    bool relative_mode = false;
-
-    // circular buffer (delayed input)
-    int delay_buffer_depth = 0;
-    std::queue<float> delay_buffer;
-
     float calculateAngularDifference(float old_rads, float new_rads);
     float normalizeAngle(float rads);
     float normalizeAnalogValue(float value);
@@ -106,8 +98,6 @@ public:
         smoothing = false;
         deadzone_mirror = false;
         setMultiplier(1);
-        setRelativeMode(false);
-        setDelayBufferDepth(0);
         setLastState(0.5f);
     }
 
@@ -203,33 +193,6 @@ public:
 
     inline void setLastState(float last_state) {
         this->last_state = last_state;
-    }
-
-    inline bool isRelativeMode() const {
-        return this->relative_mode;
-    }
-
-    inline void setRelativeMode(bool relative_mode) {
-        this->relative_mode = relative_mode;
-        this->absolute_value_for_rel_mode = 0.5f;
-    }
-
-    inline float getAbsoluteValue(float relative_delta) {
-        this->absolute_value_for_rel_mode =
-            normalizeAnalogValue(this->absolute_value_for_rel_mode + relative_delta);
-        return this->absolute_value_for_rel_mode;
-    }
-
-    inline int getDelayBufferDepth() const {
-        return this->delay_buffer_depth;
-    }
-
-    inline void setDelayBufferDepth(int depth) {
-        this->delay_buffer_depth = depth;
-    }
-
-    inline std::queue<float> &getDelayBuffer() {
-        return this->delay_buffer;
     }
 
     inline GameAPI::Analogs::AnalogType getType() const {

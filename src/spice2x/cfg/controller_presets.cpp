@@ -69,8 +69,6 @@ namespace overlay::windows {
         el->SetAttribute("invert", analog.invert);
         el->SetAttribute("smoothing", analog.smoothing);
         el->SetAttribute("multiplier", analog.multiplier);
-        el->SetAttribute("relative", analog.relative_mode);
-        el->SetAttribute("delay", analog.delay_buffer_depth);
         parent->InsertEndChild(el);
     }
 
@@ -92,8 +90,6 @@ namespace overlay::windows {
         el->QueryBoolAttribute("invert", &a.invert);
         el->QueryBoolAttribute("smoothing", &a.smoothing);
         el->QueryIntAttribute("multiplier", &a.multiplier);
-        el->QueryBoolAttribute("relative", &a.relative_mode);
-        el->QueryIntAttribute("delay", &a.delay_buffer_depth);
 
         return a;
     }

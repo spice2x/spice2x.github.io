@@ -39,8 +39,8 @@
             <button name="VEFX" vkey="10" analogtype="0" devid="Player 1" invert="false" debounce_up="0" debounce_down="0" velocity_threshold="0"/>
         </buttons>
         <analogs>
-            <analog name="Turntable P1" devid="Player 1" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Turntable P2" devid="Player 2" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Turntable P1" devid="Player 1" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Turntable P2" devid="Player 2" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
         </analogs>
         <lights>
             <light name="P1 1" devid="Player 1" index="0"/>
@@ -117,8 +117,8 @@
         <keypad_buttons/>
         <!-- Assumes analog mode. Need to invert direction since this FW is designed for INF. -->
         <analogs>
-            <analog name="Turntable P1" devid="arcin (1p)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="true" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Turntable P2" devid="arcin (2p)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="true" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Turntable P1" devid="arcin (1p)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="true" smoothing="false" multiplier="1"/>
+            <analog name="Turntable P2" devid="arcin (2p)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="true" smoothing="false" multiplier="1"/>
         </analogs>
         <lights>
             <light name="P1 1" devid="arcin (1p)" index="0"/>
@@ -144,34 +144,34 @@
         <buttons/>
         <keypad_buttons/>
         <analogs>
-            <analog name="Key 1" devid="Analogs key 01-28" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 2" devid="Analogs key 01-28" index="5" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 3" devid="Analogs key 01-28" index="6" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 4" devid="Analogs key 01-28" index="7" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 5" devid="Analogs key 01-28" index="8" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 6" devid="Analogs key 01-28" index="9" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 7" devid="Analogs key 01-28" index="10" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 8" devid="Analogs key 01-28" index="11" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 9" devid="Analogs key 01-28" index="12" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 10" devid="Analogs key 01-28" index="13" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 11" devid="Analogs key 01-28" index="14" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 12" devid="Analogs key 01-28" index="15" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 13" devid="Analogs key 01-28" index="16" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 14" devid="Analogs key 01-28" index="17" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 15" devid="Analogs key 01-28" index="18" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 16" devid="Analogs key 01-28" index="19" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 17" devid="Analogs key 01-28" index="20" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 18" devid="Analogs key 01-28" index="21" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 19" devid="Analogs key 01-28" index="22" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 20" devid="Analogs key 01-28" index="23" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 21" devid="Analogs key 01-28" index="24" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 22" devid="Analogs key 01-28" index="25" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 23" devid="Analogs key 01-28" index="26" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 24" devid="Analogs key 01-28" index="27" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 25" devid="Analogs key 01-28" index="28" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 26" devid="Analogs key 01-28" index="29" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 27" devid="Analogs key 01-28" index="30" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Key 28" devid="Analogs key 01-28" index="31" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Key 1" devid="Analogs key 01-28" index="4" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 2" devid="Analogs key 01-28" index="5" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 3" devid="Analogs key 01-28" index="6" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 4" devid="Analogs key 01-28" index="7" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 5" devid="Analogs key 01-28" index="8" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 6" devid="Analogs key 01-28" index="9" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 7" devid="Analogs key 01-28" index="10" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 8" devid="Analogs key 01-28" index="11" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 9" devid="Analogs key 01-28" index="12" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 10" devid="Analogs key 01-28" index="13" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 11" devid="Analogs key 01-28" index="14" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 12" devid="Analogs key 01-28" index="15" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 13" devid="Analogs key 01-28" index="16" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 14" devid="Analogs key 01-28" index="17" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 15" devid="Analogs key 01-28" index="18" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 16" devid="Analogs key 01-28" index="19" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 17" devid="Analogs key 01-28" index="20" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 18" devid="Analogs key 01-28" index="21" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 19" devid="Analogs key 01-28" index="22" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 20" devid="Analogs key 01-28" index="23" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 21" devid="Analogs key 01-28" index="24" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 22" devid="Analogs key 01-28" index="25" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 23" devid="Analogs key 01-28" index="26" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 24" devid="Analogs key 01-28" index="27" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 25" devid="Analogs key 01-28" index="28" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 26" devid="Analogs key 01-28" index="29" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 27" devid="Analogs key 01-28" index="30" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Key 28" devid="Analogs key 01-28" index="31" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
         </analogs>
         <lights>
             <light name="Key 1 R" devid="Lights 01-14" index="0"/>
@@ -277,9 +277,9 @@
         </buttons>
         <keypad_buttons/>
         <analogs>
-            <analog name="Guitar P1 Wail X" devid="Gitaller P1" index="1" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Guitar P1 Wail Y" devid="Gitaller P1" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="Guitar P1 Wail Z" devid="Gitaller P1" index="5" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="Guitar P1 Wail X" devid="Gitaller P1" index="1" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Guitar P1 Wail Y" devid="Gitaller P1" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="Guitar P1 Wail Z" devid="Gitaller P1" index="5" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
         </analogs>
         <lights/>
     <!-- Gen 1 FAUCETWO in HID mode; should also work for later gens -->
@@ -296,8 +296,8 @@
         </buttons>
         <keypad_buttons/>
         <analogs>
-            <analog name="VOL-L" devid="Buttons (MI_01)" index="1" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
-            <analog name="VOL-R" devid="Buttons (MI_01)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1" relative="false" delay="0"/>
+            <analog name="VOL-L" devid="Buttons (MI_01)" index="1" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
+            <analog name="VOL-R" devid="Buttons (MI_01)" index="0" sensivity="1" deadzone="0" deadzone_mirror="false" invert="false" smoothing="false" multiplier="1"/>
         </analogs>
         <lights>
             <light name="BT-A" devid="Lights (MI_02)" index="24"/>
