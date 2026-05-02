@@ -2597,7 +2597,7 @@ namespace overlay::windows {
 
                     // delay buffer
                     int delay = analog.getDelayBufferDepth();
-                    if (ImGui::InputInt("Delay", &delay, 1, 10)) {
+                    if (ImGui::InputInt("Delay (experimental)", &delay, 1, 10)) {
                         delay = CLAMP(delay, 0, 256);
                         analog.setDelayBufferDepth(delay);
                     }
@@ -2606,7 +2606,8 @@ namespace overlay::windows {
                         "Adds a delay to input. This is poll-based, not time-based.\n\n"
                         "WARNING: delay depends on how often the game polls for input! "
                         "Strongly recommended that you go into the game's test menu instead "
-                        "of adjusting in spicecfg.");
+                        "of adjusting in spicecfg. Close all overlays as that will affect "
+                        "how input delay is calculated.");
                 }
             }
 
