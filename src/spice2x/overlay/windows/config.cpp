@@ -2078,9 +2078,9 @@ namespace overlay::windows {
                     dirty = true;
                 }
             }
-            
+
             // always on (naive + vkey 0xff + invert)
-            if (button->isNaive()) {
+            if (button->isNaive() && alt_index == 0) {
                 bool always_on = button->isNaive() && button->getVKey() == INVALID_VKEY && button->getInvert();
                 if (ImGui::Checkbox("Always On", &always_on)) {
                     if (always_on) {
