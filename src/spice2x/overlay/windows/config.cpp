@@ -2253,8 +2253,9 @@ namespace overlay::windows {
                     }
 
                     // analog binding
+                    const std::string title = "Analog Binding (" + analog.getName() + ")";
                     if (ImGui::Button("Set")) {
-                        ImGui::OpenPopup("Analog Binding");
+                        ImGui::OpenPopup(title.c_str());
 
                         // get devices
                         this->analogs_devices.clear();
@@ -2284,7 +2285,7 @@ namespace overlay::windows {
                         }
                     }
 
-                    edit_analog_popup(analog);
+                    edit_analog_popup(analog, title);
 
                     // row hover detection (invisible selectable that spans entire row)
                     ImGui::InvisibleTableRowSelectable();
@@ -2298,8 +2299,8 @@ namespace overlay::windows {
         }
     }
 
-    void Config::edit_analog_popup(Analog &analog) {
-        if (ImGui::BeginPopupModal("Analog Binding", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+    void Config::edit_analog_popup(Analog &analog, std::string title) {
+        if (ImGui::BeginPopupModal(title.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 
             // device selector
             auto analog_device_changed = ImGui::Combo(

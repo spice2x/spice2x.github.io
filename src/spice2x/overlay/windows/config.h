@@ -162,7 +162,7 @@ namespace overlay::windows {
         unsigned int get_keypad_top_row(const Button &button);
 
         void build_analogs(const std::string &name, std::vector<Analog> *analogs);
-        void edit_analog_popup(Analog &analog);
+        void edit_analog_popup(Analog &analog, std::string title);
 
         void update() override;
         void stop_lights_test();
