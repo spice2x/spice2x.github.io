@@ -373,7 +373,7 @@ void ImGui_ImplSpice_NewFrame() {
     // read new keys state
     static long mouse_wheel_last = 0;
     long mouse_wheel = 0;
-    if (RI_MGR != nullptr && accept_new_input) {
+    if (RI_MGR != nullptr) {
         auto devices = RI_MGR->devices_get();
         for (auto &device : devices) {
             switch (device.type) {
@@ -381,40 +381,46 @@ void ImGui_ImplSpice_NewFrame() {
                     auto &mouse = device.mouseInfo;
 
                     // mouse button triggers
-                    if (GetSystemMetrics(SM_SWAPBUTTON)) {
-                        if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
-                            g_MouseDown[ImGuiMouseButton_Left] = true;
+                    if (accept_new_input) {
+                        if (GetSystemMetrics(SM_SWAPBUTTON)) {
+                            if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
+                                g_MouseDown[ImGuiMouseButton_Left] = true;
+                            }
+                            if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
+                                g_MouseDown[ImGuiMouseButton_Right] = true;
+                            }
+                        } else {
+                            if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
+                                g_MouseDown[ImGuiMouseButton_Left] = true;
+                            }
+                            if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
+                                g_MouseDown[ImGuiMouseButton_Right] = true;
+                            }
                         }
-                        if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
-                            g_MouseDown[ImGuiMouseButton_Right] = true;
+                        if (mouse->key_states[rawinput::MOUSEBTN_MIDDLE]) {
+                            g_MouseDown[ImGuiMouseButton_Middle] = true;
                         }
-                    } else {
-                        if (mouse->key_states[rawinput::MOUSEBTN_LEFT]) {
-                            g_MouseDown[ImGuiMouseButton_Left] = true;
-                        }
-                        if (mouse->key_states[rawinput::MOUSEBTN_RIGHT]) {
-                            g_MouseDown[ImGuiMouseButton_Right] = true;
-                        }
-                    }
-                    if (mouse->key_states[rawinput::MOUSEBTN_MIDDLE]) {
-                        g_MouseDown[ImGuiMouseButton_Middle] = true;
                     }
 
                     // final mouse wheel value should be all devices combined
+                    // need to continuously calculate mouse wheel position even when not in focus
+                    // to avoid values jumping (since mouse wheel values are absolute not relative)
                     mouse_wheel += mouse->pos_wheel;
 
                     break;
                 }
                 case rawinput::KEYBOARD: {
-
-                    // iterate all virtual key codes
-                    for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
-                        // get state (combined from all pages)
-                        auto &key_states = device.keyboardInfo->key_states;
-                        for (size_t page_index = 0; page_index < 1024; page_index += 256) {
-                            g_KeysDown[vKey] |= key_states[page_index + vKey];
+                    if (accept_new_input) {
+                        // iterate all virtual key codes
+                        for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
+                            // get state (combined from all pages)
+                            auto &key_states = device.keyboardInfo->key_states;
+                            for (size_t page_index = 0; page_index < 1024; page_index += 256) {
+                                g_KeysDown[vKey] |= key_states[page_index + vKey];
+                            }
                         }
                     }
+
                     break;
                 }
                 default:
@@ -464,9 +470,11 @@ void ImGui_ImplSpice_NewFrame() {
     }
 
     // set mouse wheel
-    auto wheel_diff = mouse_wheel - mouse_wheel_last;
+    long wheel_diff = mouse_wheel - mouse_wheel_last;
     mouse_wheel_last = mouse_wheel;
-    io.AddMouseWheelEvent(0, wheel_diff);
+    if (wheel_diff != 0 && accept_new_input) {
+        io.AddMouseWheelEvent(0, wheel_diff);
+    }
 
     // update OS mouse position
     const auto old_mouse_pos = io.MousePos;
