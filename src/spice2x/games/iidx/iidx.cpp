@@ -789,17 +789,33 @@ namespace games::iidx {
         if ((player == 0 && TT_DELAY_P1 > 0) ||
             (player == 1 && TT_DELAY_P2 > 0)) {
 
-            static std::queue<uint8_t> delay_queue[2];
+            static std::queue<std::pair<double, uint8_t>> delay_queue[2];
             auto &queue = delay_queue[player];
 
-            const auto max_size =
-                static_cast<size_t>((player == 0) ? TT_DELAY_P1 : TT_DELAY_P2) + 1;
+            const auto max_delta_ms =
+                static_cast<double>((player == 0) ? TT_DELAY_P1 : TT_DELAY_P2);
 
-            queue.push(result);
-            while (queue.size() > max_size) {
+            // always push a new value
+            const auto now = get_performance_milliseconds();
+            queue.push(std::make_pair(now, result));
+            
+            // drain the queue down to reasonable length to prevent unconstrained growth
+            // this would accommodate 1 second at ~1000Hz
+            // (in reality all three iidx I/O emulation runs well under 500Hz)
+            while (queue.size() > 1024) {
                 queue.pop();
             }
-            result = queue.front();
+
+            // pop until we find one that falls just under the time threshold
+            while (!queue.empty()) {
+                const auto delta_t = now - queue.front().first;
+                if (delta_t <= max_delta_ms) {
+                    break;
+                }
+                queue.pop();
+            }
+
+            result = queue.front().second;
         }
 
         return result;
