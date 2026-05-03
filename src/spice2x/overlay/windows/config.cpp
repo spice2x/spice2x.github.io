@@ -2003,6 +2003,7 @@ namespace overlay::windows {
                 int vKey = button->getVKey();
                 if (ImGui::InputInt(button->isNaive() ? "Virtual Key" : "Index", &vKey, 1, 1)) {
                     button->setVKey(vKey);
+                    button->setInvert(false);
                 }
                 if (ImGui::IsItemDeactivatedAfterEdit()) {
                     dirty = true;
@@ -2070,11 +2071,27 @@ namespace overlay::windows {
                                 "This setting will add noticable input lag.");
             }
 
-            // invert
-            bool invert = button->getInvert();
-            if (ImGui::Checkbox("Invert Resulting Value", &invert)) {
-                button->setInvert(invert);
-                dirty = true;
+            // invert (widget hidden for naive + 0xff)
+            if (!(button->isNaive() && button->getVKey() == INVALID_VKEY)) {
+                bool invert = button->getInvert();
+                if (ImGui::Checkbox("Invert Resulting Value", &invert)) {
+                    button->setInvert(invert);
+                    dirty = true;
+                }
+            }
+
+            // always on (naive + vkey 0xff + invert)
+            if (button->isNaive() && alt_index == 0) {
+                bool always_on = button->isNaive() && button->getVKey() == INVALID_VKEY && button->getInvert();
+                if (ImGui::Checkbox("Always On", &always_on)) {
+                    if (always_on) {
+                        button->setVKey(INVALID_VKEY);
+                        button->setInvert(true);
+                    } else {
+                        button->setInvert(false);
+                    }
+                    dirty = true;
+                }
             }
 
             // bat threshold

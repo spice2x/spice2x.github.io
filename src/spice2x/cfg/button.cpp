@@ -306,7 +306,10 @@ std::string Button::getDisplayString(rawinput::RawInputManager* manager) {
     std::string vKeyString = fmt::format("{:#x}", vKey);
 
     // device must be existing
-    if (this->device_identifier.empty() && vKey == INVALID_VKEY) {
+    if (this->isNaive() && vKey == INVALID_VKEY) {
+        if (this->getInvert()) {
+            return "(always on)";
+        }
         return "";
     }
 
