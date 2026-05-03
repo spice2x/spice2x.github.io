@@ -660,7 +660,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "IIDX TT Delay ms (Player 1)",
         .name = "iidxttdelayp1",
         .desc = "Delays turntable by number of milliseconds. "
-            "Dependent on I/O emulation poll rate; delay will be *at most* the specified period. "
+            "Delay will be *at most* the specified period; maximum error is dependent on the game's poll rate. "
             "As usual, changing any option requires a restart. Default: 0 (no delay).",
         .type = OptionType::Integer,
         .setting_name = "(0-500)",
@@ -672,7 +672,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "IIDX TT Delay ms (Player 2)",
         .name = "iidxttdelayp2",
         .desc = "Delays turntable by number of milliseconds. "
-            "Dependent on I/O emulation poll rate; delay will be *at most* the specified period. "
+            "Delay will be *at most* the specified period; maximum error is dependent on the game's poll rate. "
             "As usual, changing any option requires a restart. Default: 0 (no delay).",
         .type = OptionType::Integer,
         .setting_name = "(0-500)",
