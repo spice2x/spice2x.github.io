@@ -63,6 +63,11 @@ private:
     float divisor_previous_value = 0.5f;
     unsigned short divisor_region = 0;
 
+    // relative input mode
+    float rel_mode_absolute_value = 0.5f;
+    float rel_mode_last_read_time_s = 0.f;
+    bool relative_mode = false;
+
     float calculateAngularDifference(float old_rads, float new_rads);
     float normalizeAngle(float rads);
     float normalizeAnalogValue(float value);
@@ -83,6 +88,7 @@ public:
     float applyAngularSensitivity(float raw_rads);
     float applyMultiplier(float raw_value);
     float applyDeadzone(float raw_value);
+    float getRelativeModeValue(float raw_value);
 
     inline bool isSet() {
         if (this->override_enabled) {
@@ -98,6 +104,7 @@ public:
         smoothing = false;
         deadzone_mirror = false;
         setMultiplier(1);
+        setRelativeMode(false);
         setLastState(0.5f);
     }
 
@@ -193,6 +200,19 @@ public:
 
     inline void setLastState(float last_state) {
         this->last_state = last_state;
+    }
+
+    inline bool isRelativeMode() const {
+        return this->relative_mode;
+    }
+
+    inline void setRelativeMode(bool relative_mode) {
+        if (relative_mode) {
+            this->smoothing = false;
+        }
+        this->relative_mode = relative_mode;
+        this->rel_mode_absolute_value = 0.5f;
+        this->rel_mode_last_read_time_s = 0.f;
     }
 
     inline GameAPI::Analogs::AnalogType getType() const {

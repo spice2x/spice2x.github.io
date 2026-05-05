@@ -679,38 +679,45 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
             }
 
             // deadzone
-            // do not apply deadzone to circular analogs since it doesn't make sense
-            if (analog.isDeadzoneSet() && analog.getType() != AnalogType::Circular) {
+            // do not apply deadzone to circular analogs since it doesn't make sense (except in relative mode)
+            if (analog.isDeadzoneSet() &&
+                (analog.getType() != AnalogType::Circular || analog.isRelativeMode())) {
                 value = analog.applyDeadzone(value);
             }
 
             if (analog.getType() == AnalogType::Circular) {
-                // integer multiplier
-                value = analog.applyMultiplier(value);
 
-                // smoothing/sensitivity
-                if (analog.getSmoothing() || analog.isSensitivitySet()) {
-                    float rads = value * (float) M_TAU;
+                if (analog.isRelativeMode()) {
+                    value = analog.getRelativeModeValue(value);
 
-                    // smoothing
-                    if (analog.getSmoothing()) {
+                } else {
+                    // integer multiplier
+                    value = analog.applyMultiplier(value);
 
-                        // preserve direction
-                        if (rads >= M_TAU) {
-                            rads -= 0.0001f;
+                    // smoothing/sensitivity
+                    if (analog.getSmoothing() || analog.isSensitivitySet()) {
+                        float rads = value * (float) M_TAU;
+
+                        // smoothing
+                        if (analog.getSmoothing()) {
+
+                            // preserve direction
+                            if (rads >= M_TAU) {
+                                rads -= 0.0001f;
+                            }
+
+                            // calculate angle
+                            rads = analog.getSmoothedValue(rads);
                         }
 
-                        // calculate angle
-                        rads = analog.getSmoothedValue(rads);
-                    }
+                        // sensitivity
+                        if (analog.isSensitivitySet()) {
+                            rads = analog.applyAngularSensitivity(rads);
+                        }
 
-                    // sensitivity
-                    if (analog.isSensitivitySet()) {
-                        rads = analog.applyAngularSensitivity(rads);
+                        // apply to value
+                        value = rads * (float) M_1_TAU;
                     }
-
-                    // apply to value
-                    value = rads * (float) M_1_TAU;
                 }
             } else {
                 // sensitivity
@@ -760,6 +767,7 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
                     value = std::clamp(value, 0.f, 1.f);
                 }
             }
+
             break;
         }
         case rawinput::MIDI: {

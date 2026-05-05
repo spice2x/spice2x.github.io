@@ -252,6 +252,7 @@ bool Config::addGame(Game &game) {
                 bool invert = false;
                 bool smoothing = false;
                 int multiplier = 1;
+                bool relative_mode = false;
                 tinyxml2::XMLError err1 = gameAnalogNode->QueryIntAttribute("index", &index);
                 gameAnalogNode->QueryFloatAttribute("sensivity", &sensitivity);
                 gameAnalogNode->QueryFloatAttribute("deadzone", &deadzone);
@@ -259,6 +260,7 @@ bool Config::addGame(Game &game) {
                 gameAnalogNode->QueryBoolAttribute("invert", &invert);
                 gameAnalogNode->QueryBoolAttribute("smoothing", &smoothing);
                 gameAnalogNode->QueryIntAttribute("multiplier", &multiplier);
+                gameAnalogNode->QueryBoolAttribute("relative", &relative_mode);
                 const char *devid = gameAnalogNode->Attribute("devid");
 
                 if (err1 != tinyxml2::XMLError::XML_SUCCESS || !devid) {
@@ -273,6 +275,7 @@ bool Config::addGame(Game &game) {
                     gameAnalogNode->SetAttribute("invert", it.getInvert());
                     gameAnalogNode->SetAttribute("smoothing", it.getSmoothing());
                     gameAnalogNode->SetAttribute("multiplier", it.getMultiplier());
+                    gameAnalogNode->SetAttribute("relative", it.isRelativeMode());
                     gameAnalogsNode->InsertEndChild(gameAnalogNode);
                 } else {
                     it.setIndex(static_cast<unsigned short int>(index));
@@ -283,6 +286,7 @@ bool Config::addGame(Game &game) {
                     it.setInvert(invert);
                     it.setSmoothing(smoothing);
                     it.setMultiplier(multiplier);
+                    it.setRelativeMode(relative_mode);
                 }
             } else {
                 gameAnalogNode = this->configFile.NewElement("analog");
@@ -294,6 +298,7 @@ bool Config::addGame(Game &game) {
                 gameAnalogNode->SetAttribute("invert", it.getInvert());
                 gameAnalogNode->SetAttribute("smoothing", it.getSmoothing());
                 gameAnalogNode->SetAttribute("multiplier", it.getMultiplier());
+                gameAnalogNode->SetAttribute("relative", it.isRelativeMode());
                 gameAnalogNode->SetAttribute("devid", it.getDeviceIdentifier().c_str());
                 gameAnalogsNode->InsertEndChild(gameAnalogNode);
             }
@@ -447,6 +452,7 @@ bool Config::addGame(Game &game) {
             gameAnalogNode->SetAttribute("invert", it.getInvert());
             gameAnalogNode->SetAttribute("smoothing", it.getSmoothing());
             gameAnalogNode->SetAttribute("multiplier", it.getMultiplier());
+            gameAnalogNode->SetAttribute("relative", it.isRelativeMode());
             gameAnalogsNode->InsertEndChild(gameAnalogNode);
         }
 
@@ -679,6 +685,7 @@ bool Config::updateBinding(const Game &game, const Analog &analog) {
         gameAnalogNode->SetAttribute("invert", analog.getInvert());
         gameAnalogNode->SetAttribute("smoothing", analog.getSmoothing());
         gameAnalogNode->SetAttribute("multiplier", analog.getMultiplier());
+        gameAnalogNode->SetAttribute("relative", analog.isRelativeMode());
         gameAnalogNode->SetAttribute("devid", analog.getDeviceIdentifier().c_str());
     } else {
         gameAnalogNode = this->configFile.NewElement("analog");
@@ -689,6 +696,7 @@ bool Config::updateBinding(const Game &game, const Analog &analog) {
         gameAnalogNode->SetAttribute("invert", analog.getInvert());
         gameAnalogNode->SetAttribute("smoothing", analog.getSmoothing());
         gameAnalogNode->SetAttribute("multiplier", analog.getMultiplier());
+        gameAnalogNode->SetAttribute("relative", analog.isRelativeMode());
         gameAnalogNode->SetAttribute("devid", analog.getDeviceIdentifier().c_str());
         gameAnalogsNode->InsertEndChild(gameAnalogNode);
     }
@@ -1125,6 +1133,7 @@ std::vector<Analog> Config::getAnalogs(const std::string &gameName) {
                 bool invert = false;
                 bool smoothing = false;
                 int multiplier = 1;
+                bool relative_mode = false;
                 gameAnalogNode->QueryIntAttribute("index", &index);
                 gameAnalogNode->QueryFloatAttribute("sensivity", &sensitivity);
                 gameAnalogNode->QueryFloatAttribute("deadzone", &deadzone);
@@ -1132,6 +1141,7 @@ std::vector<Analog> Config::getAnalogs(const std::string &gameName) {
                 gameAnalogNode->QueryBoolAttribute("invert", &invert);
                 gameAnalogNode->QueryBoolAttribute("smoothing", &smoothing);
                 gameAnalogNode->QueryIntAttribute("multiplier", &multiplier);
+                gameAnalogNode->QueryBoolAttribute("relative", &relative_mode);
                 const char *devid = gameAnalogNode->Attribute("devid");
 
                 // create analog and add to list
@@ -1143,6 +1153,7 @@ std::vector<Analog> Config::getAnalogs(const std::string &gameName) {
                 analog.setInvert(invert);
                 analog.setSmoothing(smoothing);
                 analog.setMultiplier(multiplier);
+                analog.setRelativeMode(relative_mode);
                 if (devid) {
                     analog.setDeviceIdentifier(devid);
                 }
