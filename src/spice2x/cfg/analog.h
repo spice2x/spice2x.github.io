@@ -36,7 +36,7 @@ struct AnalogMovingAverage {
 };
 
 struct AnalogDelayEntry {
-    float time;
+    double time_in_ms;
     float value;
 };
 

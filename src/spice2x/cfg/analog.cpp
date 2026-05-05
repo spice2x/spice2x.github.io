@@ -354,7 +354,7 @@ float Analog::getDelayedValue(float raw_value) {
 
     // pop until we find the oldest value still inside the delay window
     while (this->delayed_inputs.size() > 1) {
-        const auto delta_t = now - this->delayed_inputs.front().time;
+        const auto delta_t = now - this->delayed_inputs.front().time_in_ms;
         if (delta_t <= delay_ms) {
             break;
         }
