@@ -5437,6 +5437,7 @@ namespace overlay::windows {
                         a.setSmoothing(ta.smoothing);
                         a.setMultiplier(ta.multiplier);
                         a.setRelativeMode(ta.relative_mode);
+                        a.setDelayMs(ta.delay_ms);
                         ::Config::getInstance().updateBinding(game, a);
                         break;
                     }
