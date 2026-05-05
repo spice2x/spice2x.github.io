@@ -2539,9 +2539,9 @@ namespace overlay::windows {
                     }
                 }
 
-                // hide deadzone for circular analog since it doesn't make any sense
+                // hide deadzone for circular analog since it doesn't make any sense (unless in relative mode)
                 if ((device->type == rawinput::HID || device->type == rawinput::MIDI) &&
-                    analog.getType() != GameAPI::Analogs::AnalogType::Circular) {
+                    ((analog.getType() != GameAPI::Analogs::AnalogType::Circular) || analog.isRelativeMode())) {
                     auto deadzone = analog.getDeadzone();
 
                     // for back compat (before each analog had a type)
@@ -2585,16 +2585,46 @@ namespace overlay::windows {
                     if (analog.getType() == GameAPI::Analogs::AnalogType::Circular) {
                         // smoothing
                         bool smoothing = analog.getSmoothing();
+                        ImGui::BeginDisabled(analog.isRelativeMode());
                         ImGui::Checkbox("Smooth Axis (adds latency)", &smoothing);
                         ImGui::SameLine();
                         ImGui::HelpMarker(
                             "Apply a moving average algorithm; intended for angular input (knobs, turntables). "
                             "Adds a slight bit of latency to input as the algorithm averages out recent input. "
                             "Only use in dire situations where the input is too jittery for the game.");
+                        ImGui::EndDisabled();
                         if (smoothing != analog.getSmoothing()) {
                             analog.setSmoothing(smoothing);
                         }
+
+                        // relative input mode
+                        bool relative_analog = analog.isRelativeMode();
+                        ImGui::Checkbox("Relative Axis", &relative_analog);
+                        ImGui::SameLine();
+                        ImGui::HelpMarker(
+                            "Use relative directional input instead of positional values. "
+                            "Can be used to translate analog sticks to knob input.\n\n"
+                            "At default settings, max speed is one revolution per second.\n\n"
+                            "Adjust sensitivity to increase/decrease max speed, and deadzone to prevent jitter.");
+                        if (relative_analog != analog.isRelativeMode()) {
+                            analog.setRelativeMode(relative_analog);
+                        }
                     }
+
+                    // delay
+                    int delay = analog.getDelayMs();
+                    if (ImGui::InputInt("Delay (ms)", &delay, 1, 1)) {
+                        delay = std::clamp(delay, 0, 250);
+                        analog.setDelayMs(delay);
+                    }
+                    ImGui::SameLine();
+                    ImGui::HelpMarker(
+                        "Adds an artificial delay, in milliseconds.\n\n"
+                        "Value read by the game engine will be delayed AT MOST this amount of time (coould be slightly less).\n\n"
+                        "To minimize quantization error, delay value should be a multiple of the game's poll rate, "
+                        "add 0.5ms of buffer, and then round up to the nearest millisecond.\n\n"
+                        "If you aren't sure, assume the game polls for input at the same rate as the display FPS."
+                    );
                 }
             }
 
@@ -5406,6 +5436,8 @@ namespace overlay::windows {
                         a.setInvert(ta.invert);
                         a.setSmoothing(ta.smoothing);
                         a.setMultiplier(ta.multiplier);
+                        a.setRelativeMode(ta.relative_mode);
+                        a.setDelayMs(ta.delay_ms);
                         ::Config::getInstance().updateBinding(game, a);
                         break;
                     }

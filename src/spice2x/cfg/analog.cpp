@@ -237,7 +237,8 @@ float Analog::applyDeadzone(float raw_value) {
         deadzone = -deadzone;
     }
 
-    if (getType() != GameAPI::Analogs::AnalogType::LinearPositive) {
+    // relative mode assumes that user is using a stick, so center is neutral regardless of analog type
+    if (getType() != GameAPI::Analogs::AnalogType::LinearPositive || isRelativeMode()) {
 
         // calculate values
         const auto delta = value - 0.5f;
@@ -290,4 +291,75 @@ float Analog::applyDeadzone(float raw_value) {
         }
     }
     return value;
+}
+
+float Analog::getRelativeModeValue(float raw_value) {
+    const auto now = get_performance_seconds();
+    auto delta_time = now - this->rel_mode_last_read_time_s;
+
+    if (this->rel_mode_last_read_time_s != 0.f) {
+        // some heuristics to prevent huge jumps:
+        //  * if we went for more than 250ms without polls, discard it (e.g., during loading screens)
+        //  * cap the delta at 100ms to prevent huge jumps in case of very infrequent polling
+        if (delta_time < 0.f || 0.25f < delta_time) {
+            delta_time = 0.f;
+        } else if (delta_time > 0.1f) {
+            delta_time = 0.1f;
+        }
+
+        // scale [0, 1] to [-1, 1] to simplify calculations
+        const auto delta_raw_value = (raw_value - 0.5f) * 2.f;
+
+        // target is one revolution per second at max speed at 1.0 sensitivity
+        auto adjusted_delta_value = delta_raw_value * delta_time;
+
+        // multiplier / divisor
+        if (this->getMultiplier() > 1) {
+            adjusted_delta_value *= this->getMultiplier();
+        } else if (this->getMultiplier() < -1) {
+            adjusted_delta_value /= -this->getMultiplier();
+        }
+
+        // sensitivity
+        if (this->isSensitivitySet()) {
+            adjusted_delta_value *= this->getSensitivity();
+        }
+
+        // calculate the new absolute value
+        this->rel_mode_absolute_value += adjusted_delta_value;
+    }
+
+    // update for next poll
+    this->rel_mode_last_read_time_s = now;
+    this->rel_mode_absolute_value = normalizeAnalogValue(this->rel_mode_absolute_value);
+    return this->rel_mode_absolute_value;
+}
+
+float Analog::getDelayedValue(float raw_value) {
+    const double delay_ms = static_cast<double>(this->getDelayMs());
+    if (delay_ms == 0.0) {
+        return raw_value;
+    }
+
+    // always push a new value
+    const auto now = get_performance_milliseconds();
+    this->delayed_inputs.emplace(now, raw_value);
+    
+    // drain the queue down to reasonable length to prevent unconstrained growth
+    // this would accommodate 1 second at ~1000Hz which is overkill
+    // (UI only allows for 250ms of delay)
+    while (this->delayed_inputs.size() > 1024) {
+        this->delayed_inputs.pop();
+    }
+
+    // pop until we find the oldest value still inside the delay window
+    while (this->delayed_inputs.size() > 1) {
+        const auto delta_t = now - this->delayed_inputs.front().time_in_ms;
+        if (delta_t <= delay_ms) {
+            break;
+        }
+        this->delayed_inputs.pop();
+    }
+
+    return this->delayed_inputs.front().value;
 }
