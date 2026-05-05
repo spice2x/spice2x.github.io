@@ -656,30 +656,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
-        // IIDXTTDelayP1
-        .title = "IIDX TT Delay ms (Player 1)",
-        .name = "iidxttdelayp1",
-        .desc = "Delays turntable by number of milliseconds. "
-            "Delay will be *at most* the specified period; maximum error is dependent on the game's poll rate. "
-            "As usual, changing any option requires a restart. Default: 0 (no delay).",
-        .type = OptionType::Integer,
-        .setting_name = "(0-500)",
-        .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
-    },
-    {
-        // IIDXTTDelayP2
-        .title = "IIDX TT Delay ms (Player 2)",
-        .name = "iidxttdelayp2",
-        .desc = "Delays turntable by number of milliseconds. "
-            "Delay will be *at most* the specified period; maximum error is dependent on the game's poll rate. "
-            "As usual, changing any option requires a restart. Default: 0 (no delay).",
-        .type = OptionType::Integer,
-        .setting_name = "(0-500)",
-        .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
-    },
-    {
         // spice2x_IIDXDigitalTTSensitivity
         .title = "IIDX Digital TT Sensitivity",
         .name = "sp2x-iidxdigitalttsens",

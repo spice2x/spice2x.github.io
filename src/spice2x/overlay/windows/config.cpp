@@ -2610,6 +2610,21 @@ namespace overlay::windows {
                             analog.setRelativeMode(relative_analog);
                         }
                     }
+
+                    // delay
+                    int delay = analog.getDelayMs();
+                    if (ImGui::InputInt("Delay (ms)", &delay, 1, 1)) {
+                        delay = std::clamp(delay, 0, 250);
+                        analog.setDelayMs(delay);
+                    }
+                    ImGui::SameLine();
+                    ImGui::HelpMarker(
+                        "Adds an artificial delay, in milliseconds.\n\n"
+                        "Value read by the game engine will be delayed AT MOST this amount of time (coould be slightly less).\n\n"
+                        "To minimize quantization error, delay value should be a multiple of the game's poll rate, "
+                        "add 0.5ms of buffer, and then round up to the nearest millisecond.\n\n"
+                        "If you aren't sure, assume the game polls for input at the same rate as the display FPS."
+                    );
                 }
             }
 

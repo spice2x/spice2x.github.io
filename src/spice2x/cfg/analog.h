@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <array>
 #include <string>
 #include <cmath>
@@ -32,6 +33,11 @@ struct AnalogMovingAverage {
     double time_in_ms;
     float sine;
     float cosine;
+};
+
+struct AnalogDelayEntry {
+    float time;
+    float value;
 };
 
 class Analog {
@@ -68,6 +74,10 @@ private:
     float rel_mode_last_read_time_s = 0.f;
     bool relative_mode = false;
 
+    // delay
+    uint32_t delay_ms = 0;
+    std::queue<AnalogDelayEntry> delayed_inputs;
+
     float calculateAngularDifference(float old_rads, float new_rads);
     float normalizeAngle(float rads);
     float normalizeAnalogValue(float value);
@@ -89,6 +99,7 @@ public:
     float applyMultiplier(float raw_value);
     float applyDeadzone(float raw_value);
     float getRelativeModeValue(float raw_value);
+    float getDelayedValue(float raw_value);
 
     inline bool isSet() {
         if (this->override_enabled) {
@@ -106,6 +117,7 @@ public:
         setMultiplier(1);
         setRelativeMode(false);
         setLastState(0.5f);
+        setDelayMs(0);
     }
 
     inline void clearBindings() {
@@ -221,5 +233,13 @@ public:
 
     inline void setType(GameAPI::Analogs::AnalogType type) {
         this->type = type;
+    }
+
+    inline uint32_t getDelayMs() const {
+        return this->delay_ms;
+    }
+
+    inline void setDelayMs(uint32_t delay_ms) {
+        this->delay_ms = delay_ms;
     }
 };

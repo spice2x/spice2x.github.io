@@ -768,6 +768,11 @@ float GameAPI::Analogs::getState(rawinput::RawInputManager *manager, rawinput::D
                 }
             }
 
+            // delay
+            if (analog.getDelayMs() > 0) {
+                value = analog.getDelayedValue(value);
+            }
+
             break;
         }
         case rawinput::MIDI: {

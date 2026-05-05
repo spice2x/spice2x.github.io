@@ -72,6 +72,7 @@ namespace overlay::windows {
         bool smoothing = false;
         int multiplier = 1;
         bool relative_mode = false;
+        uint32_t delay_ms = 0;
 
         bool is_device() const { return !device_identifier.empty(); }
         bool is_unbound() const { return device_identifier.empty() && index == 0xFF; }
@@ -89,6 +90,7 @@ namespace overlay::windows {
             smoothing = a.getSmoothing();
             multiplier = a.getMultiplier();
             relative_mode = a.isRelativeMode();
+            delay_ms = a.getDelayMs();
         }
     };
 
