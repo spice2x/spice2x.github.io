@@ -98,6 +98,7 @@
 #include "rawinput/rawinput.h"
 #include "rawinput/touch.h"
 #include "reader/reader.h"
+#include "sdk/sdk.h"
 #include "stubs/stubs.h"
 #include "touch/touch.h"
 #include "util/cpuutils.h"
@@ -2358,8 +2359,12 @@ int main_implementation(int argc, char *argv[]) {
                 });
         } else {
             bt5api_hook(module);
+            sdk::register_sdk_hooks(hook, module);
         }
     }
+
+    // init SDK
+    sdk::init_sdk_modules();
 
     // layeredfs
     if (fileutils::dir_exists("data_mods") &&
@@ -2498,6 +2503,8 @@ int main_implementation(int argc, char *argv[]) {
     if (BT5API_ENABLED) {
         bt5api_dispose();
     }
+
+    sdk::fini_sdk_modules();
 
     // stop raw input
     RI_MGR.reset();

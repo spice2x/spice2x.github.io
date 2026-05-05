@@ -1,0 +1,4 @@
+LIBRARY spice_sdk_sample_v0
+
+EXPORTS
+    spice_sdk_entry_point

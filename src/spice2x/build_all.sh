@@ -68,8 +68,8 @@ DIST_FOLDER="./dist"
 DIST_NAME="spice2x-$(date +%y)-$(date +%m)-$(date +%d).zip"
 DIST_NAME_EXTRAS="spice2x-$(date +%y)-$(date +%m)-$(date +%d)-full.zip"
 DIST_COMMENT=${DIST_NAME}$'\n'"$GIT_BRANCH - $GIT_HEAD"$'\nThank you for playing.'
-TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_cfg_linux spicetools_spice spicetools_spice_laa spicetools_spice_linux spicetools_stubs_cpusbxpkm"
-TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEncodeAPI64 spicetools_stubs_nvcuvid spicetools_stubs_nvcuda spicetools_spice64 spicetools_spice64_linux"
+TARGETS_32="spicetools_stubs_kbt spicetools_stubs_kld spicetools_cfg spicetools_cfg_linux spicetools_spice spicetools_spice_laa spicetools_spice_linux spicetools_stubs_cpusbxpkm spicetools_sdk_sample_v0_flat_c_32"
+TARGETS_64="spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvEncodeAPI64 spicetools_stubs_nvcuvid spicetools_stubs_nvcuda spicetools_spice64 spicetools_spice64_linux spicetools_sdk_sample_v0_flat_c_64"
 TARGETS_XP32="spicetools_cfg spicetools_spice"
 TARGETS_XP64="spicetools_spice64"
 
@@ -93,7 +93,7 @@ fi
 XP_MUST_BUILD=0
 BUILD_XP=0
 if [ -f "$TOOLCHAIN_WINXP_32" ] && [ -f "$TOOLCHAIN_WINXP_64" ]; then
-	BUILD_XP=1;
+	BUILD_XP=0;
 elif ((XP_MUST_BUILD > 0))
 then
 	echo "WinXP toolchain not available, aborting"
@@ -269,6 +269,8 @@ rm -rf ${OUTDIR_EXTRAS}
 mkdir -p ${OUTDIR_EXTRAS}
 mkdir -p ${OUTDIR_EXTRAS}/largeaddressaware
 mkdir -p ${OUTDIR_EXTRAS}/linux
+mkdir -p ${OUTDIR_EXTRAS}/sdk/32
+mkdir -p ${OUTDIR_EXTRAS}/sdk/64
 if ((BUILD_XP > 0))
 then
 mkdir -p ${OUTDIR_EXTRAS}/winxp
@@ -281,16 +283,8 @@ then
     cp ${BUILDDIR_32}/spicetools/spicecfg-pdb.pdb ${OUTDIR} 2>/dev/null
     cp ${BUILDDIR_32}/spicetools/32/spice-pdb.exe ${OUTDIR} 2>/dev/null
     cp ${BUILDDIR_32}/spicetools/32/spice-pdb.pdb ${OUTDIR} 2>/dev/null
-    #cp ${BUILDDIR_32}/spicetools/32/kbt.dll ${OUTDIR}/stubs/32 2>/dev/null
-    #cp ${BUILDDIR_32}/spicetools/32/kld.dll ${OUTDIR}/stubs/32 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/spice64-pdb.exe ${OUTDIR} 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/spice64-pdb.pdb ${OUTDIR} 2>/dev/null
-    #cp ${BUILDDIR_64}/spicetools/64/kbt.dll ${OUTDIR}/stubs/64 2>/dev/null
-    #cp ${BUILDDIR_64}/spicetools/64/kld.dll ${OUTDIR}/stubs/64 2>/dev/null
-    #cp ${BUILDDIR_64}/spicetools/64/nvEncodeAPI64.dll ${OUTDIR}/stubs/64 2>/dev/null
-    #cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
-    #cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
-	#cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
 else
     # release files
     cp ${BUILDDIR_32}/spicetools/spicecfg.exe ${OUTDIR} 2>/dev/null
@@ -298,16 +292,14 @@ else
     cp ${BUILDDIR_32}/spicetools/32/spice.exe ${OUTDIR} 2>/dev/null
     cp ${BUILDDIR_32}/spicetools/32/spice_laa.exe ${OUTDIR_EXTRAS}/largeaddressaware/spice.exe 2>/dev/null
     cp ${BUILDDIR_32}/spicetools/32/spice_linux.exe ${OUTDIR_EXTRAS}/linux/spice.exe 2>/dev/null
-    #cp ${BUILDDIR_32}/spicetools/32/kbt.dll ${OUTDIR}/stubs/32 2>/dev/null
-    #cp ${BUILDDIR_32}/spicetools/32/kld.dll ${OUTDIR}/stubs/32 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/spice64.exe ${OUTDIR} 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/spice64_linux.exe ${OUTDIR_EXTRAS}/linux/spice64.exe 2>/dev/null
-    #cp ${BUILDDIR_64}/spicetools/64/kbt.dll ${OUTDIR}/stubs/64 2>/dev/null
-    #cp ${BUILDDIR_64}/spicetools/64/kld.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/nvEncodeAPI64.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
+	cp ${BUILDDIR_32}/spicetools/32/spice_sdk_sample_v0_flat_c.dll ${OUTDIR_EXTRAS}/sdk/32/spice_sdk_sample_v0_flat_c.dll 2>/dev/null
+	cp ${BUILDDIR_64}/spicetools/64/spice_sdk_sample_v0_flat_c.dll ${OUTDIR_EXTRAS}/sdk/64/spice_sdk_sample_v0_flat_c.dll 2>/dev/null
 	if ((BUILD_XP > 0))
 	then
 		cp ${BUILDDIR_WINXP_32}/spicetools/spicecfg.exe ${OUTDIR_EXTRAS}/winxp 2>/dev/null
@@ -325,6 +317,9 @@ then
 	git archive --format tar.gz --prefix=spice2x/ HEAD ./ > "${OUTDIR}/src/spice2x-${GIT_BRANCH}.tar.gz" 2>/dev/null || \
 		echo "WARNING: Couldn't get git to create the archive. Is this a git repository?"
 fi
+
+# sdk headers
+cp -r ./sdk/include ${OUTDIR_EXTRAS}/sdk
 
 # copy resources
 rm -rf ${OUTDIR_EXTRAS}/api
