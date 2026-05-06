@@ -91,11 +91,16 @@ sdk_init(
         return SPICE_SDK_STATUS_NOT_SUPPORTED;
     }
 
+    if (!functions) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
+    }
+
     auto *v0 = reinterpret_cast<SPICE_SDK_V0 *>(functions);
     if (v0->size < RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, size)) {
         return SPICE_SDK_STATUS_TOO_SMALL;
     }
-    
+
+    // we are trusting the size passed in by the caller
     size = v0->size;
     memset(v0, 0, size);
     v0->size = size;
@@ -225,7 +230,7 @@ sdk_set_button (
     if (button_id >= buttons->size()) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
-    if (velocity < 0.f || velocity > 1.f) {
+    if (pressed && (velocity < 0.f || velocity > 1.f)) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_3;
     }
 
@@ -252,7 +257,7 @@ sdk_set_analog (
     if (analog_id >= analogs->size()) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
-    if (value < 0.f || value > 1.f) {
+    if (override_active && (value < 0.f || value > 1.f)) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
     }
 
@@ -296,6 +301,10 @@ sdk_set_touch(
         return SPICE_SDK_STATUS_NOT_INITIALIZED;
     }
 
+    if (count == 0 || !points) {
+        return SPICE_SDK_STATUS_TOO_SMALL;
+    }
+
     std::vector<TouchPoint> touch_points;
     for (uint32_t i = 0; i < count; i++) {
         const SPICE_SDK_TOUCH_POINT &point = points[i];
@@ -321,6 +330,10 @@ sdk_clear_touch(
         return SPICE_SDK_STATUS_NOT_INITIALIZED;
     }
 
+    if (count == 0 || !ids) {
+        return SPICE_SDK_STATUS_TOO_SMALL;
+    }
+
     std::vector<DWORD> touch_point_ids;
     for (uint32_t i = 0; i < count; i++) {
         touch_point_ids.push_back(ids[i]);
@@ -340,7 +353,7 @@ sdk_insert_card(
         return SPICE_SDK_STATUS_NOT_INITIALIZED;
     }
 
-    if (unit > 2) {
+    if (unit >= 2) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
 
@@ -393,7 +406,7 @@ sdk_set_keypad(
         return SPICE_SDK_STATUS_NOT_INITIALIZED;
     }
 
-    if (unit > 2) {
+    if (unit >= 2) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
 
