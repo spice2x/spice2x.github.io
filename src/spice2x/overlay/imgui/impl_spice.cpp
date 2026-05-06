@@ -352,6 +352,8 @@ void ImGui_ImplSpice_NewFrame() {
     // only process new input from devices if window is in focus
     // (when not in focus, all mouse/keyboard events are treated as released)
     const auto accept_new_input = superexit::has_focus() && !rawinput::OS_WINDOW_ACTIVE;
+    const auto accept_new_keyboard_input = accept_new_input &&
+        (overlay::OVERLAY && overlay::OVERLAY->has_focus());
 
     // remember old state
     std::array<BYTE, VKEY_MAX> KeysDownOld;
@@ -410,7 +412,7 @@ void ImGui_ImplSpice_NewFrame() {
                     break;
                 }
                 case rawinput::KEYBOARD: {
-                    if (accept_new_input) {
+                    if (accept_new_keyboard_input) {
                         // iterate all virtual key codes
                         for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
                             // get state (combined from all pages)
