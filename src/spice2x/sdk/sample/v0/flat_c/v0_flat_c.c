@@ -24,6 +24,8 @@ static void clear_keypad();
 
 static unsigned __stdcall worker_thread(void *arg);
 
+// this sample assumes that the game is DDR, but it doesn't check for it.
+
 __declspec(dllexport)
 int __cdecl spice_sdk_entry_point(spice_sdk_init_func *init) {
     SPICE_SDK_STATUS_CODE status;
@@ -149,34 +151,34 @@ static void test_avs_info() {
 }
 
 static void set_buttons() {
-    spice.set_button(3, true, 0.3f);
-    spice.set_button(5, true, 0.5f);
-    spice.set_button(7, true, 0.7f);
-    spice.set_button(9, true, 0.9f);
+    spice.set_button(DDR_Button_P1_PANEL_UP, true, 0.3f);
+    spice.set_button(DDR_Button_P1_PANEL_DOWN, true, 0.5f);
+    spice.set_button(DDR_Button_P1_PANEL_LEFT, true, 0.7f);
+    spice.set_button(DDR_Button_P1_PANEL_RIGHT, true, 0.9f);
 }
 
 static void clear_buttons() {
-    spice.set_button(3, false, 0.f);
-    spice.set_button(5, false, 0.f);
-    spice.set_button(7, false, 0.f);
-    spice.set_button(9, false, 0.f);
+    spice.set_button(DDR_Button_P1_PANEL_UP, false, 0.f);
+    spice.set_button(DDR_Button_P1_PANEL_DOWN, false, 0.f);
+    spice.set_button(DDR_Button_P1_PANEL_LEFT, false, 0.f);
+    spice.set_button(DDR_Button_P1_PANEL_RIGHT, false, 0.f);
 }
 
 static void set_analogs() {
-    spice.set_analog(0, true, 0.f);
-    spice.set_analog(1, true, 0.75f);
+    spice.set_analog(DDR_Analog_P1_LEFT_RIGHT, true, 0.f);
+    spice.set_analog(DDR_Analog_P2_LEFT_RIGHT, true, 0.75f);
 }
 
 static void clear_analogs() {
-    spice.set_analog(0, false, 0.f);
-    spice.set_analog(1, false, 0.f);
+    spice.set_analog(DDR_Analog_P1_LEFT_RIGHT, false, 0.f);
+    spice.set_analog(DDR_Analog_P2_LEFT_RIGHT, false, 0.f);
 }
 
 static void get_lights() {
     float value;
     SPICE_SDK_STATUS_CODE status;
 
-    status = spice.get_light(1, &value);
+    status = spice.get_light(DDR_Light_HD_P1_START, &value);
     if (status == SPICE_SDK_STATUS_SUCCESS) {
         char log_message[64];
         snprintf(log_message, sizeof(log_message), "light 1 value: %.2f", value);
@@ -204,7 +206,7 @@ static void insert_card() {
 }
 
 static void set_keypad() {
-    const auto ret = spice.set_keypad(0, '3');
+    SPICE_SDK_STATUS_CODE ret = spice.set_keypad(0, '3');
     if (ret != SPICE_SDK_STATUS_SUCCESS) {
         char log_message[64];
         snprintf(log_message, sizeof(log_message), "set_keypad failed: %d", ret);

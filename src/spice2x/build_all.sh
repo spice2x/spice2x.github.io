@@ -93,7 +93,7 @@ fi
 XP_MUST_BUILD=0
 BUILD_XP=0
 if [ -f "$TOOLCHAIN_WINXP_32" ] && [ -f "$TOOLCHAIN_WINXP_64" ]; then
-	BUILD_XP=0;
+	BUILD_XP=1;
 elif ((XP_MUST_BUILD > 0))
 then
 	echo "WinXP toolchain not available, aborting"
