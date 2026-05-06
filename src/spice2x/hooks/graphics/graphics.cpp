@@ -1401,7 +1401,7 @@ void update_monitor_on_boot(std::optional<graphics_orientation> target_orientati
 }
 
 void update_monitor_at_runtime() {
-    if (monitor_settings_changed) {
+    if (!GRAPHICS_WINDOWED && monitor_settings_changed) {
         log_misc("graphics", "applying monitor updates at runtime as window regained focus...");
         update_monitor(false, target_orientation_on_boot, target_refresh_rate_on_boot);   
     }
