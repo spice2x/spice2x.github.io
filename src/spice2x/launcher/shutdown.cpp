@@ -14,6 +14,7 @@
 #include "launcher.h"
 #include "logger.h"
 #include "nvapi/nvapi.h"
+#include "sdk/sdk.h"
 
 namespace launcher {
 
@@ -22,6 +23,8 @@ namespace launcher {
         // (e.g., crashing, and then closing the window)
         // therefore, subsystems need to be guarded against multiple unload attempts
         log_info("launcher", "stopping subsystems");
+
+        sdk::fini_sdk_modules();
 
         // reset monitor settings
         reset_monitor_on_exit();
