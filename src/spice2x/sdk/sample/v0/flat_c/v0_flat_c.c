@@ -38,9 +38,7 @@ static unsigned __stdcall worker_thread(void *arg);
 
 // this sample assumes that the game is IIDX, but it doesn't check for it.
 
-__declspec(dllexport)
-int
-__cdecl
+SPICE_SDK_ENTRY_POINT
 spice_sdk_entry_point(
     spice_sdk_init_func *init
 )

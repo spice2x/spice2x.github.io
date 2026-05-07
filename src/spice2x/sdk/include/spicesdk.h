@@ -6,6 +6,12 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
+#define SPICE_SDK_ENTRY_POINT extern "C" __declspec(dllexport) int __cdecl
+#else
+#define SPICE_SDK_ENTRY_POINT __declspec(dllexport) int __cdecl
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
