@@ -1,6 +1,3 @@
-#include <windows.h>
-
-#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -9,13 +6,20 @@
 
 static SPICE_SDK_V0 spice = {};
 static spice_sdk_destroy_callback_func destroy_callback;
-static std::atomic_bool worker_thread_stop = false;
-static std::thread worker_thread;
+static std::jthread worker_thread;
 
-static void worker_thread_main() {
-    while (!worker_thread_stop.load()) {
-        spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0_cpp", "ping!");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+static void worker_thread_main(std::stop_token stop_token) {
+    while (!stop_token.stop_requested()) {
+
+        static bool state = false;
+        bool new_state;
+        spice.get_button(IIDX_Button_P1_Start, &new_state, nullptr);
+        if (!state && new_state) {
+            spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0_cpp", "user pressed P1 Start button!");
+        }
+        state = new_state;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -34,9 +38,8 @@ spice_sdk_entry_point(
         return 0;
     }
 
-    spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "plugin loaded");
-    worker_thread_stop.store(false);
-    worker_thread = std::thread(worker_thread_main);
+    spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0_cpp", "plugin loaded");
+    worker_thread = std::jthread(worker_thread_main);
     return 1;
 }
 
@@ -46,9 +49,9 @@ destroy_callback(
     void
 )
 {
-    spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "plugin unloading");
-    worker_thread_stop.store(true);
+    spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0_cpp", "plugin unloading");
     if (worker_thread.joinable()) {
+        worker_thread.request_stop();
         worker_thread.join();
     }
 }

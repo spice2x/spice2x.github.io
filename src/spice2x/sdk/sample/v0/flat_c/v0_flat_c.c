@@ -32,7 +32,8 @@ static void insert_card();
 static void set_keypad();
 static void clear_keypad();
 
-static bool worker_active;
+static HANDLE worker_stop_event;
+static HANDLE worker_handle;
 static unsigned __stdcall worker_thread(void *arg);
 
 // this sample assumes that the game is IIDX, but it doesn't check for it.
@@ -58,8 +59,13 @@ spice_sdk_entry_point(
     test_game_info();
     test_avs_info();
 
-    worker_active = true;
-    _beginthreadex(
+    worker_stop_event = CreateEventA(NULL, TRUE, FALSE, NULL);
+    if (!worker_stop_event) {
+        spice.log(SPICE_SDK_LOG_LEVEL_WARNING, "sample_v0", "failed to create worker stop event");
+        return 0;
+    }
+
+    worker_handle = (HANDLE)_beginthreadex(
         NULL,          // security
         0,             // stack size
         worker_thread, // function
@@ -67,6 +73,12 @@ spice_sdk_entry_point(
         0,             // flags
         NULL           // thread id
     );
+    if (!worker_handle) {
+        spice.log(SPICE_SDK_LOG_LEVEL_WARNING, "sample_v0", "failed to create worker thread");
+        CloseHandle(worker_stop_event);
+        worker_stop_event = NULL;
+        return 0;
+    }
 
     return 1;
 }
@@ -78,12 +90,23 @@ destroy_callback(
 )
 {
     spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "plugin unloaded");
-    worker_active = false;
+    if (worker_stop_event) {
+        SetEvent(worker_stop_event);
+    }
+    if (worker_handle) {
+        WaitForSingleObject(worker_handle, INFINITE);
+        CloseHandle(worker_handle);
+        worker_handle = NULL;
+    }
+    if (worker_stop_event) {
+        CloseHandle(worker_stop_event);
+        worker_stop_event = NULL;
+    }
 }
 
 static unsigned __stdcall worker_thread(void *arg) {
     int phase = 0;
-    while (worker_active) {
+    while (WaitForSingleObject(worker_stop_event, 0) == WAIT_TIMEOUT) {
         phase += 1;
         switch (phase) {
             case 1:
@@ -147,7 +170,7 @@ static unsigned __stdcall worker_thread(void *arg) {
                 break;
         }
         if (phase != 0) {
-            Sleep(3000);
+            WaitForSingleObject(worker_stop_event, 3000);
         }
     }
     return 0;
