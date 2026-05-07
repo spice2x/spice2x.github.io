@@ -2363,9 +2363,6 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
 
-    // init SDK
-    sdk::init_sdk_modules();
-
     // layeredfs
     if (fileutils::dir_exists("data_mods") &&
         GetModuleHandleA("ifs_hook.dll") == nullptr) {
@@ -2396,6 +2393,9 @@ int main_implementation(int argc, char *argv[]) {
     if (BT5API_ENABLED) {
         bt5api_init();
     }
+
+    // init SDK
+    sdk::init_sdk_modules();
 
     // API
     if (api_enable || std::min(api_serial_port.size(), api_serial_baud.size()) > 0) {
