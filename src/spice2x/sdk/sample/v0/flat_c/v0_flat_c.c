@@ -13,11 +13,19 @@ static spice_sdk_destroy_callback_func destroy_callback;
 static void test_logging();
 static void test_game_info();
 static void test_avs_info();
+
+static void get_buttons();
 static void set_buttons();
 static void clear_buttons();
+
+static void get_analogs();
 static void set_analogs();
 static void clear_analogs();
+
 static void get_lights();
+static void set_lights();
+static void clear_lights();
+
 static void set_touch();
 static void clear_touch();
 static void insert_card();
@@ -76,42 +84,58 @@ static unsigned __stdcall worker_thread(void *arg) {
         phase += 1;
         switch (phase) {
             case 1:
+                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "get buttons...");
+                get_buttons();
+                break;
+            case 2:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set buttons...");
                 set_buttons();
                 break;
-            case 2:
+            case 3:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear buttons...");
                 clear_buttons();
                 break;
-            case 3:
+            case 4:
+                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "get analogs...");
+                get_analogs();
+                break;
+            case 5:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set analogs...");
                 set_analogs();
                 break;
-            case 4:
+            case 6:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear analogs...");
                 clear_analogs();
                 break;
-            case 5:
+            case 7:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "get lights...");
                 get_lights();
                 break;
-            case 6:
+            case 8:
+                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set lights...");
+                set_lights();
+                break;
+            case 9:
+                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear lights...");
+                clear_lights();
+                break;
+            case 10:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set touch...");
                 set_touch();
                 break;
-            case 7:
+            case 11:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear touch...");
                 clear_touch();
                 break;
-            case 8:
+            case 12:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "insert card...");
                 insert_card();
                 break;
-            case 9:
+            case 13:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set keypad...");
                 set_keypad();
                 break;
-            case 10:
+            case 14:
                 spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear keypad...");
                 clear_keypad();
                 break;
@@ -166,6 +190,21 @@ static void test_avs_info() {
     spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", log_message);
 }
 
+static void get_buttons() {
+    bool pressed;
+    float velocity;
+    spice.get_button(IIDX_Button_P1_Headphone, &pressed, &velocity);
+    
+    char log_message[128];
+    snprintf(
+        log_message,
+        sizeof(log_message),
+        "button P1_Headphone pressed: %s, velocity: %.2f",
+        pressed ? "ON" : "off", velocity);
+
+    spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", log_message);
+}
+
 static void set_buttons() {
     spice.set_button(IIDX_Button_P1_1, true, 0.3f);
     spice.set_button(IIDX_Button_P1_3, true, 0.5f);
@@ -176,6 +215,20 @@ static void clear_buttons() {
     spice.set_button(IIDX_Button_P1_1, false, 0.f);
     spice.set_button(IIDX_Button_P1_3, false, 0.f);
     spice.set_button(IIDX_Button_P1_5, false, 0.f);
+}
+
+static void get_analogs() {
+    float value;
+    spice.get_analog(IIDX_Analog_TT_P1, &value);
+    
+    char log_message[128];
+    snprintf(
+        log_message,
+        sizeof(log_message),
+        "analog TT_P1: %.2f",
+        value);
+
+    spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", log_message);
 }
 
 static void set_analogs() {
@@ -200,6 +253,14 @@ static void get_lights() {
     } else {
         spice.log(SPICE_SDK_LOG_LEVEL_WARNING, "sample_v0", "get_light failed");
     }
+}
+
+static void set_lights() {
+    spice.set_light(IIDX_Light_P1_Start, true, 1.f);
+}
+
+static void clear_lights() {
+    spice.set_light(IIDX_Light_P1_Start, false, 0.f);
 }
 
 static void set_touch() {

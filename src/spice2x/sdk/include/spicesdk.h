@@ -87,6 +87,19 @@ typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_log_func)(
     const char *message
 );
 
+// get_button (v0.1 and up)
+// gets the button state
+//
+//   button_id: ID of the button; see spicesdk_io.h for named values
+//   pressed: (optional) is the button pressed?
+//   velocity: (optional) MIDI velocity of the button
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_get_button_func)(
+    uint32_t button_id,
+    bool *pressed,
+    float *velocity
+);
+
 // set_button (v0.1 and up)
 // sets or clears the button override
 //
@@ -103,6 +116,17 @@ typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_set_button_func)(
     uint32_t button_id,
     bool pressed,
     float velocity
+);
+
+// get_analog (v0.1 and up)
+// gets the analog state
+//
+//   button_id: ID of the button; see spicesdk_io.h for named values
+//   value: receives the state of the analog
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_get_analog_func)(
+    uint32_t analog_id,
+    float *value
 );
 
 // set_analog (v0.1 and up)
@@ -124,11 +148,23 @@ typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_set_analog_func)(
 // gets the last observed value of a light
 //
 //   light_id: ID of the light; see spicesdk_io.h for named values
-//   light_value: output parameter for the light value; 0.0 to 1.0
+//   value: output parameter for the light value; 0.0 to 1.0
 
 typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_get_light_func)(
     uint32_t light_id,
-    float *light_value
+    float *value
+);
+
+// set_light (v0.1 and up)
+// sets or clears the light override
+//
+//   light_id: ID of the light; see spicesdk_io.h for named values
+//   light_value: output parameter for the light value; 0.0 to 1.0
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_set_light_func)(
+    uint32_t light_id,
+    bool override_active,
+    float light_value
 );
 
 // set_touch (v0.1 and up)
@@ -185,9 +221,14 @@ typedef struct SPICE_SDK_V0 {
     spice_sdk_get_game_info_func *get_game_info;
     spice_sdk_get_avs_info_func *get_avs_info;
 
+    spice_sdk_get_button_func *get_button;
     spice_sdk_set_button_func *set_button;
+
+    spice_sdk_get_analog_func *get_analog;
     spice_sdk_set_analog_func *set_analog;
+
     spice_sdk_get_light_func *get_light;
+    spice_sdk_set_light_func *set_light;
 
     spice_sdk_set_touch_func *set_touch;
     spice_sdk_clear_touch_func *clear_touch;

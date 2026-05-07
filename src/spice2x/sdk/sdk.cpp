@@ -18,9 +18,12 @@ static spice_sdk_init_func sdk_init;
 static spice_sdk_log_func sdk_log;
 static spice_sdk_get_avs_info_func sdk_get_avs_info;
 static spice_sdk_get_game_info_func sdk_get_game_info;
+static spice_sdk_get_button_func sdk_get_button;
 static spice_sdk_set_button_func sdk_set_button;
+static spice_sdk_get_analog_func sdk_get_analog;
 static spice_sdk_set_analog_func sdk_set_analog;
 static spice_sdk_get_light_func sdk_get_light;
+static spice_sdk_set_light_func sdk_set_light;
 static spice_sdk_set_touch_func sdk_set_touch;
 static spice_sdk_clear_touch_func sdk_clear_touch;
 static spice_sdk_insert_card_func sdk_insert_card;
@@ -141,7 +144,7 @@ sdk_init(
     }
 
     auto *v0 = reinterpret_cast<SPICE_SDK_V0 *>(sdk_functions);
-    if (v0->size < RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, size)) {
+    if (v0->size < RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, set_keypad)) {
         log_warning("sdk", "sdk_init returning TOO_SMALL due to size field of SPICE_SDK_V0 not being set");
         return SPICE_SDK_STATUS_TOO_SMALL;
     }
@@ -151,36 +154,21 @@ sdk_init(
     memset(v0, 0, size);
     v0->size = size;
 
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, log)) {
-        v0->log = sdk_log;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_game_info)) {
-        v0->get_game_info = sdk_get_game_info;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_avs_info)) {
-        v0->get_avs_info = sdk_get_avs_info;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, set_button)) {
-        v0->set_button = sdk_set_button;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, set_analog)) {
-        v0->set_analog = sdk_set_analog;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_light)) {
-        v0->get_light = sdk_get_light;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, set_touch)) {
-        v0->set_touch = sdk_set_touch;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, clear_touch)) {
-        v0->clear_touch = sdk_clear_touch;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, insert_card)) {
-        v0->insert_card = sdk_insert_card;
-    }
-    if (size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, set_keypad)) {
-        v0->set_keypad = sdk_set_keypad;
-    }
+    v0->log = sdk_log;
+    v0->get_game_info = sdk_get_game_info;
+    v0->get_avs_info = sdk_get_avs_info;
+    v0->get_button = sdk_get_button;
+    v0->set_button = sdk_set_button;
+    v0->get_analog = sdk_get_analog;
+    v0->set_analog = sdk_set_analog;
+    v0->get_light = sdk_get_light;
+    v0->set_light = sdk_set_light;
+    v0->set_touch = sdk_set_touch;
+    v0->clear_touch = sdk_clear_touch;
+    v0->insert_card = sdk_insert_card;
+    v0->set_keypad = sdk_set_keypad;
+    // end of 0.1
+    // any newer minor iterations will need to check the size
 
     {
         // destroy callbacks are only called upon successful return from this routine
@@ -277,6 +265,37 @@ sdk_get_game_info(
 
 SPICE_SDK_STATUS_CODE
 __cdecl
+sdk_get_button (
+    uint32_t button_id,
+    bool *pressed,
+    float *velocity
+)
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!buttons) {
+        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+    }
+    if (button_id >= buttons->size()) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
+    }
+
+    Button &button = (*buttons)[button_id];
+    if (pressed) {
+        *pressed = (GameAPI::Buttons::getState(RI_MGR, button) == GameAPI::Buttons::BUTTON_PRESSED);
+    }
+    if (velocity) {
+        *velocity = GameAPI::Buttons::getVelocity(RI_MGR, button);
+    }
+
+    return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
 sdk_set_button (
     uint32_t button_id,
     bool pressed,
@@ -294,8 +313,8 @@ sdk_set_button (
     if (button_id >= buttons->size()) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
-    if (pressed && (velocity < 0.f || velocity > 1.f)) {
-        return SPICE_SDK_STATUS_INVALID_ARGUMENT_3;
+    if (pressed) {
+        velocity = std::clamp(velocity, 0.f, 1.f);
     }
 
     Button &button = (*buttons)[button_id];
@@ -304,6 +323,33 @@ sdk_set_button (
         button.override_velocity = velocity;
     }
     button.override_enabled = pressed;
+    return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_get_analog (
+    uint32_t analog_id,
+    float *value
+)
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!analogs) {
+        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+    }
+    if (analog_id >= analogs->size()) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
+    }
+    if (!value) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
+    }
+
+    Analog &analog = (*analogs)[analog_id];
+    *value = GameAPI::Analogs::getState(RI_MGR, analog);
     return SPICE_SDK_STATUS_SUCCESS;
 }
 
@@ -326,8 +372,8 @@ sdk_set_analog (
     if (analog_id >= analogs->size()) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
-    if (override_active && (value < 0.f || value > 1.f)) {
-        return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
+    if (override_active) {
+        value = std::clamp(value, 0.f, 1.f);
     }
 
     Analog &analog = (*analogs)[analog_id];
@@ -342,7 +388,7 @@ SPICE_SDK_STATUS_CODE
 __cdecl
 sdk_get_light(
     uint32_t light_id,
-    float *light_value
+    float *value
     )
 {
     std::shared_lock lock(sdk_global_mutex);
@@ -356,11 +402,42 @@ sdk_get_light(
     if (light_id >= lights->size()) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
-    if (!light_value) {
+    if (!value) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
     }
     Light &light = (*lights)[light_id];
-    *light_value = GameAPI::Lights::readLight(RI_MGR, light);
+    *value = GameAPI::Lights::readLight(RI_MGR, light);
+    return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_set_light(
+    uint32_t light_id,
+    bool override_active,
+    float value
+    )
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!lights) {
+        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+    }
+    if (light_id >= lights->size()) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
+    }
+    if (override_active) {
+        value = std::clamp(value, 0.f, 1.f);
+    }
+
+    Light &light = (*lights)[light_id];
+    if (override_active) {
+        light.override_state = value;
+    }
+    light.override_enabled = override_active;
     return SPICE_SDK_STATUS_SUCCESS;
 }
 
