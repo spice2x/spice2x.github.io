@@ -883,6 +883,16 @@ if(NOT MSVC)
     set_target_properties(spicetools_sdk_sample_v0_flat_c_64 PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
 endif()
 
+# sdk_sample_v0_cpp.dll (64 bit)
+set(SOURCE_FILES sdk/sample/v0/cpp/v0_cpp.cpp)
+add_library(spicetools_sdk_sample_v0_cpp_64 SHARED ${SOURCE_FILES} ${RESOURCE_FILES} sdk/sample/v0/cpp/v0_cpp.def)
+set_target_properties(spicetools_sdk_sample_v0_cpp_64 PROPERTIES PREFIX "")
+set_target_properties(spicetools_sdk_sample_v0_cpp_64 PROPERTIES OUTPUT_NAME "sdk_sample_v0_cpp")
+
+if(NOT MSVC)
+    set_target_properties(spicetools_sdk_sample_v0_cpp_64 PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
+endif()
+
 # output directories
 ####################
 
@@ -899,7 +909,7 @@ set_target_properties(spicetools_spice spicetools_spice_laa spicetools_spice_lin
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/32")
 
 # output 64bit
-set_target_properties(spicetools_spice64 spicetools_spice64_linux spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvcuda spicetools_stubs_nvcuvid spicetools_stubs_nvEncodeAPI64 spicetools_sdk_sample_v0_flat_c_64
+set_target_properties(spicetools_spice64 spicetools_spice64_linux spicetools_stubs_kbt64 spicetools_stubs_kld64 spicetools_stubs_nvcuda spicetools_stubs_nvcuvid spicetools_stubs_nvEncodeAPI64 spicetools_sdk_sample_v0_flat_c_64 spicetools_sdk_sample_v0_cpp_64
         PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/archive64"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/64"

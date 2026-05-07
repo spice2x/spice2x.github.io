@@ -1,4 +1,4 @@
-LIBRARY sdk_sample_v0_flat_c
+LIBRARY sdk_sample_v0_cpp
 
 EXPORTS
     spice_sdk_entry_point

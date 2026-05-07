@@ -32,6 +32,7 @@ static void insert_card();
 static void set_keypad();
 static void clear_keypad();
 
+static bool worker_active;
 static unsigned __stdcall worker_thread(void *arg);
 
 // this sample assumes that the game is IIDX, but it doesn't check for it.
@@ -57,6 +58,7 @@ spice_sdk_entry_point(
     test_game_info();
     test_avs_info();
 
+    worker_active = true;
     _beginthreadex(
         NULL,          // security
         0,             // stack size
@@ -76,11 +78,12 @@ destroy_callback(
 )
 {
     spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "plugin unloaded");
+    worker_active = false;
 }
 
 static unsigned __stdcall worker_thread(void *arg) {
     int phase = 0;
-    while (true) {
+    while (worker_active) {
         phase += 1;
         switch (phase) {
             case 1:
