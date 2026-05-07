@@ -6,6 +6,7 @@
 #include "launcher/launcher.h"
 #include "games/io.h"
 #include "util/utils.h"
+#include "acio/mdxf/mdxf_poll.h"
 
 using namespace std::placeholders;
 using namespace rapidjson;
@@ -104,6 +105,7 @@ namespace api::modules {
                 for (auto &analog : *this->analogs) {
                     analog.override_enabled = false;
                 }
+                mdxf_poll(true);
             }
             return;
         }
@@ -148,6 +150,7 @@ namespace api::modules {
             if (analog.getName() == name) {
                 analog.override_state = CLAMP(state, 0.f, 1.f);
                 analog.override_enabled = true;
+                mdxf_poll(true);
                 return true;
             }
         }
@@ -167,6 +170,7 @@ namespace api::modules {
         for (auto &analog : *this->analogs) {
             if (analog.getName() == name) {
                 analog.override_enabled = false;
+                mdxf_poll(true);
                 return true;
             }
         }

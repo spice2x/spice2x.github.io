@@ -6,6 +6,7 @@
 #include "launcher/launcher.h"
 #include "games/io.h"
 #include "util/utils.h"
+#include "acio/mdxf/mdxf_poll.h"
 
 using namespace std::placeholders;
 using namespace rapidjson;
@@ -107,6 +108,7 @@ namespace api::modules {
                 for (auto &button : *this->buttons) {
                     button.override_enabled = false;
                 }
+                mdxf_poll(true);
             }
             return;
         }
@@ -153,6 +155,7 @@ namespace api::modules {
                         GameAPI::Buttons::BUTTON_PRESSED : GameAPI::Buttons::BUTTON_NOT_PRESSED;
                 button.override_velocity = CLAMP(state, 0.f, 1.f);
                 button.override_enabled = true;
+                mdxf_poll(true);
                 return true;
             }
         }
@@ -172,6 +175,7 @@ namespace api::modules {
         for (auto &button : *this->buttons) {
             if (button.getName() == name) {
                 button.override_enabled = false;
+                mdxf_poll(true);
                 return true;
             }
         }

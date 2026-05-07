@@ -11,6 +11,7 @@
 #include "touch/touch.h"
 #include "util/logging.h"
 #include "util/utils.h"
+#include "acio/mdxf/mdxf_poll.h"
 
 namespace sdk {
 
@@ -323,6 +324,7 @@ sdk_set_button (
         button.override_velocity = velocity;
     }
     button.override_enabled = pressed;
+    mdxf_poll(true);
     return SPICE_SDK_STATUS_SUCCESS;
 }
 
@@ -381,6 +383,7 @@ sdk_set_analog (
         analog.override_state = value;
     }
     analog.override_enabled = override_active;
+    mdxf_poll(true);
     return SPICE_SDK_STATUS_SUCCESS;
 }
 
