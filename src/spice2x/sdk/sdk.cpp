@@ -1,5 +1,6 @@
 #include <vector>
 #include <mutex>
+#include <shared_mutex>
 
 #include "sdk.h"
 #include "avs/game.h"
@@ -33,16 +34,20 @@ struct SdkModule {
 // DLLs
 static int sdk_modules_count = 0;
 static std::vector<SdkModule> sdk_modules_list;
-static std::mutex sdk_modules_mutex;
+static std::shared_mutex sdk_global_mutex;
 
 // internal
 static bool sdk_initialized = false;
+static bool sdk_shutting_down = false;
 static std::vector<Button> *buttons;
 static std::vector<Analog> *analogs;
 static std::vector<Light> *lights;
 
+// callbacks
+static std::mutex sdk_callback_registration_mutex;
+static std::vector<spice_sdk_destroy_callback_func *> callbacks_destroy;
+
 void register_sdk_hooks(std::string dll, HINSTANCE module) {
-    std::lock_guard lock(sdk_modules_mutex);
     sdk_modules_list.emplace_back(std::move(dll), module);
     sdk_modules_count += 1;
 }
@@ -56,13 +61,17 @@ void init_sdk_modules() {
     buttons = games::get_buttons(eamuse_get_game());
     analogs = games::get_analogs(eamuse_get_game());
     lights = games::get_lights(eamuse_get_game());
-    sdk_initialized = true;
 
-    // call into DLLs
-    std::lock_guard lock(sdk_modules_mutex);
+    // under exclusive lock, mark the SDK helpers as being available
+    {
+        std::unique_lock lock(sdk_global_mutex);
+        sdk_initialized = true;
+    }
+
+    // without any locks, call into each DLL; this may call back into SDK functions
     for (auto &module : sdk_modules_list) {
         // get a pointer to dll's spice_sdk_entry_point
-        const auto entry_point = reinterpret_cast<spice_sdk_entry_point_t>(
+        const auto entry_point = reinterpret_cast<spice_sdk_entry_point_func *>(
             GetProcAddress(module.module, "spice_sdk_entry_point"));
         if (!entry_point) {
             continue;
@@ -76,27 +85,64 @@ void init_sdk_modules() {
 }
 
 void fini_sdk_modules() {
-    sdk_initialized = false;
+    // prevent multiple calls and further calls into sdk_init
+    {
+        std::unique_lock lock(sdk_global_mutex);
+        if (!sdk_initialized) {
+            return;
+        }
+        sdk_shutting_down = true;
+    }
+
+    // call into destroy callback of each DLL
+    // this may call back into SDK functions (e.g., for logging)
+    // so we leave sdk_initialized as-is
+    {
+        log_info("sdk", "calling destroy callbacks...");
+        std::lock_guard lock(sdk_callback_registration_mutex);
+        for (const auto& destroy : callbacks_destroy) {
+            destroy();
+        }
+    }
+
+    // under exclusive lock, mark the SDK functions as no longer available
+    {
+        std::unique_lock lock(sdk_global_mutex);
+        sdk_initialized = false;
+    }
 }
 
 SPICE_SDK_STATUS_CODE
 __cdecl
 sdk_init(
     uint32_t version,
-    void *functions
+    spice_sdk_destroy_callback_func *destroy_callback,
+    void *sdk_functions
 )  
 {
+    std::shared_lock lock(sdk_global_mutex);
+    if (sdk_shutting_down || !sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
     uint32_t size;
     if (version != 0) {
+        log_warning("sdk", "sdk_init returning NOT_SUPPORTED due to invalid version: {}", version);
         return SPICE_SDK_STATUS_NOT_SUPPORTED;
     }
 
-    if (!functions) {
+    if (!destroy_callback) {
+        log_warning("sdk", "sdk_init returning INVALID_ARGUMENT_2 due to invalid destroy_callback pointer");
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
     }
+    if (!sdk_functions) {
+        log_warning("sdk", "sdk_init returning INVALID_ARGUMENT_3 due to invalid sdk_functions pointer");
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_3;
+    }
 
-    auto *v0 = reinterpret_cast<SPICE_SDK_V0 *>(functions);
+    auto *v0 = reinterpret_cast<SPICE_SDK_V0 *>(sdk_functions);
     if (v0->size < RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, size)) {
+        log_warning("sdk", "sdk_init returning TOO_SMALL due to size field of SPICE_SDK_V0 not being set");
         return SPICE_SDK_STATUS_TOO_SMALL;
     }
 
@@ -136,6 +182,13 @@ sdk_init(
         v0->set_keypad = sdk_set_keypad;
     }
 
+    {
+        // destroy callbacks are only called upon successful return from this routine
+        std::lock_guard lock(sdk_callback_registration_mutex);
+        callbacks_destroy.push_back(destroy_callback);
+    }
+
+    log_info("sdk", "sdk_init returning SUCCESS");
     return SPICE_SDK_STATUS_SUCCESS;
 }
 
@@ -147,9 +200,11 @@ sdk_log(
     const char *message
 )
 {
+    std::shared_lock lock(sdk_global_mutex);
     if (!sdk_initialized) {
-        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+        return SPICE_SDK_STATUS_TOO_LATE;
     }
+
     if (facility == nullptr) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
     }
@@ -181,9 +236,11 @@ sdk_get_avs_info(
     SPICE_SDK_AVS_INFO *info
 )
 {
+    std::shared_lock lock(sdk_global_mutex);
     if (!sdk_initialized) {
-        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+        return SPICE_SDK_STATUS_TOO_LATE;
     }
+
     if (!info) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
@@ -202,9 +259,11 @@ sdk_get_game_info(
     SPICE_SDK_GAME_INFO *info
 )
 {
+    std::shared_lock lock(sdk_global_mutex);
     if (!sdk_initialized) {
-        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+        return SPICE_SDK_STATUS_TOO_LATE;
     }
+
     if (!info) {
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
@@ -224,7 +283,12 @@ sdk_set_button (
     float velocity
 )
 {
-    if (!buttons || !sdk_initialized) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!buttons) {
         return SPICE_SDK_STATUS_NOT_INITIALIZED;
     }
     if (button_id >= buttons->size()) {
@@ -251,7 +315,12 @@ sdk_set_analog (
     float value
 )
 {
-    if (!analogs || !sdk_initialized) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!analogs) {
         return SPICE_SDK_STATUS_NOT_INITIALIZED;
     }
     if (analog_id >= analogs->size()) {
@@ -276,7 +345,12 @@ sdk_get_light(
     float *light_value
     )
 {
-    if (!lights || !sdk_initialized) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!lights) {
         return SPICE_SDK_STATUS_NOT_INITIALIZED;
     }
     if (light_id >= lights->size()) {
@@ -297,8 +371,9 @@ sdk_set_touch(
     uint32_t count
 )
 {
+    std::shared_lock lock(sdk_global_mutex);
     if (!sdk_initialized) {
-        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+        return SPICE_SDK_STATUS_TOO_LATE;
     }
 
     if (count == 0 || !points) {
@@ -326,8 +401,9 @@ sdk_clear_touch(
     uint32_t count
 )
 {
+    std::shared_lock lock(sdk_global_mutex);
     if (!sdk_initialized) {
-        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+        return SPICE_SDK_STATUS_TOO_LATE;
     }
 
     if (count == 0 || !ids) {
@@ -349,8 +425,9 @@ sdk_insert_card(
     const char *card_id
 )
 {
+    std::shared_lock lock(sdk_global_mutex);
     if (!sdk_initialized) {
-        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+        return SPICE_SDK_STATUS_TOO_LATE;
     }
 
     if (unit >= 2) {
@@ -402,8 +479,9 @@ sdk_set_keypad(
     char key
 )
 {
+    std::shared_lock lock(sdk_global_mutex);
     if (!sdk_initialized) {
-        return SPICE_SDK_STATUS_NOT_INITIALIZED;
+        return SPICE_SDK_STATUS_TOO_LATE;
     }
 
     if (unit >= 2) {

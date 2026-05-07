@@ -269,8 +269,8 @@ rm -rf ${OUTDIR_EXTRAS}
 mkdir -p ${OUTDIR_EXTRAS}
 mkdir -p ${OUTDIR_EXTRAS}/largeaddressaware
 mkdir -p ${OUTDIR_EXTRAS}/linux
-mkdir -p ${OUTDIR_EXTRAS}/sdk/32
-mkdir -p ${OUTDIR_EXTRAS}/sdk/64
+mkdir -p ${OUTDIR_EXTRAS}/sdk/samples/32
+mkdir -p ${OUTDIR_EXTRAS}/sdk/samples/64
 if ((BUILD_XP > 0))
 then
 mkdir -p ${OUTDIR_EXTRAS}/winxp
@@ -298,8 +298,8 @@ else
     cp ${BUILDDIR_64}/spicetools/64/nvcuda.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_64}/spicetools/64/nvcuvid.dll ${OUTDIR}/stubs/64 2>/dev/null
     cp ${BUILDDIR_32}/spicetools/32/cpusbxpkm.dll ${OUTDIR}/stubs/32 2>/dev/null
-	cp ${BUILDDIR_32}/spicetools/32/spice_sdk_sample_v0_flat_c.dll ${OUTDIR_EXTRAS}/sdk/32/spice_sdk_sample_v0_flat_c.dll 2>/dev/null
-	cp ${BUILDDIR_64}/spicetools/64/spice_sdk_sample_v0_flat_c.dll ${OUTDIR_EXTRAS}/sdk/64/spice_sdk_sample_v0_flat_c.dll 2>/dev/null
+	cp ${BUILDDIR_32}/spicetools/32/sdk_sample_v0_flat_c.dll ${OUTDIR_EXTRAS}/sdk/samples/32/v0_flat_c.dll 2>/dev/null
+	cp ${BUILDDIR_64}/spicetools/64/sdk_sample_v0_flat_c.dll ${OUTDIR_EXTRAS}/sdk/samples/64/v0_flat_c.dll 2>/dev/null
 	if ((BUILD_XP > 0))
 	then
 		cp ${BUILDDIR_WINXP_32}/spicetools/spicecfg.exe ${OUTDIR_EXTRAS}/winxp 2>/dev/null

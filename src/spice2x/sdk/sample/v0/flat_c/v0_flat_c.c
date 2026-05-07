@@ -8,6 +8,8 @@
 
 static SPICE_SDK_V0 spice;
 
+static spice_sdk_destroy_callback_func destroy_callback;
+
 static void test_logging();
 static void test_game_info();
 static void test_avs_info();
@@ -24,15 +26,20 @@ static void clear_keypad();
 
 static unsigned __stdcall worker_thread(void *arg);
 
-// this sample assumes that the game is DDR, but it doesn't check for it.
+// this sample assumes that the game is IIDX, but it doesn't check for it.
 
 __declspec(dllexport)
-int __cdecl spice_sdk_entry_point(spice_sdk_init_func *init) {
+int
+__cdecl
+spice_sdk_entry_point(
+    spice_sdk_init_func *init
+)
+{
     SPICE_SDK_STATUS_CODE status;
 
     memset(&spice, 0, sizeof(spice));
     spice.size = sizeof(spice);
-    status = init(0, &spice);
+    status = init(0, destroy_callback, &spice);
     if (status != SPICE_SDK_STATUS_SUCCESS) {
         return 0;
     }
@@ -52,6 +59,15 @@ int __cdecl spice_sdk_entry_point(spice_sdk_init_func *init) {
     );
 
     return 1;
+}
+
+void
+__cdecl
+destroy_callback(
+    void
+)
+{
+    spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "plugin unloaded");
 }
 
 static unsigned __stdcall worker_thread(void *arg) {
@@ -151,37 +167,35 @@ static void test_avs_info() {
 }
 
 static void set_buttons() {
-    spice.set_button(DDR_Button_P1_PANEL_UP, true, 0.3f);
-    spice.set_button(DDR_Button_P1_PANEL_DOWN, true, 0.5f);
-    spice.set_button(DDR_Button_P1_PANEL_LEFT, true, 0.7f);
-    spice.set_button(DDR_Button_P1_PANEL_RIGHT, true, 0.9f);
+    spice.set_button(IIDX_Button_P1_1, true, 0.3f);
+    spice.set_button(IIDX_Button_P1_3, true, 0.5f);
+    spice.set_button(IIDX_Button_P1_5, true, 0.7f);
 }
 
 static void clear_buttons() {
-    spice.set_button(DDR_Button_P1_PANEL_UP, false, 0.f);
-    spice.set_button(DDR_Button_P1_PANEL_DOWN, false, 0.f);
-    spice.set_button(DDR_Button_P1_PANEL_LEFT, false, 0.f);
-    spice.set_button(DDR_Button_P1_PANEL_RIGHT, false, 0.f);
+    spice.set_button(IIDX_Button_P1_1, false, 0.f);
+    spice.set_button(IIDX_Button_P1_3, false, 0.f);
+    spice.set_button(IIDX_Button_P1_5, false, 0.f);
 }
 
 static void set_analogs() {
-    spice.set_analog(DDR_Analog_P1_LEFT_RIGHT, true, 0.f);
-    spice.set_analog(DDR_Analog_P2_LEFT_RIGHT, true, 0.75f);
+    spice.set_analog(IIDX_Analog_TT_P1, true, 0.25f);
+    spice.set_analog(IIDX_Analog_TT_P2, true, 0.75f);
 }
 
 static void clear_analogs() {
-    spice.set_analog(DDR_Analog_P1_LEFT_RIGHT, false, 0.f);
-    spice.set_analog(DDR_Analog_P2_LEFT_RIGHT, false, 0.f);
+    spice.set_analog(IIDX_Analog_TT_P1, false, 0.f);
+    spice.set_analog(IIDX_Analog_TT_P2, false, 0.f);
 }
 
 static void get_lights() {
     float value;
     SPICE_SDK_STATUS_CODE status;
 
-    status = spice.get_light(DDR_Light_HD_P1_START, &value);
+    status = spice.get_light(IIDX_Light_TT_P1_Resistance, &value);
     if (status == SPICE_SDK_STATUS_SUCCESS) {
         char log_message[64];
-        snprintf(log_message, sizeof(log_message), "light 1 value: %.2f", value);
+        snprintf(log_message, sizeof(log_message), "P1 TT resistance value: %.2f", value);
         spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", log_message);
     } else {
         spice.log(SPICE_SDK_LOG_LEVEL_WARNING, "sample_v0", "get_light failed");

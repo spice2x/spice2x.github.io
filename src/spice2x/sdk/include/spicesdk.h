@@ -17,6 +17,7 @@ typedef enum SPICE_SDK_STATUS_CODE {
     SPICE_SDK_STATUS_NOT_INITIALIZED = 2,
     SPICE_SDK_STATUS_NOT_SUPPORTED = 3,
     SPICE_SDK_STATUS_TOO_SMALL = 4,
+    SPICE_SDK_STATUS_TOO_LATE = 5,
 
     // 1000: invalid args
     SPICE_SDK_STATUS_INVALID_ARGUMENT_1 = 1001,
@@ -196,12 +197,25 @@ typedef struct SPICE_SDK_V0 {
 
 } SPICE_SDK_V0;
 
-typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_init_func)(
-    uint32_t version,
-    void *functions
+typedef void (__cdecl spice_sdk_destroy_callback_func)(
+    void
 );
 
-typedef int (__cdecl *spice_sdk_entry_point_t)(
+// init (v0.1 and up)
+//
+//   version: supply 0
+//   destroy_callback: supply a function pointer that will be called when spice
+//                     is shutting down
+//   sdk_functions: supply a pointer to SPICE_SDK_V0; ensure size field is initialized
+//                  to sizeof(SPICE_SDK_V0) before calling this function
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_init_func)(
+    uint32_t version,
+    spice_sdk_destroy_callback_func *destroy_callback,
+    void *sdk_functions
+);
+
+typedef int (__cdecl spice_sdk_entry_point_func)(
     spice_sdk_init_func *init
 );
 
