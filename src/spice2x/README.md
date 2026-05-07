@@ -283,6 +283,16 @@ Python is the only one that is fully spec compliant.
 Other libraries may be missing features and contain bugs; please feel free to
 contribute code to fill the gaps if you work on a project using these libraries.
 
+## Spice SDK (for DLL hooks / plugins)
+
+As an alternative to Spice API, Spice SDK is available.
+
+This is a flat C, header-only library that can be included in your DLL. Once
+initialized, you can call directly into helper routines provided by Spicetools
+executable, making low-latency and high-throughput interactions possible.
+
+Check the documentation on the wiki for more details.
+
 ## License
 Unless otherwise noted, all files are licensed under the GPLv3.
 See the LICENSE file for the full license text.
