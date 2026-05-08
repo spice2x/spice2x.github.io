@@ -28,6 +28,10 @@
 #define PERIOD 1
 #define TOLERANCE 0.02
 
+#ifndef PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION
+#define PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION 0x4
+#endif
+
 namespace timeutils {
 
     bool TIMER_HACKS_DISABLE = false;
@@ -82,21 +86,14 @@ namespace timeutils {
         // the game will also call this but the OS will honor the lowest value (1 above)
     }
 
+#if !SPICE_XP
+
     // timerSleep from https://blog.bearcats.nl/perfect-sleep-function/
     static void timerSleep(HANDLE timer, double seconds) {
         using namespace std::chrono;
 
         auto t = high_resolution_clock::now();
         const auto target = t + nanoseconds(int64_t(seconds * 1e9));
-
-        if (!timer) {
-            timer = CreateWaitableTimerExW(
-                NULL,
-                NULL,
-                CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
-                TIMER_ALL_ACCESS);
-        }
-
         const int64_t maxTicks = PERIOD * 9'500;
         for (;;) {
             const int64_t remaining = (target - t).count();
@@ -119,6 +116,8 @@ namespace timeutils {
             YieldProcessor();
         }
     }
+
+#endif
 
     static TimerHandle get_precise_sleep_timer() {
         TimerHandle timer = nullptr;
@@ -153,10 +152,12 @@ namespace timeutils {
             return;
         }
 
+#if !SPICE_XP
         if (timer) {
             timerSleep(timer, seconds);
             return;
         }
+#endif
 
         // robustSleep is too CPU heavy so we will stick to Sleep() with
         // timeBeginPeriod, which has an error at most 1ms
