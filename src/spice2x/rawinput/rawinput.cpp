@@ -9,6 +9,7 @@
 
 #include "util/logging.h"
 #include "external/robin_hood.h"
+#include "util/precise_timer.h"
 #include "util/time.h"
 #include "util/utils.h"
 
@@ -155,8 +156,9 @@ void rawinput::RawInputManager::input_hwnd_create() {
     });
 
     // wait for window creation being done
+    timeutils::PreciseSleepTimer timer;
     while (!this->input_hwnd) {
-        Sleep(1);
+        timer.sleep(1);
     }
 }
 

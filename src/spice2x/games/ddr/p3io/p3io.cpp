@@ -3,6 +3,7 @@
 #include "cfg/api.h"
 #include "rawinput/rawinput.h"
 #include "util/logging.h"
+#include "util/precise_timer.h"
 #include "util/utils.h"
 
 #include "../ddr.h"
@@ -459,7 +460,8 @@ int games::ddr::DDRP3IOHandle::device_io(
     if (nOutBufferSize >= 4) {
 
         // cool down
-        Sleep(1);
+        static thread_local timeutils::PreciseSleepTimer timer;
+        timer.sleep(1);
 
         // get controls as single variable (4 bytes)
         auto &controls = *(uint32_t*) lpOutBuffer;

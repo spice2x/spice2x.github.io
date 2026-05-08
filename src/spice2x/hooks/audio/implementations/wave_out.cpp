@@ -3,6 +3,7 @@
 #include "hooks/audio/audio.h"
 #include "hooks/audio/backends/wasapi/audio_client.h"
 #include "hooks/audio/backends/wasapi/defs.h"
+#include "util/precise_timer.h"
 
 static REFERENCE_TIME WASAPI_TARGET_REFTIME = TARGET_REFTIME;
 
@@ -185,6 +186,7 @@ HRESULT WaveOutBackend::on_get_buffer(uint32_t num_frames_requested, BYTE **ppDa
 }
 HRESULT WaveOutBackend::on_release_buffer(uint32_t num_frames_written, DWORD dwFlags) {
     bool written = false;
+    timeutils::PreciseSleepTimer timer;
 
     // reset the dispatcher event
     ResetEvent(this->dispatcher_event);
@@ -209,7 +211,7 @@ HRESULT WaveOutBackend::on_release_buffer(uint32_t num_frames_written, DWORD dwF
 
         // avoid pegging the CPU
         if (!written) {
-            Sleep(1);
+            timer.sleep(1);
         }
     }
 

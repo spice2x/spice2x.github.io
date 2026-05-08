@@ -46,7 +46,7 @@ bool games::onpara::TouchPanelHandle::open(LPCWSTR lpFileName) {
 
 int games::onpara::TouchPanelHandle::read(LPVOID lpBuffer, DWORD nNumberOfBytesToRead) {
 
-    static timeutils::PreciseSleepTimer timer;
+    static thread_local timeutils::PreciseSleepTimer timer;
 
     DWORD i;
     auto buffer = reinterpret_cast<uint8_t *>(lpBuffer);

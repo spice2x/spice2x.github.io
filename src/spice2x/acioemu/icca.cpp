@@ -5,6 +5,7 @@
 #include "games/sdvx/sdvx.h"
 #include "misc/eamuse.h"
 #include "util/logging.h"
+#include "util/precise_timer.h"
 #include "util/utils.h"
 
 using namespace acioemu;
@@ -46,11 +47,12 @@ ICCADevice::ICCADevice(bool flip_order, bool keypad_thread, uint8_t node_count) 
     // keypad thread for faster polling
     if (keypad_thread) {
         this->keypad_thread = new std::thread([this]() {
+            timeutils::PreciseSleepTimer timer;
             while (this->cards) {
                 for (int unit = 0; unit < this->node_count; unit++) {
                     this->update_keypad(unit, false);
                 }
-                Sleep(7);
+                timer.sleep(7);
             }
         });
     }
