@@ -93,6 +93,12 @@ static void worker_thread_main(std::stop_token stop_token) {
             }
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        Sleep(1);
+        static int i = 0;
+        if (i % 1000 == 0) {
+            LOG_INFO(std::format("ping from plugin! {}", i).c_str());
+        }
+        i++;
+
     }
 }

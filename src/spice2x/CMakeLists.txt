@@ -636,6 +636,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         util/time.cpp
         util/cpuutils.cpp
         util/netutils.cpp
+        util/precise_timer.cpp
         util/sysutils.cpp
         util/lz77.cpp
         util/tapeled.cpp

@@ -7,6 +7,7 @@
 #include "games/game.h"
 #include "util/detour.h"
 #include "util/logging.h"
+#include "util/precise_timer.h"
 #include "util/memutils.h"
 #include "rgb_cam.h"
 
@@ -221,10 +222,11 @@ namespace games::drs {
     void start_touch() {
         std::thread t([] {
             log_info("drs", "starting touch input thread");
+            timeutils::PreciseSleepTimer timer;
 
             // main loop
             while (TRUE) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                timer.sleep(1);
 
                 TOUCH_EVENTS.clear();
                 touch_get_events(TOUCH_EVENTS);

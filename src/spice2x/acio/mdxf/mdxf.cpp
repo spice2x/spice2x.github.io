@@ -1,14 +1,16 @@
 #include "mdxf.h"
 #include "mdxf_poll.h"
 
+#include <mutex>
+
 #include "avs/game.h"
 #include "games/ddr/ddr.h"
 #include "games/ddr/io.h"
 #include "launcher/launcher.h"
 #include "rawinput/rawinput.h"
 #include "util/logging.h"
+#include "util/precise_timer.h"
 #include "util/utils.h"
-#include <mutex>
 
 #define MDFX_DEBUG_VERBOSE 0
 
@@ -109,9 +111,10 @@ static void mdxf_thread_start() {
     MDXF_THREAD = std::thread([] {
         SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 
+        timeutils::PreciseSleepTimer timer;
         while (MDXF_THREAD_RUNNING.load(std::memory_order_acquire)) {
             mdxf_poll(false);
-            std::this_thread::sleep_for(THREAD_PERIOD);
+            timer.sleep(THREAD_PERIOD);
         }
     });
 }

@@ -4,6 +4,7 @@
 #include "touchpanel.h"
 
 #include "util/logging.h"
+#include "util/precise_timer.h"
 #include "touch/touch.h"
 
 using namespace std::chrono_literals;
@@ -44,6 +45,9 @@ bool games::onpara::TouchPanelHandle::open(LPCWSTR lpFileName) {
 }
 
 int games::onpara::TouchPanelHandle::read(LPVOID lpBuffer, DWORD nNumberOfBytesToRead) {
+
+    static timeutils::PreciseSleepTimer timer;
+
     DWORD i;
     auto buffer = reinterpret_cast<uint8_t *>(lpBuffer);
 
@@ -67,7 +71,7 @@ int games::onpara::TouchPanelHandle::read(LPVOID lpBuffer, DWORD nNumberOfBytesT
         enqueue_packet(report);
 
         // prevent cpu bullying
-        std::this_thread::sleep_for(1ms);
+        timer.sleep(1);
     }
 
     // copy from output queue
