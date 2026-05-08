@@ -113,7 +113,7 @@ namespace games::ccj {
                 static std::chrono::time_point<std::chrono::steady_clock> lastModified = std::chrono::steady_clock::now();
                 static std::chrono::milliseconds debounceDuration(100);
                 auto currentTime = std::chrono::steady_clock::now();
-                bool pressed = get_async_secondary_mouse() & 0x8000;
+                bool pressed = get_async_secondary_mouse();
                 bool focused = GetForegroundWindow() == hWnd;
 
                 if (focused && MOUSE_TRACKBALL_USE_TOGGLE && pressed && (currentTime - lastModified > debounceDuration)) {

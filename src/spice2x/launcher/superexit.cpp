@@ -67,7 +67,9 @@ namespace superexit {
                     }
                 }
 
-                bool async_key_exit = GetAsyncKeyState(VK_MENU) && GetAsyncKeyState(VK_F4);
+                bool async_key_exit =
+                    (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 &&
+                    (GetAsyncKeyState(VK_F4) & 0x8000) != 0;
 
                 bool overlay_exit = false;
                 auto buttons = games::get_buttons_overlay(eamuse_get_game());

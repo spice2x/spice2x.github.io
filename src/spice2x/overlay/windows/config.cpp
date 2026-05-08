@@ -948,7 +948,7 @@ namespace overlay::windows {
 
             // grab current keyboard state
             for (unsigned short int i = 0x01; i < 0xFF; i++) {
-                buttons_keyboard_state[i] = GetAsyncKeyState(i) != 0;
+                buttons_keyboard_state[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
             }
         }
         if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
@@ -1615,7 +1615,7 @@ namespace overlay::windows {
                 // use care when iterating over the result (could result in torn reads)
                 bool keyboard_state_new[sizeof(buttons_keyboard_state)];
                 for (size_t i = 0; i < sizeof(keyboard_state_new); i++) {
-                    keyboard_state_new[i] = GetAsyncKeyState(i) != 0;
+                    keyboard_state_new[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
                 }
 
                 // detect key presses

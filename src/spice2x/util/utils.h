@@ -319,14 +319,14 @@ bool acquire_shutdown_privs();
 
 void generate_ea_card(char card[17]);
 
-static inline int get_async_primary_mouse() {
+static inline bool get_async_primary_mouse() {
     int vk = GetSystemMetrics(SM_SWAPBUTTON) ? VK_RBUTTON : VK_LBUTTON;
-    return GetAsyncKeyState(vk);
+    return (GetAsyncKeyState(vk) & 0x8000) != 0;
 }
 
-static inline int get_async_secondary_mouse() {
+static inline bool get_async_secondary_mouse() {
     int vk = GetSystemMetrics(SM_SWAPBUTTON) ? VK_LBUTTON : VK_RBUTTON;
-    return GetAsyncKeyState(vk);
+    return (GetAsyncKeyState(vk) & 0x8000) != 0;
 }
 
 static inline bool parse_width_height(const std::string wh, std::pair<uint32_t, uint32_t> &result) {
