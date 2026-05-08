@@ -279,7 +279,7 @@ namespace launcher {
             LovePlusPrinterJPGQuality,
             OptionConflictResolution,
             OtocaCamHook,
-            TimerHooksDisable,
+            DisableHighResTimer,
         };
 
         enum class OptionsCategory {

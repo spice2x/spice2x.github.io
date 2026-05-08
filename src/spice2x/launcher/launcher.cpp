@@ -1274,7 +1274,7 @@ int main_implementation(int argc, char *argv[]) {
         games::loveplus::CAMERA_ENABLE = true;
     }
 
-    if (options[launcher::Options::TimerHooksDisable].value_bool()) {
+    if (options[launcher::Options::DisableHighResTimer].value_bool()) {
         timeutils::TIMER_HACKS_DISABLE = true;
     }
 

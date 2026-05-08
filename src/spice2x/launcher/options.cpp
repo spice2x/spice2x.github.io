@@ -2771,7 +2771,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Peripherals)",
     },
     {
-        // TimerHooksDisable
+        // DisableHighResTimer
         .title = "Use Legacy Timers",
         .name = "notimerhacks",
         .desc = "Disables high resolution timers, reverting to legacy behavior. "
