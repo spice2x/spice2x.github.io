@@ -14,7 +14,16 @@
 
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include "util/logging.h"
+
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
 
 #define PERIOD 1
 #define TOLERANCE 0.02
@@ -23,9 +32,9 @@ namespace timeutils {
 
     bool TIMER_HACKS_DISABLE = false;
 
-    static PreciseTimer get_precise_sleep_timer();
-    static void destroy_precise_sleep_timer(PreciseTimer timer);
-    static void precise_sleep(PreciseTimer timer, double seconds);
+    static TimerHandle get_precise_sleep_timer();
+    static void destroy_precise_sleep_timer(TimerHandle timer);
+    static void precise_sleep(TimerHandle timer, double seconds);
 
     void set_timer_resolution() {
         if (TIMER_HACKS_DISABLE) {
@@ -35,9 +44,9 @@ namespace timeutils {
 #if !SPICE_XP
 
         // make a call to opt out of power throttling
-        // (requested timer resolution being ignored when window is occuluded or minimized)
+        // (requested timer resolution being ignored when window is occluded or minimized)
         // SetProcessInformation is win8+
-        const auto kernel32 = LoadLibraryA("kernel32.dll");
+        const auto kernel32 = GetModuleHandleA("kernel32.dll");
         if (kernel32) {
             const auto SetProcessInformation_addr =
                 reinterpret_cast<decltype(SetProcessInformation) *>(
@@ -55,7 +64,7 @@ namespace timeutils {
                     sizeof(state));
 
                 log_info(
-                    "sysutils",
+                    "timeutils",
                     "SetProcessInformation called to disable timer resolution throttling, returned {}",
                     ret);
             }
@@ -65,7 +74,7 @@ namespace timeutils {
 
         const auto ret = timeBeginPeriod(PERIOD);
         log_info(
-            "sysutils",
+            "timeutils",
             "timeBeginPeriod({}) called, returned {}",
             PERIOD,
             ret);
@@ -111,8 +120,8 @@ namespace timeutils {
         }
     }
 
-    static PreciseTimer get_precise_sleep_timer() {
-        PreciseTimer timer = nullptr;
+    static TimerHandle get_precise_sleep_timer() {
+        TimerHandle timer = nullptr;
         if (TIMER_HACKS_DISABLE) {
             return timer;
         }
@@ -133,13 +142,17 @@ namespace timeutils {
         return timer;
     }
 
-    static void destroy_precise_sleep_timer(PreciseTimer timer) {
+    static void destroy_precise_sleep_timer(TimerHandle timer) {
         if (timer) {
             CloseHandle(timer);
         }
     }
 
-    static void precise_sleep(PreciseTimer timer, double seconds) {
+    static void precise_sleep(TimerHandle timer, double seconds) {
+        if (!std::isfinite(seconds) || seconds <= 0.0) {
+            return;
+        }
+
         if (timer) {
             timerSleep(timer, seconds);
             return;
@@ -147,7 +160,13 @@ namespace timeutils {
 
         // robustSleep is too CPU heavy so we will stick to Sleep() with
         // timeBeginPeriod, which has an error at most 1ms
-        Sleep(static_cast<DWORD>(std::ceil(seconds * 1000.0)));
+        const auto milliseconds = std::ceil(seconds * 1000.0);
+        if (milliseconds >= std::numeric_limits<DWORD>::max()) {
+            Sleep(std::numeric_limits<DWORD>::max());
+            return;
+        }
+
+        Sleep(static_cast<DWORD>(milliseconds));
     }
 
     // RAII wrapper
@@ -158,30 +177,11 @@ namespace timeutils {
         destroy_precise_sleep_timer(timer);
     }
 
-    PreciseSleepTimer::PreciseSleepTimer(PreciseSleepTimer &&other) noexcept :
-        timer(other.timer) {
-        other.timer = nullptr;
-    }
-
-    PreciseSleepTimer &PreciseSleepTimer::operator=(PreciseSleepTimer &&other) noexcept {
-        if (this != &other) {
-            destroy_precise_sleep_timer(timer);
-            timer = other.timer;
-            other.timer = nullptr;
-        }
-
-        return *this;
-    }
-
     void PreciseSleepTimer::sleep(uint32_t ms) const {
         sleep(std::chrono::milliseconds(ms));
     }
 
-    void PreciseSleepTimer::sleep(std::chrono::milliseconds ms) const {
-        precise_sleep(timer, std::chrono::duration<double>(ms).count());
-    }
-
-    void PreciseSleepTimer::sleep(std::chrono::microseconds us) const {
-        precise_sleep(timer, std::chrono::duration<double>(us).count());
+    void PreciseSleepTimer::sleep_seconds(double seconds) const {
+        precise_sleep(timer, seconds);
     }
 }

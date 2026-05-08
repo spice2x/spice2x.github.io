@@ -9,7 +9,7 @@ namespace timeutils {
 
     void set_timer_resolution();
 
-    using PreciseTimer = void *;
+    using TimerHandle = void *;
 
     class PreciseSleepTimer {
     public:
@@ -18,15 +18,19 @@ namespace timeutils {
 
         PreciseSleepTimer(const PreciseSleepTimer &) = delete;
         PreciseSleepTimer &operator=(const PreciseSleepTimer &) = delete;
-
-        PreciseSleepTimer(PreciseSleepTimer &&other) noexcept;
-        PreciseSleepTimer &operator=(PreciseSleepTimer &&other) noexcept;
+        PreciseSleepTimer(PreciseSleepTimer &&) = delete;
+        PreciseSleepTimer &operator=(PreciseSleepTimer &&) = delete;
 
         void sleep(uint32_t ms) const;
-        void sleep(std::chrono::milliseconds ms) const;
-        void sleep(std::chrono::microseconds us) const;
+
+        template <typename Rep, typename Period>
+        void sleep(std::chrono::duration<Rep, Period> duration) const {
+            sleep_seconds(std::chrono::duration<double>(duration).count());
+        }
 
     private:
-        PreciseTimer timer;
+        void sleep_seconds(double seconds) const;
+
+        TimerHandle timer;
     };
 }
