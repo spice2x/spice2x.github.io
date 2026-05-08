@@ -351,9 +351,8 @@ void ImGui_ImplSpice_NewFrame() {
 
     // only process new input from devices if window is in focus
     // (when not in focus, all mouse/keyboard events are treated as released)
-    const auto accept_new_input = superexit::has_focus() && !rawinput::OS_WINDOW_ACTIVE;
-    const auto accept_new_keyboard_input = accept_new_input &&
-        (overlay::OVERLAY && overlay::OVERLAY->has_focus());
+    const auto overlay_visible = overlay::OVERLAY && overlay::OVERLAY->get_active();
+    const auto accept_new_input = superexit::has_focus() && !rawinput::OS_WINDOW_ACTIVE && overlay_visible;
 
     // remember old state
     std::array<BYTE, VKEY_MAX> KeysDownOld;
@@ -368,9 +367,11 @@ void ImGui_ImplSpice_NewFrame() {
     g_KeysDown.fill(false);
 
     // apply windows mouse buttons
-    g_MouseDown[ImGuiMouseButton_Left] |= (get_async_primary_mouse()) != 0;
-    g_MouseDown[ImGuiMouseButton_Right] |= (get_async_secondary_mouse()) != 0;
-    g_MouseDown[ImGuiMouseButton_Middle] |= (GetAsyncKeyState(VK_MBUTTON)) != 0;
+    if (accept_new_input) {
+        g_MouseDown[ImGuiMouseButton_Left] |= get_async_primary_mouse();
+        g_MouseDown[ImGuiMouseButton_Right] |= get_async_secondary_mouse();
+        g_MouseDown[ImGuiMouseButton_Middle] |= (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0;
+    }
 
     // read new keys state
     static long mouse_wheel_last = 0;
@@ -412,7 +413,7 @@ void ImGui_ImplSpice_NewFrame() {
                     break;
                 }
                 case rawinput::KEYBOARD: {
-                    if (accept_new_keyboard_input) {
+                    if (accept_new_input) {
                         // iterate all virtual key codes
                         for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
                             // get state (combined from all pages)
