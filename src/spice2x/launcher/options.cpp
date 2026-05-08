@@ -2769,7 +2769,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Otoca D'or",
         .category = "Game Options (Peripherals)",
-    }
+    },
+    {
+        // DisableHighResTimer
+        .title = "Use Legacy Timers",
+        .name = "notimerhacks",
+        .desc = "Disables high resolution timers, reverting to legacy behavior. "
+            "Recommended that you leave this OFF for optimal input latency, "
+            "unless you're on a resource-constrained system (e.g., old cabinet PC)",
+        .type = OptionType::Bool,
+        .category = "Development"
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {

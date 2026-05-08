@@ -6,6 +6,7 @@
 #include "util/logging.h"
 #include "rawinput/rawinput.h"
 #include "games/io.h"
+#include "util/precise_timer.h"
 #include "util/utils.h"
 #include "io.h"
 
@@ -243,6 +244,7 @@ namespace games::ccj {
         log_info("trackball", "thread start, use mouse: {}, toggle: {}", MOUSE_TRACKBALL, MOUSE_TRACKBALL_USE_TOGGLE);
 
         tbThread = new std::thread([&] {
+            timeutils::PreciseSleepTimer timer;
             while (tbThreadRunning) {
                 if (hWnd && wndProc) {
                     wndProc(hWnd, WM_INPUT, RIM_INPUT, (LPARAM)fakeHandle);
@@ -251,7 +253,7 @@ namespace games::ccj {
                 if (!tbThreadRunning)
                     break;
 
-                std::this_thread::sleep_for(10ms);
+                timer.sleep(10);
             }
         });
     }

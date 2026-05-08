@@ -7,6 +7,7 @@
 
 #include "util/logging.h"
 #include "misc/eamuse.h"
+#include "util/precise_timer.h"
 #include "util/utils.h"
 #include "structuredmessage.h"
 
@@ -217,6 +218,7 @@ bool Reader::set_comm_state(DWORD BaudRate) {
 }
 
 bool Reader::wait_for_handshake() {
+    timeutils::PreciseSleepTimer timer;
 
     // baud rates
     DWORD baud_rates[] = { CBR_57600, CBR_38400, CBR_19200, CBR_9600 };
@@ -268,7 +270,7 @@ bool Reader::wait_for_handshake() {
             }
 
             // sleep
-            Sleep(50);
+            timer.sleep(50);
         }
 
         log_warning("reader", "{}: no handshake received for {} baud", this->port, baud_rates[i]);
@@ -405,6 +407,7 @@ void start_reader_thread(const std::string &port, int id) {
     READER_THREAD_RUNNING = true;
     READER_THREADS.push_back(new std::thread([port, id]() {
         log_info("reader", "{}: starting reader thread", port);
+        timeutils::PreciseSleepTimer timer;
 
         while (READER_THREAD_RUNNING) {
 
@@ -442,21 +445,22 @@ void start_reader_thread(const std::string &port, int id) {
                     }
 
                     if (did_read_card) {
-                        Sleep(2500);
+                        timer.sleep(2500);
                     }
 
-                    Sleep(20);
+                    timer.sleep(20);
                 }
             }
 
             // sleep between reader connection retries
             if (READER_THREAD_RUNNING)
-                Sleep(5000);
+                timer.sleep(5000);
         }
     }));
 
     // wait for thread to start
-    Sleep(10);
+    timeutils::PreciseSleepTimer timer;
+    timer.sleep(10);
 }
 
 void stop_reader_thread() {

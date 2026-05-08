@@ -2,6 +2,7 @@
 
 #include "misc/eamuse.h"
 #include "rawinput/rawinput.h"
+#include "util/precise_timer.h"
 #include "util/utils.h"
 
 #include "iidx.h"
@@ -82,7 +83,8 @@ bool games::iidx::BI2XSerialHandle::BI2XDevice::parse_msg(
             }
 
             // sleep - otherwise the IO thread will go too hard on the CPU
-            Sleep(1);
+            static thread_local timeutils::PreciseSleepTimer timer;
+            timer.sleep(1);
 
             // generate message
             auto msg = this->create_msg(msg_in, 0x2E);

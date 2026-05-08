@@ -2,6 +2,7 @@
 
 #include "rawinput/rawinput.h"
 #include "util/logging.h"
+#include "util/precise_timer.h"
 #include "util/utils.h"
 
 #include "../io.h"
@@ -255,7 +256,8 @@ namespace games::ddr {
                 case P4IO_IOCTL_GET_INPUTS: {
                     
                     // Prevents this function from being called at its normal 2000-2500 kHz cadence and overloading the CPU, instead reduces it to 250 Hz
-                    Sleep(4);
+                    static thread_local timeutils::PreciseSleepTimer timer;
+                    timer.sleep(4);
                     
                     memset(lpOutBuffer, 0, 16);
                     auto controls = (uint32_t*) lpOutBuffer;

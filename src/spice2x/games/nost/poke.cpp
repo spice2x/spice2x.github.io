@@ -9,6 +9,7 @@
 #include "misc/eamuse.h"
 #include "touch/touch.h"
 #include "util/logging.h"
+#include "util/precise_timer.h"
 
 namespace games::nost::poke {
 
@@ -63,6 +64,7 @@ namespace games::nost::poke {
         // create new thread
         THREAD_RUNNING = true;
         THREAD = new std::thread([] {
+            timeutils::PreciseSleepTimer timer;
             const DWORD touch_id = (DWORD)(0xFFFFFFFE);
 
             const int swipe_anim_total_frames = 6;
@@ -178,7 +180,7 @@ namespace games::nost::poke {
                 }
 
                 // slow down
-                Sleep(30);
+                timer.sleep(30);
             }
 
             return nullptr;

@@ -3,6 +3,7 @@
 #if SPICE64 && !SPICE_XP
 
 #include "util/logging.h"
+#include "util/precise_timer.h"
 #include "util/utils.h"
 #include "mf_wrappers.h"
 
@@ -399,6 +400,7 @@ namespace games::iidx {
     void IIDXLocalCamera::CreateThread() {
         // Create thread
         m_drawThread = new std::thread([this]() {
+            timeutils::PreciseSleepTimer timer;
             SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 
             double accumulator = 0.0;
@@ -412,7 +414,7 @@ namespace games::iidx {
                     accumulator -= 1.0;
                     floorFrameTimeMicroSec += 1;
                 }
-                std::this_thread::sleep_for(std::chrono::microseconds(floorFrameTimeMicroSec));
+                timer.sleep(std::chrono::microseconds(floorFrameTimeMicroSec));
             }
         });
     }

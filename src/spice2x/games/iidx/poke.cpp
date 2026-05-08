@@ -15,6 +15,7 @@
 #include "touch/touch.h"
 #include "util/libutils.h"
 #include "util/logging.h"
+#include "util/precise_timer.h"
 
 #define POKE_NATIVE_TOUCH 0
 
@@ -200,6 +201,7 @@ namespace games::iidx::poke {
         // create new thread
         THREAD_RUNNING = true;
         THREAD = new std::thread([] {
+            timeutils::PreciseSleepTimer timer;
 
             // log
             log_info("poke", "enabled");
@@ -319,7 +321,7 @@ namespace games::iidx::poke {
                 }
 
                 // slow down
-                Sleep(50);
+                timer.sleep(50);
             }
 
             return nullptr;

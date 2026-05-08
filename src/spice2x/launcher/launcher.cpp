@@ -108,6 +108,7 @@
 #include "util/libutils.h"
 #include "util/logging.h"
 #include "util/peb.h"
+#include "util/precise_timer.h"
 #include "util/socd_cleaner.h"
 #include "util/sysutils.h"
 #include "util/tapeled.h"
@@ -1273,6 +1274,10 @@ int main_implementation(int argc, char *argv[]) {
         games::loveplus::CAMERA_ENABLE = true;
     }
 
+    if (options[launcher::Options::DisableHighResTimer].value_bool()) {
+        timeutils::TIMER_HACKS_DISABLE = true;
+    }
+
     // API debugging
     if (api_debug && !cfg::CONFIGURATOR_STANDALONE) {
         API_CONTROLLER = std::make_unique<api::Controller>(api_port, api_pass, api_pretty);
@@ -2226,6 +2231,9 @@ int main_implementation(int argc, char *argv[]) {
     if (!lang_disable) {
         hooks::lang::early_init();
     }
+
+    // use high resolution timer for this process
+    timeutils::set_timer_resolution();
 
     // load DLLs
     avs::core::load_dll();

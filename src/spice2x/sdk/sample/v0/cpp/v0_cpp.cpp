@@ -93,6 +93,6 @@ static void worker_thread_main(std::stop_token stop_token) {
             }
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        Sleep(1);
     }
 }
