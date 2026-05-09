@@ -1155,6 +1155,8 @@ int main_implementation(int argc, char *argv[]) {
             games::jb::TOUCH_ALGORIHTM = games::jb::JubeatTouchAlgorithm::AcAccurate;
         } else if (options[launcher::Options::JubeatTouchAlgo].value_text() == "legacy") {
             games::jb::TOUCH_ALGORIHTM = games::jb::JubeatTouchAlgorithm::Legacy;
+        } else {
+            games::jb::TOUCH_ALGORIHTM = games::jb::JubeatTouchAlgorithm::Improved;
         }
     }
 
