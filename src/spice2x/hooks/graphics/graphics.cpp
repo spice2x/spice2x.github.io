@@ -163,6 +163,7 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
     if (wintouchemu::INJECT_MOUSE_AS_WM_TOUCH) {
         // drop mouse inputs since only wintouches should be used
         switch (uMsg) {
+            case WM_MOUSEMOVE:
             case WM_LBUTTONDOWN:
             case WM_LBUTTONUP:
             case WM_MBUTTONDOWN:

@@ -67,6 +67,8 @@ static const char *LOG_MODULE_NAME = "touch";
 
 static TouchHandler *TOUCH_HANDLER = nullptr;
 
+static bool is_mouse_message_from_touchscreen();
+
 TouchHandler::TouchHandler(std::string name) {
     log_info("touch", "Using touch handler: {}", name);
 }
@@ -490,6 +492,9 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         // parse mouse messages
         switch (msg) {
             case WM_LBUTTONDOWN: {
+                if (is_mouse_message_from_touchscreen()) {
+                    return 0;
+                }
 
                 // check if mouse is enabled
                 if (SPICETOUCH_ENABLE_MOUSE) {
@@ -545,6 +550,9 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 break;
             }
             case WM_MOUSEMOVE: {
+                if (is_mouse_message_from_touchscreen()) {
+                    return 0;
+                }
 
                 // check if mouse is enabled
                 if (SPICETOUCH_ENABLE_MOUSE) {
@@ -582,6 +590,9 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 break;
             }
             case WM_LBUTTONUP: {
+                if (is_mouse_message_from_touchscreen()) {
+                    return 0;
+                }
 
                 // check if mouse is enabled
                 if (SPICETOUCH_ENABLE_MOUSE) {
@@ -956,4 +967,10 @@ void update_spicetouch_window_dimensions(HWND hWnd) {
     SPICETOUCH_TOUCH_Y = topleft.y;
     SPICETOUCH_TOUCH_WIDTH = bottomright.x - topleft.x;
     SPICETOUCH_TOUCH_HEIGHT = bottomright.y - topleft.y;
+}
+
+static bool is_mouse_message_from_touchscreen() {
+    constexpr ULONG_PTR MI_WP_SIGNATURE = 0xFF515700;
+    constexpr ULONG_PTR SIGNATURE_MASK = 0xFFFFFF00;
+    return (GetMessageExtraInfo() & SIGNATURE_MASK) == MI_WP_SIGNATURE;
 }
