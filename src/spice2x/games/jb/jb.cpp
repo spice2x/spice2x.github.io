@@ -94,6 +94,17 @@ namespace games::jb {
             }
         } else {
             for (auto &tp : TOUCH_POINTS) {
+                // check window out of bounds
+                if (IS_PORTRAIT) {
+                    if (tp.x > 768 || tp.y > 1360) {
+                        continue;
+                    }
+                } else {
+                    if (tp.x > 1360 || tp.y > 768) {
+                        continue;
+                    }
+                }
+
                 int x_relative = tp.x;
                 int y_relative = tp.y;
 
@@ -124,6 +135,8 @@ namespace games::jb {
                     y_index = y_relative / JB_BUTTON_HITBOX;
                     y_hitbox = y_relative % JB_BUTTON_HITBOX;
                 }
+
+                // log_info("jb", "raw={}, idx={}, hitbox={}", tp.x, x_index, x_hitbox);
 
                 if (TOUCH_ALGORITHM == Improved) {
                     if (IS_PORTRAIT) {
