@@ -1147,9 +1147,13 @@ int main_implementation(int argc, char *argv[]) {
         sysutils::SECOND_MONITOR_OVERRIDE = options[launcher::Options::IIDXSubMonitorOverride].value_text();
     }
 
-    if (options[launcher::Options::spice2x_JubeatLegacyTouch].value_bool()) {
-        games::jb::TOUCH_LEGACY_BOX = true;
+    // note: spice2x_JubeatLegacyTouch is deprecated since legacy is now the default
+    if (options[launcher::Options::JubeatTouchAlgo].is_active()) {
+        if (options[launcher::Options::JubeatTouchAlgo].value_text() == "accurate") {
+            games::jb::TOUCH_LEGACY_BOX = false;
+        }
     }
+
     if (options[launcher::Options::spice2x_RBTouchScale].is_active()) {
         games::rb::TOUCH_SCALING = options[launcher::Options::spice2x_RBTouchScale].value_uint32();
     }
