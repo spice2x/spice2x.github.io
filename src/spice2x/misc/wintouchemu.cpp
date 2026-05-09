@@ -38,6 +38,9 @@ namespace wintouchemu {
     bool INJECT_MOUSE_AS_WM_TOUCH = false;
     bool LOG_FPS = false;
     bool ADD_TOUCH_FLAG_PRIMARY = false;
+    
+    // state
+    double last_touch_event = 0.0;
 
     static inline bool is_emu_enabled() {
         return FORCE || !is_touch_available("wintouchemu::is_emu_enabled") || GRAPHICS_SHOW_CURSOR;
@@ -248,7 +251,10 @@ namespace wintouchemu {
                         touch_input->y -= SPICETOUCH_TOUCH_Y;
                     }
 
-                    // log_misc("wintouchemu", "mouse state ({}, {})", to_string(touch_input->x), to_string(touch_input->y));
+                    // log_misc(
+                    //     "wintouchemu",
+                    //     "mouse state ({}, {}) event={}",
+                    //     to_string(touch_input->x), to_string(touch_input->y), mouse_state.touch_event);
 
                     auto valid = true;
                     if (overlay::OVERLAY) {
@@ -439,6 +445,8 @@ namespace wintouchemu {
             }
         }
 
+        const auto now = get_performance_milliseconds();
+
         // update touch events
         if (hWnd != nullptr) {
 
@@ -458,6 +466,7 @@ namespace wintouchemu {
 
             // check if new events are available
             if (event_count > 0) {
+                last_touch_event = now;
 
                 // send fake event to make the game update it's touch inputs
                 auto wndProc = (WNDPROC) GetWindowLongPtr(hWnd, GWLP_WNDPROC);
@@ -484,7 +493,12 @@ namespace wintouchemu {
         // value from GetTouchInputInfo or fail to read dwFlags for valid events, so it's not OK to
         // send empty events when the mouse button is not clicked/released
         if (hWnd != nullptr && USE_MOUSE) {
-            bool button_pressed = ((GetKeyState(VK_LBUTTON) & 0x100) != 0);
+            bool button_pressed = get_async_primary_mouse();
+
+            // if there was a touch event in the last 500 ms, don't insert new button presses
+            if (button_pressed && (now - last_touch_event) < 500) {
+                button_pressed = false;
+            }
 
             // figure out what kind of touch event to simulate
             if (button_pressed && !mouse_state.last_button_pressed) {
