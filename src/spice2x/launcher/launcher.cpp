@@ -1148,8 +1148,18 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     if (options[launcher::Options::spice2x_JubeatLegacyTouch].value_bool()) {
-        games::jb::TOUCH_LEGACY_BOX = true;
+        games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Legacy;
     }
+    if (options[launcher::Options::JubeatTouchAlgo].is_active()) {
+        if (options[launcher::Options::JubeatTouchAlgo].value_text() == "accurate") {
+            games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::AcAccurate;
+        } else if (options[launcher::Options::JubeatTouchAlgo].value_text() == "legacy") {
+            games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Legacy;
+        } else {
+            games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Improved;
+        }
+    }
+
     if (options[launcher::Options::spice2x_RBTouchScale].is_active()) {
         games::rb::TOUCH_SCALING = options[launcher::Options::spice2x_RBTouchScale].value_uint32();
     }

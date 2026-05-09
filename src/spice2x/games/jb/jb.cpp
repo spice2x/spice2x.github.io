@@ -19,7 +19,7 @@
 namespace games::jb {
 
     // touch stuff
-    bool TOUCH_LEGACY_BOX = false;
+    JubeatTouchAlgorithm TOUCH_ALGORITHM = Improved;
     static bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
     static bool IS_PORTRAIT = true;
@@ -78,7 +78,7 @@ namespace games::jb {
         // note that the IO code in device.cpp will correctly compensate for orientation, depending on the model.
         TOUCH_POINTS.clear();
         touch_get_points(TOUCH_POINTS);
-        if (TOUCH_LEGACY_BOX) {
+        if (TOUCH_ALGORITHM == Legacy) {
             auto offset = IS_PORTRAIT ? 580 : 0;
             for (auto &tp : TOUCH_POINTS) {
 
@@ -94,6 +94,17 @@ namespace games::jb {
             }
         } else {
             for (auto &tp : TOUCH_POINTS) {
+                // check window out of bounds
+                if (IS_PORTRAIT) {
+                    if (tp.x > 768 || tp.y > 1360) {
+                        continue;
+                    }
+                } else {
+                    if (tp.x > 1360 || tp.y > 768) {
+                        continue;
+                    }
+                }
+
                 int x_relative = tp.x;
                 int y_relative = tp.y;
 
@@ -110,19 +121,66 @@ namespace games::jb {
                     y_relative -= 8;
                 }
 
-                if (x_relative < 0 || y_relative < 0) {
+                int x_index = -1;
+                int x_hitbox = 0;
+                int y_index = -1;
+                int y_hitbox = 0;
+
+                // x_hitbox and y_hitbox is relative to top-left pixel of each button
+                if (x_relative >= 0) {
+                    x_index = x_relative / JB_BUTTON_HITBOX;
+                    x_hitbox = x_relative % JB_BUTTON_HITBOX;
+                }
+                if (y_relative >= 0) {
+                    y_index = y_relative / JB_BUTTON_HITBOX;
+                    y_hitbox = y_relative % JB_BUTTON_HITBOX;
+                }
+
+                // log_info("jb", "raw={}, idx={}, hitbox={}", tp.x, x_index, x_hitbox);
+
+                if (TOUCH_ALGORITHM == Improved) {
+                    if (IS_PORTRAIT) {
+                        // extend to left border
+                        if (x_relative < 0) {
+                            x_index = 0;
+                        }
+                        // right and bottom borders are covered by the hit box
+                    } else {
+                        // extend to top border
+                        if (y_relative < 0) {
+                            y_index = 0;
+                        }
+                        // extend to left border
+                        if (x_relative < 0) {
+                            x_index = 0;
+                        }
+                        // bottom border is covered by the hit box
+                        // rightmost edge - ignore them entirely
+                        if (x_index == 3 && JB_BUTTON_SIZE < x_hitbox) {
+                            continue;
+                        }
+                    }
+                }
+
+                if (x_index < 0 || y_index < 0 || x_index > 3 || y_index > 3) {
                     continue;
                 }
 
-                // x_hitbox and y_hitbox is relative to top-left pixel of each button
-                int x_index = x_relative / JB_BUTTON_HITBOX;
-                int x_hitbox = x_relative % JB_BUTTON_HITBOX;
-                int y_index = y_relative / JB_BUTTON_HITBOX;
-                int y_hitbox = y_relative % JB_BUTTON_HITBOX;
-
                 // check if the gap was touched
-                if (x_hitbox > JB_BUTTON_SIZE || y_hitbox > JB_BUTTON_SIZE) {
-                    continue;
+                if (TOUCH_ALGORITHM == AcAccurate) {
+                    // in ac-accurate mode, touching the gap is ignored
+                    if (x_hitbox > JB_BUTTON_SIZE || y_hitbox > JB_BUTTON_SIZE) {
+                        continue;
+                    }
+
+                } else if (TOUCH_ALGORITHM == Improved) {
+                    // in improved mode, touching the gap triggers the closest button
+                    if (x_index <= 2 && (JB_BUTTON_SIZE + JB_BUTTON_GAP / 2) < x_hitbox) {
+                        x_index++;
+                    }
+                    if (y_index <= 2 && (JB_BUTTON_SIZE + JB_BUTTON_GAP / 2) < y_hitbox) {
+                        y_index++;
+                    }
                 }
 
                 // set the corresponding state
@@ -192,6 +250,21 @@ namespace games::jb {
 
         // enable touch
         TOUCH_ENABLE = true;
+
+        switch (TOUCH_ALGORITHM) {
+            case Legacy:
+                log_info("jubeat", "using 'legacy' touch targets");
+                break;
+            case Improved:
+                log_info("jubeat", "using 'improved' touch targets");
+                break;
+            case AcAccurate:
+                log_info("jubeat", "using 'ac accurate' touch targets");
+                break;
+            default:
+                log_fatal("jubeat", "unknown touch algo detected in touch_update, this is a bug");
+                break;
+        }
 
         // enable debug logging of gftools
         HMODULE gftools = libutils::try_module("gftools.dll");

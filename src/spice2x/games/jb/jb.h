@@ -4,8 +4,14 @@
 
 namespace games::jb {
 
+    enum JubeatTouchAlgorithm {
+        Legacy,
+        Improved,
+        AcAccurate
+    };
+
     // touch stuff
-    extern bool TOUCH_LEGACY_BOX;
+    extern JubeatTouchAlgorithm TOUCH_ALGORITHM;
     extern bool TOUCH_STATE[16];
     void touch_update();
 
