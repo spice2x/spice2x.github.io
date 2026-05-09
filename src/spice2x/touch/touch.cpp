@@ -674,6 +674,8 @@ void touch_attach_dx_hook() {
     // initialize touch handler
     touch_initialize();
 
+    log_info("touch", "touch_attach_dx_hook: attaching SpiceTouchWndProc...");
+
     // add dx hook
     graphics_add_wnd_proc(SpiceTouchWndProc);
 
@@ -691,6 +693,8 @@ void touch_create_wnd(HWND hWnd, bool overlay) {
 
     // initialize touch handler
     touch_initialize();
+
+    log_info("touch", "touch_create_wnd: creating SPICETOUCH_TOUCH_THREAD...");
 
     // create thread
     SPICETOUCH_TOUCH_THREAD = new std::thread([hWnd, overlay]() {
@@ -969,6 +973,7 @@ void update_spicetouch_window_dimensions(HWND hWnd) {
     SPICETOUCH_TOUCH_HEIGHT = bottomright.y - topleft.y;
 }
 
+// https://learn.microsoft.com/en-us/windows/win32/tablet/system-events-and-mouse-messages
 static bool is_mouse_message_from_touchscreen() {
     constexpr ULONG_PTR MI_WP_SIGNATURE = 0xFF515700;
     constexpr ULONG_PTR SIGNATURE_MASK = 0xFFFFFF00;
