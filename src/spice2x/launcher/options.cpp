@@ -2279,15 +2279,31 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // spice2x_JubeatLegacyTouch
-        .title = "JB Legacy Touch Targets",
+        .title = "JB Legacy Touch Targets (Deprecated - use -jubeattouchalgo instead)",
         .name = "sp2x-jubeatlegacytouch",
         .display_name = "jubeatlegacytouch",
         .aliases= "jubeatlegacytouch",
-        .desc = "For touch screen players - use the legacy & less accurate grid-based layout for touch recognition, "
-            "instead of the new & more accurate touch targets. Default: off.",
+        .desc = "Deprecated - use -jubeattouchalgo instead.",
         .type = OptionType::Bool,
+        .hidden = true,
         .game_name = "Jubeat",
         .category = "Game Options",
+    },
+    {
+        .title = "JB Touch Algorithm",
+        .name = "jubeattouchalgo",
+        .desc = "For touch screen players - choose the touch algorithm to use.\n\n"
+            "legacy - evenly divide the grid into 16 squares; old spicetools behavior, slightly inaccurate in gaps\n\n"
+            "improved (default) - squares register as-is, gaps will trigger the closest square\n\n"
+            "accurate - only touches within squares will trigger; gaps do nothing (for AC size touch screens)",
+        .type = OptionType::Enum,
+        .game_name = "Jubeat",
+        .category = "Game Options",
+        .elements = {
+            {"legacy", ""},
+            {"improved", ""},
+            {"accurate", ""},
+        },
     },
     {
         // spice2x_RBTouchScale
