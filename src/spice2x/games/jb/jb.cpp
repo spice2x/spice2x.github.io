@@ -19,7 +19,7 @@
 namespace games::jb {
 
     // touch stuff
-    bool TOUCH_LEGACY_BOX = true;
+    bool TOUCH_LEGACY_BOX = false;
     static bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
     static bool IS_PORTRAIT = true;
@@ -192,12 +192,6 @@ namespace games::jb {
 
         // enable touch
         TOUCH_ENABLE = true;
-
-        if (TOUCH_LEGACY_BOX) {
-            log_info("jubeat", "using 'legacy' touch targets");
-        } else {
-            log_info("jubeat", "using 'accurate' touch targets");
-        }
 
         // enable debug logging of gftools
         HMODULE gftools = libutils::try_module("gftools.dll");
