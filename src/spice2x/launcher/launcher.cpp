@@ -1148,15 +1148,15 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     if (options[launcher::Options::spice2x_JubeatLegacyTouch].value_bool()) {
-        games::jb::TOUCH_ALGORIHTM = games::jb::JubeatTouchAlgorithm::Legacy;
+        games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Legacy;
     }
     if (options[launcher::Options::JubeatTouchAlgo].is_active()) {
         if (options[launcher::Options::JubeatTouchAlgo].value_text() == "accurate") {
-            games::jb::TOUCH_ALGORIHTM = games::jb::JubeatTouchAlgorithm::AcAccurate;
+            games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::AcAccurate;
         } else if (options[launcher::Options::JubeatTouchAlgo].value_text() == "legacy") {
-            games::jb::TOUCH_ALGORIHTM = games::jb::JubeatTouchAlgorithm::Legacy;
+            games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Legacy;
         } else {
-            games::jb::TOUCH_ALGORIHTM = games::jb::JubeatTouchAlgorithm::Improved;
+            games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Improved;
         }
     }
 

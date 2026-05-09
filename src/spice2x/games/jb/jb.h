@@ -11,7 +11,7 @@ namespace games::jb {
     };
 
     // touch stuff
-    extern JubeatTouchAlgorithm TOUCH_ALGORIHTM;
+    extern JubeatTouchAlgorithm TOUCH_ALGORITHM;
     extern bool TOUCH_STATE[16];
     void touch_update();
 

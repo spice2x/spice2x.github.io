@@ -19,7 +19,7 @@
 namespace games::jb {
 
     // touch stuff
-    JubeatTouchAlgorithm TOUCH_ALGORIHTM = Improved;
+    JubeatTouchAlgorithm TOUCH_ALGORITHM = Improved;
     static bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
     static bool IS_PORTRAIT = true;
@@ -78,7 +78,7 @@ namespace games::jb {
         // note that the IO code in device.cpp will correctly compensate for orientation, depending on the model.
         TOUCH_POINTS.clear();
         touch_get_points(TOUCH_POINTS);
-        if (TOUCH_ALGORIHTM == Legacy) {
+        if (TOUCH_ALGORITHM == Legacy) {
             auto offset = IS_PORTRAIT ? 580 : 0;
             for (auto &tp : TOUCH_POINTS) {
 
@@ -125,7 +125,7 @@ namespace games::jb {
                     y_hitbox = y_relative % JB_BUTTON_HITBOX;
                 }
 
-                if (TOUCH_ALGORIHTM == Improved) {
+                if (TOUCH_ALGORITHM == Improved) {
                     if (IS_PORTRAIT) {
                         // extend to left border
                         if (x_relative < 0) {
@@ -154,13 +154,13 @@ namespace games::jb {
                 }
 
                 // check if the gap was touched
-                if (TOUCH_ALGORIHTM == AcAccurate) {
+                if (TOUCH_ALGORITHM == AcAccurate) {
                     // in ac-accurate mode, touching the gap is ignored
                     if (x_hitbox > JB_BUTTON_SIZE || y_hitbox > JB_BUTTON_SIZE) {
                         continue;
                     }
 
-                } else if (TOUCH_ALGORIHTM == Improved) {
+                } else if (TOUCH_ALGORITHM == Improved) {
                     // in improved mode, touching the gap triggers the closest button
                     if (x_index <= 2 && (JB_BUTTON_SIZE + JB_BUTTON_GAP / 2) < x_hitbox) {
                         x_index++;
@@ -238,7 +238,7 @@ namespace games::jb {
         // enable touch
         TOUCH_ENABLE = true;
 
-        switch (TOUCH_ALGORIHTM) {
+        switch (TOUCH_ALGORITHM) {
             case Legacy:
                 log_info("jubeat", "using 'legacy' touch targets");
                 break;
