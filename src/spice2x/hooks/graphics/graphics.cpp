@@ -357,16 +357,24 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with("Sub Screen");
     bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
 
-    // hide maximize button (prevent misaligned touches)
-    if ((is_tdj_sub_window && GRAPHICS_IIDX_WSUB) || is_sdvx_sub_window || is_gfdm_sub_window || is_popn_sub_window) {
+    // update style / ex-style
+    if (is_tdj_sub_window || is_sdvx_sub_window || is_gfdm_sub_window || is_popn_sub_window) {
+        // hide maximize button (prevent misaligned touches)
         dwStyle &= ~(WS_MAXIMIZEBOX);
-    }
-    // mouse clicks become misaligned when resized
-    if (is_gfdm_sub_window) {
+
+        // mouse clicks become misaligned when resized
         dwStyle &= ~(WS_SIZEBOX);
-    }
-    if ((is_tdj_sub_window || is_sdvx_sub_window || is_popn_sub_window) && GRAPHICS_WSUB_BORDERLESS) {
-        dwStyle &= ~(WS_OVERLAPPEDWINDOW);
+
+        // borderless
+        if (GRAPHICS_WINDOWED && GRAPHICS_WSUB_BORDERLESS) {
+            dwStyle &= ~(WS_OVERLAPPEDWINDOW);
+        }
+
+        // don't show the sub window on task bar / alt-tab targets
+        if (!GRAPHICS_WINDOWED) {
+            dwExStyle &= ~(WS_EX_APPWINDOW);
+            dwExStyle |= WS_EX_TOOLWINDOW;
+        }
     }
 
     if (is_sdvx_sub_window) {
