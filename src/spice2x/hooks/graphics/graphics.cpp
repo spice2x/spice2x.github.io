@@ -61,6 +61,7 @@ static std::condition_variable GRAPHICS_CAPTURE_CV[GRAPHICS_CAPTURE_SCREEN_NO] {
 
 static std::optional<graphics_orientation> target_orientation_on_boot;
 static UINT target_refresh_rate_on_boot = 0;
+static std::optional<std::pair<uint32_t, uint32_t>> target_resolution_on_boot;
 static bool monitor_settings_changed = false;
 static bool monitor_layout_needs_reset = false;
 
@@ -1279,8 +1280,13 @@ void change_primary_monitor(const std::string &monitor_name) {
     Sleep(2000);
 }
 
-void update_monitor(bool is_boot, std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
-    // note: all of this is only being done for the primary motnior
+void update_monitor(
+    bool is_boot,
+    std::optional<graphics_orientation> target_orientation,
+    UINT target_refresh_rate,
+    std::optional<std::pair<uint32_t, uint32_t>> target_resolution) {
+
+    // note: all of this is only being done for the primary monitor
 
     // get current settings
     DEVMODEA dm = {};
@@ -1358,6 +1364,22 @@ void update_monitor(bool is_boot, std::optional<graphics_orientation> target_ori
         needs_update = true;
     }
 
+    if (target_resolution.has_value()) {
+        if (dm.dmPelsWidth != target_resolution.value().first ||
+            dm.dmPelsHeight != target_resolution.value().second) {
+
+            log_misc(
+                "graphics",
+                "current resolution {}, {} => desired resolution {}, {}",
+                dm.dmPelsWidth, dm.dmPelsHeight,
+                target_resolution.value().first, target_resolution.value().second);
+
+            dm.dmPelsWidth = target_resolution.value().first;
+            dm.dmPelsHeight = target_resolution.value().second;
+            needs_update = true;
+        }
+    }
+
     if (!needs_update) {
         // nothing to do
         log_misc("graphics", "display settings are already up to date, no changes needed");
@@ -1394,17 +1416,30 @@ void update_monitor(bool is_boot, std::optional<graphics_orientation> target_ori
     }
 }
 
-void update_monitor_on_boot(std::optional<graphics_orientation> target_orientation, UINT target_refresh_rate) {
+void update_monitor_on_boot(
+    std::optional<graphics_orientation> target_orientation,
+    UINT target_refresh_rate,
+    std::optional<std::pair<uint32_t, uint32_t>> target_resolution) {
+
     target_orientation_on_boot = target_orientation;
     target_refresh_rate_on_boot = target_refresh_rate;
+    target_resolution_on_boot = target_resolution;
     log_misc("graphics", "applying monitor updates at boot...");
-    update_monitor(true, target_orientation, target_refresh_rate);
+    update_monitor(
+        true,
+        target_orientation,
+        target_refresh_rate,
+        target_resolution);
 }
 
 void update_monitor_at_runtime() {
     if (!GRAPHICS_WINDOWED && monitor_settings_changed) {
         log_misc("graphics", "applying monitor updates at runtime as window regained focus...");
-        update_monitor(false, target_orientation_on_boot, target_refresh_rate_on_boot);   
+        update_monitor(
+            false,
+            target_orientation_on_boot,
+            target_refresh_rate_on_boot,
+            target_resolution_on_boot);
     }
 }
 

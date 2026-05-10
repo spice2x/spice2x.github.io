@@ -1921,6 +1921,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
+        // ChangeResolution
+        .title = "Change Monitor Resolution",
+        .name = "changeres",
+        .desc = "Changes monitor resolution before booting the game.",
+        .type = OptionType::Text,
+        .setting_name = "1280,720",
+        .category = "Monitor"
+    },
+    {
         .title = "AVS Log Level",
         .name = "loglevel",
         .desc = "Set the level of detail for AVS log messages written to the log. Does not affect logging from spice.",

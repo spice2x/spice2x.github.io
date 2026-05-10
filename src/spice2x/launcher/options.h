@@ -199,6 +199,7 @@ namespace launcher {
             LoadStubs,
             AdjustOrientation,
             spice2x_AutoOrientation,
+            ChangeResolution,
             LogLevel,
             EAAutomap,
             EANetdump,
