@@ -67,6 +67,8 @@ static const char *LOG_MODULE_NAME = "touch";
 
 static TouchHandler *TOUCH_HANDLER = nullptr;
 
+static bool is_mouse_message_from_touchscreen();
+
 TouchHandler::TouchHandler(std::string name) {
     log_info("touch", "Using touch handler: {}", name);
 }
@@ -211,6 +213,30 @@ void update_card_button() {
 
         if (PtInRect(&SPICETOUCH_CARD_RECT, pt) != 0) {
             eamuse_card_insert(0);
+        }
+    }
+}
+
+static void release_all_mouse_touch_points() {
+    std::lock_guard<std::mutex> lock_points(TOUCH_POINTS_M);
+    std::lock_guard<std::mutex> lock_events(TOUCH_EVENTS_M);
+
+    for (size_t x = 0; x < TOUCH_POINTS.size();) {
+        TouchPoint *tp = &TOUCH_POINTS[x];
+
+        if (tp->id == 0u) {
+            TouchEvent te {
+                .id = tp->id,
+                .x = tp->x,
+                .y = tp->y,
+                .type = TOUCH_UP,
+                .mouse = tp->mouse,
+            };
+            add_touch_event(&te);
+
+            TOUCH_POINTS.erase(TOUCH_POINTS.begin() + x);
+        } else {
+            x++;
         }
     }
 }
@@ -490,34 +516,21 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
         // parse mouse messages
         switch (msg) {
             case WM_LBUTTONDOWN: {
-
                 // check if mouse is enabled
                 if (SPICETOUCH_ENABLE_MOUSE) {
+                    if (is_mouse_message_from_touchscreen()) {
+                        return 0;
+                    }
+
+                    // subscribe to mouse messages even when the cursor leaves the window
+                    SetCapture(hWnd);
+
+                    // release all old events before inserting a new one
+                    release_all_mouse_touch_points();
 
                     // lock touch points
                     std::lock_guard<std::mutex> lock_points(TOUCH_POINTS_M);
                     std::lock_guard<std::mutex> lock_events(TOUCH_EVENTS_M);
-
-                    // remove all points with ID 0
-                    for (size_t x = 0; x < TOUCH_POINTS.size(); x++) {
-                        TouchPoint *tp = &TOUCH_POINTS[x];
-
-                        if (tp->id == 0u) {
-
-                            // generate touch up event
-                            TouchEvent te {
-                                .id = tp->id,
-                                .x = tp->x,
-                                .y = tp->y,
-                                .type = TOUCH_UP,
-                                .mouse = tp->mouse,
-                            };
-                            add_touch_event(&te);
-
-                            // erase touch point
-                            TOUCH_POINTS.erase(TOUCH_POINTS.begin() + x);
-                        }
-                    }
 
                     // create touch point
                     TouchPoint tp {
@@ -545,9 +558,11 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 break;
             }
             case WM_MOUSEMOVE: {
-
                 // check if mouse is enabled
                 if (SPICETOUCH_ENABLE_MOUSE) {
+                    if (is_mouse_message_from_touchscreen()) {
+                        return 0;
+                    }
 
                     // lock touch points
                     std::lock_guard<std::mutex> lock_points(TOUCH_POINTS_M);
@@ -582,40 +597,31 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 break;
             }
             case WM_LBUTTONUP: {
-
                 // check if mouse is enabled
                 if (SPICETOUCH_ENABLE_MOUSE) {
+                    if (is_mouse_message_from_touchscreen()) {
+                        return 0;
+                    }
 
-                    // lock touch points
-                    std::lock_guard<std::mutex> lock_points(TOUCH_POINTS_M);
-                    std::lock_guard<std::mutex> lock_events(TOUCH_EVENTS_M);
-
-                    // remove all points with ID 0
-                    for (size_t x = 0; x < TOUCH_POINTS.size(); x++) {
-                        TouchPoint *tp = &TOUCH_POINTS[x];
-
-                        if (tp->id == 0u) {
-
-                            // generate touch up event
-                            TouchEvent te {
-                                .id = tp->id,
-                                .x = tp->x,
-                                .y = tp->y,
-                                .type = TOUCH_UP,
-                                .mouse = tp->mouse,
-                            };
-                            add_touch_event(&te);
-
-                            // remove touch point
-                            TOUCH_POINTS.erase(TOUCH_POINTS.begin() + x);
-                        }
+                    release_all_mouse_touch_points();
+                    if (GetCapture() == hWnd) {
+                        ReleaseCapture();
                     }
                 }
 
                 break;
             }
-            default:
+            case WM_CAPTURECHANGED:
+            case WM_CANCELMODE: {
+                // to deal with window losing the capture after SetCapture
+                release_all_mouse_touch_points();
+                if (msg == WM_CANCELMODE && GetCapture() == hWnd) {
+                    ReleaseCapture();
+                }
+                break;
+            }
 
+            default:
                 // call original function
                 if (SPICETOUCH_CALL_OLD_PROC && SPICETOUCH_OLD_PROC != nullptr) {
                     return SPICETOUCH_OLD_PROC(hWnd, msg, wParam, lParam);
@@ -663,6 +669,8 @@ void touch_attach_dx_hook() {
     // initialize touch handler
     touch_initialize();
 
+    log_info("touch", "touch_attach_dx_hook: attaching SpiceTouchWndProc...");
+
     // add dx hook
     graphics_add_wnd_proc(SpiceTouchWndProc);
 
@@ -680,6 +688,8 @@ void touch_create_wnd(HWND hWnd, bool overlay) {
 
     // initialize touch handler
     touch_initialize();
+
+    log_info("touch", "touch_create_wnd: creating SPICETOUCH_TOUCH_THREAD...");
 
     // create thread
     SPICETOUCH_TOUCH_THREAD = new std::thread([hWnd, overlay]() {
@@ -956,4 +966,11 @@ void update_spicetouch_window_dimensions(HWND hWnd) {
     SPICETOUCH_TOUCH_Y = topleft.y;
     SPICETOUCH_TOUCH_WIDTH = bottomright.x - topleft.x;
     SPICETOUCH_TOUCH_HEIGHT = bottomright.y - topleft.y;
+}
+
+// https://learn.microsoft.com/en-us/windows/win32/tablet/system-events-and-mouse-messages
+static bool is_mouse_message_from_touchscreen() {
+    constexpr ULONG_PTR MI_WP_SIGNATURE = 0xFF515700;
+    constexpr ULONG_PTR SIGNATURE_MASK = 0xFFFFFF00;
+    return (GetMessageExtraInfo() & SIGNATURE_MASK) == MI_WP_SIGNATURE;
 }
