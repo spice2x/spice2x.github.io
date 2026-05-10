@@ -4,6 +4,8 @@
 #include "hooks/devicehook.h"
 #include "hooks/audio/backends/dsound/dsound_backend.h"
 #include "util/detour.h"
+#include "util/precise_timer.h"
+#include "util/logging.h"
 
 #include "touch.h"
 
@@ -11,18 +13,16 @@ static decltype(SleepEx) *SleepEx_orig;
 
 static DWORD WINAPI SleepEx_hook(DWORD dwMilliseconds, BOOL bAltertable) {
 
-    /*
-     * Increase touch poll from ~110 FPS to ~500 FPS
-     */
+    // increase touch poll from ~110 FPS to ~500 FPS (Sleep) or ~1000 FPS (Win10 high-res timer)
     if (dwMilliseconds == 8) {
-        static bool initialized = false;
-        if (!initialized) {
-            initialized = true;
-
-            // if we only sleep for 1ms we also don't need the high priority RB sets
-            SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
-        }
         dwMilliseconds = 1;
+    }
+
+    // most calls from rb are actually non-alertable
+    if (!bAltertable) {
+        static thread_local timeutils::PreciseSleepTimer timer;
+        timer.sleep(dwMilliseconds);
+        return 0;
     }
 
     // call original
