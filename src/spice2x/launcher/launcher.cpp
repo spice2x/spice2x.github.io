@@ -385,6 +385,16 @@ int main_implementation(int argc, char *argv[]) {
         monitor_orientation = ORIENTATION_CW;
     }
 
+    std::optional<std::pair<uint32_t, uint32_t>> monitor_resolution;
+    if (options[launcher::Options::ChangeResolution].is_active()) {
+        std::pair<uint32_t, uint32_t> result;
+        if (parse_width_height(options[launcher::Options::ChangeResolution].value_text(), result)) {
+            monitor_resolution = result;
+        } else if (!cfg_run && !cfg::CONFIGURATOR_STANDALONE) {
+            log_fatal("launcher", "failed to parse -changeres");
+        }
+    }
+
     if (options[launcher::Options::spice2x_NoD3D9DeviceHook].value_bool()) {
         D3D9_DEVICE_HOOK_DISABLE = true;
         // touch emulation gets disabled, might as well turn these on
@@ -2189,7 +2199,7 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::PrimaryMonitor].is_active()) {
         change_primary_monitor(options[launcher::Options::PrimaryMonitor].value_text());
     }
-    update_monitor_on_boot(monitor_orientation, GRAPHICS_FORCE_REFRESH);
+    update_monitor_on_boot(monitor_orientation, GRAPHICS_FORCE_REFRESH, monitor_resolution);
 
     // initialize raw input
     RI_MGR = std::make_unique<rawinput::RawInputManager>();
