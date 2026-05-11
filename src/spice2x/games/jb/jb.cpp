@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <filesystem>
+#include <ws2tcpip.h>
 
 #include "avs/game.h"
 #include "cfg/configurator.h"
@@ -25,6 +26,8 @@ namespace games::jb {
     static bool IS_PORTRAIT = true;
     static std::vector<TouchPoint> TOUCH_POINTS;
     bool TOUCH_STATE[16];
+    
+    static decltype(getaddrinfo) *getaddrinfo_orig = nullptr;
 
     void touch_update() {
 
@@ -245,6 +248,27 @@ namespace games::jb {
         }
     }
 
+    static
+    int
+    WSAAPI
+    getaddrinfo_hook(
+        const char *pNodeName,
+        const char *pServiceName,
+        const struct addrinfo *pHints,
+        struct addrinfo **ppResult
+    )
+    {
+        if (pNodeName) {
+            if (_stricmp(pNodeName, "eamuse.konami.com") == 0 ||
+                _stricmp(pNodeName, "eamuse.konami.fun") == 0) {
+                log_misc("jubeat", "getaddrinfo: reroute {} to localhost", pNodeName);
+                return getaddrinfo_orig("127.0.0.1", pServiceName, pHints, ppResult);
+            }
+        }
+
+        return getaddrinfo_orig(pNodeName, pServiceName, pHints, ppResult);
+    }
+
     void JBGame::attach() {
         Game::attach();
 
@@ -279,6 +303,8 @@ namespace games::jb {
                 network, "network_get_network_check_info"));
         detour::inline_hook((void *) network_get_dhcp_result, libutils::try_proc(
                 network, "network_get_dhcp_result"));
+
+        getaddrinfo_orig = detour::iat_try("getaddrinfo", getaddrinfo_hook);
     }
 
     void JBGame::detach() {
