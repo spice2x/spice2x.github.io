@@ -20,15 +20,7 @@ struct IcmpHdr {
 };
 #pragma pack(pop)
 
-DWORD WINAPI (*IcmpSendEcho_orig)(
-        HANDLE IcmpHandle,
-        IPAddr DestinationAddress,
-        LPVOID RequestData,
-        WORD RequestSize,
-        PIP_OPTION_INFORMATION RequestOptions,
-        LPVOID ReplyBuffer,
-        DWORD ReplySize,
-        DWORD Timeout) = nullptr;
+decltype(IcmpSendEcho) *IcmpSendEcho_orig = nullptr;
 
 DWORD WINAPI IcmpSendEcho_hook(
         HANDLE IcmpHandle,

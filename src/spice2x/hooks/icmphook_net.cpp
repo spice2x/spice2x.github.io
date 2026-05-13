@@ -331,24 +331,23 @@ int WINAPI closesocket_hook(SOCKET s) {
 }
 
 int WINAPI bind_hook_ws2(SOCKET s, const sockaddr *name, int namelen) {
-    {
-        std::lock_guard<std::recursive_mutex> lock(g_mu);
-        auto it = g_socks.find(s);
-        if (it != g_socks.end()) {
-            if (namelen < (int) sizeof(sockaddr_in)) {
-                WSASetLastError(WSAEINVAL);
-                return SOCKET_ERROR;
-            }
-            auto *in = reinterpret_cast<const sockaddr_in *>(name);
-            if (in->sin_family != AF_INET) {
-                WSASetLastError(WSAEAFNOSUPPORT);
-                return SOCKET_ERROR;
-            }
-            it->second->has_bind = true;
-            it->second->bind_ip_host = ntohl(in->sin_addr.s_addr);
-            return 0;
+    std::unique_lock<std::recursive_mutex> lock(g_mu);
+    auto it = g_socks.find(s);
+    if (it != g_socks.end()) {
+        if (!name || namelen < (int) sizeof(sockaddr_in)) {
+            lock.unlock();
+            return bind_trampoline_orig(s, name, namelen);
         }
+        auto *in = reinterpret_cast<const sockaddr_in *>(name);
+        if (in->sin_family != AF_INET) {
+            WSASetLastError(WSAEAFNOSUPPORT);
+            return SOCKET_ERROR;
+        }
+        it->second->has_bind = true;
+        it->second->bind_ip_host = ntohl(in->sin_addr.s_addr);
+        return 0;
     }
+    lock.unlock();
     return bind_trampoline_orig(s, name, namelen);
 }
 
@@ -421,9 +420,13 @@ int WINAPI recvfrom_hook(
         lock.unlock();
         return recvfrom_orig(s, buf, len, flags, from, fromlen);
     }
-    EmuSock *es = it->second.get();
-    auto wait_pred = [&] { return !es->queue.empty(); };
 
+    auto wait_pred = [&] {
+        auto j = g_socks.find(s);
+        return j == g_socks.end() || !j->second->queue.empty();
+    };
+
+    EmuSock *es = it->second.get();
     if (es->nonblocking) {
         if (es->queue.empty()) {
             WSASetLastError(WSAEWOULDBLOCK);
@@ -435,13 +438,24 @@ int WINAPI recvfrom_hook(
             return SOCKET_ERROR;
         }
     } else if (es->rx_timeout_ms == INFINITE) {
-        es->cv.wait(lock, wait_pred);
+        it->second->cv.wait(lock, wait_pred);
     } else {
         const auto timeout = std::chrono::milliseconds(es->rx_timeout_ms);
-        if (!es->cv.wait_for(lock, timeout, wait_pred)) {
+        if (!it->second->cv.wait_for(lock, timeout, wait_pred)) {
             WSASetLastError(WSAETIMEDOUT);
             return SOCKET_ERROR;
         }
+    }
+
+    it = g_socks.find(s);
+    if (it == g_socks.end()) {
+        WSASetLastError(WSAENOTSOCK);
+        return SOCKET_ERROR;
+    }
+    es = it->second.get();
+    if (es->queue.empty()) {
+        WSASetLastError(WSAENOTSOCK);
+        return SOCKET_ERROR;
     }
 
     std::vector<uint8_t> pkt = std::move(es->queue.front());
@@ -544,25 +558,28 @@ int WINAPI ioctlsocket_hook(SOCKET s, long cmd, u_long *argp) {
 
 int WINAPI setsockopt_hook(
         SOCKET s, int level, int optname, const char *optval, int optlen) {
-    {
-        std::lock_guard<std::recursive_mutex> lock(g_mu);
-        auto it = g_socks.find(s);
-        if (it != g_socks.end()) {
-            EmuSock *es = it->second.get();
-            if (level == SOL_SOCKET && optlen >= (int) sizeof(DWORD)) {
-                auto v = reinterpret_cast<const DWORD *>(optval);
-                if (optname == SO_RCVTIMEO) {
-                    es->rx_timeout_ms = *v;
-                    return 0;
-                }
-                if (optname == SO_SNDTIMEO) {
-                    return 0;
-                }
+    std::unique_lock<std::recursive_mutex> lock(g_mu);
+    auto it = g_socks.find(s);
+    if (it != g_socks.end()) {
+        EmuSock *es = it->second.get();
+        if (level == SOL_SOCKET && optlen >= (int) sizeof(DWORD)) {
+            if (!optval) {
+                lock.unlock();
+                return setsockopt_orig(s, level, optname, optval, optlen);
             }
-            WSASetLastError(WSAEOPNOTSUPP);
-            return SOCKET_ERROR;
+            auto v = reinterpret_cast<const DWORD *>(optval);
+            if (optname == SO_RCVTIMEO) {
+                es->rx_timeout_ms = *v;
+                return 0;
+            }
+            if (optname == SO_SNDTIMEO) {
+                return 0;
+            }
         }
+        WSASetLastError(WSAEOPNOTSUPP);
+        return SOCKET_ERROR;
     }
+    lock.unlock();
     return setsockopt_orig(s, level, optname, optval, optlen);
 }
 
