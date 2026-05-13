@@ -282,6 +282,7 @@ namespace launcher {
             OptionConflictResolution,
             OtocaCamHook,
             DisableHighResTimer,
+            EnableICMPHook,
         };
 
         enum class OptionsCategory {

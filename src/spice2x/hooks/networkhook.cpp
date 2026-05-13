@@ -14,6 +14,7 @@
 #include "util/fileutils.h"
 #include "util/libutils.h"
 #include "util/deferlog.h"
+#include "hooks/icmphook_net.h"
 
 // hooking related stuff
 static decltype(GetAdaptersInfo) *GetAdaptersInfo_orig = nullptr;
@@ -188,6 +189,11 @@ static int WINAPI bind_hook(SOCKET s, const struct sockaddr *name, int namelen) 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
 #endif
+
+    int icmp_bind_result = 0;
+    if (icmphook_try_bind(s, name, namelen, &icmp_bind_result)) {
+        return icmp_bind_result;
+    }
 
     // cast to sockaddr_in
     struct sockaddr_in *in_name = (struct sockaddr_in *) name;

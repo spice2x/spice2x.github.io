@@ -523,6 +523,8 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/lang.cpp
         hooks/libraryhook.cpp
         hooks/networkhook.cpp
+        hooks/icmphook_net.cpp
+        hooks/icmphook_iphlpapi.cpp
         hooks/powrprof.cpp
         #hooks/rom.cpp
         hooks/setupapihook.cpp
