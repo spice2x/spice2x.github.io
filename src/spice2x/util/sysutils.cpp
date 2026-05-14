@@ -589,6 +589,8 @@ namespace sysutils {
             (void**)&EnumDisplayDevicesA_orig);
     }
 
+#if !SPICE_XP
+
     bool is_running_as_admin() {
         HANDLE token_handle = nullptr;
         TOKEN_ELEVATION elevation = {};
@@ -630,4 +632,6 @@ namespace sysutils {
         // ShellExecute returns > 32 on success
         return (intptr_t)result > 32;
     }
+
+#endif // !SPICE_XP
 }

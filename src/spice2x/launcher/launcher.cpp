@@ -262,6 +262,8 @@ int main_implementation(int argc, char *argv[]) {
     // parse arguments
     LAUNCHER_OPTIONS = launcher::parse_options(argc, argv);
 
+#if !SPICE_XP
+
     // handle elevation based on RunAsAdministrator option
     // elevate by default unless explicitly set to "user"
     const auto &run_as_admin_option = LAUNCHER_OPTIONS->at(launcher::Options::RunAsAdministrator);
@@ -275,10 +277,12 @@ int main_implementation(int argc, char *argv[]) {
             exit(0);
         } else {
             // elevation failed or was denied by the user
-            log_fatal("launcher", "failed to relaunch as admin, GLE:{}", GetLastError());
+            log_fatal("launcher", "failed to launch with administrator privileges, error:{}", GetLastError());
             exit(1);
         }
     }
+
+#endif // !SPICE_XP
 
     // command line override (must be done before merging options with cfg)
     if (LAUNCHER_OPTIONS->at(launcher::Options::OptionConflictResolution).value_bool()) {
