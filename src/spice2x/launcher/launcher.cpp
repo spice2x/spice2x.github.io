@@ -270,13 +270,12 @@ int main_implementation(int argc, char *argv[]) {
 
     // if we should elevate and we're not already admin, re-launch with elevation
     if (should_elevate && !sysutils::is_running_as_admin()) {
-        if (sysutils::elevate_privileges()) {
-            // successfully elevated, exit this instance
-            log_info("launcher", "Restarting with administrator privileges");
+        log_info("launcher", "restarting with administrator privileges");
+        if (sysutils::relaunch_as_admin()) {
             exit(0);
         } else {
             // elevation failed or was denied by the user
-            log_fatal("launcher", "Failed to elevate to administrator privileges");
+            log_fatal("launcher", "failed to relaunch as admin, GLE:{}", GetLastError());
             exit(1);
         }
     }

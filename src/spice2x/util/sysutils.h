@@ -24,5 +24,5 @@ namespace sysutils {
     void hook_EnumDisplayDevicesA();
     
     bool is_running_as_admin();
-    bool elevate_privileges();
+    bool relaunch_as_admin();
 }

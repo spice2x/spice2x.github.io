@@ -601,7 +601,7 @@ namespace sysutils {
         return elevation.TokenIsElevated != 0;
     }
 
-    bool elevate_privileges() {
+    bool relaunch_as_admin() {
         // get the current executable path
         wchar_t executable_path[MAX_PATH];
         if (!GetModuleFileNameW(nullptr, executable_path, MAX_PATH)) {
