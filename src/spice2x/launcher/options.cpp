@@ -2803,6 +2803,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .category = "Development"
     },
+    {
+        // EnableICMPHook
+        .title = "Enable ICMP Emulation",
+        .name = "icmphook",
+        .desc = "Emulate keepalive ping replies in user mode, so the game does not need to "
+            "open privileged raw ICMP sockets.",
+        .type = OptionType::Bool,
+        .category = "Network (Development)",
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {
