@@ -2819,7 +2819,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Controls whether spice will automatically re-launch with administrator privileges at startup.\n\n"
             "admin (default): automatically re-launch with administrator privileges, "
             "needed for most games to function properly\n\n"
-            "user: skip elevation, run with current user privileges",
+            "user: skip elevation, run with current user privileges; game may fail to launch, "
+            "crash, or critical features may silently fail; use at your own risk.",
         .type = OptionType::Enum,
         .category = "Development",
         .elements = {
