@@ -2813,8 +2813,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Network (Development)",
     },
     {
-        // RunAsAdministrator
-        .title = "Run as Administrator",
+        // AutoElevate
+        .title = "Run as",
         .name = "runas",
         .desc = "Controls whether the application will elevate to administrator privileges at launch.\n\n"
             "admin (default): request administrator privileges at launch, needed by default for most games\n\n"

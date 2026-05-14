@@ -283,7 +283,7 @@ namespace launcher {
             OtocaCamHook,
             DisableHighResTimer,
             EnableICMPHook,
-            RunAsAdministrator,
+            AutoElevate,
         };
 
         enum class OptionsCategory {

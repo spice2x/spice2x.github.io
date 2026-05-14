@@ -262,28 +262,6 @@ int main_implementation(int argc, char *argv[]) {
     // parse arguments
     LAUNCHER_OPTIONS = launcher::parse_options(argc, argv);
 
-#if !SPICE_XP
-
-    // handle elevation based on RunAsAdministrator option
-    // elevate by default unless explicitly set to "user"
-    const auto &run_as_admin_option = LAUNCHER_OPTIONS->at(launcher::Options::RunAsAdministrator);
-    const bool should_elevate = !run_as_admin_option.is_active() ||
-        run_as_admin_option.value_text() != "user";
-
-    // if we should elevate and we're not already admin, re-launch with elevation
-    if (should_elevate && !sysutils::is_running_as_admin()) {
-        log_info("launcher", "restarting with administrator privileges");
-        if (sysutils::relaunch_as_admin()) {
-            exit(0);
-        } else {
-            // elevation failed or was denied by the user
-            log_fatal("launcher", "failed to launch with administrator privileges, error:{}", GetLastError());
-            exit(1);
-        }
-    }
-
-#endif // !SPICE_XP
-
     // command line override (must be done before merging options with cfg)
     if (LAUNCHER_OPTIONS->at(launcher::Options::OptionConflictResolution).value_bool()) {
         launcher::USE_CMD_OVERRIDE = true;
@@ -323,6 +301,26 @@ int main_implementation(int argc, char *argv[]) {
         options_ptr = LAUNCHER_OPTIONS.get();
     }
     auto &options = *options_ptr;
+
+#if !SPICE_XP
+
+    {
+        // skip elevation only if AutoElevate is explicitly set to "user"
+        const bool skip_elevation = options[launcher::Options::AutoElevate].is_active() &&
+            options[launcher::Options::AutoElevate].value_text() == "user";
+        if (!skip_elevation && !sysutils::is_running_as_admin()) {
+            log_info("launcher", "relaunching with administrator privileges");
+            if (sysutils::relaunch_as_admin()) {
+                exit(0);
+            } else {
+                // elevation failed or was denied by the user
+                log_fatal("launcher", "failed to launch with administrator privileges, error:{}", GetLastError());
+                exit(1);
+            }
+        }
+    }
+
+#endif // !SPICE_XP
 
     // check options
     // TODO: get rid of some booleans here and make use of the options directly
