@@ -2812,6 +2812,20 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .category = "Network (Development)",
     },
+    {
+        // RunAsAdministrator
+        .title = "Run as Administrator",
+        .name = "runas",
+        .desc = "Controls whether the application will elevate to administrator privileges at launch.\n\n"
+            "admin (default): request administrator privileges at launch, needed by default for most games\n\n"
+            "user: never elevate, run with current user privileges, can be used for testing",
+        .type = OptionType::Enum,
+        .category = "Development",
+        .elements = {
+            {"admin", ""},
+            {"user", ""},
+        },
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {

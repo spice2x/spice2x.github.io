@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <shlwapi.h>
+#include <windows.h>
 #include <cfg/configurator.h>
 
 #include "api/modules/capture.h"
@@ -260,6 +261,25 @@ int main_implementation(int argc, char *argv[]) {
 
     // parse arguments
     LAUNCHER_OPTIONS = launcher::parse_options(argc, argv);
+
+    // handle elevation based on RunAsAdministrator option
+    // elevate by default unless explicitly set to "user"
+    const auto &run_as_admin_option = LAUNCHER_OPTIONS->at(launcher::Options::RunAsAdministrator);
+    const bool should_elevate = !run_as_admin_option.is_active() ||
+        run_as_admin_option.value_text() != "user";
+
+    // if we should elevate and we're not already admin, re-launch with elevation
+    if (should_elevate && !sysutils::is_running_as_admin()) {
+        if (sysutils::elevate_privileges()) {
+            // successfully elevated, exit this instance
+            log_info("launcher", "Restarting with administrator privileges");
+            exit(0);
+        } else {
+            // elevation failed or was denied by the user
+            log_fatal("launcher", "Failed to elevate to administrator privileges");
+            exit(1);
+        }
+    }
 
     // command line override (must be done before merging options with cfg)
     if (LAUNCHER_OPTIONS->at(launcher::Options::OptionConflictResolution).value_bool()) {
