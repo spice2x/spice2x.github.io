@@ -203,7 +203,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Show Cursor & Touch Emulation Enable",
         .name = "s",
-        .desc = "Shows the cursor in the game window; also turns on touch emulation. Do not use if you use a real touch screen.",
+        .desc = "Shows the cursor in the game window; also turns on touch emulation. Do not enable this if you have a real touch screen.",
         .type = OptionType::Bool,
         .category = "Common",
     },
@@ -265,7 +265,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Full Screen Orientation Swap (EXPERIMENTAL)",
         .name = "forceresswap",
         .desc =
-            "Allows you to play portrait games in in landscape (and vice versa) by transposing resolution and applying image scaling.\n\n"
+            "Allows you to play portrait games in landscape (and vice versa) by transposing resolution and applying image scaling.\n\n"
             "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
             "Strongly consider combining this with -forceres option to render at monitor native resolution\n\n"
             "WARNING: for SDVX, this messes with camera angle for note lanes, causing it to be zoomed out, and causes performance issues "
@@ -312,7 +312,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sp2x-dx9on12",
         .display_name = "dx9on12",
         .aliases= "dx9on12",
-        .desc = "Use D3D9On12 wrapper library, requires Windows 10. Has no effect games on that don't use DX9. Can cause some games to crash.\n\n"
+        .desc = "Use D3D9On12 wrapper library, requires Windows 10. Has no effect on games that don't use DX9. Can cause some games to crash.\n\n"
             "Default: auto (use DX9 for most games, but turn on 9on12 for games that require it on non-NVIDIA GPUs).",
         .type = OptionType::Enum,
         .category = "Graphics (Common)",
@@ -1069,8 +1069,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "gdlefty",
         .desc = "Enables lefty mode, flipping motion sensor directions. Default: off.\n\n"
             "Without this option, enabling LEFT in the game option will continuously trigger UP wail.\n\n"
-            "Has no effect if you are using analog bindings for X/Y axis; expectation is that your controller "
-            "handles this correctly (most do not, however).\n\n"
+            "Has no effect if you are using analog bindings for X/Y axis; most controllers do not handle this correctly.\n\n"
             "As always, remember to restart the game after changing options. If you need to change in the game, "
             "use the I/O panel overlay window.",
         .type = OptionType::Enum,
@@ -1268,7 +1267,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Force Load LovePlus Module",
         .name = "loveplus",
-        .desc = "manually enable LovePlus module.",
+        .desc = "Manually enable LovePlus module.",
         .type = OptionType::Bool,
         .game_name = "LovePlus",
         .category = "Game Options (Advanced)",
@@ -1276,7 +1275,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Force Load Charge Machine Module",
         .name = "pcm",
-        .desc = "manually enable Charge Machine module.",
+        .desc = "Manually enable Charge Machine module.",
         .type = OptionType::Bool,
         .game_name = "Charge Machine",
         .category = "Game Options (Advanced)",
@@ -1284,7 +1283,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Force Load Ongaku Paradise Module",
         .name = "onpara",
-        .desc = "manually enable Ongaku Paradise module.",
+        .desc = "Manually enable Ongaku Paradise module.",
         .type = OptionType::Bool,
         .game_name = "Ongaku Paradise",
         .category = "Game Options (Advanced)",
@@ -1292,7 +1291,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Force Load Busou Shinki Module",
         .name = "busou",
-        .desc = "manually enable Busou Shinki module.",
+        .desc = "Manually enable Busou Shinki module.",
         .type = OptionType::Bool,
         .game_name = "Busou Shinki: Armored Princess Battle Conductor",
         .category = "Game Options (Advanced)",
@@ -1301,7 +1300,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // LoadCCJModule
         .title = "Force Load Chase Chase Jokers Module",
         .name = "ccj",
-        .desc = "manually enable Chase Chase Jokers module.",
+        .desc = "Manually enable Chase Chase Jokers module.",
         .type = OptionType::Bool,
         .game_name = "Chase Chase Jokers",
         .category = "Game Options (Advanced)",
@@ -1310,7 +1309,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // LoadQKSModule
         .title = "Force Load QuizKnock STADIUM Module",
         .name = "qks",
-        .desc = "manually enable QuizKnock STADIUM module",
+        .desc = "Manually enable QuizKnock STADIUM module.",
         .type = OptionType::Bool,
         .game_name = "QuizKnock STADIUM",
         .category = "Game Options (Advanced)",
@@ -1319,7 +1318,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // LoadMFGModule
         .title = "Force Load Mahjong Fight Girl Module",
         .name = "mfg",
-        .desc = "manually enable Mahjong Fight Girl module.",
+        .desc = "Manually enable Mahjong Fight Girl module.",
         .type = OptionType::Bool,
         .game_name = "Mahjong Fight Girl",
         .category = "Game Options (Advanced)",
@@ -1328,7 +1327,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // LoadPCModule
         .title = "Force Load Polaris Chord Module",
         .name = "pc",
-        .desc = "manually enable Polaris Chord module.",
+        .desc = "Manually enable Polaris Chord module.",
         .type = OptionType::Bool,
         .game_name = "Polaris Chord",
         .category = "Game Options (Advanced)",
@@ -1337,7 +1336,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // LoadMusecaModule
         .title = "Force Load Museca Module",
         .name = "museca",
-        .desc = "manually enable Museca module.",
+        .desc = "Manually enable Museca module.",
         .type = OptionType::Bool,
         .game_name = "Museca",
         .category = "Game Options (Advanced)",
@@ -1461,7 +1460,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "API Verbose Logging",
         .name = "apilogging",
-        .desc = "verbose logging of API activity.",
+        .desc = "Verbose logging of API activity.",
         .type = OptionType::Bool,
         .category = "API (Dev)",
     },
@@ -1584,8 +1583,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Force Touch Emulation",
         .name = "touchemuforce",
         .desc = "Force enable hook for GetTouchInputInfo API and inject WM_TOUCH events. "
-                "This is automatically turned on when needed, so it is not typically required to "
-                "turn it on manually. Do not enable this unless you have trouble.",
+                "This is automatically enabled when needed and is typically not required. Do not enable this unless you have trouble.",
         .type = OptionType::Bool,
         .category = "Touch Parameters",
     },
@@ -1688,7 +1686,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "legacy: Preserve buggy old behavior (Default)\n\n"
             "fix: Add E00401 to non-FeliCa cards, scan FeliCa cards as-is (Recommended for most users)\n\n"
             "all: Add E00401 to all cards, including FeliCa cards (For really old games only)\n\n"
-            "The algorithm is simple; the prefix is applied, the scanned card number is appended upto 8 bytes, and remaining digits are discarded. "
+            "The algorithm is simple; the prefix is applied, the scanned card number is appended up to 8 bytes, and remaining digits are discarded. "
             "For example, abcd56780123 is converted to e00401abcd567801 on card in. This results in different card numbers so "
             "be careful when connecting to servers!",
         .type = OptionType::Enum,
@@ -1719,7 +1717,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Realtime Process Priority (DEPRECATED - use -processpriority instead)",
         .name = "realtime",
-        .desc = "Sets the process priority to realtime, can help with odd lag spikes.",
+        .desc = "Sets the process priority to realtime; can help with odd lag spikes.",
         .type = OptionType::Bool,
         .hidden = true,
         .category = "Performance",
@@ -1730,7 +1728,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sp2x-processpriority",
         .display_name = "processpriority",
         .aliases= "processpriority",
-        .desc = "Sets the process priority, can help with odd lag spikes. Default: high.",
+        .desc = "Sets the process priority, which can help with odd lag spikes. Default: high.",
         .type = OptionType::Enum,
         .category = "Performance",
         .elements = {
@@ -1807,7 +1805,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Disables all audio hooks, including device initialization and volume hooks.\n\n"
             "Default: off (allow Spice to hook IMMDeviceEnumerator for and optionally let "
                 "you use a different backend instead of exclusive WASAPI).\n\n"
-            "Check this if you want games to natively access your audio device.",
+            "Check this to allow games to natively access your audio device.",
         .type = OptionType::Bool,
         .category = "Audio (Hacks)",
     },
@@ -1819,7 +1817,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "volumehookdisable",
         .desc = "Disables audio volume hook.\n\n"
             "Default: off (prevent games from changing audio volume by hooking IAudioEndpointVolume).\n\n"
-            "Check this if you want games to freely change your volume.",
+            "Check this to allow games to freely change your volume.",
         .type = OptionType::Bool,
         .category = "Audio (Hacks)",
     },
@@ -1961,7 +1959,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "Blocking Logger",
         .name = "logblock",
-        .desc = "Slower but safer logging used for debugging.",
+        .desc = "Slower but safer logging for debugging.",
         .type = OptionType::Bool,
         .category = "Debug Log",
     },
@@ -2301,7 +2299,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "JB Touch Algorithm",
         .name = "jubeattouchalgo",
-        .desc = "For touch screen players - choose the touch algorithm to use.\n\n"
+        .desc = "For touch screen players: choose the touch algorithm to use.\n\n"
             "legacy - evenly divide the grid into 16 squares; old spicetools behavior, slightly inaccurate in gaps\n\n"
             "improved (default) - squares register as-is, gaps will trigger the closest square\n\n"
             "accurate - only touches within squares will trigger; gaps do nothing (for AC size touch screens)",
@@ -2502,7 +2500,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "nonvapi",
         .desc = "Completely block the game from accessing NVAPI. Can be used if NVAPI is returning undesirable "
             "results to the game (e.g., wrong values from NvDisplayConfig for SDVX). You may need to apply additional "
-            "hex edits in order to boot the game correctly.",
+            "hex edits to boot the game correctly.",
         .type = OptionType::Bool,
         .category = "Graphics (Common)",
     },
@@ -2550,7 +2548,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sp2x-smx-stage",
         .display_name = "smxstage",
         .aliases= "smxstage",
-        .desc = "StepmaniaX stage will show up as a device that can recieve lighting output. "
+        .desc = "StepmaniaX stage will show up as a device that can receive lighting output. "
             "For configurator, restart spicecfg.exe after enabling this to have the device show up for binding.",
         .type = OptionType::Bool,
         .category = "I/O Options",
@@ -2561,7 +2559,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "sp2x-smx-dedicab",
         .display_name = "smxdedicab",
         .aliases = "smxdedicab",
-        .desc = "StepManiaX Dedicated Cabinet will show up as a device that can recieve lighting output. "
+        .desc = "StepManiaX Dedicated Cabinet will show up as a device that can receive lighting output. "
             "For configurator, restart spicecfg.exe after enabling this to have the device show up for binding.",
         .type = OptionType::Bool,
         .category = "I/O Options"
@@ -2665,7 +2663,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Enables emulation of touch gestures to make it easier to navigate the game without a touchscreen.\n\n"
             "This enables two things:\n"
             "  1. Swipe/Touch bindings in Buttons tab (Swipe Next Page, etc)\n"
-            "  2. PIN pad bindings (make sure Unscramble Keypad patch is applied)).",
+            "  2. PIN pad bindings (make sure Unscramble Keypad patch is applied).",
         .type = OptionType::Bool,
         .game_name = "Nostalgia",
         .category = "Game Options",
