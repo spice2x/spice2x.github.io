@@ -133,6 +133,30 @@ bool ipv4_encode_datagram(
     return true;
 }
 
+// Cached adapter list. Populated once per process: adapter changes after the
+// first ICMP send are intentionally not picked up, in exchange for avoiding
+// repeated IP Helper calls on every emulated send.
+std::once_flag g_adapters_cache_init;
+std::vector<uint8_t> g_adapters_cache;
+
+void fill_adapters_cache() {
+    std::call_once(g_adapters_cache_init, []() {
+        ULONG buf_len = 0;
+        DWORD r = GetAdaptersInfo(nullptr, &buf_len);
+        if (r != ERROR_BUFFER_OVERFLOW && r != ERROR_SUCCESS) {
+            return;
+        }
+        if (buf_len == 0) {
+            return;
+        }
+        g_adapters_cache.resize(buf_len);
+        auto *info = reinterpret_cast<PIP_ADAPTER_INFO>(g_adapters_cache.data());
+        if (GetAdaptersInfo(info, &buf_len) != ERROR_SUCCESS) {
+            g_adapters_cache.clear();
+        }
+    });
+}
+
 uint32_t local_ipv4_for_peer(
         uint32_t peer_host_order,
         uint32_t bind_pref_host_order,
@@ -143,16 +167,11 @@ uint32_t local_ipv4_for_peer(
     if (has_bind && bind_pref_host_order != 0) {
         return bind_pref_host_order;
     }
-    ULONG buf_len = 0;
-    GetAdaptersInfo(nullptr, &buf_len);
-    if (buf_len == 0) {
+    fill_adapters_cache();
+    if (g_adapters_cache.empty()) {
         return peer_host_order;
     }
-    std::vector<uint8_t> buf(buf_len);
-    auto *info = reinterpret_cast<PIP_ADAPTER_INFO>(buf.data());
-    if (GetAdaptersInfo(info, &buf_len) != ERROR_SUCCESS) {
-        return peer_host_order;
-    }
+    auto *info = reinterpret_cast<PIP_ADAPTER_INFO>(g_adapters_cache.data());
     for (PIP_ADAPTER_INFO a = info; a != nullptr; a = a->Next) {
         uint32_t ip = ntohl(inet_addr(a->IpAddressList.IpAddress.String));
         uint32_t mask = ntohl(inet_addr(a->IpAddressList.IpMask.String));
@@ -331,23 +350,20 @@ int WINAPI closesocket_hook(SOCKET s) {
 }
 
 int WINAPI bind_hook_ws2(SOCKET s, const sockaddr *name, int namelen) {
-    std::unique_lock<std::recursive_mutex> lock(g_mu);
-    auto it = g_socks.find(s);
-    if (it != g_socks.end()) {
-        if (!name || namelen < (int) sizeof(sockaddr_in)) {
-            lock.unlock();
-            return bind_trampoline_orig(s, name, namelen);
+    {
+        std::lock_guard<std::recursive_mutex> lock(g_mu);
+        auto it = g_socks.find(s);
+        if (it != g_socks.end() && name && namelen >= (int) sizeof(sockaddr_in)) {
+            auto *in = reinterpret_cast<const sockaddr_in *>(name);
+            if (in->sin_family != AF_INET) {
+                WSASetLastError(WSAEAFNOSUPPORT);
+                return SOCKET_ERROR;
+            }
+            it->second->has_bind = true;
+            it->second->bind_ip_host = ntohl(in->sin_addr.s_addr);
+            return 0;
         }
-        auto *in = reinterpret_cast<const sockaddr_in *>(name);
-        if (in->sin_family != AF_INET) {
-            WSASetLastError(WSAEAFNOSUPPORT);
-            return SOCKET_ERROR;
-        }
-        it->second->has_bind = true;
-        it->second->bind_ip_host = ntohl(in->sin_addr.s_addr);
-        return 0;
     }
-    lock.unlock();
     return bind_trampoline_orig(s, name, namelen);
 }
 
@@ -407,56 +423,65 @@ int WINAPI WSASendTo_hook(
     return 0;
 }
 
-int WINAPI recvfrom_hook(
-        SOCKET s, char *buf, int len, int flags, sockaddr *from, int *fromlen) {
+// Dequeue one datagram for an emulated ICMP socket into the caller-provided
+// buffer. If out_full_dgram_bytes is non-null, it receives the full packet
+// size (before truncation to len) so callers can signal WSAEMSGSIZE.
+int emu_recv_dequeue(
+        SOCKET s, char *buf, int len, sockaddr *from, int *fromlen,
+        size_t *out_full_dgram_bytes) {
     if (!buf || len <= 0) {
         WSASetLastError(WSAEINVAL);
         return SOCKET_ERROR;
     }
 
-    std::unique_lock<std::recursive_mutex> lock(g_mu);
-    auto it = g_socks.find(s);
-    if (it == g_socks.end()) {
-        lock.unlock();
-        return recvfrom_orig(s, buf, len, flags, from, fromlen);
-    }
+    std::vector<uint8_t> pkt;
+    {
+        std::unique_lock<std::recursive_mutex> lock(g_mu);
+        auto it = g_socks.find(s);
+        if (it == g_socks.end()) {
+            WSASetLastError(WSAENOTSOCK);
+            return SOCKET_ERROR;
+        }
 
-    auto wait_pred = [&] {
-        auto j = g_socks.find(s);
-        return j == g_socks.end() || !j->second->queue.empty();
-    };
+        auto wait_pred = [&] {
+            auto j = g_socks.find(s);
+            return j == g_socks.end() || !j->second->queue.empty();
+        };
 
-    EmuSock *es = it->second.get();
-    if (es->nonblocking) {
+        EmuSock *es = it->second.get();
+        if (es->nonblocking) {
+            if (es->queue.empty()) {
+                WSASetLastError(WSAEWOULDBLOCK);
+                return SOCKET_ERROR;
+            }
+        } else if (es->rx_timeout_ms == INFINITE || es->rx_timeout_ms == 0) {
+            it->second->cv.wait(lock, wait_pred);
+        } else {
+            const auto timeout = std::chrono::milliseconds(es->rx_timeout_ms);
+            if (!it->second->cv.wait_for(lock, timeout, wait_pred)) {
+                WSASetLastError(WSAETIMEDOUT);
+                return SOCKET_ERROR;
+            }
+        }
+
+        it = g_socks.find(s);
+        if (it == g_socks.end()) {
+            WSASetLastError(WSAENOTSOCK);
+            return SOCKET_ERROR;
+        }
+        es = it->second.get();
         if (es->queue.empty()) {
-            WSASetLastError(WSAEWOULDBLOCK);
+            WSASetLastError(WSAENOTSOCK);
             return SOCKET_ERROR;
         }
-    } else if (es->rx_timeout_ms == INFINITE || es->rx_timeout_ms == 0) {
-        it->second->cv.wait(lock, wait_pred);
-    } else {
-        const auto timeout = std::chrono::milliseconds(es->rx_timeout_ms);
-        if (!it->second->cv.wait_for(lock, timeout, wait_pred)) {
-            WSASetLastError(WSAETIMEDOUT);
-            return SOCKET_ERROR;
-        }
+
+        pkt = std::move(es->queue.front());
+        es->queue.pop_front();
     }
 
-    it = g_socks.find(s);
-    if (it == g_socks.end()) {
-        WSASetLastError(WSAENOTSOCK);
-        return SOCKET_ERROR;
+    if (out_full_dgram_bytes) {
+        *out_full_dgram_bytes = pkt.size();
     }
-    es = it->second.get();
-    if (es->queue.empty()) {
-        WSASetLastError(WSAENOTSOCK);
-        return SOCKET_ERROR;
-    }
-
-    std::vector<uint8_t> pkt = std::move(es->queue.front());
-    es->queue.pop_front();
-    lock.unlock();
-
     const int take = (len < (int) pkt.size()) ? len : (int) pkt.size();
     memcpy(buf, pkt.data(), static_cast<size_t>(take));
     if (from && fromlen && *fromlen >= (int) sizeof(sockaddr_in)) {
@@ -473,6 +498,14 @@ int WINAPI recvfrom_hook(
     return take;
 }
 
+int WINAPI recvfrom_hook(
+        SOCKET s, char *buf, int len, int flags, sockaddr *from, int *fromlen) {
+    if (!lookup(s)) {
+        return recvfrom_orig(s, buf, len, flags, from, fromlen);
+    }
+    return emu_recv_dequeue(s, buf, len, from, fromlen, nullptr);
+}
+
 int WINAPI WSARecvFrom_hook(
         SOCKET s,
         LPWSABUF lpBuffers,
@@ -483,8 +516,7 @@ int WINAPI WSARecvFrom_hook(
         LPINT lpFromlen,
         LPWSAOVERLAPPED lpOverlapped,
         LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine) {
-    EmuSock *es = lookup(s);
-    if (!es) {
+    if (!lookup(s)) {
         return WSARecvFrom_orig(
                 s,
                 lpBuffers,
@@ -504,25 +536,23 @@ int WINAPI WSARecvFrom_hook(
         WSASetLastError(WSAEINVAL);
         return SOCKET_ERROR;
     }
-    char stack_buf[65536];
     sockaddr_in from_tmp{};
     int fromlen_tmp = sizeof(from_tmp);
-    int r = recvfrom_hook(
+    size_t full_bytes = 0;
+    int r = emu_recv_dequeue(
             s,
-            stack_buf,
-            sizeof(stack_buf),
-            0,
+            lpBuffers[0].buf,
+            (int) lpBuffers[0].len,
             reinterpret_cast<sockaddr *>(&from_tmp),
-            &fromlen_tmp);
+            &fromlen_tmp,
+            &full_bytes);
     if (r == SOCKET_ERROR) {
         return SOCKET_ERROR;
     }
-    int max_copy = (int) lpBuffers[0].len;
-    if (r > max_copy) {
+    if (full_bytes > lpBuffers[0].len) {
         WSASetLastError(WSAEMSGSIZE);
         return SOCKET_ERROR;
     }
-    memcpy(lpBuffers[0].buf, stack_buf, static_cast<size_t>(r));
     *lpNumberOfBytesRecvd = static_cast<DWORD>(r);
     if (lpFlags) {
         *lpFlags = 0;
@@ -553,29 +583,31 @@ int WINAPI ioctlsocket_hook(SOCKET s, long cmd, u_long *argp) {
 
 int WINAPI setsockopt_hook(
         SOCKET s, int level, int optname, const char *optval, int optlen) {
-    std::unique_lock<std::recursive_mutex> lock(g_mu);
-    auto it = g_socks.find(s);
-    if (it != g_socks.end()) {
-        EmuSock *es = it->second.get();
-        if (level == SOL_SOCKET && optlen >= (int) sizeof(DWORD)) {
-            if (!optval) {
-                lock.unlock();
-                return setsockopt_orig(s, level, optname, optval, optlen);
+    {
+        std::lock_guard<std::recursive_mutex> lock(g_mu);
+        auto it = g_socks.find(s);
+        if (it != g_socks.end()) {
+            const bool deref_optval = level == SOL_SOCKET && optlen >= (int) sizeof(DWORD);
+            if (deref_optval && optval) {
+                EmuSock *es = it->second.get();
+                auto v = reinterpret_cast<const DWORD *>(optval);
+                if (optname == SO_RCVTIMEO) {
+                    DWORD ms = *v;
+                    es->rx_timeout_ms = (ms == 0) ? INFINITE : ms;
+                    return 0;
+                }
+                if (optname == SO_SNDTIMEO) {
+                    return 0;
+                }
+                WSASetLastError(WSAEOPNOTSUPP);
+                return SOCKET_ERROR;
             }
-            auto v = reinterpret_cast<const DWORD *>(optval);
-            if (optname == SO_RCVTIMEO) {
-                DWORD ms = *v;
-                es->rx_timeout_ms = (ms == 0) ? INFINITE : ms;
-                return 0;
-            }
-            if (optname == SO_SNDTIMEO) {
-                return 0;
+            if (!deref_optval) {
+                WSASetLastError(WSAEOPNOTSUPP);
+                return SOCKET_ERROR;
             }
         }
-        WSASetLastError(WSAEOPNOTSUPP);
-        return SOCKET_ERROR;
     }
-    lock.unlock();
     return setsockopt_orig(s, level, optname, optval, optlen);
 }
 
