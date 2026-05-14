@@ -432,12 +432,7 @@ int WINAPI recvfrom_hook(
             WSASetLastError(WSAEWOULDBLOCK);
             return SOCKET_ERROR;
         }
-    } else if (es->rx_timeout_ms == 0) {
-        if (es->queue.empty()) {
-            WSASetLastError(WSAETIMEDOUT);
-            return SOCKET_ERROR;
-        }
-    } else if (es->rx_timeout_ms == INFINITE) {
+    } else if (es->rx_timeout_ms == INFINITE || es->rx_timeout_ms == 0) {
         it->second->cv.wait(lock, wait_pred);
     } else {
         const auto timeout = std::chrono::milliseconds(es->rx_timeout_ms);
@@ -569,7 +564,8 @@ int WINAPI setsockopt_hook(
             }
             auto v = reinterpret_cast<const DWORD *>(optval);
             if (optname == SO_RCVTIMEO) {
-                es->rx_timeout_ms = *v;
+                DWORD ms = *v;
+                es->rx_timeout_ms = (ms == 0) ? INFINITE : ms;
                 return 0;
             }
             if (optname == SO_SNDTIMEO) {

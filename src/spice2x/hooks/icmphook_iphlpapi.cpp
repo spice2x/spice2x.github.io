@@ -5,6 +5,7 @@
 #include <icmpapi.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 
 #include "util/detour.h"
@@ -61,17 +62,15 @@ DWORD WINAPI IcmpSendEcho_hook(
 
     memset(ReplyBuffer, 0, ReplySize);
     auto *reply = reinterpret_cast<ICMP_ECHO_REPLY *>(ReplyBuffer);
+    const size_t data_off = offsetof(ICMP_ECHO_REPLY, Data);
+    const size_t avail = ReplySize > data_off ? ReplySize - data_off : 0;
+    const size_t copy_len = (std::min)(static_cast<size_t>(RequestSize), avail);
     reply->Address = DestinationAddress;
     reply->Status = IP_SUCCESS;
     reply->RoundTripTime = 1;
-    reply->DataSize = RequestSize;
-    const size_t data_off =
-            reinterpret_cast<const uint8_t *>(reply->Data)
-            - reinterpret_cast<const uint8_t *>(reply);
-    const size_t avail = ReplySize > data_off ? ReplySize - data_off : 0;
-    const size_t copy_len = (std::min)(static_cast<size_t>(RequestSize), avail);
+    reply->DataSize = static_cast<USHORT>(copy_len);
     if (copy_len > 0) {
-        memcpy(reply->Data, RequestData, copy_len);
+        memcpy(reinterpret_cast<uint8_t *>(ReplyBuffer) + data_off, RequestData, copy_len);
     }
     SetLastError(ERROR_SUCCESS);
     return 1;
