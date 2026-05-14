@@ -2816,9 +2816,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // AutoElevate
         .title = "Run as",
         .name = "runas",
-        .desc = "Controls whether the application will elevate to administrator privileges at launch.\n\n"
-            "admin (default): request administrator privileges at launch, needed by default for most games\n\n"
-            "user: never elevate, run with current user privileges, can be used for testing",
+        .desc = "Controls whether spice will automatically re-launch with administrator privileges at startup.\n\n"
+            "admin (default): automatically re-launch with administrator privileges, "
+            "needed for most games to function properly\n\n"
+            "user: skip elevation, run with current user privileges",
         .type = OptionType::Enum,
         .category = "Development",
         .elements = {
