@@ -314,7 +314,7 @@ int main_implementation(int argc, char *argv[]) {
                 exit(0);
             } else {
                 // elevation failed or was denied by the user
-                log_fatal("launcher", "failed to launch with administrator privileges, error:{}", GetLastError());
+                log_fatal("launcher", "failed to launch with administrator privileges");
                 exit(1);
             }
         }

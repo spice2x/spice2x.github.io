@@ -593,12 +593,18 @@ namespace sysutils {
 
     bool is_running_as_admin() {
         HANDLE token_handle = nullptr;
+        if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token_handle)) {
+            return false;
+        }
+
         TOKEN_ELEVATION elevation = {};
         DWORD size = sizeof(elevation);
+        const BOOL ok = GetTokenInformation(
+            token_handle, TokenElevation, &elevation, size, &size);
+        CloseHandle(token_handle);
 
-        if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token_handle)) {
-            GetTokenInformation(token_handle, TokenElevation, &elevation, size, &size);
-            CloseHandle(token_handle);
+        if (!ok) {
+            return false;
         }
         return elevation.TokenIsElevated != 0;
     }
@@ -616,7 +622,7 @@ namespace sysutils {
             return false;
         }
 
-        // use the original command line string directly, skipping past argv[0]
+        // skip past argv[0] in the original command line
         const wchar_t *args = PathGetArgsW(GetCommandLineW());
 
         // use ShellExecuteW with "runas" verb to elevate
