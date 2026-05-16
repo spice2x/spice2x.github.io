@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <shlwapi.h>
+#include <windows.h>
 #include <cfg/configurator.h>
 
 #include "api/modules/capture.h"
@@ -300,6 +301,26 @@ int main_implementation(int argc, char *argv[]) {
         options_ptr = LAUNCHER_OPTIONS.get();
     }
     auto &options = *options_ptr;
+
+#if !SPICE_XP
+
+    {
+        // skip elevation only if AutoElevate is explicitly set to "user"
+        const bool skip_elevation = options[launcher::Options::AutoElevate].is_active() &&
+            options[launcher::Options::AutoElevate].value_text() == "user";
+        if (!skip_elevation && !sysutils::is_running_as_admin()) {
+            log_info("launcher", "relaunching with administrator privileges");
+            if (sysutils::relaunch_as_admin()) {
+                exit(0);
+            } else {
+                // elevation failed or was denied by the user
+                log_fatal("launcher", "failed to launch with administrator privileges");
+                exit(1);
+            }
+        }
+    }
+
+#endif // !SPICE_XP
 
     // check options
     // TODO: get rid of some booleans here and make use of the options directly

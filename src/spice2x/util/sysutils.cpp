@@ -10,6 +10,9 @@
 #include <windows.h>
 #undef WIN32_NO_STATUS
 
+#include <shellapi.h>
+#include <shlwapi.h>
+
 #include "hooks/graphics/graphics.h"
 #include "avs/game.h"
 #include "util/detour.h"
@@ -585,4 +588,56 @@ namespace sysutils {
             (void*)EnumDisplayDevicesA_hook,
             (void**)&EnumDisplayDevicesA_orig);
     }
+
+#if !SPICE_XP
+
+    bool is_running_as_admin() {
+        HANDLE token_handle = nullptr;
+        if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token_handle)) {
+            return false;
+        }
+
+        TOKEN_ELEVATION elevation = {};
+        DWORD size = sizeof(elevation);
+        const BOOL ok = GetTokenInformation(
+            token_handle, TokenElevation, &elevation, size, &size);
+        CloseHandle(token_handle);
+
+        if (!ok) {
+            return false;
+        }
+        return elevation.TokenIsElevated != 0;
+    }
+
+    bool relaunch_as_admin() {
+        // get the current executable path
+        wchar_t executable_path[MAX_PATH];
+        if (!GetModuleFileNameW(nullptr, executable_path, MAX_PATH)) {
+            return false;
+        }
+
+        // get the current working directory to pass to the elevated process
+        wchar_t working_dir[MAX_PATH];
+        if (!GetCurrentDirectoryW(MAX_PATH, working_dir)) {
+            return false;
+        }
+
+        // skip past argv[0] in the original command line
+        const wchar_t *args = PathGetArgsW(GetCommandLineW());
+
+        // use ShellExecuteW with "runas" verb to elevate
+        HINSTANCE result = ShellExecuteW(
+            nullptr,
+            L"runas",
+            executable_path,
+            args,
+            working_dir,
+            SW_SHOW
+        );
+
+        // ShellExecute returns > 32 on success
+        return (intptr_t)result > 32;
+    }
+
+#endif // !SPICE_XP
 }

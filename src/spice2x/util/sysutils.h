@@ -21,5 +21,12 @@ namespace sysutils {
     const std::vector<MonitorEntry> &enumerate_monitors();
 
     extern std::string SECOND_MONITOR_OVERRIDE;
-    void hook_EnumDisplayDevicesA();    
+    void hook_EnumDisplayDevicesA();
+    
+#if !SPICE_XP
+
+    bool is_running_as_admin();
+    bool relaunch_as_admin();
+
+#endif // !SPICE_XP
 }
