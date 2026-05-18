@@ -13,6 +13,7 @@
 #include "util/logging.h"
 #include "util/sigscan.h"
 #include "util/socd_cleaner.h"
+#include "util/sysutils.h"
 #include "util/utils.h"
 #include "hooks/setupapihook.h"
 
@@ -236,6 +237,22 @@ namespace games::gitadora {
             } else {
                 log_info("gitadora", "guitar pick SOCD algorithm: legacy");
             }
+
+#if SPICE64 && !SPICE_XP
+
+            if (is_arena_model() && !GRAPHICS_WINDOWED && !GRAPHICS_FORCE_SINGLE_ADAPTER) {
+                const auto &monitors = sysutils::enumerate_monitors();
+                const size_t active_count = monitors.size();
+                log_info("gitadora", "arena model: detected {} active monitor(s)", active_count);
+                if (active_count < 4) {
+                    log_info("gitadora", "arena model: enable single monitor mode due to insufficient monitors");
+                    GRAPHICS_FORCE_SINGLE_ADAPTER = true;
+                    GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
+                }
+            }
+
+#endif
+
         }
     }
 
@@ -373,7 +390,7 @@ namespace games::gitadora {
                 .adapterId = adapter_id,
                 .id = uid,
                 .modeInfoIdx = tgt_idx,
-                .outputTechnology = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_HDMI,
+                .outputTechnology = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_DISPLAYPORT_EXTERNAL,
                 .rotation = DISPLAYCONFIG_ROTATION_IDENTITY,
                 .scaling = DISPLAYCONFIG_SCALING_IDENTITY,
                 .refreshRate = { .Numerator = 60000, .Denominator = 1000 },
