@@ -562,14 +562,16 @@ namespace games::gitadora {
 
             // volume change prevention
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
-
+            
             // monitor/touch hooks (windowed or full screen)
             if (GRAPHICS_FORCE_SINGLE_ADAPTER || GRAPHICS_PREVENT_SECONDARY_WINDOW) {
                 // enable touch hook for subscreen overlay
                 wintouchemu::FORCE = true;
                 wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
                 wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);
-            
+
+#if !SPICE_XP
+
                 if (!GRAPHICS_WINDOWED) {
                     // monitor hook: always pretend to have 1 primary real monitor + 3 fake monitors
                     // (LEFT / RIGHT / SMALL) so the game accepts the arena cab topology
@@ -583,8 +585,9 @@ namespace games::gitadora {
                         detour::iat_try("DisplayConfigGetDeviceInfo",
                             DisplayConfigGetDeviceInfo_hook, avs::game::DLL_INSTANCE);
                 }
-            }
+#endif
 
+            }
             return;
         }
 
