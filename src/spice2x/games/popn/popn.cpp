@@ -261,7 +261,7 @@ namespace games::popn {
             } else if (requestPacket->type == DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME) {
                 const auto source = reinterpret_cast<DISPLAYCONFIG_SOURCE_DEVICE_NAME*>(requestPacket);
                 // value must match WrappedIDirect3D9::GetAdapterIdentifier
-                wcscpy(source->viewGdiDeviceName, L"\\\\.\\DISPLAY_SPICE_FAKE");
+                wcscpy(source->viewGdiDeviceName, L"\\\\.\\DISPLAY_SPICE_FAKE_1");
             } else {
                 log_fatal(
                     "popn",

@@ -129,13 +129,17 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() {
             this->main_swapchain->Release();
             this->main_swapchain = nullptr;
         }
-        if (this->sub_swapchain) {
-            this->sub_swapchain->Release();
-            this->sub_swapchain = nullptr;
+        for (auto &sc : this->sub_swapchain) {
+            if (sc) {
+                sc->Release();
+                sc = nullptr;
+            }
         }
-        if (this->fake_sub_swapchain) {
-            this->fake_sub_swapchain->Release();
-            this->fake_sub_swapchain = nullptr;
+        for (auto &sc : this->fake_sub_swapchain) {
+            if (sc) {
+                sc->Release();
+                sc = nullptr;
+            }
         }
 
         if (overlay::ENABLED) {
@@ -250,27 +254,47 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
     WRAP_VERBOSE;
 
     HRESULT hr = pReal->CreateAdditionalSwapChain(pPresentationParameters, ppSwapChain);
+
+    int index = 0;
     bool create_swap_chain = false;
     if (avs::game::is_model({"LDJ", "KFC", "M39"})) {
         create_swap_chain = true;
+
     } else if (games::gitadora::is_arena_model() &&
-        games::gitadora::ARENA_SINGLE_WINDOW &&
-        pPresentationParameters->BackBufferWidth == 800) {
-        create_swap_chain = true;
+        (GRAPHICS_FORCE_SINGLE_ADAPTER || GRAPHICS_PREVENT_SECONDARY_WINDOW)) {
+        if (pPresentationParameters->BackBufferWidth == 800) {
+            // SMALL (subscreen)
+            create_swap_chain = true;
+            index = 0;
+        } else if (pPresentationParameters->BackBufferWidth == 1080) {
+            // LEFT/RIGHT
+            create_swap_chain = true;
+            index = 1;
+            if (sub_swapchain[index] || fake_sub_swapchain[index]) {
+                index = 2;
+            }
+        } else {
+            log_warning("graphics::d3d9", "unknown swap chain detected in CreateAdditionalSwapChain");
+        }
     }
 
     if (create_swap_chain) {
-        if (SUCCEEDED(hr) && !sub_swapchain) {
-            sub_swapchain = new WrappedIDirect3DSwapChain9(this, *ppSwapChain);
-            sub_swapchain->should_run_hooks = false;
-        } else if (FAILED(hr) && !fake_sub_swapchain) {
+        log_misc(
+            "graphics::d3d9",
+            "CreateAdditionalSwapChain called for swap chain {}, creating swap chain",
+            index);
+
+        if (SUCCEEDED(hr) && !sub_swapchain[index]) {
+            sub_swapchain[index] = new WrappedIDirect3DSwapChain9(this, *ppSwapChain);
+            sub_swapchain[index]->should_run_hooks = false;
+        } else if (FAILED(hr) && !fake_sub_swapchain[index]) {
             log_warning("graphics::d3d9",
                     "failed to create sub swap chain, hr={}, using fake swap chain",
                     FMT_HRESULT(hr));
 
-            fake_sub_swapchain = new FakeIDirect3DSwapChain9(this, pPresentationParameters, false);
-            fake_sub_swapchain->AddRef();
-            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(fake_sub_swapchain);
+            fake_sub_swapchain[index] = new FakeIDirect3DSwapChain9(this, pPresentationParameters, false);
+            fake_sub_swapchain[index]->AddRef();
+            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(fake_sub_swapchain[index]);
 
             return D3D_OK;
         }
@@ -308,22 +332,20 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
     if (iSwapChain == 1 && avs::game::is_model({"LDJ", "KFC", "M39"})) {
         swap = true;
     }
-    if (games::gitadora::is_arena_model() &&
-        games::gitadora::ARENA_SINGLE_WINDOW &&
-        iSwapChain == 3) {
+    if (games::gitadora::is_arena_model() && iSwapChain == 2) {
         swap = true;
     }
 
     if (swap) {
-        if (sub_swapchain) {
-            sub_swapchain->AddRef();
-            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(sub_swapchain);
+        if (sub_swapchain[0]) {
+            sub_swapchain[0]->AddRef();
+            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(sub_swapchain[0]);
 
             graphics_screens_register(iSwapChain);
             return D3D_OK;
-        } else if (fake_sub_swapchain) {
-            fake_sub_swapchain->AddRef();
-            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(fake_sub_swapchain);
+        } else if (fake_sub_swapchain[0]) {
+            fake_sub_swapchain[0]->AddRef();
+            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(fake_sub_swapchain[0]);
 
             graphics_screens_register(iSwapChain);
             return D3D_OK;
@@ -344,7 +366,7 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
 
     UINT n = pReal->GetNumberOfSwapChains();
 
-    if (sub_swapchain && avs::game::is_model({"LDJ", "KFC", "M39"})) {
+    if (sub_swapchain[0] && avs::game::is_model({"LDJ", "KFC", "M39"})) {
         n += 1;
     }
 

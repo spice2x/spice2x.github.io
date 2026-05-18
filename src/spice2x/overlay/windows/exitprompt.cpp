@@ -71,7 +71,7 @@ namespace overlay::windows {
             sub = "Show Valkyrie Subscreen";
         } else if (avs::game::is_model("REC")) {
             sub = "Show DRS Dance Floor";
-        } else if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
+        } else if (games::gitadora::is_arena_model()) {
             sub = "Show GITADORA Subscreen";
         } else if (games::popn::is_pikapika_model()) {
             sub = "Show Pop'n Subscreen";

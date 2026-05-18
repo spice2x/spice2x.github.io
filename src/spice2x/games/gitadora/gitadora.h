@@ -11,7 +11,6 @@ namespace games::gitadora {
     // settings
     extern bool TWOCHANNEL;
     extern std::optional<unsigned int> CAB_TYPE;
-    extern bool ARENA_SINGLE_WINDOW;
     extern bool P1_LEFTY;
     extern bool P2_LEFTY;
     extern std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
