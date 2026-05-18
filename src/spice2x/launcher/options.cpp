@@ -1056,9 +1056,12 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // GitaDoraArenaSingleWindow
-        .title = "GitaDora Arena Single Window (EXPERIMENTAL)",
+        .title = "GitaDora Arena Disable Subscreens (EXPERIMENTAL)",
         .name = "gdaonewindow",
-        .desc = "For Arena Model, when combined with windowed mode, only show the main game window; enables subscreen overlay.",
+        .desc = "For Arena Model:\n\n"
+            "Windowed mode: instead of 4 windows, create 1 window.\n\n"
+            "Fullscreen mode: instead of requiring 4 monitors, use only the primary monitor. WARNING: requires 4K monitor.\n\n"
+            "To access the subscreen, use the subscreen overlay.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",

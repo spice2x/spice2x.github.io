@@ -421,7 +421,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     // only hook touch window if multiple windows are allowed
-    if (is_gfdm_sub_window && !games::gitadora::ARENA_SINGLE_WINDOW) {
+    if (is_gfdm_sub_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOW) {
         GFDM_SUBSCREEN_WINDOW = result;
         graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
     }
@@ -702,7 +702,7 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
 
 static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
     if (games::gitadora::is_arena_model() &&
-        games::gitadora::ARENA_SINGLE_WINDOW &&
+        GRAPHICS_PREVENT_SECONDARY_WINDOW &&
         hWnd != GRAPHICS_HOOKED_WINDOW) {
         log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
         return true;

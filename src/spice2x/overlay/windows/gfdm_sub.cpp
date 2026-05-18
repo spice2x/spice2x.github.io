@@ -11,6 +11,12 @@ namespace overlay::windows {
 
         if (!games::gitadora::is_arena_model()) {
             this->disabled_message = "Requires Arena Model!";
+        } else if (!GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+            if (GRAPHICS_WINDOWED) {
+                this->disabled_message = "Use the dedicated subscreen window!";
+            } else {
+                this->disabled_message = "Subscreen overlay disabled by user; enable single window mode for overlay.";
+            }
         }
 
         this->resize_callback = keep_10_by_16;
