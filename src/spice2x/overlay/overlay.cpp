@@ -415,7 +415,7 @@ void overlay::SpiceOverlay::init() {
             window_sub = new overlay::windows::DRSDanceFloorDisplay(this);
         } else if (avs::game::is_model("KFC")) {
             window_sub = new overlay::windows::SDVXSubScreen(this);
-        } else if (games::gitadora::is_arena_model() && games::gitadora::ARENA_SINGLE_WINDOW) {
+        } else if (games::gitadora::is_arena_model()) {
             window_sub = new overlay::windows::GitaDoraSubScreen(this);
         } else if (games::popn::is_pikapika_model()) {
             window_sub = new overlay::windows::PopnSubScreen(this);
