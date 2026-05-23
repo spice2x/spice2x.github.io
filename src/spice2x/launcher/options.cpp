@@ -2465,53 +2465,31 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
-        // spice2x_AutoPinMacro
-        .title = "Auto PIN Macro",
-        .name = "sp2x-autopinmacro",
-        .display_name = "autopinmacro",
-        .aliases= "autopinmacro",
-        .desc =
-            "Automatically type the configured PIN macro when the game enters the card "
-            "authentication screen, removing the need to press the PIN macro overlay key. "
-            "Player selection is shared with Auto Card Insert (sp2x-autocard); "
-            "requires Player 1 / Player 2 PIN Macro to be configured.",
-        .type = OptionType::Bool,
-        .category = "Network",
-    },
-    {
-        // spice2x_AutoPinMacroTrigger0
+        // AutoPinMacroTrigger0
         .title = "Auto PIN Macro Trigger Log String (P1)",
-        .name = "sp2x-autopinmacrotrigger0",
-        .display_name = "autopinmacrotrigger0",
-        .aliases = "autopinmacrotrigger0",
+        .name = "autopinmacrotrigger0",
         .desc =
             "Substring matched against game log output to detect when Player 1's PIN entry "
             "screen is ready. When the substring appears in any log line, the PIN macro is "
             "typed for Player 1 only (Auto Card Insert must also be enabled for P1). "
             "Configure per game (each game tab in spicecfg keeps its own value); for "
             "example, Sound Voltex emits 'ARD_ENTRY_AUTH_SCENE'. Leave blank to disable "
-            "auto-trigger for P1 in this game. Only effective when Auto PIN Macro is "
-            "enabled.",
+            "auto-trigger for P1 in this game.",
         .type = OptionType::Text,
-        .setting_name = "",
         .category = "Network",
     },
     {
-        // spice2x_AutoPinMacroTrigger1
+        // AutoPinMacroTrigger1
         .title = "Auto PIN Macro Trigger Log String (P2)",
-        .name = "sp2x-autopinmacrotrigger1",
-        .display_name = "autopinmacrotrigger1",
-        .aliases = "autopinmacrotrigger1",
+        .name = "autopinmacrotrigger1",
         .desc =
             "Substring matched against game log output to detect when Player 2's PIN entry "
             "screen is ready. When the substring appears in any log line, the PIN macro is "
             "typed for Player 2 only (Auto Card Insert must also be enabled for P2). "
             "Some games emit different log lines for each player; for games that share one "
             "scene line for both players, set the same value here as in the P1 field. Leave "
-            "blank to disable auto-trigger for P2 in this game. Only effective when Auto "
-            "PIN Macro is enabled.",
+            "blank to disable auto-trigger for P2 in this game.",
         .type = OptionType::Text,
-        .setting_name = "",
         .category = "Network",
     },
     {

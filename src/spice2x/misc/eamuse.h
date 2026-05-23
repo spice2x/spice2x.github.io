@@ -38,7 +38,6 @@ extern float AUTO_INSERT_CARD_COOLDOWN;
 
 extern bool PIN_MACRO_ENABLED;
 extern std::string PIN_MACRO_VALUES[2];
-extern bool AUTO_PIN_MACRO_ENABLED;
 extern std::string AUTO_PIN_MACRO_TRIGGER[2];
 
 bool eamuse_get_card(int active_count, int unit_id, uint8_t *card);
