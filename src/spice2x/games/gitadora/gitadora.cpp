@@ -8,6 +8,7 @@
 #include "misc/wintouchemu.h"
 #include "overlay/overlay.h"
 #include "util/cpuutils.h"
+#include "util/deferlog.h"
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -605,31 +606,36 @@ namespace games::gitadora {
 #endif
 
             }
-            return;
         }
-
-        HMODULE gdme_module = libutils::try_module("libgdme.dll");
 
         // window patch
-        if (GRAPHICS_WINDOWED && !replace_pattern(
-                gdme_module,
-                "754185ED753D8B4118BF0000CB02",
-                "9090????9090??????????????12", 0, 0))
-        {
-            log_warning("gitadora", "windowed mode failed");
+        if (!is_arena_model()) {
+            HMODULE gdme_module = libutils::try_module("libgdme.dll");
+            if (GRAPHICS_WINDOWED && !replace_pattern(
+                    gdme_module,
+                    "754185ED753D8B4118BF0000CB02",
+                    "9090????9090??????????????12", 0, 0)) {
+                log_warning("gitadora", "windowed mode failed");
+            }
         }
-
-        HMODULE bmsd_engine_module = libutils::try_module("libbmsd-engine.dll");
-        HMODULE bmsd_module = libutils::try_module("libbmsd.dll");
 
         // two channel mod
         if (TWOCHANNEL) {
-            bmsd2_boot_orig = detour::iat_try("bmsd2_boot", bmsd2_boot_hook, bmsd_module);
+            if (is_arena_model()) {
+                log_warning("gitadora", "two channel audio (-2ch) is not supported on Arena Model - use a patch instead");
+                deferredlogs::defer_error_messages({
+                    "two channel audio (-2ch) is not supported on Arena Model - use a patch instead",
+                    });
 
-            if (!(replace_pattern(bmsd_engine_module, "33000000488D", "03??????????", 0, 0) ||
-                    replace_pattern(bmsd_engine_module, "330000000F10", "03??????????", 0, 0)))
-            {
-                log_warning("gitadora", "two channel mode failed");
+            } else {
+                HMODULE bmsd_engine_module = libutils::try_module("libbmsd-engine.dll");
+                HMODULE bmsd_module = libutils::try_module("libbmsd.dll");
+
+                bmsd2_boot_orig = detour::iat_try("bmsd2_boot", bmsd2_boot_hook, bmsd_module);
+                if (!(replace_pattern(bmsd_engine_module, "33000000488D", "03??????????", 0, 0) ||
+                        replace_pattern(bmsd_engine_module, "330000000F10", "03??????????", 0, 0))) {
+                    log_warning("gitadora", "two channel mode failed");
+                }
             }
         }
 
