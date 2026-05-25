@@ -242,6 +242,8 @@ namespace launcher {
             spice2x_JubeatLegacyTouch,
             JubeatTouchAlgo,
             spice2x_RBTouchScale,
+            RBTouchSize,
+            RBTouchPollRate,
             spice2x_AsioForceUnload,
             spice2x_IIDXNoESpec,
             spice2x_IIDXWindowedTDJ,

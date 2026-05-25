@@ -13,6 +13,7 @@ static std::string WINDOW_TITLE = "REFLEC BEAT";
 
 namespace games::rb {
     uint16_t TOUCH_SCALING = 1000;
+    uint8_t TOUCH_SIZE = 1;
 }
 
 games::rb::ReflecBeatTouchDeviceHandle::ReflecBeatTouchDeviceHandle(bool log_fps) {
@@ -160,16 +161,20 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
         const auto point_x = (int) ((x - window_width / 2.0) * 48.0 / 54.0 + window_width / 2.0);
         const auto point_y = (int) (y - window_height / 76);
 
-        // insert 9 times with offset to double the precision
+        // center
         grid_insert(data, point_x, point_y);
-        grid_insert(data, point_x - offset_x, point_y);
-        grid_insert(data, point_x - offset_x, point_y - offset_y);
-        grid_insert(data, point_x - offset_x, point_y + offset_y);
-        grid_insert(data, point_x + offset_x, point_y);
-        grid_insert(data, point_x + offset_x, point_y + offset_y);
-        grid_insert(data, point_x + offset_x, point_y - offset_y);
-        grid_insert(data, point_x, point_y - offset_y);
-        grid_insert(data, point_x, point_y + offset_y);
+
+        // surrounding points
+        if (games::rb::TOUCH_SIZE == 3) {
+            grid_insert(data, point_x - offset_x, point_y);            // west
+            grid_insert(data, point_x - offset_x, point_y - offset_y); // northwest
+            grid_insert(data, point_x - offset_x, point_y + offset_y); // southwest
+            grid_insert(data, point_x + offset_x, point_y);            // east
+            grid_insert(data, point_x + offset_x, point_y + offset_y); // southeast
+            grid_insert(data, point_x + offset_x, point_y - offset_y); // northeast
+            grid_insert(data, point_x, point_y - offset_y);            // north
+            grid_insert(data, point_x, point_y + offset_y);            // south
+        }
     }
 
     // copy data to buffer

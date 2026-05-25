@@ -2317,13 +2317,38 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // spice2x_RBTouchScale
-        .title = "RB Scale Touch Input",
+        .title = "RB Touch Emulation Scale",
         .name = "sp2x-rbscaletouch",
         .display_name = "rbscaletouch",
         .aliases= "rbscaletouch",
         .desc = "Apply scaling to make touch area smaller than the screen. "
             "Specify a number out of 1000 (e.g., 800 means 80%). Default: 1000.",
         .type = OptionType::Integer,
+        .game_name = "Reflec Beat",
+        .category = "Game Options",
+    },
+    {
+        // RBTouchSize
+        .title = "RB Touch Emulation Size",
+        .name = "rbtouchsize",
+        .desc = "Size of the touch area; how many IR sensors a single finger activates. Default: 1 (1x1).",
+        .type = OptionType::Enum,
+        .game_name = "Reflec Beat",
+        .category = "Game Options",
+        .elements = {
+            {"1", "1x1"},
+            {"3", "3x3"},
+        },
+    },
+    {
+        // RBTouchPollRate
+        .title = "RB Touch Emulation Poll Hz",
+        .name = "rbtouchhz",
+        .desc = "By default, the game polls for touch at 120Hz. "
+            "This option overrides that rate; enter a number betwen 1 and 1000.\n\n"
+            "It should be noted that higher poll does not necessarily improve accuracy or performance.",
+        .type = OptionType::Integer,
+        .setting_name = "250",
         .game_name = "Reflec Beat",
         .category = "Game Options",
     },
