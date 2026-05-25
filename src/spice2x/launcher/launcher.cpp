@@ -1199,9 +1199,20 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
 
+    // reflec beat touch emulation
     if (options[launcher::Options::spice2x_RBTouchScale].is_active()) {
         games::rb::TOUCH_SCALING = options[launcher::Options::spice2x_RBTouchScale].value_uint32();
     }
+    if (options[launcher::Options::RBTouchSize].is_active()) {
+        const auto text = options[launcher::Options::RBTouchSize].value_text();
+        if (text == "3") {
+            games::rb::TOUCH_SIZE = 3;
+        }
+    }
+    if (options[launcher::Options::RBTouchPollRate].is_active()) {
+        games::rb::TOUCH_POLL_RATE = options[launcher::Options::RBTouchPollRate].value_uint32();
+    }
+
     if (options[launcher::Options::spice2x_AsioForceUnload].value_bool()) {
         hooks::audio::ASIO_FORCE_UNLOAD_ON_STOP = true;
     }
