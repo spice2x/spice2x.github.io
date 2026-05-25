@@ -346,14 +346,17 @@ void eamuse_pin_macro_start_thread() {
     for (int unit = 0; unit < 2; unit++) {
         AUTO_PIN_MACRO_PLAYER_ACTIVE[unit] =
             !AUTO_PIN_MACRO_TRIGGER[unit].empty() &&
-            AUTO_INSERT_CARD[unit] &&
             !PIN_MACRO_VALUES[unit].empty();
+        if(!AUTO_PIN_MACRO_TRIGGER[unit].empty() && PIN_MACRO_VALUES[unit].empty()) {
+            log_warning("eamuse", "Configuration error; Pin Macro empty for P{}.", unit+1);
+        }
     }
 
     // register scene log hook so the macro fires on the per-game trigger string,
     // but only if at least one player is eligible
     if (AUTO_PIN_MACRO_PLAYER_ACTIVE[0] || AUTO_PIN_MACRO_PLAYER_ACTIVE[1]) {
         logger::hook_add(pin_macro_log_hook, nullptr);
+        log_info("eamuse", "AUTO_PIN_MACRO enabled");
     }
 
     // create thread
@@ -387,6 +390,9 @@ void eamuse_pin_macro_start_thread() {
                         (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered()) &&
                         GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(PIN_MACRO_TRIGGER_KEYS[unit]));
                     bool auto_request = AUTO_PIN_MACRO_REQUEST[unit].exchange(false);
+                    if (auto_request) {
+                        log_info("eamuse", "AUTO_PIN_MACRO_REQUEST detected for P{}", unit+1);
+                    }
                     if (key_press || auto_request) {
                         active_unit = unit;
                         // Reset key index

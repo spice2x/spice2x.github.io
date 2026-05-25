@@ -2471,12 +2471,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc =
             "Substring matched against game log output to detect when Player 1's PIN entry "
             "screen is ready. When the substring appears in any log line, the PIN macro is "
-            "typed for Player 1 only (Auto Card Insert must also be enabled for P1). "
-            "Configure per game (each game tab in spicecfg keeps its own value); for "
-            "example, Sound Voltex emits 'ARD_ENTRY_AUTH_SCENE'. Leave blank to disable "
-            "auto-trigger for P1 in this game.",
+            "typed for Player 1 only. Leave blank to disable auto-trigger for P1.",
         .type = OptionType::Text,
-        .category = "Network",
+        .category = "Network (Advanced)",
     },
     {
         // AutoPinMacroTrigger1
@@ -2485,12 +2482,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc =
             "Substring matched against game log output to detect when Player 2's PIN entry "
             "screen is ready. When the substring appears in any log line, the PIN macro is "
-            "typed for Player 2 only (Auto Card Insert must also be enabled for P2). "
-            "Some games emit different log lines for each player; for games that share one "
-            "scene line for both players, set the same value here as in the P1 field. Leave "
-            "blank to disable auto-trigger for P2 in this game.",
+            "typed for Player 2 only. Leave blank to disable auto-trigger for P2.",
         .type = OptionType::Text,
-        .category = "Network",
+        .category = "Network (Advanced)",
     },
     {
         // spice2x_LowLatencySharedAudio
