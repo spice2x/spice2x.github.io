@@ -918,6 +918,12 @@ int main_implementation(int argc, char *argv[]) {
         PIN_MACRO_ENABLED = true;
         PIN_MACRO_VALUES[1] = options[launcher::Options::Player2PinMacro].value_text();
     }
+    if (options[launcher::Options::AutoPinMacroTrigger0].is_active()) {
+        AUTO_PIN_MACRO_TRIGGER[0] = options[launcher::Options::AutoPinMacroTrigger0].value_text();
+    }
+    if (options[launcher::Options::AutoPinMacroTrigger1].is_active()) {
+        AUTO_PIN_MACRO_TRIGGER[1] = options[launcher::Options::AutoPinMacroTrigger1].value_text();
+    }
 
     for (auto &reader : options[launcher::Options::ICCAReaderPort].values_text()) {
         static int reader_id = 0;

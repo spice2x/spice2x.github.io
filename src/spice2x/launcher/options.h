@@ -253,6 +253,8 @@ namespace launcher {
             IIDXSubMonitorOverride,
             spice2x_IIDXEmulateSubscreenKeypadTouch,
             spice2x_AutoCard,
+            AutoPinMacroTrigger0,
+            AutoPinMacroTrigger1,
             spice2x_LowLatencySharedAudio,
             spice2x_TapeLedAlgorithm,
             spice2x_NoNVAPI,

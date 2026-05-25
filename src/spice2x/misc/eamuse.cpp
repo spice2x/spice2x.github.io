@@ -1,5 +1,6 @@
 #include "eamuse.h"
 
+#include <atomic>
 #include <fstream>
 #include <thread>
 
@@ -44,12 +45,27 @@ static uint8_t AUTO_INSERT_CARD_CACHED_DATA[2][8];
 // pin macro
 bool PIN_MACRO_ENABLED = false;
 std::string PIN_MACRO_VALUES[2] = {"", ""};
+std::string AUTO_PIN_MACRO_TRIGGER[2];
+static std::atomic_bool AUTO_PIN_MACRO_REQUEST[2] {false, false};
+static bool AUTO_PIN_MACRO_PLAYER_ACTIVE[2] = {false, false};
 static std::thread *PIN_MACRO_THREAD = nullptr;
 static bool PIN_MACRO_THREAD_ACTIVE = false;
 static uint16_t PIN_MACRO_TRIGGER_KEYS[2] = {
     games::OverlayButtons::TriggerPinMacroP1,
     games::OverlayButtons::TriggerPinMacroP2
 };
+
+static bool pin_macro_log_hook(void *, const std::string &data, logger::Style, std::string &) {
+    for (int unit = 0; unit < 2; unit++) {
+        if (!AUTO_PIN_MACRO_PLAYER_ACTIVE[unit]) {
+            continue;
+        }
+        if (data.find(AUTO_PIN_MACRO_TRIGGER[unit]) != std::string::npos) {
+            AUTO_PIN_MACRO_REQUEST[unit].store(true);
+        }
+    }
+    return false;
+}
 
 bool eamuse_get_card(int active_count, int unit_id, uint8_t *card) {
 
@@ -324,6 +340,25 @@ void eamuse_pin_macro_start_thread() {
     // set active
     PIN_MACRO_THREAD_ACTIVE = true;
 
+    // a unit is eligible for auto-trigger only if all the static prerequisites are
+    // satisfied at startup; precomputing this lets the log hook skip per-line checks
+    // on values that never change at runtime
+    for (int unit = 0; unit < 2; unit++) {
+        AUTO_PIN_MACRO_PLAYER_ACTIVE[unit] =
+            !AUTO_PIN_MACRO_TRIGGER[unit].empty() &&
+            !PIN_MACRO_VALUES[unit].empty();
+        if(!AUTO_PIN_MACRO_TRIGGER[unit].empty() && PIN_MACRO_VALUES[unit].empty()) {
+            log_warning("eamuse", "Configuration error; Pin Macro empty for P{}.", unit+1);
+        }
+    }
+
+    // register scene log hook so the macro fires on the per-game trigger string,
+    // but only if at least one player is eligible
+    if (AUTO_PIN_MACRO_PLAYER_ACTIVE[0] || AUTO_PIN_MACRO_PLAYER_ACTIVE[1]) {
+        logger::hook_add(pin_macro_log_hook, nullptr);
+        log_info("eamuse", "AUTO_PIN_MACRO enabled");
+    }
+
     // create thread
     PIN_MACRO_THREAD = new std::thread([]() {
         uint16_t keypad_overrides[] = {
@@ -345,15 +380,20 @@ void eamuse_pin_macro_start_thread() {
         timeutils::PreciseSleepTimer timer;
 
         while (PIN_MACRO_THREAD_ACTIVE) {
-            // wait for key press
+            // wait for key press or auto-trigger
             if (!active_unit.has_value()) {
                 for (int unit = 0; unit < 2; unit++) {
                     if (PIN_MACRO_VALUES[unit].empty()) {
                         continue;
                     }
-                    if (overlay_buttons &&
+                    bool key_press = overlay_buttons &&
                         (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered()) &&
-                        GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(PIN_MACRO_TRIGGER_KEYS[unit]))) {
+                        GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(PIN_MACRO_TRIGGER_KEYS[unit]));
+                    bool auto_request = AUTO_PIN_MACRO_REQUEST[unit].exchange(false);
+                    if (auto_request) {
+                        log_info("eamuse", "AUTO_PIN_MACRO_REQUEST detected for P{}", unit+1);
+                    }
+                    if (key_press || auto_request) {
                         active_unit = unit;
                         // Reset key index
                         pin_index[unit] = 0;
@@ -404,6 +444,9 @@ void eamuse_pin_macro_stop_thread() {
         PIN_MACRO_THREAD->join();
         delete PIN_MACRO_THREAD;
         PIN_MACRO_THREAD = nullptr;
+    }
+    if (AUTO_PIN_MACRO_PLAYER_ACTIVE[0] || AUTO_PIN_MACRO_PLAYER_ACTIVE[1]) {
+        logger::hook_remove(pin_macro_log_hook, nullptr);
     }
 }
 
