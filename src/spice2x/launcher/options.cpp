@@ -157,6 +157,28 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .sensitive = true,
     },
     {
+        // AutoPinMacroTrigger0
+        .title = "Player 1 PIN Macro Auto Trigger on Log",
+        .name = "autopinmacrotrigger0",
+        .desc =
+            "Substring matched against game log output to detect when Player 1's PIN entry "
+            "screen is ready. When the substring appears in any log line, the PIN macro is "
+            "typed for Player 1 only. Leave blank to disable auto-trigger for P1.",
+        .type = OptionType::Text,
+        .category = "Network (Advanced)",
+    },
+    {
+        // AutoPinMacroTrigger1
+        .title = "Player 2 PIN Macro Auto Trigger on Log",
+        .name = "autopinmacrotrigger1",
+        .desc =
+            "Substring matched against game log output to detect when Player 2's PIN entry "
+            "screen is ready. When the substring appears in any log line, the PIN macro is "
+            "typed for Player 2 only. Leave blank to disable auto-trigger for P2.",
+        .type = OptionType::Text,
+        .category = "Network (Advanced)",
+    },
+    {
         .title = "Windowed Mode",
         .name = "w",
         .desc = "Enables windowed mode.",
@@ -2489,28 +2511,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"p2", ""},
             {"both", ""},
         },
-    },
-    {
-        // AutoPinMacroTrigger0
-        .title = "Auto PIN Macro Trigger Log String (P1)",
-        .name = "autopinmacrotrigger0",
-        .desc =
-            "Substring matched against game log output to detect when Player 1's PIN entry "
-            "screen is ready. When the substring appears in any log line, the PIN macro is "
-            "typed for Player 1 only. Leave blank to disable auto-trigger for P1.",
-        .type = OptionType::Text,
-        .category = "Network (Advanced)",
-    },
-    {
-        // AutoPinMacroTrigger1
-        .title = "Auto PIN Macro Trigger Log String (P2)",
-        .name = "autopinmacrotrigger1",
-        .desc =
-            "Substring matched against game log output to detect when Player 2's PIN entry "
-            "screen is ready. When the substring appears in any log line, the PIN macro is "
-            "typed for Player 2 only. Leave blank to disable auto-trigger for P2.",
-        .type = OptionType::Text,
-        .category = "Network (Advanced)",
     },
     {
         // spice2x_LowLatencySharedAudio
