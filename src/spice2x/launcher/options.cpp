@@ -1038,9 +1038,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
-        .title = "GitaDora Two Channel Audio",
+        .title = "GitaDora Two Channel Audio (DX/SD only)",
         .name = "2ch",
-        .desc = "Attempt to reduce audio channels down to just two channels.",
+        .desc = "Attempt to reduce audio channels down to just two channels. "
+            "This option does nothing for Arena Model (GW Delta and above); need a patch for that.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
