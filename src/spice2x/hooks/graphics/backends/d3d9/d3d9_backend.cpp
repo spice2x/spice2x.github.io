@@ -31,6 +31,7 @@
 #include "overlay/notifications.h"
 #include "util/detour.h"
 #include "util/deferlog.h"
+#include "util/fileutils.h"
 #include "util/flags_helper.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -1444,11 +1445,9 @@ static void save_screenshot(const std::string &file_path, UINT height, IDirect3D
         // save to clipboard
         clipboard::copy_image(file_path);
 
-        auto slash = file_path.find_last_of("/\\");
-        auto file_name = (slash == std::string::npos) ? file_path : file_path.substr(slash + 1);
         overlay::notifications::add(
             overlay::notifications::Severity::Success,
-            fmt::format("Screenshot saved: {}", file_name));
+            fmt::format("Screenshot saved: {}", fileutils::basename(file_path)));
     } else {
         log_warning("graphics::d3d9", "Direct3D save helper function not available");
     }
