@@ -150,6 +150,14 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
     std::ifstream f(path);
     if (!f) {
         log_warning("eamuse", "{} can not be opened!", path);
+        // toast once per index per failure streak so we don't spam every poll
+        static bool warned[2] = {false, false};
+        if (index >= 0 && index < 2 && !warned[index]) {
+            warned[index] = true;
+            overlay::notifications::add(
+                overlay::notifications::Severity::Error,
+                fmt::format("P{} card file not found: {}", index + 1, path.filename().string()));
+        }
         return false;
     }
 

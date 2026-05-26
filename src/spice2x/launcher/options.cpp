@@ -458,6 +458,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Overlay",
     },
     {
+        // DisableNotifications
+        .title = "Disable Overlay Notifications",
+        .name = "notoast",
+        .desc = "Disables in-game toast notifications shown by the Spice overlay.",
+        .type = OptionType::Bool,
+        .category = "Overlay",
+    },
+    {
         // OverlayScaling
         .title = "Spice Overlay UI Scale %",
         .name = "overlayscale",

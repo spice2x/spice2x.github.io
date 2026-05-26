@@ -6,6 +6,10 @@
 
 namespace overlay::notifications {
 
+    // master switch for the notification system; when false, add() is a no-op.
+    // controlled by the -nonotify launcher option.
+    extern bool ENABLED;
+
     enum class Severity {
         Info,
         Success,
@@ -15,9 +19,6 @@ namespace overlay::notifications {
 
     // add a notification (thread-safe). returns the assigned id.
     uint64_t add(Severity severity, std::string text);
-
-    // remove all pending notifications (thread-safe).
-    void clear();
 
     // true if there is at least one notification that still needs to be drawn.
     // safe to call from the render thread without locking the underlying store.

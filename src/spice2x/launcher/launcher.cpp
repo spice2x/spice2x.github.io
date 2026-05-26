@@ -95,6 +95,7 @@
 #include "misc/sde.h"
 #include "misc/wintouchemu.h"
 #include "overlay/overlay.h"
+#include "overlay/notifications.h"
 #include "overlay/windows/patch_manager.h"
 #include "overlay/windows/iidx_seg.h"
 #include "rawinput/rawinput.h"
@@ -1060,6 +1061,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::DisableOverlay].value_bool()) {
         overlay::ENABLED = false;
+    }
+    if (options[launcher::Options::DisableNotifications].value_bool()) {
+        overlay::notifications::ENABLED = false;
     }
     if (options[launcher::Options::OverlayScaling].is_active() && !cfg::CONFIGURATOR_STANDALONE && !cfg_run) {
         const auto val = options[launcher::Options::OverlayScaling].value_uint32();

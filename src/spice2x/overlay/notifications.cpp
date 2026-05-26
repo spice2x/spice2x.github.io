@@ -13,6 +13,8 @@
 
 namespace overlay::notifications {
 
+    bool ENABLED = true;
+
     struct Notification {
         uint64_t id;
         std::string text;
@@ -27,19 +29,31 @@ namespace overlay::notifications {
     static std::atomic<size_t> g_count { 0 };
 
     // duration in seconds each notification stays visible
-    static constexpr float DURATION_S = 4.0f;
+    static constexpr float DURATION_S = 3.0f;
 
     // maximum number of notifications kept in the queue (oldest dropped beyond this)
     static constexpr size_t MAX_NOTIFICATIONS = 6;
 
+    // time (ms) over which a toast fades out at the end of its lifetime
     static constexpr float FADE_OUT_MS = 400.0f;
+
+    // fixed width of each toast window, in unscaled pixels
     static constexpr float TOAST_WIDTH = 320.0f;
-    static constexpr float TOAST_MARGIN = 12.0f;
+
+    // gap between the toast stack and the screen edges (right + bottom)
+    static constexpr float TOAST_MARGIN = 20.0f;
+
+    // vertical gap between stacked toasts
     static constexpr float TOAST_SPACING = 8.0f;
+
+    // inner padding inside a toast window (horizontal / vertical)
     static constexpr float TOAST_PAD_X = 10.0f;
     static constexpr float TOAST_PAD_Y = 8.0f;
-    static constexpr float TOAST_ROUNDING = 4.0f;
-    static constexpr float TOAST_ACCENT_W = 3.0f;
+
+    // width of the colored severity accent bar drawn on the left edge
+    static constexpr float TOAST_ACCENT_W = 6.0f;
+
+    // base opacity of the toast background (0..1), multiplied by the fade alpha
     static constexpr float TOAST_BG_ALPHA = 0.85f;
 
     static constexpr ImGuiWindowFlags TOAST_FLAGS =
@@ -111,7 +125,6 @@ namespace overlay::notifications {
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
                             ImVec2(apply_scaling(TOAST_PAD_X), apply_scaling(TOAST_PAD_Y)));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, apply_scaling(TOAST_ROUNDING));
 
         float height = 0.f;
         if (ImGui::Begin(window_id.c_str(), nullptr, TOAST_FLAGS)) {
@@ -138,11 +151,15 @@ namespace overlay::notifications {
         }
         ImGui::End();
 
-        ImGui::PopStyleVar(3);
+        ImGui::PopStyleVar(2);
         return height;
     }
 
     uint64_t add(Severity severity, std::string text) {
+        if (!ENABLED || !overlay::ENABLED) {
+            return 0;
+        }
+
         Notification n {
             .id = g_next_id.fetch_add(1, std::memory_order_relaxed),
             .text = std::move(text),
@@ -160,12 +177,6 @@ namespace overlay::notifications {
             g_count.store(g_items.size(), std::memory_order_release);
         }
         return n.id;
-    }
-
-    void clear() {
-        std::lock_guard<std::mutex> lock(g_mutex);
-        g_items.clear();
-        g_count.store(0, std::memory_order_release);
     }
 
     bool has_pending() {

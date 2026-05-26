@@ -52,6 +52,7 @@ namespace launcher {
             SOFTID,
             VREnable,
             DisableOverlay,
+            DisableNotifications,
             OverlayScaling,
             spice2x_FpsAutoShow,
             spice2x_FpsOpposite,
