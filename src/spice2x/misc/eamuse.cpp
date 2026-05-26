@@ -415,6 +415,10 @@ void eamuse_pin_macro_start_thread() {
                         log_info("eamuse", "AUTO_PIN_MACRO_REQUEST detected for P{}", unit+1);
                     }
                     if (key_press || auto_request) {
+                        overlay::notifications::add(
+                                overlay::notifications::Severity::Info,
+                                fmt::format("P{} PIN macro fired ({})",
+                                        unit + 1, auto_request ? "auto" : "manual"));
                         active_unit = unit;
                         // Reset key index
                         pin_index[unit] = 0;

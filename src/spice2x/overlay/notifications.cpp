@@ -174,7 +174,7 @@ namespace overlay::notifications {
     }
 
     uint64_t add(Severity severity, std::string text) {
-        if (!ENABLED || !overlay::ENABLED) {
+        if (!ENABLED || !overlay::ENABLED || overlay::OVERLAY == nullptr) {
             return 0;
         }
 
@@ -199,7 +199,7 @@ namespace overlay::notifications {
 
     uint64_t add_throttled(Severity severity, const std::string &key,
                            double cooldown_seconds, std::string text) {
-        if (!ENABLED || !overlay::ENABLED) {
+        if (!ENABLED || !overlay::ENABLED || overlay::OVERLAY == nullptr) {
             return 0;
         }
         // per-key last-emit timestamps live behind their own lock so we don't
