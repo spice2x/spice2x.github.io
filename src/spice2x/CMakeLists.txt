@@ -558,6 +558,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
 
         # overlay
         overlay/overlay.cpp
+        overlay/notifications.cpp
         overlay/window.cpp
         overlay/imgui/extensions.cpp
         overlay/imgui/impl_spice.cpp

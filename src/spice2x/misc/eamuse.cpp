@@ -14,6 +14,7 @@
 #include "util/time.h"
 #include "util/utils.h"
 #include "overlay/overlay.h"
+#include "overlay/notifications.h"
 
 #include "bt5api.h"
 
@@ -253,6 +254,9 @@ bool eamuse_card_insert_consume(int active_count, int unit_id) {
         || GameAPI::Buttons::getState(RI_MGR, keypad_buttons->at(games::KeypadButtons::InsertCard + offset))) {
         log_info("eamuse", "[P{}] Card insert on reader (total active count: {})", unit_id+1, active_count);
         CARD_INSERT[index] = false;
+        overlay::notifications::add(
+            overlay::notifications::Severity::Success,
+            fmt::format("P{} card inserted", unit_id + 1));
         return true;
     }
 
