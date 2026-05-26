@@ -650,6 +650,9 @@ int main_implementation(int argc, char *argv[]) {
         // for windowed
         GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
     }
+    if (options[launcher::Options::GitaDoraArenaHideSideWindows].value_bool()) {
+        GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
+    }
     if (options[launcher::Options::GitaDoraWailHold].is_active()) {
         socd::TILT_HOLD_MS = options[launcher::Options::GitaDoraWailHold].value_uint32();
     }

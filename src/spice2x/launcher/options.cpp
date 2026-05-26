@@ -1090,6 +1090,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // GitaDoraArenaHideSideWindows
+        .title = "GitaDora Arena Hide Side Screens (EXPERIMENTAL)",
+        .name = "gdahideside",
+        .desc = "For Arena Model windowed mode: hide the LEFT and RIGHT side screens, "
+            "but keep the dedicated SMALL touch screen window.\n\n"
+            "This is independent from GitaDora Arena Disable Subscreens. If both are "
+            "enabled, Disable Subscreens takes priority and SMALL is also hidden.",
+        .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+    },
+    {
         // GitaDoraLefty
         .title = "GitaDora Lefty Guitar (for Digital Wailing)",
         .name = "gdlefty",
