@@ -289,6 +289,7 @@ namespace launcher {
             DisableHighResTimer,
             EnableICMPHook,
             AutoElevate,
+            NotificationPosition,
         };
 
         enum class OptionsCategory {

@@ -2471,6 +2471,22 @@ int main_implementation(int argc, char *argv[]) {
     // eamuse init
     eamuse_autodetect_game();
 
+    // notification position: apply per-game default first, then the explicit
+    // user option (if set) wins over the default.
+    overlay::notifications::apply_game_default_position(eamuse_get_game());
+    if (options[launcher::Options::NotificationPosition].is_active()) {
+        const auto txt = options[launcher::Options::NotificationPosition].value_text();
+        if (txt == "topleft") {
+            overlay::notifications::POSITION = overlay::notifications::Position::TopLeft;
+        } else if (txt == "topright") {
+            overlay::notifications::POSITION = overlay::notifications::Position::TopRight;
+        } else if (txt == "bottomleft") {
+            overlay::notifications::POSITION = overlay::notifications::Position::BottomLeft;
+        } else if (txt == "bottomright") {
+            overlay::notifications::POSITION = overlay::notifications::Position::BottomRight;
+        }
+    }
+
     // unis device hook
     unisintrhook_init();
 

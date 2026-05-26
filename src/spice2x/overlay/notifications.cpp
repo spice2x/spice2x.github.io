@@ -3,6 +3,7 @@
 #include <atomic>
 #include <deque>
 #include <mutex>
+#include <unordered_map>
 
 #include "external/imgui/imgui.h"
 #include "external/imgui/imgui_internal.h"
@@ -14,6 +15,7 @@
 namespace overlay::notifications {
 
     bool ENABLED = true;
+    Position POSITION = Position::BottomRight;
 
     struct Notification {
         uint64_t id;
@@ -108,17 +110,33 @@ namespace overlay::notifications {
         return snapshot;
     }
 
-    // draw a single toast anchored by its bottom-right corner; returns its height in pixels
-    static float draw_toast(const Notification &n, float bottom_y, float alpha) {
+    // is the configured anchor on the right edge of the screen?
+    static bool position_is_right(Position p) {
+        return p == Position::BottomRight || p == Position::TopRight;
+    }
+
+    // is the configured anchor on the bottom edge of the screen?
+    static bool position_is_bottom(Position p) {
+        return p == Position::BottomRight || p == Position::BottomLeft;
+    }
+
+    // draw a single toast anchored to the configured corner; `cursor_y` is the
+    // y-coordinate of the toast edge nearest the anchor (top edge for Top* anchors,
+    // bottom edge for Bottom* anchors). returns its height in pixels.
+    static float draw_toast(const Notification &n, float cursor_y, float alpha) {
         const float toast_width = apply_scaling(TOAST_WIDTH);
         const float margin = apply_scaling(TOAST_MARGIN);
         const ImVec2 &display = ImGui::GetIO().DisplaySize;
+        const Position pos = POSITION;
 
         const auto window_id = fmt::format("##spice_notif_{}", n.id);
 
-        // anchor bottom-right of the toast at (display_w - margin, bottom_y) via pivot (1,1)
-        ImGui::SetNextWindowPos(ImVec2(display.x - margin, bottom_y),
-                                ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+        // anchor x/pivot.x select the screen edge; pivot.y matches cursor_y semantics
+        const float anchor_x = position_is_right(pos) ? (display.x - margin) : margin;
+        const float pivot_x = position_is_right(pos) ? 1.0f : 0.0f;
+        const float pivot_y = position_is_bottom(pos) ? 1.0f : 0.0f;
+        ImGui::SetNextWindowPos(ImVec2(anchor_x, cursor_y),
+                                ImGuiCond_Always, ImVec2(pivot_x, pivot_y));
         ImGui::SetNextWindowSize(ImVec2(toast_width, 0.f), ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(TOAST_BG_ALPHA * alpha);
 
@@ -179,6 +197,28 @@ namespace overlay::notifications {
         return n.id;
     }
 
+    uint64_t add_throttled(Severity severity, const std::string &key,
+                           double cooldown_seconds, std::string text) {
+        if (!ENABLED || !overlay::ENABLED) {
+            return 0;
+        }
+        // per-key last-emit timestamps live behind their own lock so we don't
+        // hold g_mutex across the map lookup.
+        static std::mutex throttle_mutex;
+        static std::unordered_map<std::string, double> last_emit_ms;
+        const double now_ms = get_performance_milliseconds();
+        {
+            std::lock_guard<std::mutex> lock(throttle_mutex);
+            auto it = last_emit_ms.find(key);
+            if (it != last_emit_ms.end()
+                && (now_ms - it->second) < (cooldown_seconds * 1000.0)) {
+                return 0;
+            }
+            last_emit_ms[key] = now_ms;
+        }
+        return add(severity, std::move(text));
+    }
+
     bool has_pending() {
         return g_count.load(std::memory_order_acquire) > 0;
     }
@@ -190,13 +230,27 @@ namespace overlay::notifications {
             return;
         }
 
-        // stack upward from the bottom-right corner; newest toast at the bottom
-        float cursor_y = ImGui::GetIO().DisplaySize.y - apply_scaling(TOAST_MARGIN);
+        // stack from the anchored edge with newest toast at the anchor.
+        // Bottom* anchors stack upward; Top* anchors stack downward.
         const float spacing = apply_scaling(TOAST_SPACING);
+        const float margin = apply_scaling(TOAST_MARGIN);
+        const bool bottom = position_is_bottom(POSITION);
+        float cursor_y = bottom
+            ? (ImGui::GetIO().DisplaySize.y - margin)
+            : margin;
         for (auto it = snapshot.rbegin(); it != snapshot.rend(); ++it) {
             const float alpha = compute_alpha(*it, now_ms);
             const float height = draw_toast(*it, cursor_y, alpha);
-            cursor_y -= height + spacing;
+            cursor_y += bottom ? -(height + spacing) : (height + spacing);
         }
+    }
+
+    void apply_game_default_position(const std::string &game_name) {
+        // games whose primary UI/playfield is bottom-anchored read better with
+        // toasts in the top-right so they don't overlap critical play area
+        if (game_name == "Jubeat" || game_name == "Reflec Beat") {
+            POSITION = Position::TopRight;
+        }
+        // others keep the default (BottomRight)
     }
 }

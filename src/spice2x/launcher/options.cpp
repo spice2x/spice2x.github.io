@@ -2887,6 +2887,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"user", ""},
         },
     },
+    {
+        // NotificationPosition
+        .title = "Notification Position",
+        .name = "notifypos",
+        .desc = "Screen corner for overlay toast notifications (e.g. \"P1 card inserted\", "
+            "\"Screenshot saved\"). Default depends on game; most games anchor toasts to the "
+            "bottom-right, but games whose primary UI sits at the bottom of the screen "
+            "(e.g. Jubeat, Reflec Beat) default to the top-right.",
+        .type = OptionType::Enum,
+        .category = "Overlay",
+        .elements = {
+            {"topleft", ""},
+            {"topright", ""},
+            {"bottomleft", ""},
+            {"bottomright", ""},
+        },
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {

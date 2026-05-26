@@ -150,13 +150,18 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
     std::ifstream f(path);
     if (!f) {
         log_warning("eamuse", "{} can not be opened!", path);
-        // toast once per index per failure streak so we don't spam every poll
+        // toast once per index per failure streak so we don't spam every poll.
+        // only latch warned[] once the toast actually got enqueued (add() returns
+        // 0 if the overlay isn't ready yet); otherwise early polls during init
+        // would silently consume the one-shot and the user never sees the error.
         static bool warned[2] = {false, false};
         if (index >= 0 && index < 2 && !warned[index]) {
-            warned[index] = true;
-            overlay::notifications::add(
+            const uint64_t id = overlay::notifications::add(
                 overlay::notifications::Severity::Error,
-                fmt::format("P{} card file not found: {}", index + 1, path.filename().string()));
+                fmt::format("P{} card number not set", index + 1));
+            if (id != 0) {
+                warned[index] = true;
+            }
         }
         return false;
     }
@@ -262,8 +267,12 @@ bool eamuse_card_insert_consume(int active_count, int unit_id) {
         || GameAPI::Buttons::getState(RI_MGR, keypad_buttons->at(games::KeypadButtons::InsertCard + offset))) {
         log_info("eamuse", "[P{}] Card insert on reader (total active count: {})", unit_id+1, active_count);
         CARD_INSERT[index] = false;
-        overlay::notifications::add(
+        // throttle: keypad button polling and CARD_INSERT_TIMEOUT window can
+        // otherwise re-trigger this branch every frame while a button is held.
+        overlay::notifications::add_throttled(
             overlay::notifications::Severity::Success,
+            fmt::format("eamuse.card_inserted.p{}", unit_id + 1),
+            3.0,
             fmt::format("P{} card inserted", unit_id + 1));
         return true;
     }
