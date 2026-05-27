@@ -19,10 +19,11 @@
 #include "bt5api.h"
 
 // state
+static constexpr double NOTIFICATION_THROTTLE_SECONDS = 3.0;
 static bool CARD_INSERT[2] = {false, false};
 static double CARD_INSERT_TIME[2] = {0, 0};
 static double CARD_INSERT_TIMEOUT = 2.0;
-static char CARD_INSERT_UID[2][8];
+static char CARD_INSERT_UID[2][8] = {{0}, {0}};
 static char CARD_INSERT_UID_ENABLE[2] = {false, false};
 static int COIN_STOCK = 0;
 static bool COIN_BLOCK = false;
@@ -120,6 +121,12 @@ bool eamuse_get_card(const std::filesystem::path &path, uint8_t *card, int index
                             "{} card override contains an invalid character sequence at byte {} (16 characters, 0-9/A-F only)",
                             card_override, n);
 
+                overlay::notifications::add_throttled(
+                    overlay::notifications::Severity::Error,
+                    fmt::format("eamuse.card_override_error.p{}", index + 1),
+                    NOTIFICATION_THROTTLE_SECONDS,
+                    fmt::format("[P{}] invalid card override", index + 1));
+
                 return false;
             }
         }
@@ -152,9 +159,9 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
         log_warning("eamuse", "{} can not be opened!", path);
         overlay::notifications::add_throttled(
             overlay::notifications::Severity::Error,
-            fmt::format("eamuse.card_missing.p{}", index + 1),
-            10.0,
-            fmt::format("P{} card number not set", index + 1));
+            fmt::format("eamuse.card_file_error.p{}", index + 1),
+            NOTIFICATION_THROTTLE_SECONDS,
+            fmt::format("[P{}] can't open card file", index + 1));
         return false;
     }
 
@@ -166,6 +173,12 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
     // check size
     if (length < 16) {
         log_warning("eamuse", "{} is too small (must be at least 16 characters)", path);
+        overlay::notifications::add_throttled(
+            overlay::notifications::Severity::Error,
+            fmt::format("eamuse.card_file_error.p{}", index + 1),
+            NOTIFICATION_THROTTLE_SECONDS,
+            fmt::format("[P{}] card file error", index + 1));
+
         return false;
     }
 
@@ -185,6 +198,11 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
                 "{} contains an invalid character sequence at byte {} (16 characters, 0-9/A-F only)",
                 path, n);
 
+            overlay::notifications::add_throttled(
+                overlay::notifications::Severity::Error,
+                fmt::format("eamuse.card_file_error.p{}", index + 1),
+                NOTIFICATION_THROTTLE_SECONDS,
+                fmt::format("[P{}] card file error", index + 1));
             return false;
         }
     }
@@ -257,15 +275,16 @@ bool eamuse_card_insert_consume(int active_count, int unit_id) {
     auto offset = unit_id * games::KeypadButtons::Size;
     if ((CARD_INSERT[index] && fabs(get_performance_seconds() - CARD_INSERT_TIME[index]) < CARD_INSERT_TIMEOUT)
         || GameAPI::Buttons::getState(RI_MGR, keypad_buttons->at(games::KeypadButtons::InsertCard + offset))) {
+
         log_info("eamuse", "[P{}] Card insert on reader (total active count: {})", unit_id+1, active_count);
         CARD_INSERT[index] = false;
-        // throttle: keypad button polling and CARD_INSERT_TIMEOUT window can
-        // otherwise re-trigger this branch every frame while a button is held.
+
         overlay::notifications::add_throttled(
-            overlay::notifications::Severity::Success,
+            overlay::notifications::Severity::Info,
             fmt::format("eamuse.card_inserted.p{}", unit_id + 1),
-            3.0,
-            fmt::format("P{} card inserted", unit_id + 1));
+            NOTIFICATION_THROTTLE_SECONDS,
+            fmt::format("[P{}] card inserted", unit_id + 1));
+
         return true;
     }
 
@@ -409,7 +428,7 @@ void eamuse_pin_macro_start_thread() {
                     if (key_press || auto_request) {
                         overlay::notifications::add(
                                 overlay::notifications::Severity::Info,
-                                fmt::format("P{} PIN macro fired ({})",
+                                fmt::format("[P{}] PIN macro fired ({})",
                                         unit + 1, auto_request ? "auto" : "manual"));
                         active_unit = unit;
                         // Reset key index
