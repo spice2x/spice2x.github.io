@@ -458,23 +458,30 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Overlay",
     },
     {
-        // DisableNotifications
-        .title = "Disable Toast Notifications",
-        .name = "notoast",
-        .desc = "Disables in-game toast notifications shown by the Spice overlay.",
-        .type = OptionType::Bool,
-        .category = "Overlay",
-    },
-    {
         // OverlayScaling
         .title = "Spice Overlay UI Scale %",
         .name = "overlayscale",
         .desc = "Forces UI scaling for the overlay, "
-            "things can look off since the UI was written for 100% scaling. "
+            "things can look off since the UI was written for 100%. "
             "Enter value in percentage, between 10-400, inclusive.",
         .type = OptionType::Integer,
         .setting_name = "200",
         .category = "Overlay",
+    },
+    {
+        // NotificationPosition
+        .title = "Notifications",
+        .name = "notifypos",
+        .desc = "Select where notifications will appear on the screen.",
+        .type = OptionType::Enum,
+        .category = "Overlay",
+        .elements = {
+            {"off", ""},
+            {"topleft", ""},
+            {"topright", ""},
+            {"bottomleft", ""},
+            {"bottomright", ""},
+        },
     },
     {
         // spice2x_FpsAutoShow
@@ -2885,23 +2892,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .elements = {
             {"admin", ""},
             {"user", ""},
-        },
-    },
-    {
-        // NotificationPosition
-        .title = "Notification Position",
-        .name = "notifypos",
-        .desc = "Screen corner for overlay toast notifications (e.g. \"P1 card inserted\", "
-            "\"Screenshot saved\"). Default depends on game; most games anchor toasts to the "
-            "bottom-right, but games whose primary UI sits at the bottom of the screen "
-            "(e.g. Jubeat, Reflec Beat) default to the top-right.",
-        .type = OptionType::Enum,
-        .category = "Overlay",
-        .elements = {
-            {"topleft", ""},
-            {"topright", ""},
-            {"bottomleft", ""},
-            {"bottomright", ""},
         },
     },
 };

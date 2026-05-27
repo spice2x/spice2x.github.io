@@ -246,9 +246,7 @@ namespace overlay::notifications {
     }
 
     void apply_game_default_position(const std::string &game_name) {
-        // games whose primary UI/playfield is bottom-anchored read better with
-        // toasts in the top-right so they don't overlap critical play area
-        if (game_name == "Jubeat" || game_name == "Reflec Beat") {
+        if (game_name == "Reflec Beat") {
             POSITION = Position::TopRight;
         }
         // others keep the default (BottomRight)

@@ -52,8 +52,8 @@ namespace launcher {
             SOFTID,
             VREnable,
             DisableOverlay,
-            DisableNotifications,
             OverlayScaling,
+            NotificationPosition,
             spice2x_FpsAutoShow,
             spice2x_FpsOpposite,
             spice2x_SubScreenAutoShow,
@@ -289,7 +289,6 @@ namespace launcher {
             DisableHighResTimer,
             EnableICMPHook,
             AutoElevate,
-            NotificationPosition,
         };
 
         enum class OptionsCategory {

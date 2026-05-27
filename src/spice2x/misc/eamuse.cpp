@@ -150,19 +150,11 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
     std::ifstream f(path);
     if (!f) {
         log_warning("eamuse", "{} can not be opened!", path);
-        // toast once per index per failure streak so we don't spam every poll.
-        // only latch warned[] once the toast actually got enqueued (add() returns
-        // 0 if the overlay isn't ready yet); otherwise early polls during init
-        // would silently consume the one-shot and the user never sees the error.
-        static bool warned[2] = {false, false};
-        if (index >= 0 && index < 2 && !warned[index]) {
-            const uint64_t id = overlay::notifications::add(
-                overlay::notifications::Severity::Error,
-                fmt::format("P{} card number not set", index + 1));
-            if (id != 0) {
-                warned[index] = true;
-            }
-        }
+        overlay::notifications::add_throttled(
+            overlay::notifications::Severity::Error,
+            fmt::format("eamuse.card_missing.p{}", index + 1),
+            10.0,
+            fmt::format("P{} card number not set", index + 1));
         return false;
     }
 

@@ -1062,9 +1062,6 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::DisableOverlay].value_bool()) {
         overlay::ENABLED = false;
     }
-    if (options[launcher::Options::DisableNotifications].value_bool()) {
-        overlay::notifications::ENABLED = false;
-    }
     if (options[launcher::Options::OverlayScaling].is_active() && !cfg::CONFIGURATOR_STANDALONE && !cfg_run) {
         const auto val = options[launcher::Options::OverlayScaling].value_uint32();
         if (10 <= val && val <= 400 && val != 100) {
@@ -2484,6 +2481,8 @@ int main_implementation(int argc, char *argv[]) {
             overlay::notifications::POSITION = overlay::notifications::Position::BottomLeft;
         } else if (txt == "bottomright") {
             overlay::notifications::POSITION = overlay::notifications::Position::BottomRight;
+        } else if (txt == "off") {
+            overlay::notifications::ENABLED = false;
         }
     }
 

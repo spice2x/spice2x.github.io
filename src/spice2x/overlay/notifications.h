@@ -7,7 +7,7 @@
 namespace overlay::notifications {
 
     // master switch for the notification system; when false, add() is a no-op.
-    // controlled by the -nonotify launcher option.
+    // controlled by selecting "none" for the -notifypos launcher option.
     extern bool ENABLED;
 
     enum class Severity {
