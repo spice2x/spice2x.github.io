@@ -41,6 +41,13 @@ typedef enum SPICE_SDK_LOG_LEVEL {
     SPICE_SDK_LOG_LEVEL_FATAL = 3,
 } SPICE_SDK_LOG_LEVEL;
 
+typedef enum SPICE_SDK_TOAST_SEVERITY {
+    SPICE_SDK_TOAST_LEVEL_INFO = 0,
+    SPICE_SDK_TOAST_LEVEL_SUCCESS = 1,
+    SPICE_SDK_TOAST_LEVEL_WARNING = 2,
+    SPICE_SDK_TOAST_LEVEL_ERROR = 3,
+} SPICE_SDK_TOAST_SEVERITY;
+
 typedef struct SPICE_SDK_TOUCH_POINT {
     uint32_t id;
     int x;
@@ -219,6 +226,17 @@ typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_set_keypad_func)(
     char key
 );
 
+// add_toast (v0.2 and up)
+// adds an overlay toast notification
+//
+//   severity: see SPICE_SDK_TOAST_SEVERITY; controls the accent color (purely cosmetic)
+//   text: null-terminated UTF-8 message to display; wraps inside the toast
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_add_toast_func)(
+    SPICE_SDK_TOAST_SEVERITY severity,
+    const char *text
+);
+
 typedef struct SPICE_SDK_V0 {
     uint32_t size;
 
@@ -241,6 +259,8 @@ typedef struct SPICE_SDK_V0 {
 
     spice_sdk_insert_card_func *insert_card;
     spice_sdk_set_keypad_func *set_keypad;
+
+    spice_sdk_add_toast_func *add_toast;
 
 } SPICE_SDK_V0;
 
