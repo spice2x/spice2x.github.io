@@ -5,6 +5,7 @@
 #include "util/utils.h"
 #include "util/rc4.h"
 #include "util/logging.h"
+#include "overlay/notifications.h"
 #include "controller.h"
 
 using namespace headsocket;
@@ -91,12 +92,18 @@ namespace api {
 
         // log connection
         log_info("api::websocket", "client connected");
+        overlay::notifications::add(
+                overlay::notifications::Severity::Success,
+                "API websocket client connected");
     }
 
     void WebSocketClient::on_disconnect() {
 
         // log disconnection
         log_info("api::websocket", "client disconnected");
+        overlay::notifications::add(
+                overlay::notifications::Severity::Info,
+                "API websocket client disconnected");
 
         // get pointer to server
         auto srv = reinterpret_cast<WebSocketServer *>(server().get());

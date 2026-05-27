@@ -26,6 +26,14 @@ bool fileutils::file_exists(const std::filesystem::path &file_path) {
     return file_exists(file_path.c_str());
 }
 
+std::string fileutils::basename(std::string_view path) {
+    const auto slash = path.find_last_of("\\/");
+    if (slash == std::string_view::npos) {
+        return std::string(path);
+    }
+    return std::string(path.substr(slash + 1));
+}
+
 bool fileutils::verify_header_pe(const std::filesystem::path &file_path) {
     if (!file_exists(file_path)) {
         return false;

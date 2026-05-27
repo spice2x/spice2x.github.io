@@ -5,6 +5,7 @@
 #include "cfg/screen_resize.h"
 #include "hooks/graphics/graphics.h"
 #include "overlay/imgui/extensions.h"
+#include "overlay/notifications.h"
 #include "misc/eamuse.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -323,6 +324,11 @@ namespace overlay::windows {
             
             if (toggle_screen_resize_new && !this->toggle_screen_resize_state) {
                 cfg::SCREENRESIZE->enable_screen_resize = !cfg::SCREENRESIZE->enable_screen_resize;
+                overlay::notifications::add(
+                        overlay::notifications::Severity::Info,
+                        cfg::SCREENRESIZE->enable_screen_resize
+                                ? "Screen resize enabled"
+                                : "Screen resize disabled");
             }
             this->toggle_screen_resize_state = toggle_screen_resize_new;
         }
@@ -347,10 +353,16 @@ namespace overlay::windows {
                     cfg::SCREENRESIZE->enable_screen_resize) {
                     // this scene is already active, turn scaling off
                     cfg::SCREENRESIZE->enable_screen_resize = false;
+                    overlay::notifications::add(
+                            overlay::notifications::Severity::Info,
+                            "Screen resize disabled");
                 } else {
                     // switch to scene
                     cfg::SCREENRESIZE->enable_screen_resize = true;
                     cfg::SCREENRESIZE->screen_resize_current_scene = i;
+                    overlay::notifications::add(
+                            overlay::notifications::Severity::Info,
+                            fmt::format("Screen resize: scene {}", i + 1));
                 }
                 break;
             }

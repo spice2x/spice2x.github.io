@@ -11,6 +11,8 @@
 #include "util/logging.h"
 #include "util/utils.h"
 
+#include "overlay/notifications.h"
+
 #include "module.h"
 #include "modules/analogs.h"
 #include "modules/buttons.h"
@@ -197,6 +199,9 @@ void Controller::connection_handler(api::ClientState client_state) {
 
     // log connection
     log_info("api", "client connected: {}", client_address_str);
+    overlay::notifications::add(
+            overlay::notifications::Severity::Success,
+            fmt::format("API client connected ({})", client_address_str));
     client_states_m.lock();
     client_states.emplace_back(&client_state);
     client_states_m.unlock();
@@ -277,6 +282,9 @@ void Controller::connection_handler(api::ClientState client_state) {
 
     // log disconnect
     log_info("api", "client disconnected: {}", client_address_str);
+    overlay::notifications::add(
+            overlay::notifications::Severity::Info,
+            fmt::format("API client disconnected ({})", client_address_str));
     client_states_m.lock();
     client_states.erase(std::remove(client_states.begin(), client_states.end(), &client_state));
     client_states_m.unlock();

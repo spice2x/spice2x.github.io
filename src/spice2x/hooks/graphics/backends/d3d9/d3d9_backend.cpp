@@ -28,8 +28,10 @@
 #include "misc/eamuse.h"
 #include "misc/wintouchemu.h"
 #include "overlay/overlay.h"
+#include "overlay/notifications.h"
 #include "util/detour.h"
 #include "util/deferlog.h"
+#include "util/fileutils.h"
 #include "util/flags_helper.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -1434,11 +1436,18 @@ static void save_screenshot(const std::string &file_path, UINT height, IDirect3D
 
         if (FAILED(hr)) {
             log_warning("graphics::d3d9", "Failed to save screenshot");
+            overlay::notifications::add(
+                overlay::notifications::Severity::Error,
+                "Screenshot failed to save");
             return;
         }
 
         // save to clipboard
         clipboard::copy_image(file_path);
+
+        overlay::notifications::add(
+            overlay::notifications::Severity::Success,
+            fmt::format("Screenshot saved: {}", fileutils::basename(file_path)));
     } else {
         log_warning("graphics::d3d9", "Direct3D save helper function not available");
     }

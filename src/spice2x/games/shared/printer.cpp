@@ -7,6 +7,7 @@
 #include "hooks/sleephook.h"
 #include "hooks/libraryhook.h"
 #include "launcher/launcher.h"
+#include "overlay/notifications.h"
 #include "util/detour.h"
 #include "util/fileutils.h"
 #include "util/libutils.h"
@@ -397,8 +398,14 @@ namespace games::shared {
                 // logging
                 if (success) {
                     log_info("printer", "printer emulation has written an image to {}", image_path);
+                    overlay::notifications::add(
+                            overlay::notifications::Severity::Success,
+                            fmt::format("Printer: saved {}", fileutils::basename(image_path)));
                 } else {
                     log_warning("printer", "printer emulation failed to write image to {}", image_path);
+                    overlay::notifications::add(
+                            overlay::notifications::Severity::Error,
+                            fmt::format("Printer: failed to write {}", fileutils::basename(image_path)));
                 }
             }
         }
