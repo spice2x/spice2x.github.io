@@ -471,7 +471,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         // NotificationPosition
         .title = "Notifications",
-        .name = "notifypos",
+        .name = "toast",
         .desc = "Select where notifications will appear on the screen.",
         .type = OptionType::Enum,
         .category = "Overlay",
