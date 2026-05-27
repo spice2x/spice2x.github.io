@@ -1105,16 +1105,22 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
-        // GitaDoraArenaHideSideWindows
-        .title = "GitaDora Arena Hide Side Screens (EXPERIMENTAL)",
-        .name = "gdahideside",
-        .desc = "For Arena Model windowed mode: hide the LEFT and RIGHT side screens, "
-            "but keep the dedicated SMALL touch screen window.\n\n"
-            "This is independent from GitaDora Arena Disable Subscreens. If both are "
-            "enabled, Disable Subscreens takes priority and SMALL is also hidden.",
-        .type = OptionType::Bool,
+        // GitaDoraArenaWindowLayout
+        .title = "GitaDora Arena Windowed Layout (EXPERIMENTAL)",
+        .name = "gdawindows",
+        .desc = "For Arena Model windowed mode (-w): select how many windows to create.\n\n"
+            "4 windows: main + LEFT + RIGHT + SMALL.\n\n"
+            "2 windows: main + SMALL.\n\n"
+            "1 window: main only; use the subscreen overlay for SMALL.\n\n"
+            "Ignored in fullscreen mode.",
+        .type = OptionType::Enum,
         .game_name = "GitaDora",
         .category = "Game Options",
+        .elements = {
+            {"4", "4 windows"},
+            {"2", "2 windows"},
+            {"1", "1 window"},
+        },
     },
     {
         // GitaDoraLefty

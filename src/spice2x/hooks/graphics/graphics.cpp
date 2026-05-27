@@ -359,8 +359,8 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
     bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with("Sub Screen");
     bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
-    bool is_gfdm_left_window = games::gitadora::is_arena_model() && window_name == "LEFT";
-    bool is_gfdm_right_window = games::gitadora::is_arena_model() && window_name == "RIGHT";
+    bool is_gfdm_left_window = games::gitadora::is_arena_model() && window_name.ends_with("LEFT");
+    bool is_gfdm_right_window = games::gitadora::is_arena_model() && window_name.ends_with("RIGHT");
 
     // update style / ex-style
     if (is_tdj_sub_window || is_sdvx_sub_window || is_gfdm_sub_window || is_popn_sub_window) {
