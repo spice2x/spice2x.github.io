@@ -53,6 +53,7 @@ namespace launcher {
             VREnable,
             DisableOverlay,
             OverlayScaling,
+            NotificationPosition,
             spice2x_FpsAutoShow,
             spice2x_FpsOpposite,
             spice2x_SubScreenAutoShow,

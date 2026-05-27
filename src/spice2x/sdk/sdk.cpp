@@ -7,6 +7,7 @@
 #include "games/io.h"
 #include "launcher/launcher.h"
 #include "misc/eamuse.h"
+#include "overlay/notifications.h"
 #include "sdk/include/spicesdk.h"
 #include "touch/touch.h"
 #include "util/logging.h"
@@ -29,6 +30,7 @@ static spice_sdk_set_touch_func sdk_set_touch;
 static spice_sdk_clear_touch_func sdk_clear_touch;
 static spice_sdk_insert_card_func sdk_insert_card;
 static spice_sdk_set_keypad_func sdk_set_keypad;
+static spice_sdk_add_toast_func sdk_add_toast;
 
 struct SdkModule {
     std::string dll;
@@ -169,6 +171,12 @@ sdk_init(
     v0->insert_card = sdk_insert_card;
     v0->set_keypad = sdk_set_keypad;
     // end of 0.1
+
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, add_toast)) {
+        v0->add_toast = sdk_add_toast;
+    }
+
+    // end of 0.2
     // any newer minor iterations will need to check the size
 
     {
@@ -591,6 +599,44 @@ sdk_set_keypad(
 
     // set
     eamuse_set_keypad_overrides(unit, state);
+    return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_add_toast(
+    SPICE_SDK_TOAST_SEVERITY severity,
+    const char *text
+)
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!text) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
+    }
+
+    overlay::notifications::Severity sev;
+    switch (severity) {
+        case SPICE_SDK_TOAST_LEVEL_INFO:
+            sev = overlay::notifications::Severity::Info;
+            break;
+        case SPICE_SDK_TOAST_LEVEL_SUCCESS:
+            sev = overlay::notifications::Severity::Success;
+            break;
+        case SPICE_SDK_TOAST_LEVEL_WARNING:
+            sev = overlay::notifications::Severity::Warning;
+            break;
+        case SPICE_SDK_TOAST_LEVEL_ERROR:
+            sev = overlay::notifications::Severity::Error;
+            break;
+        default:
+            return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
+    }
+
+    overlay::notifications::add(sev, text);
     return SPICE_SDK_STATUS_SUCCESS;
 }
 

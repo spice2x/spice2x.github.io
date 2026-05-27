@@ -84,7 +84,15 @@ static void worker_thread_main(std::stop_token stop_token) {
                 spice.set_button(arrow.button, true, 1.f);
 
                 if (!arrow.previous_state) {
-                    LOG_INFO(std::format("let me hear you say: {}", arrow.name).c_str());
+
+                    if (spice.add_toast) {
+                        spice.add_toast(
+                            SPICE_SDK_TOAST_LEVEL_INFO,
+                            std::format("let me hear you say: {}", arrow.name).c_str());
+                    } else {
+                        LOG_INFO(std::format("let me hear you say: {}", arrow.name).c_str());
+                    }
+
                     arrow.previous_state = true;
                 }
             } else {

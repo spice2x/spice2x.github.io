@@ -108,59 +108,59 @@ static unsigned __stdcall worker_thread(void *arg) {
         phase += 1;
         switch (phase) {
             case 1:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "get buttons...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_INFO, "get buttons...");
                 get_buttons();
                 break;
             case 2:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set buttons...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_WARNING, "set buttons...");
                 set_buttons();
                 break;
             case 3:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear buttons...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_ERROR, "clear buttons...");
                 clear_buttons();
                 break;
             case 4:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "get analogs...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_INFO, "get analogs...");
                 get_analogs();
                 break;
             case 5:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set analogs...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_WARNING, "set analogs...");
                 set_analogs();
                 break;
             case 6:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear analogs...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_ERROR, "clear analogs...");
                 clear_analogs();
                 break;
             case 7:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "get lights...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_INFO, "get lights...");
                 get_lights();
                 break;
             case 8:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set lights...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_WARNING, "set lights...");
                 set_lights();
                 break;
             case 9:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear lights...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_ERROR, "clear lights...");
                 clear_lights();
                 break;
             case 10:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set touch...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_INFO, "set touch...");
                 set_touch();
                 break;
             case 11:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear touch...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_ERROR, "clear touch...");
                 clear_touch();
                 break;
             case 12:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "insert card...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_SUCCESS, "insert card...");
                 insert_card();
                 break;
             case 13:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "set keypad...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_SUCCESS, "set keypad...");
                 set_keypad();
                 break;
             case 14:
-                spice.log(SPICE_SDK_LOG_LEVEL_INFO, "sample_v0", "clear keypad...");
+                spice.add_toast(SPICE_SDK_TOAST_LEVEL_ERROR, "clear keypad...");
                 clear_keypad();
                 break;
             default:

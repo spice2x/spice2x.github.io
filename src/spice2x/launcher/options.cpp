@@ -469,6 +469,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Overlay",
     },
     {
+        // NotificationPosition
+        .title = "Notifications",
+        .name = "toast",
+        .desc = "Select where notifications will appear on the screen.",
+        .type = OptionType::Enum,
+        .category = "Overlay",
+        .elements = {
+            {"off", ""},
+            {"topleft", ""},
+            {"topright", ""},
+            {"bottomleft", ""},
+            {"bottomright", ""},
+        },
+    },
+    {
         // spice2x_FpsAutoShow
         .title = "Auto Show FPS/Clock",
         .name = "sp2x-autofps",

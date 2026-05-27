@@ -17,6 +17,7 @@
 #include "external/imgui/backends/imgui_impl_dx9.h"
 #include "overlay/imgui/impl_spice.h"
 #include "overlay/imgui/impl_sw.h"
+#include "overlay/notifications.h"
 
 #include "window.h"
 #ifdef SPICE64
@@ -465,8 +466,16 @@ void overlay::SpiceOverlay::new_frame() {
     ImGui_ImplSpice_NewFrame();
     this->total_elapsed += ImGui::GetIO().DeltaTime;
 
-    // check if inactive
-    if (!this->active) {
+    // notifications draw on top of the game without flipping `active`, so the input gates
+    // (see touch/touch.cpp WndProc, touch_get_points/events, graphics.cpp WM_CHAR) stay
+    // disabled and input continues to flow to the game.
+    // SOFTWARE renderer (spicecfg / configurator) never gets notifications - no room.
+    const bool draw_notifications = this->renderer != OverlayRenderer::SOFTWARE
+        && overlay::notifications::has_pending();
+
+    // check if there is nothing to draw
+    this->has_pending_frame = false;
+    if (!this->active && !draw_notifications) {
         return;
     }
 
@@ -480,14 +489,22 @@ void overlay::SpiceOverlay::new_frame() {
             break;
     }
     ImGui::NewFrame();
+    this->has_pending_frame = true;
 
-    // build windows
-    for (auto &window : this->windows) {
-        window->build();
+    // build windows only when the overlay itself is active
+    if (this->active) {
+        for (auto &window : this->windows) {
+            window->build();
+        }
+
+        if (SHOW_DEBUG_LOG_WINDOW) {
+            ImGui::ShowDebugLogWindow(&SHOW_DEBUG_LOG_WINDOW);
+        }
     }
 
-    if (SHOW_DEBUG_LOG_WINDOW) {
-        ImGui::ShowDebugLogWindow(&SHOW_DEBUG_LOG_WINDOW);
+    // draw notifications last so they paint on top of any overlay windows
+    if (draw_notifications) {
+        overlay::notifications::draw();
     }
 
     // end frame
@@ -496,8 +513,8 @@ void overlay::SpiceOverlay::new_frame() {
 
 void overlay::SpiceOverlay::render() {
 
-    // check if inactive
-    if (!this->active) {
+    // skip if new_frame() didn't begin a frame this tick
+    if (!this->has_pending_frame) {
         return;
     }
 
@@ -541,6 +558,8 @@ void overlay::SpiceOverlay::render() {
     for (auto &window : this->windows) {
         window->after_render();
     }
+
+    this->has_pending_frame = false;
 }
 
 void overlay::SpiceOverlay::update() {
@@ -700,7 +719,7 @@ void overlay::SpiceOverlay::input_char(unsigned int c) {
 
 uint32_t *overlay::SpiceOverlay::sw_get_pixel_data(int *width, int *height) {
 
-    // check if active
+    // check if active (notifications never draw in software renderer, so no extra gate here)
     if (!this->active) {
         *width = 0;
         *height = 0;
