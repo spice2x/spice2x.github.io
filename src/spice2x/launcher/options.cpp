@@ -462,7 +462,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Spice Overlay UI Scale %",
         .name = "overlayscale",
         .desc = "Forces UI scaling for the overlay, "
-            "things can look off since the UI was written for 100%. "
+            "things can look off since the UI was written for 100% scaling. "
             "Enter value in percentage, between 10-400, inclusive.",
         .type = OptionType::Integer,
         .setting_name = "200",

@@ -141,6 +141,10 @@ namespace overlay {
         bool hotkey_toggle = false;
         bool hotkey_toggle_last = false;
 
+        // true between new_frame()'s ImGui::NewFrame() and render()'s ImGui::Render(),
+        // so render() never runs without a matching NewFrame.
+        bool has_pending_frame = false;
+
         void init();
         void add_font(const char* font, ImFontConfig* config, const ImWchar* glyphs);
     };

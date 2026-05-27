@@ -474,6 +474,7 @@ void overlay::SpiceOverlay::new_frame() {
         && overlay::notifications::has_pending();
 
     // check if there is nothing to draw
+    this->has_pending_frame = false;
     if (!this->active && !draw_notifications) {
         return;
     }
@@ -488,6 +489,7 @@ void overlay::SpiceOverlay::new_frame() {
             break;
     }
     ImGui::NewFrame();
+    this->has_pending_frame = true;
 
     // build windows only when the overlay itself is active
     if (this->active) {
@@ -511,10 +513,8 @@ void overlay::SpiceOverlay::new_frame() {
 
 void overlay::SpiceOverlay::render() {
 
-    // check if there is nothing to draw (must mirror new_frame's gate)
-    const bool draw_notifications = this->renderer != OverlayRenderer::SOFTWARE
-        && overlay::notifications::has_pending();
-    if (!this->active && !draw_notifications) {
+    // skip if new_frame() didn't begin a frame this tick
+    if (!this->has_pending_frame) {
         return;
     }
 
@@ -558,6 +558,8 @@ void overlay::SpiceOverlay::render() {
     for (auto &window : this->windows) {
         window->after_render();
     }
+
+    this->has_pending_frame = false;
 }
 
 void overlay::SpiceOverlay::update() {
