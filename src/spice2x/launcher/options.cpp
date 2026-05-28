@@ -1094,9 +1094,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // GitaDoraArenaSingleWindow
-        .title = "GitaDora Arena Disable Subscreens (DEPRECATED - use -gdawindows)",
+        .title = "GitaDora Arena Disable Subscreens (DEPRECATED - use -gdalayout)",
         .name = "gdaonewindow",
-        .desc = "DEPRECATED - use -gdawindows.\n\n"
+        .desc = "DEPRECATED - use -gdalayout.\n\n"
             "For Arena Model:\n\n"
             "Windowed mode: instead of 4 windows, create 1 window.\n\n"
             "Fullscreen mode: instead of requiring 4 monitors, use only the primary monitor. WARNING: requires 4K monitor.\n\n"
