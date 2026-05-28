@@ -27,7 +27,7 @@ namespace games::gitadora {
     bool P2_LEFTY = false;
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
-    uint8_t ARENA_WINDOW_COUNT = 4;
+    std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -243,34 +243,39 @@ namespace games::gitadora {
                     ARENA_WINDOW_COUNT = 1;
                 }
 
-                // for convenience, in full screen, if we know that the system has fewer than
-                // four monitors, downgrade to one monitor
-                if (!GRAPHICS_WINDOWED && ARENA_WINDOW_COUNT > 1) {
-                    const auto &monitors = sysutils::enumerate_monitors();
-                    const size_t active_count = monitors.size();
-                    log_info("gitadora", "arena model: detected {} active monitor(s)", active_count);
-                    if (active_count < 4) {
-                        log_info("gitadora", "arena model: enable single monitor mode due to insufficient monitors");
+                // figure out default settings if user didn't provide one
+                if (!ARENA_WINDOW_COUNT.has_value()) {
+                    if (!GRAPHICS_WINDOWED && sysutils::enumerate_monitors().size() < 4) {
+                        log_info("gitadora", "arena model: <4 monitors, defaulting to single window mode");
                         ARENA_WINDOW_COUNT = 1;
+                    } else {
+                        ARENA_WINDOW_COUNT = 4;
                     }
                 }
-                
-                // 2 monitors in full screen is currently not supported
-                if (!GRAPHICS_WINDOWED && ARENA_WINDOW_COUNT == 2 && !cfg::CONFIGURATOR_STANDALONE) {
-                    log_fatal("gitadora", "arena model: 2 monitors in full screen is currently not supported, choose 1 or 4");
-                }
 
-                if (ARENA_WINDOW_COUNT == 1) {
-                    log_info("gitadora", "arena model: single window mode");
-                    GRAPHICS_FORCE_SINGLE_ADAPTER = true;
-                    GRAPHICS_PREVENT_SECONDARY_WINDOWS = true;
-                } else if (ARENA_WINDOW_COUNT == 2) {
-                    log_info("gitadora", "arena model: two window mode");
-                    GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
-                } else if (ARENA_WINDOW_COUNT == 4) {
-                    log_info("gitadora", "arena model: four window mode");
-                } else if (!cfg::CONFIGURATOR_STANDALONE) {
-                    log_fatal("gitadora", "arena model: unsupported window count: {}", ARENA_WINDOW_COUNT);
+                const int count = ARENA_WINDOW_COUNT.value();
+                switch (count) {
+                    case 1:
+                        log_info("gitadora", "arena model: single-window mode");
+                        GRAPHICS_FORCE_SINGLE_ADAPTER = true;
+                        GRAPHICS_PREVENT_SECONDARY_WINDOWS = true;
+                        break;
+                    case 2:
+                        if (!GRAPHICS_WINDOWED) {
+                            log_fatal(
+                                "gitadora",
+                                "arena model: 2-window mode is not supported in fullscreen, choose 1 or 4");
+                        }
+                        log_info("gitadora", "arena model: two-window mode");
+                        GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
+                        break;
+                    case 4:
+                        log_info("gitadora", "arena model: four-window mode");
+                        break;
+                    default:
+                        log_fatal(
+                            "gitadora",
+                            "arena model: unsupported window count: {}", count);
                 }
             }
 

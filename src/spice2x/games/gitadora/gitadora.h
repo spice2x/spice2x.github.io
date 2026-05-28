@@ -15,7 +15,7 @@ namespace games::gitadora {
     extern bool P2_LEFTY;
     extern std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
     extern std::optional<socd::SocdAlgorithm> PICK_ALGO;
-    extern uint8_t ARENA_WINDOW_COUNT;
+    extern std::optional<uint8_t> ARENA_WINDOW_COUNT;
 
     class GitaDoraGame : public games::Game {
     public:
