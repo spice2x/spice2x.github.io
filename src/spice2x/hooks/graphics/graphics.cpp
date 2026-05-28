@@ -39,6 +39,8 @@ struct CaptureData {
 HWND TDJ_SUBSCREEN_WINDOW = nullptr;
 HWND SDVX_SUBSCREEN_WINDOW = nullptr;
 HWND GFDM_SUBSCREEN_WINDOW = nullptr;
+static HWND GFDM_LEFT_WINDOW = nullptr;
+static HWND GFDM_RIGHT_WINDOW = nullptr;
 HWND POPN_SUBSCREEN_WINDOW = nullptr;
 bool FAKE_SUBSCREEN_ADAPTER = false;
 
@@ -77,6 +79,7 @@ std::optional<uint32_t> GRAPHICS_FORCE_REFRESH_SUB;
 std::optional<int> GRAPHICS_FORCE_VSYNC_BUFFER;
 bool GRAPHICS_FORCE_SINGLE_ADAPTER = false;
 bool GRAPHICS_PREVENT_SECONDARY_WINDOW = false;
+bool GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = false;
 graphics_dx9on12_state GRAPHICS_9_ON_12_STATE = DX9ON12_AUTO;
 bool GRAPHICS_9_ON_12_REQUESTED_BY_GAME = false;
 bool SUBSCREEN_FORCE_REDRAW = false;
@@ -356,6 +359,8 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
     bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with("Sub Screen");
     bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
+    bool is_gfdm_left_window = games::gitadora::is_arena_model() && window_name.ends_with("LEFT");
+    bool is_gfdm_right_window = games::gitadora::is_arena_model() && window_name.ends_with("RIGHT");
 
     // update style / ex-style
     if (is_tdj_sub_window || is_sdvx_sub_window || is_gfdm_sub_window || is_popn_sub_window) {
@@ -424,6 +429,12 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     if (is_gfdm_sub_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOW) {
         GFDM_SUBSCREEN_WINDOW = result;
         graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
+    }
+    if (is_gfdm_left_window) {
+        GFDM_LEFT_WINDOW = result;
+    }
+    if (is_gfdm_right_window) {
+        GFDM_RIGHT_WINDOW = result;
     }
 
     if (is_popn_sub_window) {
@@ -705,6 +716,13 @@ static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
         GRAPHICS_PREVENT_SECONDARY_WINDOW &&
         hWnd != GRAPHICS_HOOKED_WINDOW) {
         log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
+        return true;
+    }
+
+    if (games::gitadora::is_arena_model() &&
+        GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS &&
+        (hWnd == GFDM_LEFT_WINDOW || hWnd == GFDM_RIGHT_WINDOW)) {
+        log_info("graphics", "ShowWindow_hook - hiding GITADORA side window {}", fmt::ptr(hWnd));
         return true;
     }
 

@@ -1105,6 +1105,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
     },
     {
+        // GitaDoraArenaWindowLayout
+        .title = "GitaDora Arena Windowed Layout (EXPERIMENTAL)",
+        .name = "gdawindows",
+        .desc = "For Arena Model windowed mode (-w): select how many windows to create.\n\n"
+            "4 windows: main + LEFT + RIGHT + SMALL.\n\n"
+            "2 windows: main + SMALL.\n\n"
+            "1 window: main only; use the subscreen overlay for SMALL.\n\n"
+            "Ignored in fullscreen mode.",
+        .type = OptionType::Enum,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+        .elements = {
+            {"4", "4 windows"},
+            {"2", "2 windows"},
+            {"1", "1 window"},
+        },
+    },
+    {
         // GitaDoraLefty
         .title = "GitaDora Lefty Guitar (for Digital Wailing)",
         .name = "gdlefty",

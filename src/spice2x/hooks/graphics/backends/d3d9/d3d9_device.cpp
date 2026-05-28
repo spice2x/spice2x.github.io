@@ -253,15 +253,16 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
 {
     WRAP_VERBOSE;
 
-    HRESULT hr = pReal->CreateAdditionalSwapChain(pPresentationParameters, ppSwapChain);
-
     int index = 0;
     bool create_swap_chain = false;
+    bool create_fake_swap_chain = false;
     if (avs::game::is_model({"LDJ", "KFC", "M39"})) {
         create_swap_chain = true;
 
     } else if (games::gitadora::is_arena_model() &&
-        (GRAPHICS_FORCE_SINGLE_ADAPTER || GRAPHICS_PREVENT_SECONDARY_WINDOW)) {
+        (GRAPHICS_FORCE_SINGLE_ADAPTER ||
+            GRAPHICS_PREVENT_SECONDARY_WINDOW ||
+            GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS)) {
         if (pPresentationParameters->BackBufferWidth == 800) {
             // SMALL (subscreen)
             create_swap_chain = true;
@@ -273,10 +274,31 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
             if (sub_swapchain[index] || fake_sub_swapchain[index]) {
                 index = 2;
             }
+            create_fake_swap_chain = GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS &&
+                !GRAPHICS_PREVENT_SECONDARY_WINDOW;
         } else {
             log_warning("graphics::d3d9", "unknown swap chain detected in CreateAdditionalSwapChain");
         }
     }
+
+    if (create_fake_swap_chain) {
+        if (!fake_sub_swapchain[index]) {
+            log_info(
+                "graphics::d3d9",
+                "CreateAdditionalSwapChain called for hidden GITADORA side swap chain {}, "
+                "using fake swap chain",
+                index);
+
+            fake_sub_swapchain[index] =
+                new FakeIDirect3DSwapChain9(this, pPresentationParameters, false);
+        }
+        fake_sub_swapchain[index]->AddRef();
+        *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(fake_sub_swapchain[index]);
+
+        return D3D_OK;
+    }
+
+    HRESULT hr = pReal->CreateAdditionalSwapChain(pPresentationParameters, ppSwapChain);
 
     if (create_swap_chain) {
         log_misc(

@@ -110,6 +110,7 @@ namespace launcher {
             GitaDoraTwoChannelAudio,
             GitaDoraCabinetType,
             GitaDoraArenaSingleWindow,
+            GitaDoraArenaWindowLayout,
             GitaDoraLefty,
             GitaDoraWailHold,
             GitaDoraPickAlgo,
