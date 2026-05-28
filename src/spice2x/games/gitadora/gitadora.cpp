@@ -224,12 +224,6 @@ namespace games::gitadora {
             }
 #endif
 
-            // arena model launches a tiny window yet backbuffer at 4k, resulting in unusable overlay
-            // force scaling to make things usable
-            if (!overlay::UI_SCALE_PERCENT.has_value() && is_arena_model() && !cfg::CONFIGURATOR_STANDALONE) {
-                overlay::UI_SCALE_PERCENT = 250;
-            }
-
             // for guitar wail SOCD cleaning
             socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
 
@@ -554,6 +548,13 @@ namespace games::gitadora {
 
     void GitaDoraGame::attach() {
         Game::attach();
+
+        // arena model launches a tiny window yet backbuffer at 4k, resulting in unusable overlay
+        // force scaling to make things usable
+        if (!overlay::UI_SCALE_PERCENT.has_value() && is_arena_model()) {
+            log_info("gitadora", "forcing UI scale to 250% for arena model");
+            overlay::UI_SCALE_PERCENT = 250;
+        }
 
         // modules
         HMODULE sharepj_module = libutils::try_module("libshare-pj.dll");
