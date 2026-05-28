@@ -269,7 +269,7 @@ namespace games::gitadora {
                 if (ARENA_WINDOW_COUNT == 1) {
                     log_info("gitadora", "arena model: single window mode");
                     GRAPHICS_FORCE_SINGLE_ADAPTER = true;
-                    GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
+                    GRAPHICS_PREVENT_SECONDARY_WINDOWS = true;
                 } else if (ARENA_WINDOW_COUNT == 2) {
                     log_info("gitadora", "arena model: two window mode");
                     GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
@@ -610,7 +610,7 @@ namespace games::gitadora {
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
             
             // monitor/touch hooks (windowed or full screen)
-            if (GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+            if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                 // enable touch hook for subscreen overlay
                 wintouchemu::FORCE = true;
                 wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;

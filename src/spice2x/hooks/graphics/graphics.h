@@ -38,7 +38,7 @@ extern UINT GRAPHICS_FORCE_REFRESH;
 extern std::optional<uint32_t> GRAPHICS_FORCE_REFRESH_SUB;
 extern std::optional<int> GRAPHICS_FORCE_VSYNC_BUFFER;
 extern bool GRAPHICS_FORCE_SINGLE_ADAPTER;
-extern bool GRAPHICS_PREVENT_SECONDARY_WINDOW;
+extern bool GRAPHICS_PREVENT_SECONDARY_WINDOWS;
 extern bool GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS;
 extern std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_FS_CUSTOM_RESOLUTION;
 extern std::optional<std::pair<uint32_t, uint32_t>> GRAPHICS_FS_CUSTOM_RESOLUTION_SUB;

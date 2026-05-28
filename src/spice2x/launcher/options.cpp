@@ -1113,7 +1113,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For Arena Model: select how many windows to create.\n\n"
             "1 window: main only; use the subscreen overlay for SMALL.\n\n"
             "2 windows: main + SMALL. Note: currently only works for windowed mode, broken for fullscreen.\n\n"
-            "4 windows : main + LEFT + RIGHT + SMALL. Fullscreen requires exactly 4 monitors in the "
+            "4 windows: main + LEFT + RIGHT + SMALL. Fullscreen requires exactly 4 monitors in the "
             "right resolution; see wiki for details.",
         .type = OptionType::Enum,
         .game_name = "GitaDora",

@@ -78,7 +78,7 @@ UINT GRAPHICS_FORCE_REFRESH = 0;
 std::optional<uint32_t> GRAPHICS_FORCE_REFRESH_SUB;
 std::optional<int> GRAPHICS_FORCE_VSYNC_BUFFER;
 bool GRAPHICS_FORCE_SINGLE_ADAPTER = false;
-bool GRAPHICS_PREVENT_SECONDARY_WINDOW = false;
+bool GRAPHICS_PREVENT_SECONDARY_WINDOWS = false;
 bool GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = false;
 graphics_dx9on12_state GRAPHICS_9_ON_12_STATE = DX9ON12_AUTO;
 bool GRAPHICS_9_ON_12_REQUESTED_BY_GAME = false;
@@ -426,7 +426,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     // only hook touch window if multiple windows are allowed
-    if (is_gfdm_sub_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+    if (is_gfdm_sub_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
         GFDM_SUBSCREEN_WINDOW = result;
         graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
     }
@@ -439,7 +439,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
 
     if (is_popn_sub_window) {
         POPN_SUBSCREEN_WINDOW = result;
-        if (!GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+        if (!GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
             graphics_hook_subscreen_window(POPN_SUBSCREEN_WINDOW);
         }
     }
@@ -713,7 +713,7 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
 
 static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
     if (games::gitadora::is_arena_model() &&
-        GRAPHICS_PREVENT_SECONDARY_WINDOW &&
+        GRAPHICS_PREVENT_SECONDARY_WINDOWS &&
         hWnd != GRAPHICS_HOOKED_WINDOW) {
         log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
         return true;
@@ -727,7 +727,7 @@ static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
     }
 
     if (games::popn::is_pikapika_model() &&
-        GRAPHICS_PREVENT_SECONDARY_WINDOW &&
+        GRAPHICS_PREVENT_SECONDARY_WINDOWS &&
         hWnd == POPN_SUBSCREEN_WINDOW) {
         log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
         return true;
