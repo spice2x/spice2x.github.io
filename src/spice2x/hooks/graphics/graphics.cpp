@@ -18,6 +18,7 @@
 #include "games/iidx/iidx.h"
 #include "games/popn/popn.h"
 #include "hooks/graphics/backends/d3d9/d3d9_backend.h"
+#include "hooks/graphics/backends/d3d11/d3d11_backend.h"
 #include "launcher/shutdown.h"
 #include "overlay/overlay.h"
 #include "touch/touch.h"
@@ -859,6 +860,9 @@ void graphics_init() {
 
     // init backends
     graphics_d3d9_init();
+#ifdef SPICE_D3D11
+    graphics_d3d11_init();
+#endif
 
     // general hooks
     ChangeDisplaySettingsA_orig = detour::iat_try("ChangeDisplaySettingsA", ChangeDisplaySettingsA_hook);

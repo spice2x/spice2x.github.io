@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef SPICE64
+#define SPICE_D3D11 1
+#endif
+
 #include <memory>
 #include <mutex>
 #include <functional>
@@ -10,11 +14,22 @@
 
 #include "external/imgui/imgui.h"
 
+#ifdef SPICE_D3D11
+// forward decls for D3D11 (avoid pulling d3d11.h into every TU)
+struct ID3D11Device;
+struct ID3D11DeviceContext;
+struct ID3D11RenderTargetView;
+struct IDXGISwapChain;
+#endif
+
 namespace overlay {
     class Window;
 
     enum class OverlayRenderer {
         D3D9,
+#ifdef SPICE_D3D11
+        D3D11,
+#endif
         SOFTWARE,
     };
 
@@ -62,6 +77,10 @@ namespace overlay {
         Window *window_log = nullptr;
 
         explicit SpiceOverlay(HWND hWnd, IDirect3D9 *d3d, IDirect3DDevice9 *device);
+#ifdef SPICE_D3D11
+        explicit SpiceOverlay(HWND hWnd, ID3D11Device *d3d11_device,
+                              ID3D11DeviceContext *d3d11_context, IDXGISwapChain *d3d11_swapchain);
+#endif
         explicit SpiceOverlay(HWND hWnd);
         ~SpiceOverlay();
 
@@ -92,6 +111,14 @@ namespace overlay {
         inline bool uses_device(IDirect3DDevice9 *other) {
             return this->device == other;
         }
+#ifdef SPICE_D3D11
+        inline bool uses_device(ID3D11Device *other) {
+            return this->d3d11_device == other;
+        }
+        inline bool uses_swapchain(IDXGISwapChain *other) {
+            return this->d3d11_swapchain == other;
+        }
+#endif
         inline IDirect3DDevice9 *get_device() {
             return this->device;
         }
@@ -123,6 +150,14 @@ namespace overlay {
         // D3D9
         IDirect3D9 *d3d = nullptr;
         IDirect3DDevice9 *device = nullptr;
+
+#ifdef SPICE_D3D11
+        // D3D11
+        ID3D11Device *d3d11_device = nullptr;
+        ID3D11DeviceContext *d3d11_context = nullptr;
+        IDXGISwapChain *d3d11_swapchain = nullptr;
+        ID3D11RenderTargetView *d3d11_rtv = nullptr;
+#endif
 
         // software
         std::vector<uint32_t> pixel_data;
@@ -156,6 +191,10 @@ namespace overlay {
 
     // synchronized helpers
     void create_d3d9(HWND hWnd, IDirect3D9 *d3d, IDirect3DDevice9 *device);
+#ifdef SPICE_D3D11
+    void create_d3d11(HWND hWnd, ID3D11Device *device, ID3D11DeviceContext *context,
+                      IDXGISwapChain *swapchain);
+#endif
     void create_software(HWND hWnd);
     void destroy(HWND hWnd = nullptr);
 }

@@ -41,6 +41,8 @@ static INT64 g_TicksPerSecond = 0;
 static ImGuiMouseCursor g_LastMouseCursor = ImGuiMouseCursor_COUNT;
 static double g_LastMouseMovement = 0.f;
 static bool g_MouseCursorAutoHide = false;
+static float g_DisplaySizeOverrideW = 0.0f;
+static float g_DisplaySizeOverrideH = 0.0f;
 
 constexpr size_t VKEY_MAX = 255;
 static std::array<bool, VKEY_MAX> g_KeysDown;
@@ -179,10 +181,23 @@ void ImGui_ImplSpice_Shutdown() {
 
 void ImGui_ImplSpice_UpdateDisplaySize() {
 
+    // backends that render to a surface different from the window's client
+    // area (e.g. dx11 swapchain backbuffer) can override the size here so
+    // ImGui's viewport matches the actual render target.
+    if (g_DisplaySizeOverrideW > 0.0f && g_DisplaySizeOverrideH > 0.0f) {
+        ImGui::GetIO().DisplaySize = ImVec2(g_DisplaySizeOverrideW, g_DisplaySizeOverrideH);
+        return;
+    }
+
     // get display size
     RECT rect;
     ::GetClientRect(g_hWnd, &rect);
     ImGui::GetIO().DisplaySize = ImVec2((float)(rect.right - rect.left), (float)(rect.bottom - rect.top));
+}
+
+void ImGui_ImplSpice_SetDisplaySizeOverride(float w, float h) {
+    g_DisplaySizeOverrideW = w;
+    g_DisplaySizeOverrideH = h;
 }
 
 bool ImGui_ImplSpice_UpdateMouseCursor() {

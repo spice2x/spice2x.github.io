@@ -517,6 +517,11 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/graphics/backends/d3d9/d3d9_fake_swapchain.cpp
         hooks/graphics/backends/d3d9/d3d9_swapchain.cpp
         hooks/graphics/backends/d3d9/d3d9_texture.cpp
+        hooks/graphics/backends/d3d11/d3d11_backend.cpp
+        hooks/graphics/backends/d3d11/d3d11_swapchain.cpp
+        hooks/graphics/backends/d3d11/d3d11_factory.cpp
+        hooks/graphics/backends/d3d11/d3d11_vtable_capture.cpp
+        hooks/graphics/backends/d3d11/d3d11_screenshot.cpp
         hooks/input/dinput8/fake_backend.cpp
         hooks/input/dinput8/fake_device.cpp
         hooks/input/dinput8/hook.cpp
@@ -708,7 +713,7 @@ add_executable(spicetools_spice64 ${SOURCE_FILES} ${RESOURCE_FILES})
 
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64
-        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
+        PUBLIC d3d9 d3d11 dxgi d3dcompiler ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
         PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 target_link_libraries(spicetools_spice64 PUBLIC winscard)
 set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
@@ -727,7 +732,7 @@ add_executable(spicetools_spice64_linux ${SOURCE_FILES} ${RESOURCE_FILES})
 
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64_linux
-        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
+        PUBLIC d3d9 d3d11 dxgi d3dcompiler ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
         PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 set_target_properties(spicetools_spice64_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64_linux PROPERTIES OUTPUT_NAME "spice64_linux")

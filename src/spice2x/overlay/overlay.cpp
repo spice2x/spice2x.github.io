@@ -15,9 +15,18 @@
 #include "build/resource.h"
 
 #include "external/imgui/backends/imgui_impl_dx9.h"
+#ifdef SPICE_D3D11
+#include "external/imgui/backends/imgui_impl_dx11.h"
+#include "hooks/graphics/backends/d3d11/d3d11_backend.h"
+#endif
 #include "overlay/imgui/impl_spice.h"
 #include "overlay/imgui/impl_sw.h"
 #include "overlay/notifications.h"
+
+#ifdef SPICE_D3D11
+#include <d3d11.h>
+#include <dxgi.h>
+#endif
 
 #include "window.h"
 #ifdef SPICE64
@@ -105,6 +114,21 @@ void overlay::create_d3d9(HWND hWnd, IDirect3D9 *d3d, IDirect3DDevice9 *device) 
     }
 }
 
+#ifdef SPICE_D3D11
+void overlay::create_d3d11(HWND hWnd, ID3D11Device *device, ID3D11DeviceContext *context,
+                           IDXGISwapChain *swapchain) {
+    if (!overlay::ENABLED) {
+        return;
+    }
+
+    const std::lock_guard<std::mutex> lock(OVERLAY_MUTEX);
+
+    if (!overlay::OVERLAY) {
+        overlay::OVERLAY = std::make_unique<overlay::SpiceOverlay>(hWnd, device, context, swapchain);
+    }
+}
+#endif
+
 void overlay::create_software(HWND hWnd) {
     if (!overlay::ENABLED) {
         return;
@@ -164,6 +188,27 @@ overlay::SpiceOverlay::SpiceOverlay(HWND hWnd)
     // init
     this->init();
 }
+
+#ifdef SPICE_D3D11
+overlay::SpiceOverlay::SpiceOverlay(HWND hWnd, ID3D11Device *d3d11_device,
+                                    ID3D11DeviceContext *d3d11_context,
+                                    IDXGISwapChain *d3d11_swapchain)
+        : renderer(OverlayRenderer::D3D11),
+          hWnd(hWnd),
+          d3d11_device(d3d11_device),
+          d3d11_context(d3d11_context),
+          d3d11_swapchain(d3d11_swapchain) {
+    log_info("overlay", "initializing (D3D11)");
+
+    // increment reference counts
+    this->d3d11_device->AddRef();
+    this->d3d11_context->AddRef();
+    this->d3d11_swapchain->AddRef();
+
+    // init
+    this->init();
+}
+#endif
 
 void overlay::SpiceOverlay::init() {
 
@@ -317,6 +362,11 @@ void overlay::SpiceOverlay::init() {
         case OverlayRenderer::D3D9:
             ImGui_ImplDX9_Init(this->device);
             break;
+#ifdef SPICE_D3D11
+        case OverlayRenderer::D3D11:
+            ImGui_ImplDX11_Init(this->d3d11_device, this->d3d11_context);
+            break;
+#endif
         case OverlayRenderer::SOFTWARE:
             imgui_sw::bind_imgui_painting();
             break;
@@ -327,6 +377,11 @@ void overlay::SpiceOverlay::init() {
         case OverlayRenderer::D3D9:
             ImGui_ImplDX9_NewFrame();
             break;
+#ifdef SPICE_D3D11
+        case OverlayRenderer::D3D11:
+            ImGui_ImplDX11_NewFrame();
+            break;
+#endif
         case OverlayRenderer::SOFTWARE:
             break;
     }
@@ -449,6 +504,21 @@ overlay::SpiceOverlay::~SpiceOverlay() {
             this->d3d->Release();
 
             break;
+#ifdef SPICE_D3D11
+        case OverlayRenderer::D3D11:
+            if (this->d3d11_rtv) {
+                this->d3d11_rtv->Release();
+                this->d3d11_rtv = nullptr;
+            }
+            ImGui_ImplDX11_Shutdown();
+
+            // drop references
+            this->d3d11_swapchain->Release();
+            this->d3d11_context->Release();
+            this->d3d11_device->Release();
+
+            break;
+#endif
         case OverlayRenderer::SOFTWARE:
             imgui_sw::unbind_imgui_painting();
             break;
@@ -484,6 +554,15 @@ void overlay::SpiceOverlay::new_frame() {
         case OverlayRenderer::D3D9:
             ImGui_ImplDX9_NewFrame();
             break;
+#ifdef SPICE_D3D11
+        case OverlayRenderer::D3D11:
+            // refresh DisplaySize each frame; the dx11 swapchain hook pushes
+            // the current backbuffer dimensions into impl_spice via the
+            // size override so ImGui's viewport tracks ResizeBuffers calls.
+            ImGui_ImplSpice_UpdateDisplaySize();
+            ImGui_ImplDX11_NewFrame();
+            break;
+#endif
         case OverlayRenderer::SOFTWARE:
             ImGui_ImplSpice_UpdateDisplaySize();
             break;
@@ -526,6 +605,12 @@ void overlay::SpiceOverlay::render() {
         case OverlayRenderer::D3D9:
             ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
             break;
+#ifdef SPICE_D3D11
+        case OverlayRenderer::D3D11:
+            overlay::d3d11::render(this->d3d11_device, this->d3d11_context,
+                                   this->d3d11_swapchain, &this->d3d11_rtv);
+            break;
+#endif
         case OverlayRenderer::SOFTWARE: {
 
             // get display metrics
@@ -705,11 +790,44 @@ bool overlay::SpiceOverlay::hotkeys_triggered() {
 }
 
 void overlay::SpiceOverlay::reset_invalidate() {
-    ImGui_ImplDX9_InvalidateDeviceObjects();
+    if (!overlay::OVERLAY) {
+        return;
+    }
+    switch (overlay::OVERLAY->renderer) {
+        case OverlayRenderer::D3D9:
+            ImGui_ImplDX9_InvalidateDeviceObjects();
+            break;
+#ifdef SPICE_D3D11
+        case OverlayRenderer::D3D11:
+            // for DX11 a ResizeBuffers only invalidates the backbuffer RTV; the imgui
+            // device objects (shaders, buffers, textures) remain valid.
+            if (overlay::OVERLAY->d3d11_rtv) {
+                overlay::OVERLAY->d3d11_rtv->Release();
+                overlay::OVERLAY->d3d11_rtv = nullptr;
+            }
+            break;
+#endif
+        case OverlayRenderer::SOFTWARE:
+            break;
+    }
 }
 
 void overlay::SpiceOverlay::reset_recreate() {
-    ImGui_ImplDX9_CreateDeviceObjects();
+    if (!overlay::OVERLAY) {
+        return;
+    }
+    switch (overlay::OVERLAY->renderer) {
+        case OverlayRenderer::D3D9:
+            ImGui_ImplDX9_CreateDeviceObjects();
+            break;
+#ifdef SPICE_D3D11
+        case OverlayRenderer::D3D11:
+            // RTV is lazily recreated on the next render()
+            break;
+#endif
+        case OverlayRenderer::SOFTWARE:
+            break;
+    }
 }
 
 void overlay::SpiceOverlay::input_char(unsigned int c) {

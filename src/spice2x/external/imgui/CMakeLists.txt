@@ -9,6 +9,7 @@ set(IMGUI_HEADERS
         imgui.h
         imgui_internal.h
         backends/imgui_impl_dx9.h
+        backends/imgui_impl_dx11.h
         misc/cpp/imgui_stdlib.h
 )
 set(IMGUI_SOURCES
@@ -18,6 +19,7 @@ set(IMGUI_SOURCES
         imgui_widgets.cpp
         imgui_demo.cpp
         backends/imgui_impl_dx9.cpp
+        backends/imgui_impl_dx11.cpp
         misc/cpp/imgui_stdlib.cpp
 )
 
