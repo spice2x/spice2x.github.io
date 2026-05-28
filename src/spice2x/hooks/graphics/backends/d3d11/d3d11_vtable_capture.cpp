@@ -1,9 +1,9 @@
 // proactive vtable capture for the dx11 backend.
 //
-// without this, unity titles loaded through konami's execexe loader
-// routinely race past our export-level trampolines: by the time we patch
-// CreateDXGIFactory* / D3D11CreateDevice the game has already produced its
-// real swapchain and we never see Present.
+// without this, unity titles loaded through execexe loader routinely race past
+// our export-level trampolines: by the time we patch CreateDXGIFactory* /
+// D3D11CreateDevice the game has already produced its real swapchain and we
+// never see Present.
 //
 // we work around it by creating a throwaway device + swapchain ourselves
 // the moment d3d11.dll + dxgi.dll appear, which lets us patch the shared

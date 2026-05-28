@@ -7,15 +7,15 @@
 //   d3d11_swapchain.cpp      - Present / Present1 / ResizeBuffers
 //   d3d11_factory.cpp        - CreateSwapChain[ForHwnd]
 //   d3d11_vtable_capture.cpp - proactive capture via a dummy swapchain
+//   d3d11_screenshot.cpp     - backbuffer -> PNG (file + clipboard)
 //
 // this file owns: init entrypoint, dxgi/d3d11 export-level trampolines,
 // LDR DLL notification, and the fallback poll thread.
 //
-// lazy init is required for konami's `execexe` loader: it has its own
-// preload step for d3d11.dll / dxgi.dll and fails (error 0xa) if those
-// DLLs are already in the loader's module list. we therefore never call
-// LoadLibrary on them and only touch their exports once they appear on
-// their own.
+// lazy init is required for the `execexe` loader: it has its own preload
+// step for d3d11.dll / dxgi.dll and fails (error 0xa) if those DLLs are
+// already in the loader's module list. we therefore never call LoadLibrary
+// on them and only touch their exports once they appear on their own.
 //
 // 64-bit only.
 
@@ -205,6 +205,14 @@ void poll_thread() {
 } // namespace
 
 void graphics_d3d11_init() {
+    // every dx11 title we target ships under the execexe loader. on pure
+    // dx9 games d3d11/dxgi are never loaded, so skip all hook setup
+    // (export trampolines, LDR notification, proactive vtable capture,
+    // and the poll thread) to keep their startup path untouched.
+    if (!GetModuleHandleW(L"execexe.dll")) {
+        return;
+    }
+
     log_info("graphics::d3d11", "initializing");
 
     // trampoline now if either DLL is already in the PEB.
@@ -226,12 +234,10 @@ void graphics_d3d11_init() {
         }
     }
 
-    // polling fallback is only needed for execexe-based games (unity loader
-    // manually maps d3d11/dxgi, bypassing LdrLoadDll). skip it otherwise to
-    // avoid waking up every second on pure dx9 titles.
-    if (GetModuleHandleW(L"execexe.dll")) {
-        std::thread(poll_thread).detach();
-    }
+    // polling fallback: the execexe loader manually maps d3d11/dxgi via a
+    // path that bypasses LdrLoadDll, so the notification above never fires
+    // for those DLLs and we have to poll for them.
+    std::thread(poll_thread).detach();
 }
 
 #endif // SPICE_D3D11
