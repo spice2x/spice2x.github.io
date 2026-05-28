@@ -3,6 +3,7 @@
 #include "overlay/overlay.h"
 
 void graphics_d3d11_init();
+void graphics_d3d11_shutdown();
 
 #ifdef SPICE_D3D11
 

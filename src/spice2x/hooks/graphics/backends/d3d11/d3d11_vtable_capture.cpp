@@ -1,14 +1,10 @@
 // proactive vtable capture for the dx11 backend.
 //
-// without this, titles loaded through the execexe loader routinely race past
-// our export-level trampolines: by the time we patch CreateDXGIFactory* /
-// D3D11CreateDevice the game has already produced its real swapchain and we
-// never see Present.
-//
-// we work around it by creating a throwaway device + swapchain ourselves
-// the moment d3d11.dll + dxgi.dll appear, which lets us patch the shared
-// IDXGISwapChain[1] / IDXGIFactory[2] vtables before the game's first
-// swapchain is created.
+// titles under the execexe loader routinely race past our export-level
+// trampolines, so the game's first real swapchain never goes through us.
+// we sidestep that by creating a throwaway device + swapchain ourselves
+// the moment d3d11.dll + dxgi.dll appear, which patches the shared
+// IDXGISwapChain[1] / IDXGIFactory[2] vtables ahead of the game.
 
 #include "d3d11_backend.h"
 
@@ -24,6 +20,8 @@
 
 #include "d3d11_internal.h"
 
+using d3d11_hooks::com_ptr;
+
 namespace {
 
 using D3D11CreateDevice_t = HRESULT(WINAPI *)(
@@ -35,17 +33,6 @@ using CreateDXGIFactory2_t = HRESULT(WINAPI *)(UINT, REFIID, void **);
 
 std::atomic<bool> g_vtables_captured { false };
 
-// minimal COM RAII so the capture path doesn't drown in cleanup branches.
-struct com_release {
-    void operator()(IUnknown *p) const {
-        if (p) {
-            p->Release();
-        }
-    }
-};
-template<typename T> using com_ptr = std::unique_ptr<T, com_release>;
-
-// resolve via GetProcAddress on an already-loaded module; never LoadLibrary.
 template<typename Fn>
 Fn resolve(HMODULE mod, const char *name) {
     return reinterpret_cast<Fn>(GetProcAddress(mod, name));
@@ -74,7 +61,7 @@ bool create_dummy_device(D3D11CreateDevice_t create,
         D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0,
         D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0,
     };
-    // try hardware first, then WARP so headless / unusual configs still work.
+    // hardware first, then WARP so headless / unusual configs still work.
     for (auto type : { D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_WARP }) {
         ID3D11Device *d = nullptr;
         ID3D11DeviceContext *c = nullptr;
@@ -94,16 +81,16 @@ bool create_dummy_device(D3D11CreateDevice_t create,
 
 namespace d3d11_hooks {
 
-// create a throwaway device + swapchain so we can patch the shared
-// vtables before the game's loader races past our export-level
-// trampolines. safe to call repeatedly; runs at most once.
+// create a throwaway device + swapchain to patch the shared vtables before
+// the game's loader races past our export trampolines. safe to call
+// repeatedly; runs at most once.
 void try_capture_vtables() {
     if (g_vtables_captured.load()) {
         return;
     }
 
     HMODULE d3d11 = GetModuleHandleW(L"d3d11.dll");
-    HMODULE dxgi  = GetModuleHandleW(L"dxgi.dll");
+    HMODULE dxgi = GetModuleHandleW(L"dxgi.dll");
     if (!d3d11 || !dxgi) {
         return;
     }
@@ -115,9 +102,9 @@ void try_capture_vtables() {
         return;
     }
 
-    // serialize concurrent calls (poll thread + ldr notification path).
-    // we only flip g_vtables_captured after the work below actually succeeds,
-    // so failed attempts remain retriable on the next poll tick.
+    // serialize concurrent calls (poll thread + LDR notification). only
+    // flip g_vtables_captured after success so failed attempts remain
+    // retriable on the next tick.
     static std::atomic<bool> in_progress { false };
     if (in_progress.exchange(true)) {
         return;
@@ -127,8 +114,7 @@ void try_capture_vtables() {
         ~scope_clear() { flag.store(false); }
     } clear { in_progress };
 
-    // hidden message-only window. STATIC is always registered by user32 so
-    // we don't need our own class.
+    // hidden message-only window; STATIC is always registered by user32.
     HWND dummy_hwnd = CreateWindowExW(
         0, L"STATIC", L"", 0, 0, 0, 1, 1,
         HWND_MESSAGE, nullptr, GetModuleHandleW(nullptr), nullptr);
@@ -140,9 +126,9 @@ void try_capture_vtables() {
     auto destroy_hwnd = std::unique_ptr<HWND__, decltype(&DestroyWindow)>(
         dummy_hwnd, &DestroyWindow);
 
-    // if the game's CreateDXGIFactory_hook already raced us and installed
-    // factory hooks, our CreateSwapChainForHwnd call below will trip the
-    // hook and try to record dummy_hwnd as the main window. block that.
+    // if the game's CreateDXGIFactory_hook already raced us, our
+    // CreateSwapChainForHwnd call below would trip the hook and try to
+    // record dummy_hwnd as the main window. block that.
     ignore_hwnd(dummy_hwnd);
 
     auto factory2 = create_factory2(f2, f1);
@@ -177,8 +163,6 @@ void try_capture_vtables() {
     }
     com_ptr<IDXGISwapChain1> swapchain(raw_sc);
 
-    // patch the shared vtables. all real swapchains/factories created later
-    // will dispatch through our hooks.
     install_swapchain_hooks(swapchain.get());
     install_factory_hooks(factory2.get());
 

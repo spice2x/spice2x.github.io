@@ -1,16 +1,16 @@
 // dx11 swapchain vtable hooks + per-frame overlay pump.
 //
-// the Present / Present1 / ResizeBuffers entries are patched on the first
-// swapchain instance we see; dxgi shares vtables across instances so the
-// patch catches every subsequent swapchain too. each frame we lazily attach
-// the overlay to whichever swapchain is presenting, then drive its imgui
-// update / new_frame / render cycle.
+// dxgi shares vtables across swapchain instances, so we only need to patch
+// Present / Present1 / ResizeBuffers once on the first instance we see.
+// each frame we lazily attach the overlay to whichever swapchain is
+// presenting, then drive its imgui update / new_frame / render cycle.
 
 #include "d3d11_backend.h"
 
 #ifdef SPICE_D3D11
 
 #include <atomic>
+#include <mutex>
 
 #include <windows.h>
 #include <d3d11.h>
@@ -33,6 +33,17 @@
 
 namespace overlay::d3d11 {
 
+    // sRGB backbuffers need a UNORM view: ImGui vertex colors are already
+    // sRGB-encoded, so an extra linear->sRGB conversion would wash the
+    // overlay out white.
+    static DXGI_FORMAT to_unorm_view(DXGI_FORMAT fmt) {
+        switch (fmt) {
+            case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return DXGI_FORMAT_R8G8B8A8_UNORM;
+            case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return DXGI_FORMAT_B8G8R8A8_UNORM;
+            default:                              return fmt;
+        }
+    }
+
     static void ensure_rtv(ID3D11Device *device,
                            IDXGISwapChain *swapchain,
                            ID3D11RenderTargetView **rtv)
@@ -44,20 +55,9 @@ namespace overlay::d3d11 {
         if (FAILED(swapchain->GetBuffer(0, IID_PPV_ARGS(&backbuffer))) || !backbuffer) {
             return;
         }
-
-        // if the backbuffer is sRGB, create a UNORM view so ImGui's already
-        // sRGB-encoded vertex colors are written through without an extra
-        // linear->sRGB conversion (which would wash the overlay out white).
         D3D11_TEXTURE2D_DESC td {};
         backbuffer->GetDesc(&td);
-        DXGI_FORMAT view_fmt = td.Format;
-        switch (td.Format) {
-            case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-                view_fmt = DXGI_FORMAT_R8G8B8A8_UNORM; break;
-            case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-                view_fmt = DXGI_FORMAT_B8G8R8A8_UNORM; break;
-            default: break;
-        }
+        const DXGI_FORMAT view_fmt = to_unorm_view(td.Format);
         if (view_fmt != td.Format) {
             D3D11_RENDER_TARGET_VIEW_DESC rtvd {};
             rtvd.Format = view_fmt;
@@ -69,10 +69,8 @@ namespace overlay::d3d11 {
         backbuffer->Release();
     }
 
-    // binds the swapchain backbuffer as a render target (lazily creating
-    // the RTV on first use) and draws the current imgui frame on top.
-    // *rtv is created on demand and reused across frames;
-    // reset_invalidate must release it on ResizeBuffers.
+    // bind the backbuffer (lazily creating the RTV) and draw the imgui
+    // frame on top. reset_invalidate releases *rtv on ResizeBuffers.
     void render(ID3D11Device *device,
                 ID3D11DeviceContext *context,
                 IDXGISwapChain *swapchain,
@@ -82,8 +80,8 @@ namespace overlay::d3d11 {
         if (!*rtv || !context) {
             return;
         }
-        // present happens immediately after, so we don't bother saving the
-        // previous RT binding (flip-model resets it anyway).
+        // present happens immediately after, so no need to save the previous
+        // RT binding (flip-model resets it anyway).
         context->OMSetRenderTargets(1, rtv, nullptr);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
     }
@@ -102,12 +100,12 @@ using ResizeBuffers_t = HRESULT(STDMETHODCALLTYPE *)(
 using Present1_t = HRESULT(STDMETHODCALLTYPE *)(
         IDXGISwapChain1 *, UINT, UINT, const DXGI_PRESENT_PARAMETERS *);
 
-Present_t       Present_orig       = nullptr;
+Present_t Present_orig = nullptr;
 ResizeBuffers_t ResizeBuffers_orig = nullptr;
-Present1_t      Present1_orig      = nullptr;
+Present1_t Present1_orig = nullptr;
 
-std::atomic<bool> g_swapchain_hooked  { false };
-std::atomic<bool> g_swapchain1_hooked { false };
+bool g_swapchain_hooked = false;
+bool g_swapchain1_hooked = false;
 
 void try_create_overlay(IDXGISwapChain *swapchain) {
     if (!swapchain || overlay::OVERLAY) {
@@ -119,8 +117,7 @@ void try_create_overlay(IDXGISwapChain *swapchain) {
         return;
     }
 
-    // only attach to the main game window (first swapchain ever created).
-    // ignores sub-screens, IME helper windows, etc.
+    // only attach to the main game window; ignore sub-screens / IME helpers.
     HWND main = d3d11_hooks::main_hwnd();
     if (main && desc.OutputWindow != main) {
         return;
@@ -147,24 +144,18 @@ void try_create_overlay(IDXGISwapChain *swapchain) {
     device->Release();
 }
 
-// poll the Screenshot overlay hotkey with rising-edge detection. d3d9 does
-// this inline in its present hook; we mirror the gating (hotkeys-enabled or
-// no overlay yet) so behaviour matches across backends.
-static void poll_screenshot_hotkey() {
+// rising-edge screenshot hotkey poll (mirrors d3d9 backend behaviour).
+void poll_screenshot_hotkey() {
     static bool s_down = false;
     auto buttons = games::get_buttons_overlay(eamuse_get_game());
     const bool pressed = buttons
         && (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered())
         && GameAPI::Buttons::getState(RI_MGR,
                 buttons->at(games::OverlayButtons::Screenshot));
-    if (pressed) {
-        if (!s_down) {
-            graphics_screenshot_trigger();
-        }
-        s_down = true;
-    } else {
-        s_down = false;
+    if (pressed && !s_down) {
+        graphics_screenshot_trigger();
     }
+    s_down = pressed;
 }
 
 void pump_overlay(IDXGISwapChain *swapchain) {
@@ -174,10 +165,9 @@ void pump_overlay(IDXGISwapChain *swapchain) {
 
     poll_screenshot_hotkey();
 
-    // tell imgui to size its viewport to the backbuffer, not the window's
-    // client rect. games commonly create a 1920x1080 backbuffer that dxgi
-    // then upscales into a larger client area; without this override ImGui
-    // would draw past the RTV and the mouse mapping would be off.
+    // size imgui to the backbuffer (not window client). dxgi may upscale
+    // a small backbuffer into a larger client rect; without this override
+    // imgui would draw past the RTV and the mouse mapping would be off.
     DXGI_SWAP_CHAIN_DESC desc {};
     if (SUCCEEDED(swapchain->GetDesc(&desc))) {
         ImGui_ImplSpice_SetDisplaySizeOverride(
@@ -189,8 +179,7 @@ void pump_overlay(IDXGISwapChain *swapchain) {
     overlay::OVERLAY->new_frame();
     overlay::OVERLAY->render();
 
-    // capture screenshot if one was requested (after overlay render so
-    // toasts/menus appear in the saved image, matching d3d9 behaviour).
+    // after overlay render so toasts/menus end up in the saved image.
     d3d11_hooks::try_screenshot(swapchain);
 }
 
@@ -235,14 +224,12 @@ HRESULT STDMETHODCALLTYPE ResizeBuffers_hook(
 } // namespace
 
 // --------------------------------------------------------------------------
-// install_swapchain_hooks: one-shot global vtable patch.
+// d3d11_hooks public surface: main-window tracking + vtable install.
 
 namespace d3d11_hooks {
 
-// main-window tracking. set once on the first swapchain creation we see;
-// later swapchains (sub-screens, IME helpers) are ignored.
 namespace {
-    std::atomic<HWND> g_main_hwnd    { nullptr };
+    std::atomic<HWND> g_main_hwnd { nullptr };
     std::atomic<HWND> g_ignored_hwnd { nullptr };
 }
 
@@ -266,28 +253,31 @@ void ignore_hwnd(HWND hwnd) {
 }
 
 // patch IDXGISwapChain::Present + ResizeBuffers and (if implemented)
-// IDXGISwapChain1::Present1. idempotent across instances since dxgi
-// shares a single vtable per interface.
+// IDXGISwapChain1::Present1. idempotent; flag is set only after success
+// so failed attempts can be retried on the next swapchain.
 void install_swapchain_hooks(IDXGISwapChain *swapchain) {
     if (!swapchain) {
         return;
     }
+    static std::mutex s_hook_mutex;
+    std::lock_guard<std::mutex> lock(s_hook_mutex);
 
-    // IDXGISwapChain: Present @ 8, ResizeBuffers @ 13.
-    if (!g_swapchain_hooked.exchange(true)) {
-        hook_vtbl(swapchain, 8,  (void *) Present_hook,
+    if (!g_swapchain_hooked) {
+        const bool a = hook_vtbl(swapchain, 8,  (void *) Present_hook,
                   (void **) &Present_orig,       "IDXGISwapChain::Present");
-        hook_vtbl(swapchain, 13, (void *) ResizeBuffers_hook,
+        const bool b = hook_vtbl(swapchain, 13, (void *) ResizeBuffers_hook,
                   (void **) &ResizeBuffers_orig, "IDXGISwapChain::ResizeBuffers");
+        if (a && b) {
+            g_swapchain_hooked = true;
+        }
     }
 
-    // IDXGISwapChain1::Present1 @ 22 (DXGI 1.2, flip-model).
     if (!g_swapchain1_hooked) {
         IDXGISwapChain1 *sc1 = nullptr;
         if (SUCCEEDED(swapchain->QueryInterface(IID_PPV_ARGS(&sc1))) && sc1) {
-            if (!g_swapchain1_hooked.exchange(true)) {
-                hook_vtbl(sc1, 22, (void *) Present1_hook,
-                          (void **) &Present1_orig, "IDXGISwapChain1::Present1");
+            if (hook_vtbl(sc1, 22, (void *) Present1_hook,
+                          (void **) &Present1_orig, "IDXGISwapChain1::Present1")) {
+                g_swapchain1_hooked = true;
             }
             sc1->Release();
         }

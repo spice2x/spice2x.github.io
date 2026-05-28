@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef SPICE64
-#define SPICE_D3D11 1
-#endif
-
 #include <memory>
 #include <mutex>
 #include <functional>

@@ -1,21 +1,12 @@
-// dx11 / dxgi hooks for the spice2x imgui overlay.
+// dx11 / dxgi hook entrypoint. trampolines d3d11.dll / dxgi.dll exports
+// the moment those DLLs appear (LDR notification + poll-thread fallback),
+// then drives proactive vtable capture so we don't lose the race against
+// the execexe loader. per-vtable hook implementations live in the sibling
+// files (d3d11_swapchain / d3d11_factory / d3d11_vtable_capture /
+// d3d11_screenshot).
 //
-// strategy: trampoline the relevant IDXGISwapChain / IDXGIFactory virtual
-// methods the first time we see an instance. the vtable entries are shared
-// across all instances, so one hook per method catches every swapchain.
-// implementations of the vtable patches live in:
-//   d3d11_swapchain.cpp      - Present / Present1 / ResizeBuffers
-//   d3d11_factory.cpp        - CreateSwapChain[ForHwnd]
-//   d3d11_vtable_capture.cpp - proactive capture via a dummy swapchain
-//   d3d11_screenshot.cpp     - backbuffer -> PNG (file + clipboard)
-//
-// this file owns: init entrypoint, dxgi/d3d11 export-level trampolines,
-// LDR DLL notification, and the fallback poll thread.
-//
-// lazy init is required for the `execexe` loader: it has its own preload
-// step for d3d11.dll / dxgi.dll and fails (error 0xa) if those DLLs are
-// already in the loader's module list. we therefore never call LoadLibrary
-// on them and only touch their exports once they appear on their own.
+// note: never LoadLibrary d3d11/dxgi -- execexe pre-loads them itself and
+// fails (error 0xa) if they're already in the loader's module list.
 //
 // 64-bit only.
 
@@ -24,6 +15,7 @@
 #ifndef SPICE_D3D11
 
 void graphics_d3d11_init() {}
+void graphics_d3d11_shutdown() {}
 
 #else
 
@@ -31,6 +23,7 @@ void graphics_d3d11_init() {}
 #include <thread>
 #include <chrono>
 #include <cwchar>
+#include <mutex>
 
 #include <windows.h>
 #include <d3d11.h>
@@ -47,17 +40,17 @@ using D3D11CreateDeviceAndSwapChain_t = HRESULT(WINAPI *)(
     const D3D_FEATURE_LEVEL *, UINT, UINT,
     const DXGI_SWAP_CHAIN_DESC *, IDXGISwapChain **,
     ID3D11Device **, D3D_FEATURE_LEVEL *, ID3D11DeviceContext **);
-using CreateDXGIFactory_t  = HRESULT(WINAPI *)(REFIID, void **);
+using CreateDXGIFactory_t = HRESULT(WINAPI *)(REFIID, void **);
 using CreateDXGIFactory1_t = HRESULT(WINAPI *)(REFIID, void **);
 using CreateDXGIFactory2_t = HRESULT(WINAPI *)(UINT, REFIID, void **);
 
 D3D11CreateDeviceAndSwapChain_t D3D11CreateDeviceAndSwapChain_orig = nullptr;
-CreateDXGIFactory_t             CreateDXGIFactory_orig             = nullptr;
-CreateDXGIFactory1_t            CreateDXGIFactory1_orig            = nullptr;
-CreateDXGIFactory2_t            CreateDXGIFactory2_orig            = nullptr;
+CreateDXGIFactory_t CreateDXGIFactory_orig = nullptr;
+CreateDXGIFactory1_t CreateDXGIFactory1_orig = nullptr;
+CreateDXGIFactory2_t CreateDXGIFactory2_orig = nullptr;
 
 std::atomic<bool> g_d3d11_exports_hooked { false };
-std::atomic<bool> g_dxgi_exports_hooked  { false };
+std::atomic<bool> g_dxgi_exports_hooked { false };
 
 // ----------------------------------------------------------------------
 // top-level export hooks
@@ -107,18 +100,24 @@ DEFINE_FACTORY_HOOK(CreateDXGIFactory2,
 // ----------------------------------------------------------------------
 // export trampoline plumbing
 
-// trampoline a DLL export if the DLL is loaded; never calls LoadLibrary.
-// returns true on success.
+// serializes trampoline_export() so the LDR notification callback and the
+// poll thread don't race each other into MinHook against the same target.
+std::mutex g_export_mutex;
+
 bool trampoline_export(const char *dll, const char *name, void *hook, void **orig) {
+    std::lock_guard<std::mutex> lock(g_export_mutex);
+    if (*orig) {
+        return true;
+    }
     HMODULE mod = GetModuleHandleA(dll);
-    if (!mod || *orig) {
-        return *orig != nullptr;
+    if (!mod) {
+        return false;
     }
     void *addr = reinterpret_cast<void *>(GetProcAddress(mod, name));
     if (!addr) {
         return false;
     }
-    *orig = addr;
+    *orig = addr; // trampoline_try reads *orig before overwriting it.
     if (!detour::trampoline_try(addr, hook, orig)) {
         *orig = nullptr;
         return false;
@@ -142,13 +141,19 @@ void try_install_dxgi_exports() {
     if (g_dxgi_exports_hooked) {
         return;
     }
+    struct entry { const char *name; void *hook; void **orig; };
+    const entry entries[] = {
+        { "CreateDXGIFactory", (void *) CreateDXGIFactory_hook,
+          (void **) &CreateDXGIFactory_orig },
+        { "CreateDXGIFactory1", (void *) CreateDXGIFactory1_hook,
+          (void **) &CreateDXGIFactory1_orig },
+        { "CreateDXGIFactory2", (void *) CreateDXGIFactory2_hook,
+          (void **) &CreateDXGIFactory2_orig },
+    };
     bool any = false;
-    any |= trampoline_export("dxgi.dll", "CreateDXGIFactory",
-            (void *) CreateDXGIFactory_hook,  (void **) &CreateDXGIFactory_orig);
-    any |= trampoline_export("dxgi.dll", "CreateDXGIFactory1",
-            (void *) CreateDXGIFactory1_hook, (void **) &CreateDXGIFactory1_orig);
-    any |= trampoline_export("dxgi.dll", "CreateDXGIFactory2",
-            (void *) CreateDXGIFactory2_hook, (void **) &CreateDXGIFactory2_orig);
+    for (auto &e : entries) {
+        any |= trampoline_export("dxgi.dll", e.name, e.hook, e.orig);
+    }
     if (any) {
         g_dxgi_exports_hooked = true;
     }
@@ -163,14 +168,13 @@ void try_capture_if_ready() {
 // ----------------------------------------------------------------------
 // LDR notification + polling fallback
 
-bool dll_name_matches(PCUNICODE_STRING name, const wchar_t *suffix) {
+bool dll_name_ends_with(PCUNICODE_STRING name, const wchar_t *suffix) {
     if (!name || !name->Buffer) {
         return false;
     }
-    size_t name_chars = name->Length / sizeof(WCHAR);
-    size_t suffix_len = wcslen(suffix);
-    return name_chars >= suffix_len
-        && _wcsnicmp(name->Buffer + name_chars - suffix_len, suffix, suffix_len) == 0;
+    const size_t n = name->Length / sizeof(WCHAR);
+    const size_t s = wcslen(suffix);
+    return n >= s && _wcsnicmp(name->Buffer + n - s, suffix, s) == 0;
 }
 
 VOID CALLBACK ldr_dll_notification(
@@ -179,38 +183,49 @@ VOID CALLBACK ldr_dll_notification(
     if (reason != LDR_DLL_NOTIFICATION_REASON_LOADED || !data) {
         return;
     }
-    if (dll_name_matches(data->Loaded.BaseDllName, L"d3d11.dll")) {
+    if (dll_name_ends_with(data->Loaded.BaseDllName, L"d3d11.dll")) {
         try_install_d3d11_exports();
-    } else if (dll_name_matches(data->Loaded.BaseDllName, L"dxgi.dll")) {
+    } else if (dll_name_ends_with(data->Loaded.BaseDllName, L"dxgi.dll")) {
         try_install_dxgi_exports();
     }
 }
 
-// fallback for when execexe maps d3d11/dxgi via a path that bypasses
-// LdrLoadDll (the notification then never fires). polls until both DLLs
-// are trampolined or the timeout elapses.
+// execexe maps d3d11/dxgi via a path that bypasses LdrLoadDll, so the
+// notification above never fires for those DLLs and we have to poll.
+std::atomic<bool> g_stop { false };
+std::thread g_poll_thread;
+std::mutex g_init_mutex;
+PVOID g_ldr_cookie = nullptr;
+
 void poll_thread() {
     using namespace std::chrono_literals;
-    for (int32_t i = 0; i < 120; ++i) {
+    for (int32_t i = 0; i < 120 && !g_stop.load(); ++i) {
         try_install_d3d11_exports();
         try_install_dxgi_exports();
         if (g_d3d11_exports_hooked && g_dxgi_exports_hooked) {
             d3d11_hooks::try_capture_vtables();
             return;
         }
-        std::this_thread::sleep_for(1s);
+        // sliced so shutdown doesn't have to wait a full second.
+        for (int32_t s = 0; s < 10 && !g_stop.load(); ++s) {
+            std::this_thread::sleep_for(100ms);
+        }
     }
 }
 
 } // namespace
 
 void graphics_d3d11_init() {
-    // every dx11 title we target ships under the execexe loader. on pure
-    // dx9 games d3d11/dxgi are never loaded, so skip all hook setup
-    // (export trampolines, LDR notification, proactive vtable capture,
-    // and the poll thread) to keep their startup path untouched.
+    // dx11 titles always run under execexe. skipping on pure-dx9 games keeps
+    // their startup path completely untouched (no exports patched, no poll
+    // thread, no LDR callback).
     if (!GetModuleHandleW(L"execexe.dll")) {
         return;
+    }
+
+    std::lock_guard<std::mutex> lock(g_init_mutex);
+    if (g_poll_thread.joinable()) {
+        return; // already initialized
     }
 
     log_info("graphics::d3d11", "initializing");
@@ -220,24 +235,41 @@ void graphics_d3d11_init() {
     try_install_dxgi_exports();
     try_capture_if_ready();
 
-    // notification fires on standard LdrLoadDll paths.
+    // catches standard LdrLoadDll loads.
     auto reg = reinterpret_cast<decltype(&LdrRegisterDllNotification)>(
         GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "LdrRegisterDllNotification"));
     if (reg) {
-        static PVOID cookie = nullptr;
-        NTSTATUS st = reg(0, ldr_dll_notification, nullptr, &cookie);
+        NTSTATUS st = reg(0, ldr_dll_notification, nullptr, &g_ldr_cookie);
         if (NT_SUCCESS(st)) {
             log_info("graphics::d3d11", "registered LDR DLL notification");
         } else {
+            g_ldr_cookie = nullptr;
             log_warning("graphics::d3d11",
                 "LdrRegisterDllNotification failed: {:#x}", (unsigned long)st);
         }
     }
 
-    // polling fallback: the execexe loader manually maps d3d11/dxgi via a
-    // path that bypasses LdrLoadDll, so the notification above never fires
-    // for those DLLs and we have to poll for them.
-    std::thread(poll_thread).detach();
+    // catches the execexe loader path that bypasses LdrLoadDll.
+    g_poll_thread = std::thread(poll_thread);
+}
+
+void graphics_d3d11_shutdown() {
+    std::lock_guard<std::mutex> lock(g_init_mutex);
+
+    // unregister first so the callback can't fire mid-teardown.
+    if (g_ldr_cookie) {
+        auto unreg = reinterpret_cast<decltype(&LdrUnregisterDllNotification)>(
+            GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "LdrUnregisterDllNotification"));
+        if (unreg) {
+            unreg(g_ldr_cookie);
+        }
+        g_ldr_cookie = nullptr;
+    }
+
+    g_stop.store(true);
+    if (g_poll_thread.joinable()) {
+        g_poll_thread.join();
+    }
 }
 
 #endif // SPICE_D3D11

@@ -860,9 +860,7 @@ void graphics_init() {
 
     // init backends
     graphics_d3d9_init();
-#ifdef SPICE_D3D11
     graphics_d3d11_init();
-#endif
 
     // general hooks
     ChangeDisplaySettingsA_orig = detour::iat_try("ChangeDisplaySettingsA", ChangeDisplaySettingsA_hook);

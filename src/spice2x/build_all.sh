@@ -172,7 +172,7 @@ time (
 		fi
 		mkdir -p ${BUILDDIR_WINXP_32}
 		pushd ${BUILDDIR_WINXP_32} > /dev/null
-		CXXFLAGS="$CXXFLAGS -DSPICE_XP=1" cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_XP32}
+		cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DSPICE_XP=ON "$OLDPWD" && ninja ${TARGETS_XP32}
 		popd > /dev/null
 
 		# 64 bit Windows XP
@@ -185,7 +185,7 @@ time (
 		fi
 		mkdir -p ${BUILDDIR_WINXP_64}
 		pushd ${BUILDDIR_WINXP_64} > /dev/null
-		CXXFLAGS="$CXXFLAGS -DSPICE_XP=1" cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_XP64}
+		cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DSPICE_XP=ON "$OLDPWD" && ninja ${TARGETS_XP64}
 		popd > /dev/null
 	else
 		echo ""

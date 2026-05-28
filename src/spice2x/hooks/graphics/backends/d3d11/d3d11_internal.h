@@ -1,11 +1,12 @@
 #pragma once
 
-// internal cross-file glue for the dx11 backend. all symbols are gated on
-// SPICE_D3D11 (defined in overlay/overlay.h on 64-bit builds).
+// internal glue for the dx11 backend. all symbols gated on SPICE_D3D11.
 
 #include "overlay/overlay.h"
 
 #ifdef SPICE_D3D11
+
+#include <memory>
 
 #include "util/detour.h"
 #include "util/logging.h"
@@ -20,36 +21,38 @@ namespace d3d11_hooks {
     void install_factory_hooks(IUnknown *factory);
     void try_capture_vtables();
 
-    // remember the first non-null HWND associated with a game-created
-    // swapchain. subsequent calls are ignored, so we always attach the
-    // overlay to the main window (the first one the game made) rather than
-    // a later sub-screen / IME helper / etc.
+    // first non-null swapchain HWND wins; later ones (sub-screens, IME
+    // helpers) are ignored. the dummy capture window is exempted via
+    // ignore_hwnd.
     void note_main_hwnd(HWND hwnd);
     HWND main_hwnd();
-
-    // mark an HWND that note_main_hwnd should ignore (used for the dummy
-    // window created during proactive vtable capture).
     void ignore_hwnd(HWND hwnd);
 
-    // if a screenshot trigger is pending, copy the current backbuffer to
-    // disk (and clipboard) as a PNG. no-op otherwise. call from the
-    // present hook after the overlay has been rendered.
+    // capture backbuffer to PNG if a screenshot was requested.
     void try_screenshot(IDXGISwapChain *swapchain);
 
-    // trampoline a single virtual method on `iface`'s vtable. logs
-    // success/failure under "graphics::d3d11". returns true on success.
+    // trampoline a virtual method by vtable index. on failure *orig is null.
     inline bool hook_vtbl(void *iface, size_t index,
                           void *hook, void **orig, const char *name)
     {
         void **vtbl = *reinterpret_cast<void ***>(iface);
-        *orig = vtbl[index];
-        if (!detour::trampoline_try(vtbl[index], hook, orig)) {
+        void *target = vtbl[index];
+        // trampoline_try reads *orig before overwriting it.
+        *orig = target;
+        if (!detour::trampoline_try(target, hook, orig)) {
+            *orig = nullptr;
             log_warning("graphics::d3d11", "failed to hook {}", name);
             return false;
         }
         log_info("graphics::d3d11", "hooked {}", name);
         return true;
     }
+
+    // minimal COM RAII used by capture / screenshot paths.
+    struct com_release {
+        void operator()(IUnknown *p) const { if (p) p->Release(); }
+    };
+    template<typename T> using com_ptr = std::unique_ptr<T, com_release>;
 
 }
 

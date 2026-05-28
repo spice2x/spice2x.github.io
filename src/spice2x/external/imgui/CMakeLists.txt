@@ -9,7 +9,6 @@ set(IMGUI_HEADERS
         imgui.h
         imgui_internal.h
         backends/imgui_impl_dx9.h
-        backends/imgui_impl_dx11.h
         misc/cpp/imgui_stdlib.h
 )
 set(IMGUI_SOURCES
@@ -19,9 +18,15 @@ set(IMGUI_SOURCES
         imgui_widgets.cpp
         imgui_demo.cpp
         backends/imgui_impl_dx9.cpp
-        backends/imgui_impl_dx11.cpp
         misc/cpp/imgui_stdlib.cpp
 )
+
+# spice2x: DX11 backend is only built for non-XP toolchains. WinXP lacks
+# D3DCOMPILER_47.dll, and including this TU would pull in D3DCompile imports.
+if(NOT SPICE_XP)
+    list(APPEND IMGUI_HEADERS backends/imgui_impl_dx11.h)
+    list(APPEND IMGUI_SOURCES backends/imgui_impl_dx11.cpp)
+endif()
 
 add_library(imgui STATIC ${IMGUI_HEADERS} ${IMGUI_SOURCES})
 target_include_directories(imgui PRIVATE ${PROJECT_SOURCE_DIR})

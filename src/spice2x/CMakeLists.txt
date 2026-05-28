@@ -235,6 +235,13 @@ add_compile_definitions(
         _WIN32_IE=0x0400
 )
 
+# SPICE_XP: set by build_all.sh for the WinXP-compat toolchains. Gates out
+# the DX11 overlay backend (WinXP lacks D3DCOMPILER_47.dll).
+option(SPICE_XP "Build for the WinXP-compat toolchain" OFF)
+if(SPICE_XP)
+    add_compile_definitions(SPICE_XP=1)
+endif()
+
 # acioemu log
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DACIOEMU_LOG")
 
@@ -713,12 +720,16 @@ add_executable(spicetools_spice64 ${SOURCE_FILES} ${RESOURCE_FILES})
 
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64
-        PUBLIC d3d9 d3d11 dxgi d3dcompiler ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
         PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 target_link_libraries(spicetools_spice64 PUBLIC winscard)
 set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64 PROPERTIES OUTPUT_NAME "spice64")
 target_compile_definitions(spicetools_spice64 PRIVATE SPICE64=1)
+if(NOT SPICE_XP)
+    target_link_libraries(spicetools_spice64 PUBLIC d3d11 dxgi d3dcompiler)
+    target_compile_definitions(spicetools_spice64 PRIVATE SPICE_D3D11=1)
+endif()
 
 IF(NOT MSVC)
     set_target_properties(spicetools_spice64 PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
@@ -732,12 +743,15 @@ add_executable(spicetools_spice64_linux ${SOURCE_FILES} ${RESOURCE_FILES})
 
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64_linux
-        PUBLIC d3d9 d3d11 dxgi d3dcompiler ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
         PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 set_target_properties(spicetools_spice64_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64_linux PROPERTIES OUTPUT_NAME "spice64_linux")
 target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE64=1)
 target_compile_definitions(spicetools_spice64_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
+# spice64_linux is never built under the WinXP toolchain, so dx11 is always on.
+target_link_libraries(spicetools_spice64_linux PUBLIC d3d11 dxgi d3dcompiler)
+target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE_D3D11=1)
 
 IF(NOT MSVC)
     set_target_properties(spicetools_spice64_linux PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")

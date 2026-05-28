@@ -1,12 +1,10 @@
-// dx11 factory vtable hooks. patches IDXGIFactory::CreateSwapChain and
-// IDXGIFactory2::CreateSwapChainForHwnd so we can install_swapchain_hooks
-// against every newly-created swapchain.
+// dx11 factory vtable hooks. patches CreateSwapChain / CreateSwapChainForHwnd
+// so we can install_swapchain_hooks against every newly-created swapchain.
 
 #include "d3d11_backend.h"
 
 #ifdef SPICE_D3D11
 
-#include <atomic>
 #include <mutex>
 
 #include <windows.h>
@@ -26,11 +24,11 @@ using CreateSwapChainForHwnd_t = HRESULT(STDMETHODCALLTYPE *)(
     const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *,
     IDXGIOutput *, IDXGISwapChain1 **);
 
-CreateSwapChain_t        CreateSwapChain_orig        = nullptr;
+CreateSwapChain_t CreateSwapChain_orig = nullptr;
 CreateSwapChainForHwnd_t CreateSwapChainForHwnd_orig = nullptr;
 
-std::atomic<bool> g_factory_hooked  { false };
-std::atomic<bool> g_factory2_hooked { false };
+bool g_factory_hooked = false;
+bool g_factory2_hooked = false;
 std::mutex g_hook_mutex;
 
 HRESULT STDMETHODCALLTYPE CreateSwapChain_hook(
@@ -62,43 +60,41 @@ HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd_hook(
     return res;
 }
 
+// QI-and-hook helper: dedupes the IDXGIFactory / IDXGIFactory2 install paths.
+template<typename Iface>
+void install_on(IUnknown *factory, bool &flag,
+                size_t vtbl_index, void *hook, void **orig, const char *name)
+{
+    if (flag) {
+        return;
+    }
+    Iface *f = nullptr;
+    if (FAILED(factory->QueryInterface(IID_PPV_ARGS(&f))) || !f) {
+        return;
+    }
+    if (d3d11_hooks::hook_vtbl(f, vtbl_index, hook, orig, name)) {
+        flag = true;
+    }
+    f->Release();
+}
+
 } // namespace
 
 namespace d3d11_hooks {
 
-// patch IDXGIFactory::CreateSwapChain and (if implemented)
-// IDXGIFactory2::CreateSwapChainForHwnd. idempotent.
 void install_factory_hooks(IUnknown *factory) {
     if (!factory) {
         return;
     }
     std::lock_guard<std::mutex> lock(g_hook_mutex);
 
-    // IDXGIFactory::CreateSwapChain @ 10
-    if (!g_factory_hooked) {
-        IDXGIFactory *f = nullptr;
-        if (SUCCEEDED(factory->QueryInterface(IID_PPV_ARGS(&f))) && f) {
-            if (hook_vtbl(f, 10, (void *) CreateSwapChain_hook,
-                          (void **) &CreateSwapChain_orig,
-                          "IDXGIFactory::CreateSwapChain")) {
-                g_factory_hooked = true;
-            }
-            f->Release();
-        }
-    }
+    install_on<IDXGIFactory>(factory, g_factory_hooked, 10,
+        (void *) CreateSwapChain_hook, (void **) &CreateSwapChain_orig,
+        "IDXGIFactory::CreateSwapChain");
 
-    // IDXGIFactory2::CreateSwapChainForHwnd @ 15
-    if (!g_factory2_hooked) {
-        IDXGIFactory2 *f2 = nullptr;
-        if (SUCCEEDED(factory->QueryInterface(IID_PPV_ARGS(&f2))) && f2) {
-            if (hook_vtbl(f2, 15, (void *) CreateSwapChainForHwnd_hook,
-                          (void **) &CreateSwapChainForHwnd_orig,
-                          "IDXGIFactory2::CreateSwapChainForHwnd")) {
-                g_factory2_hooked = true;
-            }
-            f2->Release();
-        }
-    }
+    install_on<IDXGIFactory2>(factory, g_factory2_hooked, 15,
+        (void *) CreateSwapChainForHwnd_hook, (void **) &CreateSwapChainForHwnd_orig,
+        "IDXGIFactory2::CreateSwapChainForHwnd");
 }
 
 }
