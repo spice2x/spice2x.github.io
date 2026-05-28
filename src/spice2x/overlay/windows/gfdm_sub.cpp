@@ -11,7 +11,7 @@ namespace overlay::windows {
 
         if (!games::gitadora::is_arena_model()) {
             this->disabled_message = "Requires Arena Model!";
-        } else if (!GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+        } else if (!GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
             if (GRAPHICS_WINDOWED) {
                 this->disabled_message = "Use the dedicated subscreen window!";
             } else {

@@ -15,7 +15,7 @@ namespace overlay::windows {
         } else if (games::sdvx::SHOW_VM_MONITOR_WARNING) {
             this->disabled_message = "VM mode subscreen overlay is not compatible with -dxmainadapter option, use -mainmonitor instead";
         } else if (GRAPHICS_WINDOWED) {
-            if (GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+            if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                 this->disabled_message = "Subscreen has been disabled by the user (-sdvxnosub).";
             } else {
                 this->disabled_message = "Overlay unavailable in windowed mode! Use the second window instead. (ALT+TAB)";

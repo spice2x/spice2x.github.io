@@ -27,6 +27,7 @@ namespace games::gitadora {
     bool P2_LEFTY = false;
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
+    std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -223,12 +224,6 @@ namespace games::gitadora {
             }
 #endif
 
-            // arena model launches a tiny window yet backbuffer at 4k, resulting in unusable overlay
-            // force scaling to make things usable
-            if (!overlay::UI_SCALE_PERCENT.has_value() && is_arena_model() && !cfg::CONFIGURATOR_STANDALONE) {
-                overlay::UI_SCALE_PERCENT = 250;
-            }
-
             // for guitar wail SOCD cleaning
             socd::ALGORITHM = socd::SocdAlgorithm::PreferRecent;
 
@@ -241,14 +236,46 @@ namespace games::gitadora {
 
 #if SPICE64 && !SPICE_XP
 
-            if (is_arena_model() && !GRAPHICS_WINDOWED && !GRAPHICS_FORCE_SINGLE_ADAPTER) {
-                const auto &monitors = sysutils::enumerate_monitors();
-                const size_t active_count = monitors.size();
-                log_info("gitadora", "arena model: detected {} active monitor(s)", active_count);
-                if (active_count < 4) {
-                    log_info("gitadora", "arena model: enable single monitor mode due to insufficient monitors");
-                    GRAPHICS_FORCE_SINGLE_ADAPTER = true;
-                    GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
+            if (is_arena_model()) {
+                // in full screen, if single-adapter option is checked, it's functionally
+                // the same as forcing a single monitor
+                if (!GRAPHICS_WINDOWED && GRAPHICS_FORCE_SINGLE_ADAPTER) {
+                    ARENA_WINDOW_COUNT = 1;
+                }
+
+                // figure out default settings if user didn't provide one
+                if (!ARENA_WINDOW_COUNT.has_value()) {
+                    if (!GRAPHICS_WINDOWED && sysutils::enumerate_monitors().size() < 4) {
+                        log_info("gitadora", "arena model: <4 monitors, defaulting to single window mode");
+                        ARENA_WINDOW_COUNT = 1;
+                    } else {
+                        ARENA_WINDOW_COUNT = 4;
+                    }
+                }
+
+                const int count = ARENA_WINDOW_COUNT.value();
+                switch (count) {
+                    case 1:
+                        log_info("gitadora", "arena model: single-window mode");
+                        GRAPHICS_FORCE_SINGLE_ADAPTER = true;
+                        GRAPHICS_PREVENT_SECONDARY_WINDOWS = true;
+                        break;
+                    case 2:
+                        if (!GRAPHICS_WINDOWED) {
+                            log_fatal(
+                                "gitadora",
+                                "arena model: 2-window mode is not supported in fullscreen, choose 1 or 4");
+                        }
+                        log_info("gitadora", "arena model: two-window mode");
+                        GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
+                        break;
+                    case 4:
+                        log_info("gitadora", "arena model: four-window mode");
+                        break;
+                    default:
+                        log_fatal(
+                            "gitadora",
+                            "arena model: unsupported window count: {}", count);
                 }
             }
 
@@ -527,6 +554,13 @@ namespace games::gitadora {
     void GitaDoraGame::attach() {
         Game::attach();
 
+        // arena model launches a tiny window yet backbuffer at 4k, resulting in unusable overlay
+        // force scaling to make things usable
+        if (!overlay::UI_SCALE_PERCENT.has_value() && is_arena_model()) {
+            log_info("gitadora", "forcing UI scale to 250% for arena model");
+            overlay::UI_SCALE_PERCENT = 250;
+        }
+
         // modules
         HMODULE sharepj_module = libutils::try_module("libshare-pj.dll");
         HMODULE bmsd2_module = libutils::try_module("libbmsd2.dll");
@@ -582,7 +616,7 @@ namespace games::gitadora {
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
             
             // monitor/touch hooks (windowed or full screen)
-            if (GRAPHICS_FORCE_SINGLE_ADAPTER || GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+            if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                 // enable touch hook for subscreen overlay
                 wintouchemu::FORCE = true;
                 wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;

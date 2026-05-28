@@ -416,7 +416,7 @@ namespace wintouchemu {
                     // same as iidx case above
                     log_info("wintouchemu", "use mouse cursor API for popn overlay subscreen");
                     USE_MOUSE = true;
-                } else if (games::gitadora::is_arena_model() && GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+                } else if (games::gitadora::is_arena_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                     log_info("wintouchemu", "use mouse cursor API for gitadora overlay subscreen");
                     USE_MOUSE = true;
                 } else {

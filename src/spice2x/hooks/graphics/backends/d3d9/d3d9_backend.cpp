@@ -718,7 +718,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetDeviceCaps(UINT Adapter, D3DDEVT
         }
         // in windowed mode, LDJ will always launch two windows, no special handling needed here
     } else if (avs::game::is_model("KFC")) {
-        if (GRAPHICS_WINDOWED && GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+        if (GRAPHICS_WINDOWED && GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
             // user wants windowed mode but does not want subscreen at all
             pCaps->NumberOfAdaptersInGroup = 1;
         } else {
@@ -1480,9 +1480,7 @@ void graphics_d3d9_on_present(
     // for IIDX TDJ / SDVX UFC, handle subscreen
     const bool is_vm = games::sdvx::is_valkyrie_model();
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
-    const bool is_gfdm_arena = games::gitadora::is_arena_model() &&
-        (GRAPHICS_FORCE_SINGLE_ADAPTER || GRAPHICS_PREVENT_SECONDARY_WINDOW);
-
+    const bool is_gfdm_arena = games::gitadora::is_arena_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS;
     const bool is_pika = games::popn::is_pikapika_model();
     if (is_vm || is_tdj || is_gfdm_arena || is_pika) {
         graphics_d3d9_ldj_on_present(wrapped_device);
