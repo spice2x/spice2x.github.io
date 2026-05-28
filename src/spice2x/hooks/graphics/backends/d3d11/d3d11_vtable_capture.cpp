@@ -1,6 +1,6 @@
 // proactive vtable capture for the dx11 backend.
 //
-// without this, unity titles loaded through execexe loader routinely race past
+// without this, titles loaded through the execexe loader routinely race past
 // our export-level trampolines: by the time we patch CreateDXGIFactory* /
 // D3D11CreateDevice the game has already produced its real swapchain and we
 // never see Present.
@@ -115,9 +115,17 @@ void try_capture_vtables() {
         return;
     }
 
-    if (g_vtables_captured.exchange(true)) {
+    // serialize concurrent calls (poll thread + ldr notification path).
+    // we only flip g_vtables_captured after the work below actually succeeds,
+    // so failed attempts remain retriable on the next poll tick.
+    static std::atomic<bool> in_progress { false };
+    if (in_progress.exchange(true)) {
         return;
     }
+    struct scope_clear {
+        std::atomic<bool> &flag;
+        ~scope_clear() { flag.store(false); }
+    } clear { in_progress };
 
     // hidden message-only window. STATIC is always registered by user32 so
     // we don't need our own class.
@@ -174,6 +182,7 @@ void try_capture_vtables() {
     install_swapchain_hooks(swapchain.get());
     install_factory_hooks(factory2.get());
 
+    g_vtables_captured.store(true);
     log_info("graphics::d3d11", "vtable capture complete (via dummy swapchain)");
 }
 

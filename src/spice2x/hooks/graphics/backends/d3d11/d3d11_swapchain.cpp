@@ -175,34 +175,14 @@ void pump_overlay(IDXGISwapChain *swapchain) {
     poll_screenshot_hotkey();
 
     // tell imgui to size its viewport to the backbuffer, not the window's
-    // client rect. unity games commonly create a 1920x1080 backbuffer that
-    // dxgi then upscales into a larger client area; without this override
-    // ImGui would draw past the RTV and the mouse mapping would be off.
+    // client rect. games commonly create a 1920x1080 backbuffer that dxgi
+    // then upscales into a larger client area; without this override ImGui
+    // would draw past the RTV and the mouse mapping would be off.
     DXGI_SWAP_CHAIN_DESC desc {};
     if (SUCCEEDED(swapchain->GetDesc(&desc))) {
         ImGui_ImplSpice_SetDisplaySizeOverride(
             (float) desc.BufferDesc.Width,
             (float) desc.BufferDesc.Height);
-
-        // one-shot diagnostic: log whenever the backbuffer / window-client
-        // dimensions diverge from what we last reported.
-        static uint32_t s_last_bb_w = 0, s_last_bb_h = 0;
-        static int32_t  s_last_cl_w = 0, s_last_cl_h = 0;
-        RECT cr {};
-        ::GetClientRect(desc.OutputWindow, &cr);
-        int32_t cw = cr.right - cr.left;
-        int32_t ch = cr.bottom - cr.top;
-        if (desc.BufferDesc.Width != s_last_bb_w || desc.BufferDesc.Height != s_last_bb_h
-            || cw != s_last_cl_w || ch != s_last_cl_h)
-        {
-            log_info("graphics::d3d11",
-                "pump: backbuffer={}x{} client={}x{}",
-                desc.BufferDesc.Width, desc.BufferDesc.Height, cw, ch);
-            s_last_bb_w = desc.BufferDesc.Width;
-            s_last_bb_h = desc.BufferDesc.Height;
-            s_last_cl_w = cw;
-            s_last_cl_h = ch;
-        }
     }
 
     overlay::OVERLAY->update();
