@@ -1094,32 +1094,34 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // GitaDoraArenaSingleWindow
-        .title = "GitaDora Arena Disable Subscreens (EXPERIMENTAL)",
+        .title = "GitaDora Arena Disable Subscreens (DEPRECATED - use -gdawindows)",
         .name = "gdaonewindow",
-        .desc = "For Arena Model:\n\n"
+        .desc = "DEPRECATED - use -gdawindows.\n\n"
+            "For Arena Model:\n\n"
             "Windowed mode: instead of 4 windows, create 1 window.\n\n"
             "Fullscreen mode: instead of requiring 4 monitors, use only the primary monitor. WARNING: requires 4K monitor.\n\n"
             "To access the subscreen, use the subscreen overlay.",
         .type = OptionType::Bool,
+        .hidden = true,
         .game_name = "GitaDora",
         .category = "Game Options",
     },
     {
         // GitaDoraArenaWindowLayout
-        .title = "GitaDora Arena Windowed Layout (EXPERIMENTAL)",
-        .name = "gdawindows",
-        .desc = "For Arena Model windowed mode (-w): select how many windows to create.\n\n"
-            "4 windows: main + LEFT + RIGHT + SMALL.\n\n"
-            "2 windows: main + SMALL.\n\n"
+        .title = "GitaDora Arena Layout (EXPERIMENTAL)",
+        .name = "gdalayout",
+        .desc = "For Arena Model: select how many windows to create.\n\n"
             "1 window: main only; use the subscreen overlay for SMALL.\n\n"
-            "Ignored in fullscreen mode.",
+            "2 windows: main + SMALL. Note: currently only works for windowed mode, broken for fullscreen.\n\n"
+            "4 windows : main + LEFT + RIGHT + SMALL. Fullscreen requires exactly 4 monitors in the "
+            "right resolution; see wiki for details.",
         .type = OptionType::Enum,
         .game_name = "GitaDora",
         .category = "Game Options",
         .elements = {
-            {"4", "4 windows"},
-            {"2", "2 windows"},
             {"1", "1 window"},
+            {"2", "2 windows"},
+            {"4", "4 windows"}
         },
     },
     {

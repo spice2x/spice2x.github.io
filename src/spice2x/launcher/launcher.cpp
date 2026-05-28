@@ -645,27 +645,22 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraCabinetType].is_active()) {
         games::gitadora::CAB_TYPE = options[launcher::Options::GitaDoraCabinetType].value_uint32();
     }
-    if (options[launcher::Options::GitaDoraArenaWindowLayout].is_active()) {
-        if (GRAPHICS_WINDOWED) {
-            const auto window_count = options[launcher::Options::GitaDoraArenaWindowLayout].value_uint32();
-            if (window_count == 1) {
-                GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
-            } else if (window_count == 2) {
-                GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
-            }
-        } else {
-            log_warning("launcher", "-gdawindows only applies with -w; ignoring GitaDora Arena windowed layout");
-        }
-    }
+
+    // gitadora arena layout
     if (options[launcher::Options::GitaDoraArenaSingleWindow].value_bool()) {
-        if (GRAPHICS_WINDOWED) {
-            GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
-            GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = false;
-        } else {
-            GRAPHICS_FORCE_SINGLE_ADAPTER = true;
-            GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
+        games::gitadora::ARENA_WINDOW_COUNT = 1;
+    }
+    if (options[launcher::Options::GitaDoraArenaWindowLayout].is_active()) {
+        const auto window_count = options[launcher::Options::GitaDoraArenaWindowLayout].value_text();
+        if (window_count == "1") {
+            games::gitadora::ARENA_WINDOW_COUNT = 1;
+        } else if (window_count == "2") {
+            games::gitadora::ARENA_WINDOW_COUNT = 2;
+        } else if (window_count == "4") {
+            games::gitadora::ARENA_WINDOW_COUNT = 4;
         }
     }
+
     if (options[launcher::Options::GitaDoraWailHold].is_active()) {
         socd::TILT_HOLD_MS = options[launcher::Options::GitaDoraWailHold].value_uint32();
     }

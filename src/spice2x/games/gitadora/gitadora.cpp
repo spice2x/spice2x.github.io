@@ -27,6 +27,7 @@ namespace games::gitadora {
     bool P2_LEFTY = false;
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
+    uint8_t ARENA_WINDOW_COUNT = 4;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -241,14 +242,41 @@ namespace games::gitadora {
 
 #if SPICE64 && !SPICE_XP
 
-            if (is_arena_model() && !GRAPHICS_WINDOWED && !GRAPHICS_FORCE_SINGLE_ADAPTER) {
-                const auto &monitors = sysutils::enumerate_monitors();
-                const size_t active_count = monitors.size();
-                log_info("gitadora", "arena model: detected {} active monitor(s)", active_count);
-                if (active_count < 4) {
-                    log_info("gitadora", "arena model: enable single monitor mode due to insufficient monitors");
+            if (is_arena_model()) {
+                // in full screen, if single-adapter option is checked, it's functionally
+                // the same as forcing a single monitor
+                if (!GRAPHICS_WINDOWED && GRAPHICS_FORCE_SINGLE_ADAPTER) {
+                    ARENA_WINDOW_COUNT = 1;
+                }
+
+                // for convenience, in full screen, if we know that the system has fewer than
+                // four monitors, downgrade to one monitor
+                if (!GRAPHICS_WINDOWED && ARENA_WINDOW_COUNT > 1) {
+                    const auto &monitors = sysutils::enumerate_monitors();
+                    const size_t active_count = monitors.size();
+                    log_info("gitadora", "arena model: detected {} active monitor(s)", active_count);
+                    if (active_count < 4) {
+                        log_info("gitadora", "arena model: enable single monitor mode due to insufficient monitors");
+                        ARENA_WINDOW_COUNT = 1;
+                    }
+                }
+                
+                // 2 monitors in full screen is currently not supported
+                if (!GRAPHICS_WINDOWED && ARENA_WINDOW_COUNT == 2 && !cfg::CONFIGURATOR_STANDALONE) {
+                    log_fatal("gitadora", "arena model: 2 monitors in full screen is currently not supported, choose 1 or 4");
+                }
+
+                if (ARENA_WINDOW_COUNT == 1) {
+                    log_info("gitadora", "arena model: single window mode");
                     GRAPHICS_FORCE_SINGLE_ADAPTER = true;
                     GRAPHICS_PREVENT_SECONDARY_WINDOW = true;
+                } else if (ARENA_WINDOW_COUNT == 2) {
+                    log_info("gitadora", "arena model: two window mode");
+                    GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
+                } else if (ARENA_WINDOW_COUNT == 4) {
+                    log_info("gitadora", "arena model: four window mode");
+                } else if (!cfg::CONFIGURATOR_STANDALONE) {
+                    log_fatal("gitadora", "arena model: unsupported window count: {}", ARENA_WINDOW_COUNT);
                 }
             }
 
@@ -582,7 +610,7 @@ namespace games::gitadora {
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
             
             // monitor/touch hooks (windowed or full screen)
-            if (GRAPHICS_FORCE_SINGLE_ADAPTER || GRAPHICS_PREVENT_SECONDARY_WINDOW) {
+            if (GRAPHICS_PREVENT_SECONDARY_WINDOW) {
                 // enable touch hook for subscreen overlay
                 wintouchemu::FORCE = true;
                 wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
