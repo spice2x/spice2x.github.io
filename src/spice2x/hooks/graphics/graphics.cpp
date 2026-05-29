@@ -39,11 +39,17 @@ struct CaptureData {
 
 HWND TDJ_SUBSCREEN_WINDOW = nullptr;
 HWND SDVX_SUBSCREEN_WINDOW = nullptr;
+static HWND GFDM_MAIN_WINDOW = nullptr;
 HWND GFDM_SUBSCREEN_WINDOW = nullptr;
 static HWND GFDM_LEFT_WINDOW = nullptr;
 static HWND GFDM_RIGHT_WINDOW = nullptr;
 HWND POPN_SUBSCREEN_WINDOW = nullptr;
 bool FAKE_SUBSCREEN_ADAPTER = false;
+static double GFDM_MAIN_PLACEMENT_UNTIL = 0.0;
+static double GFDM_LEFT_PLACEMENT_UNTIL = 0.0;
+static double GFDM_RIGHT_PLACEMENT_UNTIL = 0.0;
+static double GFDM_SUBSCREEN_PLACEMENT_UNTIL = 0.0;
+static const double GFDM_PLACEMENT_DURATION_MS = 5000.0;
 
 // icon
 static HICON WINDOW_ICON = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(MAINICON));
@@ -123,6 +129,171 @@ static void reset_window_hook(HWND hWnd) {
         SetWindowLongPtrA(hWnd, GWLP_WNDPROC, (LONG_PTR) WNDPROC_ORIG);
         WNDPROC_ORIG = nullptr;
     }
+}
+
+static std::string gitadora_canonical_window_name(const std::string &window_name) {
+    if (window_name == "GITADORA") {
+        return "GITADORA";
+    }
+    if (window_name.ends_with("LEFT")) {
+        return "LEFT";
+    }
+    if (window_name.ends_with("RIGHT")) {
+        return "RIGHT";
+    }
+    if (window_name.ends_with("SMALL")) {
+        return "SMALL";
+    }
+    return "";
+}
+
+static const char *gitadora_window_name_for_hwnd(HWND hWnd) {
+    if (hWnd == nullptr) {
+        return nullptr;
+    }
+    if (hWnd == GFDM_MAIN_WINDOW ||
+        (GRAPHICS_HOOKED_WINDOW.has_value() && hWnd == GRAPHICS_HOOKED_WINDOW.value())) {
+        return "GITADORA";
+    }
+    if (hWnd == GFDM_LEFT_WINDOW) {
+        return "LEFT";
+    }
+    if (hWnd == GFDM_RIGHT_WINDOW) {
+        return "RIGHT";
+    }
+    if (hWnd == GFDM_SUBSCREEN_WINDOW) {
+        return "SMALL";
+    }
+    return nullptr;
+}
+
+static bool is_gfdm_known_window(HWND hWnd) {
+    return gitadora_window_name_for_hwnd(hWnd) != nullptr;
+}
+
+static double *gitadora_placement_until_for_name(const std::string &window_name) {
+    if (window_name == "GITADORA") {
+        return &GFDM_MAIN_PLACEMENT_UNTIL;
+    }
+    if (window_name == "LEFT") {
+        return &GFDM_LEFT_PLACEMENT_UNTIL;
+    }
+    if (window_name == "RIGHT") {
+        return &GFDM_RIGHT_PLACEMENT_UNTIL;
+    }
+    if (window_name == "SMALL") {
+        return &GFDM_SUBSCREEN_PLACEMENT_UNTIL;
+    }
+    return nullptr;
+}
+
+static void gitadora_arm_window_placement(const std::string &window_name) {
+    if (!GRAPHICS_WINDOWED ||
+        GRAPHICS_PREVENT_SECONDARY_WINDOWS ||
+        !graphics_gitadora_has_window_monitor(window_name)) {
+        return;
+    }
+
+    auto placement_until = gitadora_placement_until_for_name(window_name);
+    if (placement_until == nullptr) {
+        return;
+    }
+    *placement_until = get_performance_milliseconds() + GFDM_PLACEMENT_DURATION_MS;
+}
+
+static bool gitadora_should_apply_window_placement(HWND hWnd) {
+    if (!GRAPHICS_WINDOWED || !games::gitadora::is_arena_model()) {
+        return false;
+    }
+
+    const auto window_name = gitadora_window_name_for_hwnd(hWnd);
+    if (window_name == nullptr || !graphics_gitadora_has_window_monitor(window_name)) {
+        return false;
+    }
+    if (graphics_gitadora_is_borderless_windowed()) {
+        return true;
+    }
+
+    auto placement_until = gitadora_placement_until_for_name(window_name);
+    return placement_until != nullptr && get_performance_milliseconds() <= *placement_until;
+}
+
+static void gitadora_remember_window(HWND hWnd, const std::string &window_name) {
+    if (window_name == "GITADORA") {
+        GFDM_MAIN_WINDOW = hWnd;
+    } else if (window_name == "LEFT") {
+        GFDM_LEFT_WINDOW = hWnd;
+    } else if (window_name == "RIGHT") {
+        GFDM_RIGHT_WINDOW = hWnd;
+    } else if (window_name == "SMALL") {
+        GFDM_SUBSCREEN_WINDOW = hWnd;
+    }
+
+    gitadora_arm_window_placement(window_name);
+}
+
+static bool gitadora_should_allow_small_resize() {
+    return GRAPHICS_WINDOWED &&
+        games::gitadora::is_arena_model() &&
+        !graphics_gitadora_is_borderless_windowed();
+}
+
+static void gitadora_apply_small_resize_style(DWORD &style) {
+    if (!gitadora_should_allow_small_resize()) {
+        return;
+    }
+
+    style |= WS_SIZEBOX;
+    style |= WS_MAXIMIZEBOX;
+    style |= WS_SYSMENU;
+}
+
+static void gitadora_force_window_style(HWND hWnd) {
+    if (!GRAPHICS_WINDOWED || !games::gitadora::is_arena_model() || hWnd == nullptr) {
+        return;
+    }
+
+    DWORD style = GetWindowLongA(hWnd, GWL_STYLE);
+    DWORD style_ex = GetWindowLongA(hWnd, GWL_EXSTYLE);
+    const DWORD style_orig = style;
+    const DWORD style_ex_orig = style_ex;
+    graphics_gitadora_apply_window_style(style, style_ex);
+    if (hWnd == GFDM_SUBSCREEN_WINDOW) {
+        gitadora_apply_small_resize_style(style);
+    }
+
+    if (style == style_orig && style_ex == style_ex_orig) {
+        return;
+    }
+
+    if (SetWindowLongA_orig != nullptr) {
+        SetWindowLongA_orig(hWnd, GWL_STYLE, static_cast<LONG>(style));
+        SetWindowLongA_orig(hWnd, GWL_EXSTYLE, static_cast<LONG>(style_ex));
+    } else {
+        SetWindowLongA(hWnd, GWL_STYLE, static_cast<LONG>(style));
+        SetWindowLongA(hWnd, GWL_EXSTYLE, static_cast<LONG>(style_ex));
+    }
+
+    const UINT flags =
+        SWP_NOMOVE |
+        SWP_NOSIZE |
+        SWP_NOZORDER |
+        SWP_NOACTIVATE |
+        SWP_FRAMECHANGED;
+    if (SetWindowPos_orig != nullptr) {
+        SetWindowPos_orig(hWnd, nullptr, 0, 0, 0, 0, flags);
+    } else {
+        SetWindowPos(hWnd, nullptr, 0, 0, 0, 0, flags);
+    }
+
+    log_misc(
+        "graphics",
+        "GITADORA window style override: hwnd={}, style 0x{:x}->0x{:x}, ex 0x{:x}->0x{:x}",
+        fmt::ptr(hWnd),
+        style_orig,
+        style,
+        style_ex_orig,
+        style_ex);
 }
 
 // window procedure
@@ -286,6 +457,18 @@ static LRESULT CALLBACK WsubWindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
         log_misc("graphics", "ignore WM_CLOSE for subscreen window");
         return false;
     }
+
+    if (hWnd == GFDM_SUBSCREEN_WINDOW && (uMsg == WM_MOVE || uMsg == WM_SIZE)) {
+        update_spicetouch_window_dimensions(hWnd);
+        if (SPICETOUCH_TOUCH_HWND) {
+            SetWindowPos(
+                SPICETOUCH_TOUCH_HWND, HWND_TOP,
+                SPICETOUCH_TOUCH_X, SPICETOUCH_TOUCH_Y,
+                SPICETOUCH_TOUCH_WIDTH, SPICETOUCH_TOUCH_HEIGHT,
+                SWP_NOZORDER | SWP_NOREDRAW | SWP_NOREPOSITION | SWP_NOACTIVATE);
+        }
+    }
+
     return CallWindowProcA(WSUB_WNDPROC_ORIG, hWnd, uMsg, wParam, lParam);
 }
 
@@ -349,27 +532,37 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             fmt::ptr(lpParam));
 
     // gfdm
+    std::string effective_window_name = window_name;
     if (avs::game::is_model({"J32", "J33", "K32", "K33", "L32", "L33", "M32"})) {
         // set window name
         if (!lpWindowName) {
             lpWindowName = "GITADORA";
+            effective_window_name = "GITADORA";
         }
     }
 
     bool is_tdj_sub_window = avs::game::is_model("LDJ") && window_name.ends_with(" sub");
     bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
     bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with("Sub Screen");
-    bool is_gfdm_sub_window = games::gitadora::is_arena_model() && window_name.ends_with("SMALL");
-    bool is_gfdm_left_window = games::gitadora::is_arena_model() && window_name.ends_with("LEFT");
-    bool is_gfdm_right_window = games::gitadora::is_arena_model() && window_name.ends_with("RIGHT");
+    const std::string gfdm_window_name = games::gitadora::is_arena_model()
+        ? gitadora_canonical_window_name(effective_window_name)
+        : "";
+    const bool is_gfdm_window = !gfdm_window_name.empty();
+    const bool is_gfdm_sub_window = gfdm_window_name == "SMALL";
+    const bool allow_gfdm_small_resize =
+        is_gfdm_sub_window && gitadora_should_allow_small_resize();
 
     // update style / ex-style
     if (is_tdj_sub_window || is_sdvx_sub_window || is_gfdm_sub_window || is_popn_sub_window) {
         // hide maximize button (prevent misaligned touches)
-        dwStyle &= ~(WS_MAXIMIZEBOX);
+        if (!allow_gfdm_small_resize) {
+            dwStyle &= ~(WS_MAXIMIZEBOX);
+        }
 
         // mouse clicks become misaligned when resized
-        dwStyle &= ~(WS_SIZEBOX);
+        if (!allow_gfdm_small_resize) {
+            dwStyle &= ~(WS_SIZEBOX);
+        }
 
         // borderless
         if (GRAPHICS_WINDOWED && GRAPHICS_WSUB_BORDERLESS) {
@@ -381,6 +574,13 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             dwExStyle &= ~(WS_EX_APPWINDOW);
             dwExStyle |= WS_EX_TOOLWINDOW;
         }
+    }
+
+    if (allow_gfdm_small_resize) {
+        gitadora_apply_small_resize_style(dwStyle);
+    }
+    if (is_gfdm_window) {
+        graphics_gitadora_apply_window_style(dwStyle, dwExStyle);
     }
 
     if (is_sdvx_sub_window) {
@@ -399,6 +599,16 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             GRAPHICS_WSUB_X = x;
             GRAPHICS_WSUB_Y = y;
         }
+    }
+
+    if (is_gfdm_window) {
+        graphics_gitadora_apply_window_monitor(
+            gfdm_window_name,
+            x,
+            y,
+            nWidth,
+            nHeight,
+            true);
     }
 
     if (GRAPHICS_WINDOWED) {
@@ -427,15 +637,15 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     // only hook touch window if multiple windows are allowed
+    if (is_gfdm_window && !is_gfdm_sub_window) {
+        gitadora_remember_window(result, gfdm_window_name);
+    }
     if (is_gfdm_sub_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
-        GFDM_SUBSCREEN_WINDOW = result;
+        gitadora_remember_window(result, gfdm_window_name);
         graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
     }
-    if (is_gfdm_left_window) {
-        GFDM_LEFT_WINDOW = result;
-    }
-    if (is_gfdm_right_window) {
-        GFDM_RIGHT_WINDOW = result;
+    if (is_gfdm_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
+        gitadora_force_window_style(result);
     }
 
     if (is_popn_sub_window) {
@@ -625,6 +835,20 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
         }
     }
 
+    if (gitadora_should_apply_window_placement(hWnd)) {
+        const auto window_name = gitadora_window_name_for_hwnd(hWnd);
+        if (window_name != nullptr &&
+            graphics_gitadora_apply_window_monitor(
+                window_name,
+                X,
+                Y,
+                nWidth,
+                nHeight,
+                false)) {
+            return MoveWindow_orig(hWnd, X, Y, nWidth, nHeight, bRepaint);
+        }
+    }
+
     // call original
     return MoveWindow_orig(hWnd, X, Y, nWidth, nHeight, bRepaint);
 }
@@ -678,8 +902,17 @@ static LONG WINAPI SetWindowLongA_hook(HWND hWnd, int nIndex, LONG dwNewLong) {
         dwNewLong |= WS_OVERLAPPEDWINDOW;
     }
 
-    // call original
-    return SetWindowLongA_orig(hWnd, nIndex, dwNewLong);
+    const bool force_gfdm_style =
+        GRAPHICS_WINDOWED &&
+        games::gitadora::is_arena_model() &&
+        is_gfdm_known_window(hWnd) &&
+        (nIndex == GWL_STYLE || nIndex == GWL_EXSTYLE);
+
+    const auto result = SetWindowLongA_orig(hWnd, nIndex, dwNewLong);
+    if (force_gfdm_style) {
+        gitadora_force_window_style(hWnd);
+    }
+    return result;
 }
 
 static LONG WINAPI SetWindowLongW_hook(HWND hWnd, int nIndex, LONG dwNewLong) {
@@ -689,8 +922,17 @@ static LONG WINAPI SetWindowLongW_hook(HWND hWnd, int nIndex, LONG dwNewLong) {
         dwNewLong |= WS_OVERLAPPEDWINDOW;
     }
 
-    // call original
-    return SetWindowLongW_orig(hWnd, nIndex, dwNewLong);
+    const bool force_gfdm_style =
+        GRAPHICS_WINDOWED &&
+        games::gitadora::is_arena_model() &&
+        is_gfdm_known_window(hWnd) &&
+        (nIndex == GWL_STYLE || nIndex == GWL_EXSTYLE);
+
+    const auto result = SetWindowLongW_orig(hWnd, nIndex, dwNewLong);
+    if (force_gfdm_style) {
+        gitadora_force_window_style(hWnd);
+    }
+    return result;
 }
 
 static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
@@ -699,6 +941,25 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
     // windowed mode adjustments
     if (GRAPHICS_WINDOWED && (avs::game::is_model("LMA") || avs::game::is_model("MDX"))) {
         return TRUE;
+    }
+
+    if (gitadora_should_apply_window_placement(hWnd)) {
+        const auto window_name = gitadora_window_name_for_hwnd(hWnd);
+        int width = cx;
+        int height = cy;
+        if (window_name != nullptr &&
+            graphics_gitadora_apply_window_monitor(
+                window_name,
+                X,
+                Y,
+                width,
+                height,
+                false)) {
+            cx = width;
+            cy = height;
+            uFlags &= ~SWP_NOMOVE;
+            uFlags &= ~SWP_NOSIZE;
+        }
     }
 
     // prevent gitadora arena model from shifting windows around if the user has preferences
