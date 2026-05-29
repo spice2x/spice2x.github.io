@@ -14,6 +14,7 @@
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
+#include "util/memutils.h"
 #include "cfg/configurator.h"
 
 #include "logger.h"
@@ -174,6 +175,9 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
         } else {
             log_warning("signal", "minidump creation function not available, skipping");
         }
+
+        // dump memory information
+        memutils::show_available_memory();
 
         // this will stall all UI threads for this process
         show_popup_for_crash();

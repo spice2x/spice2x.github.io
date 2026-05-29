@@ -14,6 +14,8 @@ namespace memutils {
     DWORDLONG vmem_total_used();
     DWORDLONG vmem_used();
 
+    void show_available_memory();
+
     /*
      * Helper class to unprotect/reprotect memory safely.
      * It will free it's mode override on destruction.
