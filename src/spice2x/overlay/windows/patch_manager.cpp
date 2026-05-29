@@ -3069,6 +3069,50 @@ namespace overlay::windows {
         return file;
     }
 
+    static bool get_file_times(
+        const std::filesystem::path& path,
+        FILETIME* creation,
+        FILETIME* access,
+        FILETIME* write) {
+
+        const auto handle = CreateFileW(
+            path.c_str(),
+            GENERIC_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+        if (handle == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+        const bool ok = GetFileTime(handle, creation, access, write) != 0;
+        CloseHandle(handle);
+        return ok;
+    }
+
+    static bool set_file_times(
+        const std::filesystem::path& path,
+        const FILETIME* creation,
+        const FILETIME* access,
+        const FILETIME* write) {
+
+        const auto handle = CreateFileW(
+            path.c_str(),
+            FILE_WRITE_ATTRIBUTES,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+        if (handle == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+        const bool ok = SetFileTime(handle, creation, access, write) != 0;
+        CloseHandle(handle);
+        return ok;
+    }
+
     void create_dll_backup(
         std::vector<std::filesystem::path>& written_list, const std::filesystem::path& dll_path) {
 
@@ -3079,7 +3123,26 @@ namespace overlay::windows {
             dll_bak_path += ".bak";
             try {
                 if (!fileutils::file_exists(dll_bak_path)) {
+                    FILETIME creation {};
+                    FILETIME access {};
+                    FILETIME write {};
+                    const bool have_times =
+                        get_file_times(dll_path, &creation, &access, &write);
+                    if (!have_times) {
+                        log_warning(
+                            "patchmanager",
+                            "could not read timestamps before DLL backup for: {}",
+                            dll_path);
+                    }
+
                     std::filesystem::copy(dll_path, dll_bak_path);
+
+                    if (have_times && !set_file_times(dll_bak_path, &creation, &access, &write)) {
+                        log_warning(
+                            "patchmanager",
+                            "could not restore timestamps on DLL backup for: {}",
+                            dll_bak_path);
+                    }
                 }
                 log_info("patchmanager", "created DLL backup for: {}", dll_path);
             } catch (const std::filesystem::filesystem_error& e) {
