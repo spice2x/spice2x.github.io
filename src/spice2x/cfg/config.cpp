@@ -98,7 +98,7 @@ bool Config::getStatus() {
     return this->status;
 }
 
-bool Config::addGame(Game &game) {
+bool Config::addGame(Game &game, bool save) {
     tinyxml2::XMLNode *rootNode = this->configFile.LastChild();
     tinyxml2::XMLElement *gameNodes = rootNode->FirstChildElement("game");
 
@@ -486,11 +486,18 @@ bool Config::addGame(Game &game) {
         rootNode->InsertEndChild(gameNode);
     }
 
-    // save config
-    this->saveConfigFile();
+    // save config (skipped when caller batches multiple addGame calls
+    // and flushes once at the end via Config::save())
+    if (save) {
+        this->saveConfigFile();
+    }
 
     // return success
     return true;
+}
+
+void Config::save() {
+    this->saveConfigFile();
 }
 
 bool Config::updateBinding(const Game &game, const Button &button, int alternative) {

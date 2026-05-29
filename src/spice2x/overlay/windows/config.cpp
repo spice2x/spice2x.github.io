@@ -154,12 +154,14 @@ namespace overlay::windows {
         // add games to the config and window
         auto &config = ::Config::getInstance();
         for (auto &game : games_list) {
-            config.addGame(game);
+            config.addGame(game, /* save */ false);
 
             if (!config.getStatus()) {
                 log_warning("config", "failure adding game: {}", game.getGameName());
             }
         }
+        // single flush in place of ~33 redundant writes during the loop above
+        config.save();
 
         // read card numbers
         read_card();
