@@ -1112,7 +1112,16 @@ void rawinput::RawInputManager::flush_start() {
                  * to button based lighting.
                  */
                 this->devices_flush_output(false);
-                Sleep(495);
+
+                // wait up to ~500ms, but wake immediately if flush_stop()
+                // flips the running flag. Without the CV the in-flight
+                // Sleep() forced launcher::shutdown() to block for the full
+                // remaining sleep window on every close.
+                std::unique_lock<std::mutex> lock(this->flush_thread_m);
+                this->flush_thread_cv.wait_for(
+                    lock,
+                    std::chrono::milliseconds(495),
+                    [this] { return !this->flush_thread_running; });
             }
         });
     }
@@ -1120,8 +1129,13 @@ void rawinput::RawInputManager::flush_start() {
 
 void rawinput::RawInputManager::flush_stop() {
 
-    // set stop flag
-    this->flush_thread_running = false;
+    // set stop flag and wake the flush thread immediately so shutdown
+    // isn't blocked by the in-progress wait inside the loop above.
+    {
+        std::lock_guard<std::mutex> lock(this->flush_thread_m);
+        this->flush_thread_running = false;
+    }
+    this->flush_thread_cv.notify_all();
 
     // check if thread is set
     if (this->flush_thread) {
