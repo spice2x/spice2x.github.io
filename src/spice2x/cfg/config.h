@@ -22,7 +22,12 @@ public:
     bool getStatus();
     bool createConfigFile();
 
-    bool addGame(Game &game);
+    bool addGame(Game &game, bool save = true);
+
+    // flush pending in-memory changes to disk; intended to be paired with
+    // addGame(game, false) in bulk-init paths so we write the XML once instead
+    // of once per game
+    void save();
 
     bool updateBinding(const Game &game, const Button &button, int alternative);
     bool updateBinding(const Game &game, const Analog &analog);
