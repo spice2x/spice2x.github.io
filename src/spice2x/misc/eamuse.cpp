@@ -631,7 +631,7 @@ void eamuse_update_keypad_bindings() {
     KEYPAD_BINDINGS = Config::getInstance().getKeypadBindings(EAMUSE_GAME_NAME);
 }
 
-std::string eamuse_get_game() {
+const std::string &eamuse_get_game() {
     return EAMUSE_GAME_NAME;
 }
 

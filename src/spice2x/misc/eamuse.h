@@ -78,7 +78,7 @@ bool eamuse_keypad_state_naive();
 
 void eamuse_set_game(std::string game);
 
-std::string eamuse_get_game();
+const std::string &eamuse_get_game();
 int eamuse_get_game_keypads();
 int eamuse_get_game_keypads_name();
 
