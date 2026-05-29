@@ -8,6 +8,7 @@
 #include "rawinput/rawinput.h"
 #include "hooks/audio/audio.h"
 #include "hooks/graphics/graphics.h"
+#include "hooks/graphics/backends/d3d11/d3d11_backend.h"
 #include "util/deferlog.h"
 #include "util/logging.h"
 
@@ -25,6 +26,10 @@ namespace launcher {
         log_info("launcher", "stopping subsystems");
 
         sdk::fini_sdk_modules();
+
+        // stop dx11 background workers (poll thread, LDR notification)
+        // before anything else, so they can't race against the teardown.
+        graphics_d3d11_shutdown();
 
         // reset monitor settings
         reset_monitor_on_exit();

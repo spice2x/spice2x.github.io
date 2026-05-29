@@ -235,6 +235,13 @@ add_compile_definitions(
         _WIN32_IE=0x0400
 )
 
+# SPICE_XP: set by build_all.sh for the WinXP-compat toolchains. Gates out
+# the DX11 overlay backend (WinXP lacks D3DCOMPILER_47.dll).
+option(SPICE_XP "Build for the WinXP-compat toolchain" OFF)
+if(SPICE_XP)
+    add_compile_definitions(SPICE_XP=1)
+endif()
+
 # acioemu log
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DACIOEMU_LOG")
 
@@ -517,6 +524,11 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/graphics/backends/d3d9/d3d9_fake_swapchain.cpp
         hooks/graphics/backends/d3d9/d3d9_swapchain.cpp
         hooks/graphics/backends/d3d9/d3d9_texture.cpp
+        hooks/graphics/backends/d3d11/d3d11_backend.cpp
+        hooks/graphics/backends/d3d11/d3d11_swapchain.cpp
+        hooks/graphics/backends/d3d11/d3d11_factory.cpp
+        hooks/graphics/backends/d3d11/d3d11_vtable_capture.cpp
+        hooks/graphics/backends/d3d11/d3d11_screenshot.cpp
         hooks/input/dinput8/fake_backend.cpp
         hooks/input/dinput8/fake_device.cpp
         hooks/input/dinput8/hook.cpp
@@ -714,6 +726,10 @@ target_link_libraries(spicetools_spice64 PUBLIC winscard)
 set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64 PROPERTIES OUTPUT_NAME "spice64")
 target_compile_definitions(spicetools_spice64 PRIVATE SPICE64=1)
+if(NOT SPICE_XP)
+    target_link_libraries(spicetools_spice64 PUBLIC d3d11 dxgi d3dcompiler)
+    target_compile_definitions(spicetools_spice64 PRIVATE SPICE_D3D11=1)
+endif()
 
 IF(NOT MSVC)
     set_target_properties(spicetools_spice64 PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
@@ -733,6 +749,9 @@ set_target_properties(spicetools_spice64_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64_linux PROPERTIES OUTPUT_NAME "spice64_linux")
 target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE64=1)
 target_compile_definitions(spicetools_spice64_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
+# spice64_linux is never built under the WinXP toolchain, so dx11 is always on.
+target_link_libraries(spicetools_spice64_linux PUBLIC d3d11 dxgi d3dcompiler)
+target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE_D3D11=1)
 
 IF(NOT MSVC)
     set_target_properties(spicetools_spice64_linux PROPERTIES COMPILE_FLAGS "-m64" LINK_FLAGS "-m64")
