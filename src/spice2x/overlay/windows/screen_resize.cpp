@@ -103,19 +103,10 @@ namespace overlay::windows {
 
     void ScreenResize::build_fullscreen_config() {
 
-        if (avs::game::is_model("KFC")) {
-            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
-                "Warning: Enabling Image Resize uses more GPU\n"
-                "resources and may significantly lower framerate\n"
-                "for songs with Live2D! Results may vary, use at\n"
-                "your own risk.");
-        } else {
-            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
-                "Warning: Enabling Image Resize uses more GPU\n"
-                "resources and may significantly lower framerate\n"
-                "in some situations! Results may vary, use at\n"
-                "your own risk.");
-        }
+        ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
+            "Warning: Enabling Image Resize uses more GPU\n"
+            "resources and may lower framerate on some\n"
+            "lower-end PCs.");
 
         // enable checkbox
         ImGui::Checkbox("Enable", &cfg::SCREENRESIZE->enable_screen_resize);

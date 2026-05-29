@@ -979,10 +979,6 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EndScene() {
     WRAP_DEBUG;
 
-    if (cfg::SCREENRESIZE->enable_screen_resize || GRAPHICS_FS_ORIENTATION_SWAP) {
-        SurfaceHook(pReal);
-    }
-
     static std::once_flag printed;
     std::call_once(printed, []() {
         log_misc("graphics::d3d9", "WrappedIDirect3DDevice9::EndScene");

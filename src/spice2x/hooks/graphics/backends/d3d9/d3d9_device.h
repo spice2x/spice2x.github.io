@@ -35,6 +35,10 @@ static const GUID IID_WrappedIDirect3DDevice9 = {
     0x6dec0d40, 0x1339, 0x4bda, { 0xa5, 0xf2, 0x22, 0x31, 0xd4, 0x1, 0xf, 0xd1 }
 };
 
+// applies the image resize / orientation swap by copying the back buffer through an
+// oversized intermediate surface and back. expects the real (unwrapped) device.
+void SurfaceHook(IDirect3DDevice9 *pReal);
+
 struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     explicit WrappedIDirect3DDevice9(HWND hFocusWindow, IDirect3DDevice9 *orig)
         : hFocusWindow(hFocusWindow), pReal(orig), is_d3d9ex(false) {
