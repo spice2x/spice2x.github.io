@@ -231,11 +231,15 @@ namespace overlay::windows {
         surface->Release();
         texture_surface->Release();
 
-        // draw the subscreen (this draws *under* ImGui windows, over the game surface)
+        // draw the subscreen into the current window's draw list so it participates in
+        // normal ImGui z-ordering (i.e. other ImGui windows can appear above it)
         auto bottom_right = overlay_content_size;
         bottom_right.x += overlay_content_top_left.x;
         bottom_right.y += overlay_content_top_left.y;
-        ImGui::GetBackgroundDrawList()->AddImage(
+        auto draw_list = this->draws_window
+            ? ImGui::GetWindowDrawList()
+            : ImGui::GetBackgroundDrawList();
+        draw_list->AddImage(
             reinterpret_cast<ImTextureID>(this->texture),
             overlay_content_top_left,
             bottom_right);
