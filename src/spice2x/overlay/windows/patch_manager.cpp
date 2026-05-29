@@ -3,6 +3,8 @@
 #include <chrono>
 #include <thread>
 #include <fstream>
+#include <memory>
+#include <unordered_set>
 #include <shellapi.h>
 #include <winhttp.h>
 #include <psapi.h>
@@ -886,23 +888,54 @@ namespace overlay::windows {
 
     void PatchManager::hard_apply_patches() {
         std::vector<std::filesystem::path> written_list;
-        for (auto& patch : patches) {
+
+        // dll_name -> in-memory image; populated lazily, written back once at
+        // the end. Avoids re-reading and re-writing the full DLL per patch,
+        // which used to dominate the cost of "Overwrite game files" on games
+        // with large patch lists (and leaked a vector per call via bin_read's
+        // raw new'd return).
+        robin_hood::unordered_map<std::string, std::unique_ptr<std::vector<uint8_t>>> dll_cache;
+        std::unordered_set<std::string> dirty;
+
+        auto load_dll = [&](const std::string &dll_name) -> std::vector<uint8_t> * {
+            auto it = dll_cache.find(dll_name);
+            if (it != dll_cache.end()) {
+                return it->second ? it->second.get() : nullptr;
+            }
+            const auto dll_path = MODULE_PATH / dll_name;
+            create_dll_backup(written_list, dll_path);
+            std::unique_ptr<std::vector<uint8_t>> owned(fileutils::bin_read(dll_path));
+            if (!owned || owned->empty()) {
+                // remember the miss so subsequent patches don't re-read/backup
+                dll_cache.emplace(dll_name, nullptr);
+                return nullptr;
+            }
+            auto *ptr = owned.get();
+            dll_cache.emplace(dll_name, std::move(owned));
+            return ptr;
+        };
+
+        for (auto &patch : patches) {
             switch (patch.type) {
             case PatchType::Memory:
-                for (auto& memory_patch : patch.patches_memory) {
-                    auto dll_path = MODULE_PATH / memory_patch.dll_name;
-                    create_dll_backup(written_list, dll_path);
-                    auto dll_data = fileutils::bin_read(dll_path);
-                    if (dll_data) {
-                        auto max_len = std::max(memory_patch.data_disabled_len, memory_patch.data_enabled_len);
-                        if (memory_patch.data_offset + max_len <= dll_data->size()) {
-                            if (patch.enabled) {
-                                memcpy(dll_data->data() + memory_patch.data_offset, memory_patch.data_enabled.get(), memory_patch.data_enabled_len);
-                            } else {
-                                memcpy(dll_data->data() + memory_patch.data_offset, memory_patch.data_disabled.get(), memory_patch.data_disabled_len);
-                            }
-                            fileutils::bin_write(dll_path, dll_data->data(), dll_data->size());
+                for (auto &memory_patch : patch.patches_memory) {
+                    auto *dll_data = load_dll(memory_patch.dll_name);
+                    if (!dll_data) {
+                        continue;
+                    }
+                    const auto max_len = std::max(
+                        memory_patch.data_disabled_len, memory_patch.data_enabled_len);
+                    if (memory_patch.data_offset + max_len <= dll_data->size()) {
+                        if (patch.enabled) {
+                            memcpy(dll_data->data() + memory_patch.data_offset,
+                                memory_patch.data_enabled.get(),
+                                memory_patch.data_enabled_len);
+                        } else {
+                            memcpy(dll_data->data() + memory_patch.data_offset,
+                                memory_patch.data_disabled.get(),
+                                memory_patch.data_disabled_len);
                         }
+                        dirty.insert(memory_patch.dll_name);
                     }
                 }
                 break;
@@ -910,43 +943,49 @@ namespace overlay::windows {
                 if (!patch.enabled) {
                     break;
                 }
-                for (auto& union_patch : patch.patches_union) {
+                for (auto &union_patch : patch.patches_union) {
                     if (union_patch.name == patch.selected_union_name) {
-                        auto dll_path = MODULE_PATH / union_patch.dll_name;
-                        create_dll_backup(written_list, dll_path);
-                        auto dll_data = fileutils::bin_read(dll_path);
-                        if (dll_data) {
-                            if (union_patch.offset + union_patch.data_len <= dll_data->size()) {
-                                memcpy(dll_data->data() + union_patch.offset, union_patch.data.get(), union_patch.data_len);
-                                fileutils::bin_write(dll_path, dll_data->data(), dll_data->size());
-                            }
+                        auto *dll_data = load_dll(union_patch.dll_name);
+                        if (!dll_data) {
+                            break;
+                        }
+                        if (union_patch.offset + union_patch.data_len <= dll_data->size()) {
+                            memcpy(dll_data->data() + union_patch.offset,
+                                union_patch.data.get(), union_patch.data_len);
+                            dirty.insert(union_patch.dll_name);
                         }
                         break;
                     }
                 }
                 break;
-            case PatchType::Integer:
-                {
-                    if (!patch.enabled) {
-                        break;
-                    }
-                    auto& numpatch = patch.patch_number;
-                    auto dll_path = MODULE_PATH / numpatch.dll_name;
-                    create_dll_backup(written_list, dll_path);
-                    auto dll_data = fileutils::bin_read(dll_path);
-                    if (dll_data) {
-                        if (numpatch.data_offset + numpatch.size_in_bytes <= dll_data->size()) {
-                            int_to_little_endian_bytes(
-                                numpatch.value,
-                                dll_data->data() + numpatch.data_offset,
-                                numpatch.size_in_bytes);
-                            fileutils::bin_write(dll_path, dll_data->data(), dll_data->size());
-                        }
-                    }
+            case PatchType::Integer: {
+                if (!patch.enabled) {
+                    break;
+                }
+                auto &numpatch = patch.patch_number;
+                auto *dll_data = load_dll(numpatch.dll_name);
+                if (!dll_data) {
+                    break;
+                }
+                if (numpatch.data_offset + numpatch.size_in_bytes <= dll_data->size()) {
+                    int_to_little_endian_bytes(
+                        numpatch.value,
+                        dll_data->data() + numpatch.data_offset,
+                        numpatch.size_in_bytes);
+                    dirty.insert(numpatch.dll_name);
                 }
                 break;
+            }
             default:
                 break;
+            }
+        }
+
+        // single write-back per dirty DLL
+        for (const auto &dll_name : dirty) {
+            const auto &data = dll_cache.at(dll_name);
+            if (data) {
+                fileutils::bin_write(MODULE_PATH / dll_name, data->data(), data->size());
             }
         }
     }
@@ -3030,6 +3069,50 @@ namespace overlay::windows {
         return file;
     }
 
+    static bool get_file_times(
+        const std::filesystem::path& path,
+        FILETIME* creation,
+        FILETIME* access,
+        FILETIME* write) {
+
+        const auto handle = CreateFileW(
+            path.c_str(),
+            GENERIC_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+        if (handle == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+        const bool ok = GetFileTime(handle, creation, access, write) != 0;
+        CloseHandle(handle);
+        return ok;
+    }
+
+    static bool set_file_times(
+        const std::filesystem::path& path,
+        const FILETIME* creation,
+        const FILETIME* access,
+        const FILETIME* write) {
+
+        const auto handle = CreateFileW(
+            path.c_str(),
+            FILE_WRITE_ATTRIBUTES,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr);
+        if (handle == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+        const bool ok = SetFileTime(handle, creation, access, write) != 0;
+        CloseHandle(handle);
+        return ok;
+    }
+
     void create_dll_backup(
         std::vector<std::filesystem::path>& written_list, const std::filesystem::path& dll_path) {
 
@@ -3040,7 +3123,26 @@ namespace overlay::windows {
             dll_bak_path += ".bak";
             try {
                 if (!fileutils::file_exists(dll_bak_path)) {
+                    FILETIME creation {};
+                    FILETIME access {};
+                    FILETIME write {};
+                    const bool have_times =
+                        get_file_times(dll_path, &creation, &access, &write);
+                    if (!have_times) {
+                        log_warning(
+                            "patchmanager",
+                            "could not read timestamps before DLL backup for: {}",
+                            dll_path);
+                    }
+
                     std::filesystem::copy(dll_path, dll_bak_path);
+
+                    if (have_times && !set_file_times(dll_bak_path, &creation, &access, &write)) {
+                        log_warning(
+                            "patchmanager",
+                            "could not restore timestamps on DLL backup for: {}",
+                            dll_bak_path);
+                    }
                 }
                 log_info("patchmanager", "created DLL backup for: {}", dll_path);
             } catch (const std::filesystem::filesystem_error& e) {
