@@ -69,6 +69,8 @@ namespace rawinput {
         std::thread *input_thread = nullptr;
         std::thread *flush_thread = nullptr;
         bool flush_thread_running = false;
+        std::mutex flush_thread_m;
+        std::condition_variable flush_thread_cv;
         std::thread *output_thread = nullptr;
         std::mutex output_thread_m;
         bool output_thread_ready = false;
