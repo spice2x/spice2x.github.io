@@ -365,21 +365,24 @@ namespace overlay::windows {
             config_dirty = true;
         }
 
-        // check for dirty state
-        if (config_dirty) {
-            if (cfg::CONFIGURATOR_STANDALONE) {
-                // auto save for configurator version
+        // handle dirty state
+        if (cfg::CONFIGURATOR_STANDALONE) {
+            // auto save for configurator version
+            if (config_dirty) {
                 this->config_save();
-
-            } else {
-                // manual save for live version
-                ImGui::AlignTextToFramePadding();
-                ImGui::HelpMarker("Save current patch state to the configuration file.");
-                ImGui::SameLine();
-                if (ImGui::Button("Save")) {
-                    this->config_save();
-                }
             }
+        } else {
+            // manual save for live version: always render the row so the rest
+            // of the panel doesn't shift when config_dirty flips. Disable the
+            // button when there is nothing to save.
+            ImGui::AlignTextToFramePadding();
+            ImGui::HelpMarker("Save current patch state to the configuration file.");
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!config_dirty);
+            if (ImGui::Button("Save")) {
+                this->config_save();
+            }
+            ImGui::EndDisabled();
         }
 
         bool disable_all_patches = false;
