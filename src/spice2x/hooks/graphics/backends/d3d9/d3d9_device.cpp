@@ -760,18 +760,15 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::BeginScene() {
 
 static IDirect3DSurface9 *topSurface = nullptr;
 static IDirect3DSurface9 *backbuffer = nullptr;
-static LPDIRECT3DSWAPCHAIN9 mSwapChain = nullptr;
-static IDirect3DTexture9* tex;
+static IDirect3DTexture9 *tex = nullptr;
 
 static UINT topSurface_width = 0;
 static UINT topSurface_height = 0;
 static float topSurface_aspect_ratio = 1.f;
+static UINT backbuffer_width = 0;
+static UINT backbuffer_height = 0;
 
 void SurfaceHook(IDirect3DDevice9 *pReal) {
-    D3DPRESENT_PARAMETERS param {};
-
-    pReal->GetSwapChain(0, &mSwapChain);
-    mSwapChain->GetPresentParameters(&param);
 
     // phase 0 - create a surface that has the same aspect ratio as the original back buffer
     //           but larger in size. this is needed to ensure that when the user zooms out, we have
@@ -779,8 +776,20 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     //
     //           (only done once)
     if (!topSurface) {
-        topSurface_width = param.BackBufferWidth * 3;
-        topSurface_height = param.BackBufferHeight * 3;
+        // GetSwapChain/GetBackBuffer AddRef their out parameters; the swap chain is only
+        // needed here (during one-time init), so release it after use to avoid a per-frame
+        // ref leak. The backbuffer ref is intentionally retained for the lifetime of the
+        // cached resources.
+        LPDIRECT3DSWAPCHAIN9 swapChain = nullptr;
+        D3DPRESENT_PARAMETERS param {};
+
+        pReal->GetSwapChain(0, &swapChain);
+        swapChain->GetPresentParameters(&param);
+
+        backbuffer_width = param.BackBufferWidth;
+        backbuffer_height = param.BackBufferHeight;
+        topSurface_width = backbuffer_width * 3;
+        topSurface_height = backbuffer_height * 3;
         topSurface_aspect_ratio = (float)topSurface_width / (float)topSurface_height;
         if (pReal->CreateTexture(topSurface_width, topSurface_height, 1,
             D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8,
@@ -793,16 +802,18 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
             param.BackBufferWidth, param.BackBufferHeight, param.BackBufferCount);
 
         tex->GetSurfaceLevel(0, &topSurface);
-        if (mSwapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backbuffer) != D3D_OK) {
+        if (swapChain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backbuffer) != D3D_OK) {
             log_warning("graphics::d3d9", "SurfaceHook - GetBackBuffer failed");
         }
+
+        swapChain->Release();
     }
 
     // pre-calculate dimensions used for phase 1
-    const int rectLeft = param.BackBufferWidth;
-    const int rectTop = param.BackBufferHeight;
-    const int w = param.BackBufferWidth;
-    const int h = param.BackBufferHeight;
+    const int rectLeft = backbuffer_width;
+    const int rectTop = backbuffer_height;
+    const int w = backbuffer_width;
+    const int h = backbuffer_height;
 
     // this code used to clear the surface using ColorFill on every call, but
     // this turned out to be very expensive, leading to major frame drops in
@@ -812,9 +823,7 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
         cfg::SCREENRESIZE->need_surface_clean = false;
     }
 
-    D3DLOCKED_RECT rect;
     HRESULT hr;
-    topSurface->LockRect(&rect, NULL, D3DLOCK_DONOTWAIT);
 
     // phase 1 - copy the original back buffer onto the new surface.
     //           we draw it 1:1 in the center of the surface.
@@ -877,7 +886,6 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
                 originRect2.left, originRect2.top, originRect2.right, originRect2.bottom);
         }
     }
-    topSurface->UnlockRect();
 
     // phase 2 - viewport calculation - do the actual zoom / offset math
     //           figure out what region of the surface to copy back to the back buffer.
@@ -952,7 +960,6 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
     //     targetRect.left, targetRect.top, targetRect.right, targetRect.bottom);
 
     // phase 3 - draw the surface to back buffer
-    backbuffer->LockRect(&rect, NULL, D3DLOCK_DONOTWAIT);
     bool use_linear_filter = true;
     if (cfg::SCREENRESIZE->enable_screen_resize) {
         use_linear_filter = cfg::SCREENRESIZE->enable_linear_filter;
@@ -961,7 +968,6 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
         topSurface, &targetRect,
         backbuffer, nullptr,
         use_linear_filter ? D3DTEXF_LINEAR : D3DTEXF_NONE);
-    backbuffer->UnlockRect();
     if (hr != D3D_OK) {
         log_warning(
             "graphics::d3d9",
@@ -972,10 +978,6 @@ void SurfaceHook(IDirect3DDevice9 *pReal) {
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::EndScene() {
     WRAP_DEBUG;
-
-    if (cfg::SCREENRESIZE->enable_screen_resize || GRAPHICS_FS_ORIENTATION_SWAP) {
-        SurfaceHook(pReal);
-    }
 
     static std::once_flag printed;
     std::call_once(printed, []() {

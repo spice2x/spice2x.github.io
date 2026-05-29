@@ -1458,6 +1458,15 @@ void graphics_d3d9_on_present(
         IDirect3DDevice9 *device,
         IDirect3DDevice9 *wrapped_device) {
 
+    // image resize / orientation swap. run here (the present path) rather than from `EndScene`,
+    // which may fire several times per frame on multi-pass / render-to-texture games. this is the
+    // single point guaranteed to be after the game's last `EndScene` and before the real `Present`,
+    // so the back buffer is fully drawn and the expensive StretchRect work happens exactly once per
+    // frame. it must run before the overlay is rendered so the overlay isn't scaled with the image.
+    if (cfg::SCREENRESIZE->enable_screen_resize || GRAPHICS_FS_ORIENTATION_SWAP) {
+        SurfaceHook(device);
+    }
+
     // Do overlay init as many d3d9 hooks create a dummy instance to get vtable offsets and never
     // call `Present`. This avoids race conditions on `IDirect3D9::CreateDevice` like with
     // `dx9osd.dll` for pfreepanic.
