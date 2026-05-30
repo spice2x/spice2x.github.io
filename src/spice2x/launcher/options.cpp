@@ -1191,7 +1191,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // GitaDoraArenaAsioDriver
-        .title = "GitaDora ASIO driver",
+        .title = "GitaDora Arena ASIO driver",
         .name = "gdaasio",
         .desc = "For Arena Model: ASIO driver name to use in place of XONAR. "
             "String should match a subkey under HKLM\\SOFTWARE\\ASIO\\\n\n"
