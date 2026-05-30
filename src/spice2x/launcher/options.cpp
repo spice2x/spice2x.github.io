@@ -2309,10 +2309,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // GitaDoraWindowedMainMonitor
-        .title = "GitaDora Windowed GITADORA Monitor",
+        .title = "GitaDora Windowed Main Monitor",
         .name = "gdwmainmonitor",
         .desc = "For GITADORA Arena windowed mode: place and size the "
-            "GITADORA main window to fill this monitor.",
+            "main window to fill this monitor.",
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY1",
         .game_name = "GitaDora",
@@ -2348,8 +2348,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "GitaDora Windowed SMALL Monitor",
         .name = "gdwsmallmonitor",
         .desc = "For GITADORA Arena windowed mode: place and size the "
-            "SMALL touch window to fill this monitor. In non-borderless modes, "
-            "SMALL can be resized afterwards.",
+            "SMALL touch window to fill this monitor.",
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY4",
         .game_name = "GitaDora",

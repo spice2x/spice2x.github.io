@@ -45,11 +45,6 @@ static HWND GFDM_LEFT_WINDOW = nullptr;
 static HWND GFDM_RIGHT_WINDOW = nullptr;
 HWND POPN_SUBSCREEN_WINDOW = nullptr;
 bool FAKE_SUBSCREEN_ADAPTER = false;
-static double GFDM_MAIN_PLACEMENT_UNTIL = 0.0;
-static double GFDM_LEFT_PLACEMENT_UNTIL = 0.0;
-static double GFDM_RIGHT_PLACEMENT_UNTIL = 0.0;
-static double GFDM_SUBSCREEN_PLACEMENT_UNTIL = 0.0;
-static const double GFDM_PLACEMENT_DURATION_MS = 5000.0;
 
 // icon
 static HICON WINDOW_ICON = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(MAINICON));
@@ -171,51 +166,13 @@ static bool is_gfdm_known_window(HWND hWnd) {
     return gitadora_window_name_for_hwnd(hWnd) != nullptr;
 }
 
-static double *gitadora_placement_until_for_name(const std::string &window_name) {
-    if (window_name == "GITADORA") {
-        return &GFDM_MAIN_PLACEMENT_UNTIL;
-    }
-    if (window_name == "LEFT") {
-        return &GFDM_LEFT_PLACEMENT_UNTIL;
-    }
-    if (window_name == "RIGHT") {
-        return &GFDM_RIGHT_PLACEMENT_UNTIL;
-    }
-    if (window_name == "SMALL") {
-        return &GFDM_SUBSCREEN_PLACEMENT_UNTIL;
-    }
-    return nullptr;
-}
-
-static void gitadora_arm_window_placement(const std::string &window_name) {
-    if (!GRAPHICS_WINDOWED ||
-        GRAPHICS_PREVENT_SECONDARY_WINDOWS ||
-        !graphics_gitadora_has_window_monitor(window_name)) {
-        return;
-    }
-
-    auto placement_until = gitadora_placement_until_for_name(window_name);
-    if (placement_until == nullptr) {
-        return;
-    }
-    *placement_until = get_performance_milliseconds() + GFDM_PLACEMENT_DURATION_MS;
-}
-
-static bool gitadora_should_apply_window_placement(HWND hWnd) {
+static bool gitadora_should_block_game_window_placement(HWND hWnd) {
     if (!GRAPHICS_WINDOWED || !games::gitadora::is_arena_model()) {
         return false;
     }
 
     const auto window_name = gitadora_window_name_for_hwnd(hWnd);
-    if (window_name == nullptr || !graphics_gitadora_has_window_monitor(window_name)) {
-        return false;
-    }
-    if (graphics_gitadora_is_borderless_windowed()) {
-        return true;
-    }
-
-    auto placement_until = gitadora_placement_until_for_name(window_name);
-    return placement_until != nullptr && get_performance_milliseconds() <= *placement_until;
+    return window_name != nullptr && graphics_gitadora_has_window_monitor(window_name);
 }
 
 static void gitadora_remember_window(HWND hWnd, const std::string &window_name) {
@@ -228,8 +185,6 @@ static void gitadora_remember_window(HWND hWnd, const std::string &window_name) 
     } else if (window_name == "SMALL") {
         GFDM_SUBSCREEN_WINDOW = hWnd;
     }
-
-    gitadora_arm_window_placement(window_name);
 }
 
 static bool gitadora_should_allow_small_resize() {
@@ -835,18 +790,10 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
         }
     }
 
-    if (gitadora_should_apply_window_placement(hWnd)) {
-        const auto window_name = gitadora_window_name_for_hwnd(hWnd);
-        if (window_name != nullptr &&
-            graphics_gitadora_apply_window_monitor(
-                window_name,
-                X,
-                Y,
-                nWidth,
-                nHeight,
-                false)) {
-            return MoveWindow_orig(hWnd, X, Y, nWidth, nHeight, bRepaint);
-        }
+    // Monitor overrides are applied at creation time. Suppress later game
+    // placement calls instead of resizing again during scene transitions.
+    if (gitadora_should_block_game_window_placement(hWnd)) {
+        return TRUE;
     }
 
     // call original
@@ -943,23 +890,11 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
         return TRUE;
     }
 
-    if (gitadora_should_apply_window_placement(hWnd)) {
-        const auto window_name = gitadora_window_name_for_hwnd(hWnd);
-        int width = cx;
-        int height = cy;
-        if (window_name != nullptr &&
-            graphics_gitadora_apply_window_monitor(
-                window_name,
-                X,
-                Y,
-                width,
-                height,
-                false)) {
-            cx = width;
-            cy = height;
-            uFlags &= ~SWP_NOMOVE;
-            uFlags &= ~SWP_NOSIZE;
-        }
+    // Monitor overrides are applied at creation time. Suppress later game
+    // placement calls instead of resizing again during scene transitions.
+    if (gitadora_should_block_game_window_placement(hWnd) &&
+        (uFlags & (SWP_NOMOVE | SWP_NOSIZE)) != (SWP_NOMOVE | SWP_NOSIZE)) {
+        return TRUE;
     }
 
     // prevent gitadora arena model from shifting windows around if the user has preferences

@@ -26,10 +26,10 @@ bool GRAPHICS_WINDOW_ALWAYS_ON_TOP = false;
 bool GRAPHICS_WINDOW_BACKBUFFER_SCALE = false;
 bool GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS = false;
 std::optional<HWND> GRAPHICS_HOOKED_WINDOW;
-std::optional<std::string> GRAPHICS_GITADORA_MAIN_MONITOR;
-std::optional<std::string> GRAPHICS_GITADORA_LEFT_MONITOR;
-std::optional<std::string> GRAPHICS_GITADORA_RIGHT_MONITOR;
-std::optional<std::string> GRAPHICS_GITADORA_SMALL_MONITOR;
+std::string GRAPHICS_GITADORA_MAIN_MONITOR;
+std::string GRAPHICS_GITADORA_LEFT_MONITOR;
+std::string GRAPHICS_GITADORA_RIGHT_MONITOR;
+std::string GRAPHICS_GITADORA_SMALL_MONITOR;
 
 // IIDX Windowed Subscreen - starts out as false, enabled by IIDX module on pre-attach as needed
 bool GRAPHICS_IIDX_WSUB = false;
@@ -70,7 +70,7 @@ bool graphics_gitadora_is_borderless_windowed() {
         graphics_effective_window_decoration() == cfg::WindowDecorationMode::Borderless;
 }
 
-static const std::optional<std::string> &graphics_gitadora_monitor_for_window_name(
+static const std::string &graphics_gitadora_monitor_for_window_name(
         const std::string &window_name) {
     if (window_name == "GITADORA") {
         return GRAPHICS_GITADORA_MAIN_MONITOR;
@@ -85,13 +85,13 @@ static const std::optional<std::string> &graphics_gitadora_monitor_for_window_na
         return GRAPHICS_GITADORA_SMALL_MONITOR;
     }
 
-    static const std::optional<std::string> empty;
+    static const std::string empty;
     return empty;
 }
 
 bool graphics_gitadora_has_window_monitor(const std::string &window_name) {
     const auto &monitor_name = graphics_gitadora_monitor_for_window_name(window_name);
-    return monitor_name.has_value() && !monitor_name.value().empty();
+    return !monitor_name.empty();
 }
 
 static bool graphics_monitor_rect_from_name(
@@ -118,7 +118,7 @@ static bool graphics_monitor_rect_from_name(
 }
 
 static bool graphics_gitadora_apply_monitor_rect(
-        const std::optional<std::string> &monitor_name,
+        const std::string &monitor_name,
         const std::string &window_name,
         int &x,
         int &y,
@@ -128,12 +128,12 @@ static bool graphics_gitadora_apply_monitor_rect(
     if (!GRAPHICS_WINDOWED || !games::gitadora::is_arena_model()) {
         return false;
     }
-    if (!monitor_name.has_value() || monitor_name.value().empty()) {
+    if (monitor_name.empty()) {
         return false;
     }
 
     RECT rect {};
-    if (!graphics_monitor_rect_from_name(monitor_name.value(), rect, log_change)) {
+    if (!graphics_monitor_rect_from_name(monitor_name, rect, log_change)) {
         return false;
     }
 
@@ -147,7 +147,7 @@ static bool graphics_gitadora_apply_monitor_rect(
             "graphics-windowed",
             "GITADORA {} monitor override: {} => pos=({}, {}), size={}x{}",
             window_name,
-            monitor_name.value(),
+            monitor_name,
             x,
             y,
             width,
