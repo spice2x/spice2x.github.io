@@ -291,6 +291,7 @@ namespace launcher {
             DisableHighResTimer,
             EnableICMPHook,
             AutoElevate,
+            CfgForceSoftwareRender
         };
 
         enum class OptionsCategory {

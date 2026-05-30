@@ -9,6 +9,7 @@ namespace cfg {
 
     // globals
     bool CONFIGURATOR_STANDALONE = false;
+    bool CONFIGURATOR_FORCE_SOFTWARE_RENDER = false;
     ConfigType CONFIGURATOR_TYPE = ConfigType::Config;
 
     Configurator::Configurator() {
@@ -26,6 +27,10 @@ namespace cfg {
     // that environments without D3D9 (Wine without dxvk, headless test boxes,
     // GPUs whose drivers reject HAL) still get a working configurator.
     static bool try_init_d3d9(ConfiguratorWindow &wnd) {
+        if (cfg::CONFIGURATOR_FORCE_SOFTWARE_RENDER) {
+            return false;
+        }
+
         if (wnd.hWnd == nullptr) {
             return false;
         }
