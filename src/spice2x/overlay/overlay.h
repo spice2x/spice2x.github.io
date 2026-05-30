@@ -83,6 +83,9 @@ namespace overlay {
         void window_add(Window *wnd);
         void new_frame();
         void render();
+        // configurator-only (spicecfg D3D9): submit ImGui draw data inside BeginScene
+        // after render() when the frame is being presented. In-game overlay draws in render().
+        void d3d9_render_draw(bool force_submit = false);
         void update();
         void toggle_active(bool overlay_key = false);
         void show_main_menu();
@@ -139,6 +142,16 @@ namespace overlay {
         OverlayRenderer renderer;
         float total_elapsed = 0.f;
 
+        // set to true by the SOFTWARE renderer when the pixel buffer was updated
+        // in the most recent render() call. Allows the configurator's WM_PAINT
+        // driver to skip its full-window InvalidateRect on idle frames where the
+        // ImGui draw data is bitwise-identical to the previous frame.
+        bool sw_pixels_dirty = false;
+
+        // configurator-only (spicecfg D3D9): set by render() when ImGui draw data
+        // changed since the last submitted frame; configurator skips Clear/Present when false.
+        bool d3d9_frame_dirty = false;
+
     private:
 
         HWND hWnd = nullptr;
@@ -159,6 +172,13 @@ namespace overlay {
         std::vector<uint32_t> pixel_data;
         size_t pixel_data_width = 0;
         size_t pixel_data_height = 0;
+        uint64_t sw_last_draw_hash = 0;
+        bool sw_has_last_draw_hash = false;
+
+        uint64_t d3d9_last_draw_hash = 0;
+        bool d3d9_has_last_draw_hash = false;
+        int d3d9_last_display_w = 0;
+        int d3d9_last_display_h = 0;
 
         std::vector<std::unique_ptr<Window>> windows;
 
