@@ -1,4 +1,5 @@
 #include "gitadora.h"
+#include "asio.h"
 #include "handle.h"
 #include "bi2x_hook.h"
 #include <unordered_map>
@@ -28,6 +29,7 @@ namespace games::gitadora {
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
     std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
+    std::optional<std::string> ASIO_DRIVER = std::nullopt;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -611,6 +613,9 @@ namespace games::gitadora {
             detour::iat_try("GetLogicalDrives", GetLogicalDrives_hook, avs::game::DLL_INSTANCE);
             detour::iat_try("GetDriveTypeA", GetDriveTypeA_hook, avs::game::DLL_INSTANCE);
             detour::iat_try("CreateDirectoryA", CreateDirectoryA_hook, avs::game::DLL_INSTANCE);
+
+            // ASIO driver redirect (XONAR -> user-configured driver)
+            asio_hook_init();
 
             // volume change prevention
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
