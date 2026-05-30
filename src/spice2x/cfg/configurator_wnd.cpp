@@ -391,6 +391,24 @@ LRESULT CALLBACK cfg::ConfiguratorWindow::window_proc(HWND hWnd, UINT uMsg, WPAR
             }
 
             if (use_d3d9) {
+                const HRESULT cl = state->device->TestCooperativeLevel();
+                if (cl == D3DERR_DEVICELOST) {
+                    break;
+                }
+                if (cl == D3DERR_DEVICENOTRESET) {
+                    if (overlay::OVERLAY) {
+                        overlay::OVERLAY->reset_invalidate();
+                    }
+                    const HRESULT reset_hr = state->device->Reset(&state->pp);
+                    if (SUCCEEDED(reset_hr) && overlay::OVERLAY) {
+                        overlay::OVERLAY->reset_recreate();
+                    }
+                    break;
+                }
+                if (FAILED(cl)) {
+                    break;
+                }
+
                 // D3D9 path: clear the back-buffer, wrap the ImGui DX9 render in
                 // BeginScene/EndScene, and Present(). Avoids any CPU rasterization.
                 state->device->Clear(0, nullptr, D3DCLEAR_TARGET,
@@ -401,16 +419,9 @@ LRESULT CALLBACK cfg::ConfiguratorWindow::window_proc(HWND hWnd, UINT uMsg, WPAR
                     }
                     state->device->EndScene();
                 }
-                HRESULT hr = state->device->Present(nullptr, nullptr, nullptr, nullptr);
+                const HRESULT hr = state->device->Present(nullptr, nullptr, nullptr, nullptr);
                 if (hr == D3DERR_DEVICELOST) {
-                    // device lost: try to reset on the next frame
-                    if (overlay::OVERLAY) {
-                        overlay::OVERLAY->reset_invalidate();
-                    }
-                    HRESULT reset_hr = state->device->Reset(&state->pp);
-                    if (SUCCEEDED(reset_hr) && overlay::OVERLAY) {
-                        overlay::OVERLAY->reset_recreate();
-                    }
+                    break;
                 }
             } else {
                 if (overlay::OVERLAY) {
