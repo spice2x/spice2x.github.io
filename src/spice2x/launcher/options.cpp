@@ -1193,11 +1193,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // GitaDoraArenaAsioDriver
         .title = "GitaDora ASIO driver",
         .name = "gdaasio",
-        .display_name = "gitadoraasio",
-        .aliases = "gitadoraasio",
         .desc = "For Arena Model: ASIO driver name to use in place of XONAR. "
             "String should match a subkey under HKLM\\SOFTWARE\\ASIO\\\n\n"
-            "Requires 7.1 @ 48kHz.",
+            "Requires 7.1 @ 48kHz; if the game rejects your ASIO device, it will automatically "
+            "fall back to using WASAPI.",
         .type = OptionType::Text,
         .game_name = "GitaDora",
         .category = "Game Options",

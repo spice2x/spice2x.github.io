@@ -80,9 +80,10 @@ namespace games::gitadora {
                 // forward to real handle just to verify the key exists; we
                 // overwrite the name with our fake driver string regardless
                 auto ret = RegEnumKeyA_orig(real_asio_reg_handle, dwIndex, lpName, cchName);
-                if (ret == ERROR_SUCCESS && lpName != nullptr) {
+                if (ret == ERROR_SUCCESS && lpName != nullptr && cchName > 0) {
                     log_info("gitadora::asio", "stubbing '{}' with '{}'", lpName, FAKE_ASIO_DEVICE_NAME);
                     strncpy(lpName, FAKE_ASIO_DEVICE_NAME, cchName);
+                    lpName[cchName - 1] = '\0';
                 }
                 return ret;
             } else {
@@ -96,6 +97,8 @@ namespace games::gitadora {
     static LONG WINAPI RegQueryValueExA_hook(HKEY hKey, LPCSTR lpValueName, LPDWORD lpReserved, LPDWORD lpType,
             LPBYTE lpData, LPDWORD lpcbData)
     {
+        HKEY target = hKey;
+
         if (ASIO_DRIVER.has_value() &&
             lpValueName != nullptr &&
             lpData != nullptr &&
@@ -118,10 +121,10 @@ namespace games::gitadora {
             }
 
             // for everything else (CLSID etc.) defer to the real driver subkey
-            hKey = real_asio_device_reg_handle;
+            target = real_asio_device_reg_handle;
         }
 
-        return RegQueryValueExA_orig(hKey, lpValueName, lpReserved, lpType, lpData, lpcbData);
+        return RegQueryValueExA_orig(target, lpValueName, lpReserved, lpType, lpData, lpcbData);
     }
 
     static LONG WINAPI RegCloseKey_hook(HKEY hKey) {
