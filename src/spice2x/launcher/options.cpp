@@ -2927,6 +2927,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"user", ""},
         },
     },
+    {
+        // CfgForceSoftwareRender
+        .title = "Configurator Force Software Rendering",
+        .name = "forcesoftware",
+        .desc = "Forces the use of software rendering instead of hardware acceleration for "
+            "the configurator.",
+        .type = OptionType::Bool,
+        .category = "Development",
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {

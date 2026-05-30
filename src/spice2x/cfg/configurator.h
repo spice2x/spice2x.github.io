@@ -11,6 +11,7 @@ namespace cfg {
     // globals
     extern bool CONFIGURATOR_STANDALONE;
     extern ConfigType CONFIGURATOR_TYPE;
+    extern bool CONFIGURATOR_FORCE_SOFTWARE_RENDER;
 
     class Configurator {
     private:

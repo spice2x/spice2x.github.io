@@ -1358,6 +1358,10 @@ int main_implementation(int argc, char *argv[]) {
         timeutils::TIMER_HACKS_DISABLE = true;
     }
 
+    if (options[launcher::Options::CfgForceSoftwareRender].value_bool()) {
+        cfg::CONFIGURATOR_FORCE_SOFTWARE_RENDER = true;
+    }
+
     // API debugging
     if (api_debug && !cfg::CONFIGURATOR_STANDALONE) {
         API_CONTROLLER = std::make_unique<api::Controller>(api_port, api_pass, api_pretty);
