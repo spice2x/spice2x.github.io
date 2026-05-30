@@ -655,7 +655,28 @@ void overlay::SpiceOverlay::render() {
     // implementation render
     switch (this->renderer) {
         case OverlayRenderer::D3D9:
-            ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+            if (cfg::CONFIGURATOR_STANDALONE) {
+                const auto *draw_data = ImGui::GetDrawData();
+                const uint64_t draw_hash = overlay_hash_draw_data(draw_data);
+                const auto &io = ImGui::GetIO();
+                const int display_w = static_cast<int>(std::ceil(io.DisplaySize.x));
+                const int display_h = static_cast<int>(std::ceil(io.DisplaySize.y));
+                const bool size_matches = (this->d3d9_last_display_w == display_w
+                    && this->d3d9_last_display_h == display_h);
+                if (this->d3d9_has_last_draw_hash
+                        && draw_hash == this->d3d9_last_draw_hash
+                        && size_matches) {
+                    this->d3d9_frame_dirty = false;
+                    break;
+                }
+                this->d3d9_last_draw_hash = draw_hash;
+                this->d3d9_has_last_draw_hash = true;
+                this->d3d9_last_display_w = display_w;
+                this->d3d9_last_display_h = display_h;
+                this->d3d9_frame_dirty = true;
+            } else {
+                ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+            }
             break;
 #ifdef SPICE_D3D11
         case OverlayRenderer::D3D11:
@@ -715,6 +736,16 @@ void overlay::SpiceOverlay::render() {
     }
 
     this->has_pending_frame = false;
+}
+
+void overlay::SpiceOverlay::d3d9_render_draw(const bool force_submit) {
+    if (this->renderer != OverlayRenderer::D3D9) {
+        return;
+    }
+    if (!force_submit && !this->d3d9_frame_dirty) {
+        return;
+    }
+    ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
 }
 
 void overlay::SpiceOverlay::update() {
@@ -865,6 +896,10 @@ void overlay::SpiceOverlay::reset_invalidate() {
     }
     switch (overlay::OVERLAY->renderer) {
         case OverlayRenderer::D3D9:
+            if (cfg::CONFIGURATOR_STANDALONE) {
+                overlay::OVERLAY->d3d9_has_last_draw_hash = false;
+                overlay::OVERLAY->d3d9_frame_dirty = true;
+            }
             ImGui_ImplDX9_InvalidateDeviceObjects();
             break;
 #ifdef SPICE_D3D11

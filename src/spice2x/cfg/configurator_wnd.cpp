@@ -254,9 +254,9 @@ void cfg::ConfiguratorWindow::run() {
     SetFocus(this->hWnd);
 
     // match the render timer to the monitor refresh rate so scrolling stays smooth
-    // on 60/120/144 Hz panels. Idle CPU is still bounded by overlay::sw_pixels_dirty
-    // (software path) and D3DPRESENT_INTERVAL_ONE vsync (D3D9 path); the timer is
-    // also paused entirely when the window is minimized (see WM_SIZE handler).
+    // on 60/120/144 Hz panels. Idle CPU is bounded by overlay::sw_pixels_dirty
+    // (software path) and overlay::d3d9_frame_dirty (D3D9 path); the timer is also
+    // paused entirely when the window is minimized (see WM_SIZE handler).
     const UINT hz = detect_monitor_refresh_hz(this->hWnd);
     this->timer_interval_ms = std::max<UINT>(1, 1000 / hz);
     log_info("configurator", "render timer {} ms ({} Hz)",
@@ -409,19 +409,30 @@ LRESULT CALLBACK cfg::ConfiguratorWindow::window_proc(HWND hWnd, UINT uMsg, WPAR
                     break;
                 }
 
-                // D3D9 path: clear the back-buffer, wrap the ImGui DX9 render in
-                // BeginScene/EndScene, and Present(). Avoids any CPU rasterization.
-                state->device->Clear(0, nullptr, D3DCLEAR_TARGET,
-                    D3DCOLOR_RGBA(20, 18, 18, 255), 1.0f, 0);
-                if (SUCCEEDED(state->device->BeginScene())) {
-                    if (overlay::OVERLAY) {
-                        overlay::OVERLAY->render();
-                    }
-                    state->device->EndScene();
+                if (overlay::OVERLAY) {
+                    overlay::OVERLAY->render();
                 }
-                const HRESULT hr = state->device->Present(nullptr, nullptr, nullptr, nullptr);
-                if (hr == D3DERR_DEVICELOST) {
-                    break;
+
+                // skip Clear/Present when ImGui draw data is unchanged; the last
+                // presented frame stays visible (same fast path as sw_pixels_dirty).
+                const bool dirty = overlay::OVERLAY && overlay::OVERLAY->d3d9_frame_dirty;
+                const bool force_present = state && !state->has_valid_draw_hash;
+                if (dirty || force_present) {
+                    if (state) {
+                        state->has_valid_draw_hash = true;
+                    }
+                    state->device->Clear(0, nullptr, D3DCLEAR_TARGET,
+                        D3DCOLOR_RGBA(20, 18, 18, 255), 1.0f, 0);
+                    if (SUCCEEDED(state->device->BeginScene())) {
+                        if (overlay::OVERLAY) {
+                            overlay::OVERLAY->d3d9_render_draw(force_present);
+                        }
+                        state->device->EndScene();
+                    }
+                    const HRESULT hr = state->device->Present(nullptr, nullptr, nullptr, nullptr);
+                    if (hr == D3DERR_DEVICELOST) {
+                        break;
+                    }
                 }
             } else {
                 if (overlay::OVERLAY) {
