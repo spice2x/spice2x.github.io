@@ -369,6 +369,14 @@ void ImGui_ImplSpice_NewFrame() {
     const auto overlay_visible = overlay::OVERLAY && overlay::OVERLAY->get_active();
     const auto accept_new_input = superexit::has_focus() && !rawinput::OS_WINDOW_ACTIVE && overlay_visible;
 
+    // when running as standalone spicecfg.exe the configurator window proc feeds
+    // ImGui directly via WM_KEY*/WM_MOUSE*/WM_MOUSEWHEEL messages. The per-frame
+    // rawinput device walk and the 256-VK scan below are pure CPU waste in that
+    // case (and the dominant per-frame cost on low-end PCs), so short-circuit
+    // them entirely. Rebind dialogs that explicitly need fresh device state call
+    // RI_MGR->devices_get_updated() themselves; see overlay/windows/config.cpp.
+    const bool drive_input_from_rawinput = !cfg::CONFIGURATOR_STANDALONE;
+
     // remember old state
     std::array<BYTE, VKEY_MAX> KeysDownOld;
     for (size_t i = 0; i < VKEY_MAX; i++) {
@@ -378,11 +386,13 @@ void ImGui_ImplSpice_NewFrame() {
     const auto MouseDownOld = g_MouseDown;
 
     // reset keys state
-    g_MouseDown.fill(false);
-    g_KeysDown.fill(false);
+    if (drive_input_from_rawinput) {
+        g_MouseDown.fill(false);
+        g_KeysDown.fill(false);
+    }
 
     // apply windows mouse buttons
-    if (accept_new_input) {
+    if (accept_new_input && drive_input_from_rawinput) {
         g_MouseDown[ImGuiMouseButton_Left] |= get_async_primary_mouse();
         g_MouseDown[ImGuiMouseButton_Right] |= get_async_secondary_mouse();
         g_MouseDown[ImGuiMouseButton_Middle] |= (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0;
@@ -391,7 +401,7 @@ void ImGui_ImplSpice_NewFrame() {
     // read new keys state
     static long mouse_wheel_last = 0;
     long mouse_wheel = 0;
-    if (RI_MGR != nullptr) {
+    if (drive_input_from_rawinput && RI_MGR != nullptr) {
         auto devices = RI_MGR->devices_get();
         for (auto &device : devices) {
             switch (device.type) {
@@ -447,41 +457,45 @@ void ImGui_ImplSpice_NewFrame() {
         }
     }
 
-    // process keyboard input from all keyboard collapsed into one state (g_KeysDown)
-    for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
-        const bool state = g_KeysDown[vKey];
-        const auto imgui_key = get_imgui_key(vKey);
-        const auto changed =
-            (state && !KeysDownOld[vKey]) ||
-            (!state && KeysDownOld[vKey]);
+    // process keyboard input from all keyboards collapsed into one state (g_KeysDown).
+    // Skipped entirely in standalone configurator mode where Win32 messages already
+    // drive io.AddKeyEvent / io.AddInputCharacter directly.
+    if (drive_input_from_rawinput) {
+        for (size_t vKey = 0; vKey < VKEY_MAX; vKey++) {
+            const bool state = g_KeysDown[vKey];
+            const auto imgui_key = get_imgui_key(vKey);
+            const auto changed =
+                (state && !KeysDownOld[vKey]) ||
+                (!state && KeysDownOld[vKey]);
 
-        if (imgui_key != ImGuiKey_None && changed) {
-            io.AddKeyEvent(imgui_key, state);
-            log_debug("imgui_impl_spice", "vkey {:#x} added as navigation event, state: {}", static_cast<uint64_t>(vKey), state);
+            if (imgui_key != ImGuiKey_None && changed) {
+                io.AddKeyEvent(imgui_key, state);
+                log_debug("imgui_impl_spice", "vkey {:#x} added as navigation event, state: {}", static_cast<uint64_t>(vKey), state);
 
-            // mod key must also be processed separately
-            const auto imgui_mod_key = get_imgui_mod_key(vKey);
-            if (imgui_mod_key != ImGuiMod_None) {
-                io.AddKeyEvent(imgui_mod_key, state);
+                // mod key must also be processed separately
+                const auto imgui_mod_key = get_imgui_mod_key(vKey);
+                if (imgui_mod_key != ImGuiMod_None) {
+                    io.AddKeyEvent(imgui_mod_key, state);
+                }
             }
-        }
 
-        // generate character input, but only if WM_CHAR didn't take over the functionality
-        // only detecting rising edges here - this means holding a key won't work
-        // (it's better than repeating a character input every frame - cost we pay for providing input
-        // on top of rawinput instead of WM_CHAR)
-        if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && !KeysDownOld[vKey] && state) {
-            UCHAR buf[2];
-            auto ret = ToAscii(
-                    static_cast<UINT>(vKey),
-                    0,
-                    static_cast<const BYTE *>(KeysDownOld.data()),
-                    reinterpret_cast<LPWORD>(buf),
-                    0);
-            if (ret > 0) {
-                for (int i = 0; i < ret; i++) {
-                    overlay::OVERLAY->input_char(buf[i]);
-                    log_debug("imgui_impl_spice", "vkey {:#x} inputted as character", vKey);
+            // generate character input, but only if WM_CHAR didn't take over the functionality
+            // only detecting rising edges here - this means holding a key won't work
+            // (it's better than repeating a character input every frame - cost we pay for providing input
+            // on top of rawinput instead of WM_CHAR)
+            if (!overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT && !KeysDownOld[vKey] && state) {
+                UCHAR buf[2];
+                auto ret = ToAscii(
+                        static_cast<UINT>(vKey),
+                        0,
+                        static_cast<const BYTE *>(KeysDownOld.data()),
+                        reinterpret_cast<LPWORD>(buf),
+                        0);
+                if (ret > 0) {
+                    for (int i = 0; i < ret; i++) {
+                        overlay::OVERLAY->input_char(buf[i]);
+                        log_debug("imgui_impl_spice", "vkey {:#x} inputted as character", vKey);
+                    }
                 }
             }
         }
@@ -490,23 +504,26 @@ void ImGui_ImplSpice_NewFrame() {
     // set mouse wheel
     long wheel_diff = mouse_wheel - mouse_wheel_last;
     mouse_wheel_last = mouse_wheel;
-    if (wheel_diff != 0 && accept_new_input) {
+    if (wheel_diff != 0 && accept_new_input && drive_input_from_rawinput) {
         io.AddMouseWheelEvent(0, wheel_diff);
     }
 
-    // update OS mouse position
+    // update OS mouse position. The standalone configurator gets mouse position
+    // straight from WM_MOUSEMOVE, so skip the per-frame cursor poll there.
     const auto old_mouse_pos = io.MousePos;
-    if (accept_new_input) {
+    if (accept_new_input && drive_input_from_rawinput) {
         ImGui_ImplSpice_UpdateMousePos();
     }
     const auto new_mouse_pos = io.MousePos;
 
     // update mouse buttons
     // doing this after ImGui_ImplSpice_UpdateMousePos since it can set g_MouseDown for touch input
-    for (size_t i = 0; i < g_MouseDown.size(); i++) {
-        if (MouseDownOld[i] != g_MouseDown[i]) {
-            io.AddMouseButtonEvent(i, g_MouseDown[i]);
-            log_debug("imgui_impl_spice", "mouse button {} event", g_MouseDown[i]);
+    if (drive_input_from_rawinput) {
+        for (size_t i = 0; i < g_MouseDown.size(); i++) {
+            if (MouseDownOld[i] != g_MouseDown[i]) {
+                io.AddMouseButtonEvent(i, g_MouseDown[i]);
+                log_debug("imgui_impl_spice", "mouse button {} event", g_MouseDown[i]);
+            }
         }
     }
 

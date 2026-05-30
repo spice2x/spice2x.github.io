@@ -78,6 +78,10 @@ namespace overlay::windows {
             this->flags |= ImGuiWindowFlags_NoTitleBar;
             this->flags |= ImGuiWindowFlags_NoCollapse;
             this->flags |= ImGuiWindowFlags_NoDecoration;
+            // prevent the parent window from absorbing wheel events when a hovered
+            // child has no scrollable content (otherwise the parent's tiny overflow
+            // causes the whole UI to jolt by a few pixels each tick)
+            this->flags |= ImGuiWindowFlags_NoScrollWithMouse;
         }
         this->flags |= ImGuiWindowFlags_MenuBar;
 

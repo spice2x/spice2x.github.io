@@ -327,8 +327,9 @@ void overlay::SpiceOverlay::init() {
     // disable config
     io.IniFilename = nullptr;
 
-    // allow CTRL+WHEEL scaling
-    io.FontAllowUserScaling = true;
+    // allow CTRL+WHEEL scaling in the in-game overlay; disable for the standalone
+    // configurator so the mouse wheel always scrolls the configuration window.
+    io.FontAllowUserScaling = !cfg::CONFIGURATOR_STANDALONE;
 
     // add default font
     io.Fonts->AddFontDefaultBitmap();
@@ -590,6 +591,57 @@ void overlay::SpiceOverlay::new_frame() {
     ImGui::EndFrame();
 }
 
+// FNV-1a 64-bit hash helper used by the software renderer to detect idle frames.
+static inline uint64_t overlay_fnv1a64(uint64_t h, const void *data, size_t len) {
+    const auto *p = static_cast<const uint8_t *>(data);
+    for (size_t i = 0; i < len; i++) {
+        h ^= p[i];
+        h *= 0x100000001B3ULL;
+    }
+    return h;
+}
+
+// Compute a hash over the visual content of ImDrawData. Only the geometry the
+// software rasterizer actually consumes (vertex/index buffers + display size)
+// feeds into the hash, so frames where ImGui produces identical draw data
+// (i.e. nothing animated this tick) can skip the full pixel rasterization.
+static uint64_t overlay_hash_draw_data(const ImDrawData *draw_data) {
+    uint64_t h = 0xcbf29ce484222325ULL;
+    if (draw_data == nullptr) {
+        return h;
+    }
+    const float display[4] = {
+        draw_data->DisplayPos.x,
+        draw_data->DisplayPos.y,
+        draw_data->DisplaySize.x,
+        draw_data->DisplaySize.y,
+    };
+    h = overlay_fnv1a64(h, display, sizeof(display));
+
+    const int cmd_lists = draw_data->CmdListsCount;
+    h = overlay_fnv1a64(h, &cmd_lists, sizeof(cmd_lists));
+
+    for (int i = 0; i < draw_data->CmdListsCount; i++) {
+        const ImDrawList *cmd_list = draw_data->CmdLists[i];
+        if (cmd_list == nullptr) {
+            continue;
+        }
+        const int vtx_count = cmd_list->VtxBuffer.Size;
+        const int idx_count = cmd_list->IdxBuffer.Size;
+        h = overlay_fnv1a64(h, &vtx_count, sizeof(vtx_count));
+        h = overlay_fnv1a64(h, &idx_count, sizeof(idx_count));
+        if (vtx_count > 0) {
+            h = overlay_fnv1a64(h, cmd_list->VtxBuffer.Data,
+                static_cast<size_t>(vtx_count) * sizeof(ImDrawVert));
+        }
+        if (idx_count > 0) {
+            h = overlay_fnv1a64(h, cmd_list->IdxBuffer.Data,
+                static_cast<size_t>(idx_count) * sizeof(ImDrawIdx));
+        }
+    }
+    return h;
+}
+
 void overlay::SpiceOverlay::render() {
 
     // skip if new_frame() didn't begin a frame this tick
@@ -619,6 +671,23 @@ void overlay::SpiceOverlay::render() {
             auto height = static_cast<size_t>(std::ceil(io.DisplaySize.y));
             auto pixels = width * height;
 
+            // skip the (expensive) full software rasterization when the draw data
+            // is byte-identical to the previous frame and the existing pixel
+            // buffer still matches the current display size.
+            const auto *draw_data = ImGui::GetDrawData();
+            const uint64_t draw_hash = overlay_hash_draw_data(draw_data);
+            const bool size_matches = (this->pixel_data_width == width
+                && this->pixel_data_height == height
+                && this->pixel_data.size() >= pixels);
+            if (this->sw_has_last_draw_hash
+                    && draw_hash == this->sw_last_draw_hash
+                    && size_matches) {
+                this->sw_pixels_dirty = false;
+                break;
+            }
+            this->sw_last_draw_hash = draw_hash;
+            this->sw_has_last_draw_hash = true;
+
             // make sure buffer is big enough
             if (this->pixel_data.size() < pixels) {
                 this->pixel_data.resize(pixels, 0);
@@ -635,6 +704,7 @@ void overlay::SpiceOverlay::render() {
             imgui_sw::paint_imgui(&this->pixel_data[0], width, height, options);
             pixel_data_width = width;
             pixel_data_height = height;
+            this->sw_pixels_dirty = true;
 
             break;
         }

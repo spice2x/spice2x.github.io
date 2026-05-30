@@ -139,6 +139,12 @@ namespace overlay {
         OverlayRenderer renderer;
         float total_elapsed = 0.f;
 
+        // set to true by the SOFTWARE renderer when the pixel buffer was updated
+        // in the most recent render() call. Allows the configurator's WM_PAINT
+        // driver to skip its full-window InvalidateRect on idle frames where the
+        // ImGui draw data is bitwise-identical to the previous frame.
+        bool sw_pixels_dirty = false;
+
     private:
 
         HWND hWnd = nullptr;
@@ -159,6 +165,8 @@ namespace overlay {
         std::vector<uint32_t> pixel_data;
         size_t pixel_data_width = 0;
         size_t pixel_data_height = 0;
+        uint64_t sw_last_draw_hash = 0;
+        bool sw_has_last_draw_hash = false;
 
         std::vector<std::unique_ptr<Window>> windows;
 

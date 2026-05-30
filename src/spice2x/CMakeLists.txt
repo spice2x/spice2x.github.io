@@ -764,7 +764,7 @@ set(SOURCE_FILES ${SOURCE_FILES} launcher/options.h launcher/options.cpp)
 set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.rc)
 add_executable(spicetools_cfg WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg
-        PUBLIC ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
         PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 target_link_libraries(spicetools_cfg PUBLIC winscard)
 set_target_properties(spicetools_cfg PROPERTIES PREFIX "")
@@ -782,7 +782,7 @@ set(SOURCE_FILES ${SOURCE_FILES} launcher/options.h launcher/options.cpp)
 set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.rc)
 add_executable(spicetools_cfg_linux WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg_linux
-        PUBLIC ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
         PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
 set_target_properties(spicetools_cfg_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg_linux PROPERTIES OUTPUT_NAME "spicecfg_linux")
