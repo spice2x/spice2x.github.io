@@ -495,6 +495,9 @@ LRESULT CALLBACK cfg::ConfiguratorWindow::window_proc(HWND hWnd, UINT uMsg, WPAR
         case WM_SYSKEYDOWN:
         case WM_KEYUP:
         case WM_SYSKEYUP: {
+            if (wParam == VK_F4) {
+                return DefWindowProc(hWnd, uMsg, wParam, lParam);
+            }
             const bool down = (uMsg == WM_KEYDOWN) || (uMsg == WM_SYSKEYDOWN);
             auto &io = ImGui::GetIO();
             const ImGuiKey key = vk_to_imgui_key(wParam);
