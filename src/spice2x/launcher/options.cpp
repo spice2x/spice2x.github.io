@@ -1941,12 +1941,11 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // DownmixAudioToStereo
-        .title = "Downmix Surround Audio to Stereo",
-        .name = "downmixstereo",
+        .title = "WASAPI Stereo Downmix",
+        .name = "downmix",
         .desc = "Downmixes multi-channel (surround) audio output to stereo.\n\n"
-            "Default: off (let the game output its native channel layout).\n\n"
-            "Check this to claim surround formats are supported on stereo-only devices and "
-            "transparently mix all channels (except subwoofer) down into the front speakers.",
+            "Check this to always pretend that your audio device supports surround, "
+            "but transparently mix all channels (except subwoofer) down into the front speakers.",
         .type = OptionType::Bool,
         .category = "Audio",
     },

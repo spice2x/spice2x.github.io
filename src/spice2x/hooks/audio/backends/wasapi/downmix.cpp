@@ -42,6 +42,23 @@ namespace hooks::audio {
             this->build_layout_mix(game_format);
         }
 
+        // scale each side so its gains sum to 1.0. this averages the contributing channels
+        // instead of summing them, which keeps the result from clipping no matter how many
+        // channels fold into one speaker.
+        auto normalize = [](std::vector<Contribution> &mix) {
+            float total = 0.0f;
+            for (const auto &c : mix) {
+                total += c.gain;
+            }
+            if (total > 0.0f) {
+                for (auto &c : mix) {
+                    c.gain /= total;
+                }
+            }
+        };
+        normalize(this->left_mix);
+        normalize(this->right_mix);
+
         make_stereo_format(game_format, stereo_out);
     }
 
