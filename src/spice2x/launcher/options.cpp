@@ -1940,6 +1940,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Audio (Hacks)",
     },
     {
+        // DownmixAudioToStereo
+        .title = "Downmix Surround Audio to Stereo",
+        .name = "downmixstereo",
+        .desc = "Downmixes multi-channel (surround) audio output to stereo.\n\n"
+            "Default: off (let the game output its native channel layout).\n\n"
+            "Check this to claim surround formats are supported on stereo-only devices and "
+            "transparently mix all channels (except subwoofer) down into the front speakers.",
+        .type = OptionType::Bool,
+        .category = "Audio",
+    },
+    {
         // DelayBy5Seconds
         .title = "Delay by 5 Seconds (DEPRECATED - use -sleepduration instead)",
         .name = "sleep",

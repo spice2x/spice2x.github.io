@@ -3,6 +3,10 @@
 #include "handle.h"
 #include "bi2x_hook.h"
 #include <unordered_map>
+
+#include <ks.h>
+#include <ksmedia.h>
+
 #include "cfg/configurator.h"
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
@@ -672,5 +676,19 @@ namespace games::gitadora {
 
 #endif
 
+    }
+
+    void fix_audio_channel_mask(WAVEFORMATEX *format) {
+        if (!format || format->wFormatTag != WAVE_FORMAT_EXTENSIBLE) {
+            return;
+        }
+
+        auto ext = reinterpret_cast<WAVEFORMATEXTENSIBLE *>(format);
+
+        // fix the legacy 7.1 channel mask to the modern surround layout
+        // makes it more compatible with modern audio cards
+        if (ext->dwChannelMask == KSAUDIO_SPEAKER_7POINT1) {
+            ext->dwChannelMask = KSAUDIO_SPEAKER_7POINT1_SURROUND;
+        }
     }
 }

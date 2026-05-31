@@ -417,7 +417,6 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/nost/poke.cpp
         games/gitadora/gitadora.cpp
         games/gitadora/asio.cpp
-        games/gitadora/audio_downmix.cpp
         games/gitadora/io.cpp
         games/gitadora/handle.cpp
         games/gitadora/j32d.cpp
@@ -505,6 +504,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/audio/backends/mmdevice/device_enumerator.cpp
         hooks/audio/backends/wasapi/audio_client.cpp
         hooks/audio/backends/wasapi/audio_render_client.cpp
+        hooks/audio/backends/wasapi/downmix.cpp
         hooks/audio/backends/wasapi/dummy_audio_client.cpp
         hooks/audio/backends/wasapi/dummy_audio_clock.cpp
         hooks/audio/backends/wasapi/dummy_audio_render_client.cpp

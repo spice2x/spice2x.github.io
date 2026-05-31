@@ -1092,6 +1092,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_DisableVolumeHook].value_bool()) {
         hooks::audio::VOLUME_HOOK_ENABLED = false;
     }
+    if (options[launcher::Options::DownmixAudioToStereo].value_bool()) {
+        hooks::audio::DOWNMIX_TO_STEREO = true;
+    }
 
     if (options[launcher::Options::AudioBackend].is_active()) {
         auto &name = options[launcher::Options::AudioBackend].value_text();

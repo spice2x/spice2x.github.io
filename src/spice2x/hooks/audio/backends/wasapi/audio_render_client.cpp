@@ -53,10 +53,10 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::GetBuffer(UINT32 NumFramesR
         return S_OK;
     }
 
-    // gitadora arena downmix: reserve the real (stereo) device buffer, but hand the game a
+    // surround downmix: reserve the real (stereo) device buffer, but hand the game a
     // multi-channel scratch buffer that we downmix on release
-    if (this->client->gfdm_downmix.enabled) {
-        CHECK_RESULT(this->client->gfdm_downmix.get_buffer(pReal, NumFramesRequested, ppData));
+    if (this->client->downmix.enabled) {
+        CHECK_RESULT(this->client->downmix.get_buffer(pReal, NumFramesRequested, ppData));
     }
 
     // call original
@@ -83,10 +83,10 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::ReleaseBuffer(UINT32 NumFra
         return S_OK;
     }
 
-    // gitadora arena downmix: write the chosen source channels of the game's multi-channel
+    // surround downmix: write the chosen source channels of the game's multi-channel
     // scratch buffer into the real stereo device buffer, then release the device buffer
-    if (this->client->gfdm_downmix.enabled) {
-        CHECK_RESULT(this->client->gfdm_downmix.release_buffer(pReal, NumFramesWritten, dwFlags));
+    if (this->client->downmix.enabled) {
+        CHECK_RESULT(this->client->downmix.release_buffer(pReal, NumFramesWritten, dwFlags));
     }
 
     // fix for audio pop effect
