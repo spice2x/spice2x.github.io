@@ -8,6 +8,8 @@
 #include "hooks/audio/audio_private.h"
 #include "util/logging.h"
 
+#include "games/gitadora/audio_downmix.h"
+
 #include "audio_render_client.h"
 
 // {1FBC8530-AF3E-4128-B418-115DE72F76B6}
@@ -93,4 +95,9 @@ struct WrappedIAudioClient : IAudioClient3 {
     AudioBackend *const backend;
     bool exclusive_mode = false;
     int frame_size = 0;
+
+    // gitadora arena: 7.1 -> stereo downmix (side channels piped to front speakers).
+    // the real device is opened as stereo while the game keeps writing multi-channel
+    // audio into a scratch buffer that we downmix inside the render client.
+    games::gitadora::ArenaDownmix gfdm_downmix;
 };

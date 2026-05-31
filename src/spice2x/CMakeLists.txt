@@ -417,6 +417,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/nost/poke.cpp
         games/gitadora/gitadora.cpp
         games/gitadora/asio.cpp
+        games/gitadora/audio_downmix.cpp
         games/gitadora/io.cpp
         games/gitadora/handle.cpp
         games/gitadora/j32d.cpp

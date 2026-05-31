@@ -4,6 +4,7 @@
 #include <ksmedia.h>
 
 #include "avs/game.h"
+#include "games/gitadora/gitadora.h"
 #include "hooks/audio/audio.h"
 #include "hooks/audio/util.h"
 #include "hooks/audio/backends/wasapi/util.h"
@@ -145,13 +146,27 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
         fix_rec_format(const_cast<WAVEFORMATEX *>(pFormat));
     }
 
+    // gitadora arena: optionally downmix multi-channel output to stereo. the real device is
+    // opened as stereo (storage below) while the game keeps writing its multi-channel format.
+    WAVEFORMATEXTENSIBLE stereo_storage = {};
+    const WAVEFORMATEX *device_format = pFormat;
+
+    if (games::gitadora::is_arena_model()) {
+        if (games::gitadora::ArenaDownmix::is_downmix_required(pFormat)) {
+            this->gfdm_downmix.setup(pFormat, &stereo_storage);
+            device_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
+        } else {
+            games::gitadora::ArenaDownmix::fix_legacy_mask(const_cast<WAVEFORMATEX *>(pFormat));
+        }
+    }
+
     // verbose output
     log_info("audio::wasapi", "IAudioClient::Initialize hook hit");
     log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(ShareMode));
     log_info("audio::wasapi", "... StreamFlags       : {}", stream_flags_str(StreamFlags));
     log_info("audio::wasapi", "... hnsBufferDuration : {}", hnsBufferDuration);
     log_info("audio::wasapi", "... hnsPeriodicity    : {}", hnsPeriodicity);
-    print_format(pFormat);
+    print_format(device_format);
 
     if (this->backend) {
         SAFE_CALL("AudioBackend", "on_initialize", this->backend->on_initialize(
@@ -173,7 +188,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     // check for exclusive mode
     if (ShareMode == AUDCLNT_SHAREMODE_EXCLUSIVE) {
         this->exclusive_mode = true;
-        this->frame_size = pFormat->nChannels * (pFormat->wBitsPerSample / 8);
+        this->frame_size = device_format->nChannels * (device_format->wBitsPerSample / 8);
     }
 
     // call next
@@ -182,7 +197,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
             StreamFlags,
             hnsBufferDuration,
             hnsPeriodicity,
-            pFormat,
+            device_format,
             AudioSessionGuid);
 
     // check for failure
@@ -192,7 +207,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     }
 
     log_info("audio::wasapi", "IAudioClient::Initialize success, hr={}", FMT_HRESULT(ret));
-    copy_wave_format(&hooks::audio::FORMAT, pFormat);
+    copy_wave_format(&hooks::audio::FORMAT, device_format);
 
     return ret;
 }
@@ -272,6 +287,18 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
     // check if format needs to be fixed
     if (avs::game::is_model("REC") && pFormat->nChannels > 2) {
         fix_rec_format(const_cast<WAVEFORMATEX *>(pFormat));
+    }
+
+    if (games::gitadora::is_arena_model()) {
+        auto format = const_cast<WAVEFORMATEX *>(pFormat);
+
+        // claim the multi-channel format is supported even if the device only does stereo;
+        // we transparently downmix to stereo in the render client (front + rear -> front)
+        if (games::gitadora::ArenaDownmix::is_downmix_required(format)) {
+            return S_OK;
+        }
+
+        games::gitadora::ArenaDownmix::fix_legacy_mask(format);
     }
 
     if (this->backend) {
