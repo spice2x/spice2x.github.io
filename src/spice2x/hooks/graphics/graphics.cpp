@@ -39,7 +39,6 @@ struct CaptureData {
 
 HWND TDJ_SUBSCREEN_WINDOW = nullptr;
 HWND SDVX_SUBSCREEN_WINDOW = nullptr;
-static HWND GFDM_MAIN_WINDOW = nullptr;
 HWND GFDM_SUBSCREEN_WINDOW = nullptr;
 static HWND GFDM_LEFT_WINDOW = nullptr;
 static HWND GFDM_RIGHT_WINDOW = nullptr;
@@ -146,8 +145,7 @@ static const char *gitadora_window_name_for_hwnd(HWND hWnd) {
     if (hWnd == nullptr) {
         return nullptr;
     }
-    if (hWnd == GFDM_MAIN_WINDOW ||
-        (GRAPHICS_HOOKED_WINDOW.has_value() && hWnd == GRAPHICS_HOOKED_WINDOW.value())) {
+    if (GRAPHICS_HOOKED_WINDOW.has_value() && hWnd == GRAPHICS_HOOKED_WINDOW.value()) {
         return "GITADORA";
     }
     if (hWnd == GFDM_LEFT_WINDOW) {
@@ -176,9 +174,7 @@ static bool gitadora_should_block_game_window_placement(HWND hWnd) {
 }
 
 static void gitadora_remember_window(HWND hWnd, const std::string &window_name) {
-    if (window_name == "GITADORA") {
-        GFDM_MAIN_WINDOW = hWnd;
-    } else if (window_name == "LEFT") {
+    if (window_name == "LEFT") {
         GFDM_LEFT_WINDOW = hWnd;
     } else if (window_name == "RIGHT") {
         GFDM_RIGHT_WINDOW = hWnd;
@@ -592,7 +588,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     // only hook touch window if multiple windows are allowed
-    if (is_gfdm_window && !is_gfdm_sub_window) {
+    if (gfdm_window_name == "LEFT" || gfdm_window_name == "RIGHT") {
         gitadora_remember_window(result, gfdm_window_name);
     }
     if (is_gfdm_sub_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
