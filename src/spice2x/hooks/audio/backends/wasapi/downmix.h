@@ -23,7 +23,8 @@ namespace hooks::audio {
     //   FrontOnly / RearOnly / SideOnly - keep only that group of channels, routed to their side
     //   AC4       - AC-4 stereo downmix coefficients (ETSI TS 103 190-1 §6.2.17): front left/right
     //               pass at 0 dB, center and surrounds fold in at -3 dB, LFE dropped
-    //   Normalize - every channel at unity gain (center to both sides), LFE dropped
+    //   Normalize - every channel folded in (center to both sides) with each output side averaged
+    //               so its channels are equally loud, LFE dropped
     struct Downmix {
 
         // a source channel routed into one output speaker at the given gain
@@ -101,6 +102,17 @@ namespace hooks::audio {
 
         // build the mix from the source speaker layout for the selected algorithm
         void build_layout_mix(const WAVEFORMATEX *game_format);
+
+        // per-algorithm builders, each filling left_mix / right_mix from the speaker mask
+        void build_ac4_mix(DWORD mask, int channels);
+        void build_extract_mix(DWORD mask, int channels, DWORD keep);
+        void build_normalize_mix(DWORD mask, int channels);
+
+        // fallback for streams without a speaker mask: fold interleaved L/R pairs at `gain`
+        void build_pairs_mix(int channels, float gain);
+
+        // append one source channel to the output side(s) matching its speaker, at `gain`
+        void add_channel(int channel, DWORD speaker, float gain);
 
         // source channels summed into each output speaker
         std::vector<Contribution> left_mix;

@@ -1947,9 +1947,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "downmix",
         .desc = "Downmixes multi-channel (surround) audio output to stereo.\n\n"
             "Note that in all of the options, subwoofer (LFE) is dropped.\n\n"
-            "ac4 (recommended): Use AC-4 algorithm (ETSI TS 103 190-1) - front left/right pass\n\n"
-            "normalize: all channels equally loud.\n\n"
+            "ac4 (recommended): AC-4 algorithm (ETSI TS 103 190-1) - front left/right pass "
             "through, center and surrounds fold in at -3 dB.\n\n"
+            "normalize: all channels equally loud.\n\n"
             "front: Front channels only.\n\n"
             "rear: Rear channels only.\n\n"
             "side: Side channels only.",

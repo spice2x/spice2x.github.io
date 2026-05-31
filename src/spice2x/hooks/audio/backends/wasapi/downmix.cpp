@@ -13,6 +13,38 @@
 
 namespace hooks::audio {
 
+    namespace {
+
+        constexpr float ATT_3DB = 0.70710678f;
+
+        // speakers routed to the left/right output; anything else (center) feeds both sides
+        constexpr DWORD LEFT_SPEAKERS = SPEAKER_FRONT_LEFT | SPEAKER_BACK_LEFT | SPEAKER_SIDE_LEFT
+            | SPEAKER_FRONT_LEFT_OF_CENTER | SPEAKER_TOP_FRONT_LEFT | SPEAKER_TOP_BACK_LEFT;
+        constexpr DWORD RIGHT_SPEAKERS = SPEAKER_FRONT_RIGHT | SPEAKER_BACK_RIGHT | SPEAKER_SIDE_RIGHT
+            | SPEAKER_FRONT_RIGHT_OF_CENTER | SPEAKER_TOP_FRONT_RIGHT | SPEAKER_TOP_BACK_RIGHT;
+
+        // the speaker mask is only present on WAVE_FORMAT_EXTENSIBLE formats
+        DWORD read_channel_mask(const WAVEFORMATEX *fmt) {
+            if (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE
+                    && fmt->cbSize >= sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)) {
+                return reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(fmt)->dwChannelMask;
+            }
+            return 0;
+        }
+
+        // call visit(channel_index, speaker_bit) for each present speaker, in channel order
+        template <typename F>
+        void for_each_speaker(DWORD mask, int channels, F &&visit) {
+            int channel = 0;
+            for (int bit = 0; bit < 18 && channel < channels; bit++) {
+                const DWORD speaker = 1u << bit;
+                if (mask & speaker) {
+                    visit(channel++, speaker);
+                }
+            }
+        }
+    }
+
     // read one sample at `p` as a normalized float in [-1, 1]
     static inline float read_sample(const BYTE *p, int bytes, bool is_float) {
         if (is_float) {
@@ -147,85 +179,93 @@ namespace hooks::audio {
         return ret;
     }
 
+    void Downmix::add_channel(int channel, DWORD speaker, float gain) {
+        if (speaker & LEFT_SPEAKERS) {
+            this->left_mix.push_back({ channel, gain });
+        } else if (speaker & RIGHT_SPEAKERS) {
+            this->right_mix.push_back({ channel, gain });
+        } else { // center: feed both sides
+            this->left_mix.push_back({ channel, gain });
+            this->right_mix.push_back({ channel, gain });
+        }
+    }
+
+    // AC-4 stereo downmix (ETSI TS 103 190-1): front pair at unity, everything else -3 dB, LFE dropped
+    void Downmix::build_ac4_mix(DWORD mask, int channels) {
+        for_each_speaker(mask, channels, [&](int ch, DWORD speaker) {
+            if (speaker == SPEAKER_LOW_FREQUENCY) {
+                return;
+            }
+            const bool front_pair = speaker & (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT);
+            this->add_channel(ch, speaker, front_pair ? 1.0f : ATT_3DB);
+        });
+    }
+
+    // keep only the channels in `keep` (front/rear/side), each at unity gain
+    void Downmix::build_extract_mix(DWORD mask, int channels, DWORD keep) {
+        for_each_speaker(mask, channels, [&](int ch, DWORD speaker) {
+            if (speaker & keep) {
+                this->add_channel(ch, speaker, 1.0f);
+            }
+        });
+    }
+
+    // keep every channel (LFE dropped), then average each side so its gains sum to unity
+    void Downmix::build_normalize_mix(DWORD mask, int channels) {
+        for_each_speaker(mask, channels, [&](int ch, DWORD speaker) {
+            if (speaker != SPEAKER_LOW_FREQUENCY) {
+                this->add_channel(ch, speaker, 1.0f);
+            }
+        });
+
+        for (auto *mix : { &this->left_mix, &this->right_mix }) {
+            if (!mix->empty()) {
+                const float gain = 1.0f / mix->size();
+                for (auto &c : *mix) {
+                    c.gain = gain;
+                }
+            }
+        }
+    }
+
+    // fallback when no speaker mask is present: fold interleaved L/R pairs (even->left, odd->right)
+    void Downmix::build_pairs_mix(int channels, float gain) {
+        for (int ch = 0; ch < channels; ch++) {
+            (((ch & 1) == 0) ? this->left_mix : this->right_mix).push_back({ ch, gain });
+        }
+    }
+
     void Downmix::build_layout_mix(const WAVEFORMATEX *game_format) {
-
         const int channels = game_format->nChannels;
+        const DWORD mask = read_channel_mask(game_format);
 
-        constexpr float att = 0.70710678f; // -3 dB
-
-        // speakers routed to the left/right output; anything else (center) feeds both sides
-        constexpr DWORD left_speakers = SPEAKER_FRONT_LEFT | SPEAKER_BACK_LEFT | SPEAKER_SIDE_LEFT
-            | SPEAKER_FRONT_LEFT_OF_CENTER | SPEAKER_TOP_FRONT_LEFT | SPEAKER_TOP_BACK_LEFT;
-        constexpr DWORD right_speakers = SPEAKER_FRONT_RIGHT | SPEAKER_BACK_RIGHT | SPEAKER_SIDE_RIGHT
-            | SPEAKER_FRONT_RIGHT_OF_CENTER | SPEAKER_TOP_FRONT_RIGHT | SPEAKER_TOP_BACK_RIGHT;
-
-        // speakers kept by the extract-only modes; the other algorithms keep every channel.
-        // "front" is the front left/right pair only, not the center speakers.
-        DWORD keep = ~0u;
-        switch (this->algorithm) {
-            case DownmixAlgorithm::FrontOnly:
-                keep = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
-                break;
-            case DownmixAlgorithm::RearOnly:
-                keep = SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT | SPEAKER_BACK_CENTER;
-                break;
-            case DownmixAlgorithm::SideOnly:
-                keep = SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT;
-                break;
-            default:
-                break;
-        }
-
-        // route one source channel into the output side(s) for its speaker at the given gain
-        auto route = [&](int ch, DWORD speaker, float gain) {
-            if (speaker & left_speakers) {
-                this->left_mix.push_back({ ch, gain });
-            } else if (speaker & right_speakers) {
-                this->right_mix.push_back({ ch, gain });
-            } else { // center: feed both sides
-                this->left_mix.push_back({ ch, gain });
-                this->right_mix.push_back({ ch, gain });
-            }
-        };
-
-        // the speaker mask is only present on WAVE_FORMAT_EXTENSIBLE formats
-        DWORD mask = 0;
-        if (game_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE
-                && game_format->cbSize >= sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)) {
-            mask = reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(game_format)->dwChannelMask;
-        }
-
-        // without a mask the layout is unknown: fold interleaved L/R pairs. AC-4 attenuates by
-        // -3 dB, the other algorithms keep unity gain.
+        // without a mask the layout is unknown: extract/normalize have nothing to act on, so all
+        // algorithms fall back to folding L/R pairs (AC-4 still attenuates by -3 dB)
         if (mask == 0) {
-            const float gain = (this->algorithm == DownmixAlgorithm::AC4) ? att : 1.0f;
-            for (int ch = 0; ch < channels; ch++) {
-                (((ch & 1) == 0) ? this->left_mix : this->right_mix).push_back({ ch, gain });
-            }
+            this->build_pairs_mix(channels,
+                this->algorithm == DownmixAlgorithm::AC4 ? ATT_3DB : 1.0f);
             return;
         }
 
-        // each set speaker bit, in order, maps to the next source channel
-        int channel = 0;
-        for (int bit = 0; bit < 18 && channel < channels; bit++) {
-            const DWORD speaker = 1u << bit;
-            if ((mask & speaker) == 0) {
-                continue;
-            }
-
-            const int ch = channel++;
-
-            // LFE is always dropped; extract modes skip channels outside their group
-            if (speaker == SPEAKER_LOW_FREQUENCY || (speaker & keep) == 0) {
-                continue;
-            }
-
-            // AC-4 keeps the front pair at unity and attenuates everything else by -3 dB
-            const bool front_pair = speaker & (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT);
-            const float gain =
-                (this->algorithm == DownmixAlgorithm::AC4 && !front_pair) ? att : 1.0f;
-
-            route(ch, speaker, gain);
+        switch (this->algorithm) {
+            case DownmixAlgorithm::FrontOnly:
+                this->build_extract_mix(mask, channels,
+                    SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT);
+                break;
+            case DownmixAlgorithm::RearOnly:
+                this->build_extract_mix(mask, channels,
+                    SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT | SPEAKER_BACK_CENTER);
+                break;
+            case DownmixAlgorithm::SideOnly:
+                this->build_extract_mix(mask, channels,
+                    SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT);
+                break;
+            case DownmixAlgorithm::Normalize:
+                this->build_normalize_mix(mask, channels);
+                break;
+            case DownmixAlgorithm::AC4:
+                this->build_ac4_mix(mask, channels);
+                break;
         }
     }
 
