@@ -50,6 +50,18 @@ namespace hooks::audio {
             return std::nullopt;
         }
 
+        // human-readable name of an algorithm, for logging.
+        static const char *algorithm_name(DownmixAlgorithm algorithm) {
+            switch (algorithm) {
+                case DownmixAlgorithm::FrontOnly: return "front";
+                case DownmixAlgorithm::RearOnly: return "rear";
+                case DownmixAlgorithm::SideOnly: return "side";
+                case DownmixAlgorithm::AC4: return "ac4";
+                case DownmixAlgorithm::Normalize: return "normalize";
+                default: return "unknown";
+            }
+        }
+
         // whether the downmix is active for the current stream
         bool enabled = false;
 
