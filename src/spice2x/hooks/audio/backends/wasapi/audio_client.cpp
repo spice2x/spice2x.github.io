@@ -42,17 +42,25 @@ static void fix_rec_format(WAVEFORMATEX *pFormat) {
     pFormat->nAvgBytesPerSec = pFormat->nSamplesPerSec * pFormat->nBlockAlign;
 }
 
-// decide whether the given multi-channel format should be downmixed to stereo using the generic
-// AC-4 algorithm. enabled by the user (-downmixstereo) or by gitadora arena two-channel mode.
-static bool resolve_downmix(const WAVEFORMATEX *format) {
+// decide whether the given multi-channel format should be downmixed to stereo and which algorithm
+// to use. an explicit user selection (-downmix) takes precedence; otherwise gitadora arena
+// two-channel mode defaults to the AC-4 algorithm.
+static std::optional<hooks::audio::DownmixAlgorithm> resolve_downmix(const WAVEFORMATEX *format) {
     if (format == nullptr
             || format->nChannels <= 2
             || format->wFormatTag != WAVE_FORMAT_EXTENSIBLE) {
-        return false;
+        return std::nullopt;
     }
 
-    return hooks::audio::DOWNMIX_TO_STEREO
-        || (games::gitadora::is_arena_model() && games::gitadora::TWOCHANNEL);
+    if (hooks::audio::DOWNMIX_ALGORITHM.has_value()) {
+        return hooks::audio::DOWNMIX_ALGORITHM;
+    }
+
+    if (games::gitadora::is_arena_model() && games::gitadora::TWOCHANNEL) {
+        return hooks::audio::DownmixAlgorithm::AC4;
+    }
+
+    return std::nullopt;
 }
 
 IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
@@ -164,8 +172,8 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     WAVEFORMATEXTENSIBLE stereo_storage = {};
     const WAVEFORMATEX *device_format = pFormat;
 
-    if (resolve_downmix(pFormat)) {
-        this->downmix.setup(pFormat, &stereo_storage);
+    if (auto algorithm = resolve_downmix(pFormat)) {
+        this->downmix.setup(pFormat, &stereo_storage, *algorithm);
         device_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
         log_info("audio::wasapi", "downmix enabled: {} channels -> 2 channels", pFormat->nChannels);
     } else if (games::gitadora::is_arena_model()) {

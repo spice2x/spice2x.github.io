@@ -1079,7 +1079,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "2ch",
         .desc = "Attempt to reduce audio channels down to just two channels.\n\n"
             "Arena Model: downmixes 7.1 to stereo using the AC-4 stereo downmix coefficients "
-            "(ETSI TS 103 190-1), the same algorithm as the WASAPI Stereo Downmix option.",
+            "(ETSI TS 103 190-1). The WASAPI Stereo Downmix option, if set, overrides this "
+            "algorithm.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
@@ -1945,13 +1946,22 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "WASAPI Stereo Downmix",
         .name = "downmix",
         .desc = "Downmixes multi-channel (surround) audio output to stereo.\n\n"
-            "Check this to always pretend that your audio device supports surround, "
-            "but transparently mix all channels down into the front speakers.\n\n"
-            "Uses the AC-4 stereo downmix coefficients (ETSI TS 103 190-1): front left/right "
-            "pass through, center and surrounds fold in at -3 dB, and the subwoofer (LFE) is "
-            "dropped.",
-        .type = OptionType::Bool,
+            "Note that in all of the options, subwoofer (LFE) is dropped.\n\n"
+            "ac4 (recommended): Use AC-4 algorithm (ETSI TS 103 190-1) - front left/right pass\n\n"
+            "normalize: all channels equally loud.\n\n"
+            "through, center and surrounds fold in at -3 dB.\n\n"
+            "front: Front channels only.\n\n"
+            "rear: Rear channels only.\n\n"
+            "side: Side channels only.",
+        .type = OptionType::Enum,
         .category = "Audio",
+        .elements = {
+            {"ac4", "AC-4 (ETSI TS 103 190-1)"},
+            {"normalize", "Normalize (drop LFE)"},
+            {"front", "Front channels only"},
+            {"rear", "Rear channels only"},
+            {"side", "Side channels only"},
+        },
     },
     {
         // VolumeBoost

@@ -13,16 +13,91 @@
 
 namespace hooks::audio {
 
-    void Downmix::setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out) {
+    // read one sample at `p` as a normalized float in [-1, 1]
+    static inline float read_sample(const BYTE *p, int bytes, bool is_float) {
+        if (is_float) {
+            float v;
+            memcpy(&v, p, sizeof(float));
+            return v;
+        }
+        switch (bytes) {
+            case 2: {
+                int16_t v;
+                memcpy(&v, p, sizeof(v));
+                return v * (1.0f / 32768.0f);
+            }
+            case 3: {
+                int32_t v = p[0] | (p[1] << 8) | (p[2] << 16);
+                if (v & 0x800000) {
+                    v |= ~0xFFFFFF; // sign extend
+                }
+                return v * (1.0f / 8388608.0f);
+            }
+            case 4: {
+                int32_t v;
+                memcpy(&v, p, sizeof(v));
+                return (float) (v * (1.0 / 2147483648.0));
+            }
+            default:
+                return 0.0f;
+        }
+    }
+
+    // write the normalized float `value` to the sample at `p`, clamping to the format's range
+    static inline void write_sample(BYTE *p, int bytes, bool is_float, float value) {
+        if (is_float) {
+            float v = std::clamp(value, -1.0f, 1.0f);
+            memcpy(p, &v, sizeof(v));
+            return;
+        }
+        switch (bytes) {
+            case 2: {
+                int16_t v = (int16_t) std::clamp(
+                    (int) std::lround(value * 32768.0f), -32768, 32767);
+                memcpy(p, &v, sizeof(v));
+                break;
+            }
+            case 3: {
+                int32_t v = (int32_t) std::clamp<int64_t>(
+                    std::llround((double) value * 8388608.0), -8388608, 8388607);
+                p[0] = v & 0xFF;
+                p[1] = (v >> 8) & 0xFF;
+                p[2] = (v >> 16) & 0xFF;
+                break;
+            }
+            case 4: {
+                int32_t v = (int32_t) std::clamp<int64_t>(
+                    std::llround((double) value * 2147483648.0), INT32_MIN, INT32_MAX);
+                memcpy(p, &v, sizeof(v));
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    void Downmix::setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out,
+            DownmixAlgorithm algorithm) {
         this->enabled = true;
+        this->algorithm = algorithm;
         this->bytes_per_sample = game_format->wBitsPerSample / 8;
         this->game_frame_size = game_format->nChannels * this->bytes_per_sample;
 
-        if (this->bytes_per_sample != 2) {
+        // KSDATAFORMAT_SUBTYPE_IEEE_FLOAT has Data1 == 3 (matches apply_gain detection)
+        this->is_float = game_format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
+            || (game_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE
+                && reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(game_format)
+                    ->SubFormat.Data1 == 0x00000003);
+
+        // supported: 16/24/32-bit integer PCM and 32-bit float; anything else mixes to silence
+        const bool supported = this->is_float
+            ? this->bytes_per_sample == 4
+            : (this->bytes_per_sample >= 2 && this->bytes_per_sample <= 4);
+        if (!supported) {
             log_fatal(
                 "audio::downmix",
-                "unsupported sample format ({}-bit), downmix will output silence",
-                game_format->wBitsPerSample);
+                "unsupported sample format ({}-bit {}), downmix will output silence",
+                game_format->wBitsPerSample, this->is_float ? "float" : "int");
         }
 
         this->left_mix.clear();
@@ -76,18 +151,42 @@ namespace hooks::audio {
 
         const int channels = game_format->nChannels;
 
-        // AC-4 stereo downmix coefficients (ETSI TS 103 190-1 §6.2.17, spec default values):
-        //   front left/right -> same side at  0 dB
-        //   center           -> both sides at -3 dB
-        //   surrounds        -> same side at  -3 dB
-        //   LFE              -> dropped (-inf dB)
         constexpr float att = 0.70710678f; // -3 dB
 
-        // speaker positions that fold into one side at -3 dB
-        constexpr DWORD surround_left = SPEAKER_BACK_LEFT | SPEAKER_SIDE_LEFT
+        // speakers routed to the left/right output; anything else (center) feeds both sides
+        constexpr DWORD left_speakers = SPEAKER_FRONT_LEFT | SPEAKER_BACK_LEFT | SPEAKER_SIDE_LEFT
             | SPEAKER_FRONT_LEFT_OF_CENTER | SPEAKER_TOP_FRONT_LEFT | SPEAKER_TOP_BACK_LEFT;
-        constexpr DWORD surround_right = SPEAKER_BACK_RIGHT | SPEAKER_SIDE_RIGHT
+        constexpr DWORD right_speakers = SPEAKER_FRONT_RIGHT | SPEAKER_BACK_RIGHT | SPEAKER_SIDE_RIGHT
             | SPEAKER_FRONT_RIGHT_OF_CENTER | SPEAKER_TOP_FRONT_RIGHT | SPEAKER_TOP_BACK_RIGHT;
+
+        // speakers kept by the extract-only modes; the other algorithms keep every channel.
+        // "front" is the front left/right pair only, not the center speakers.
+        DWORD keep = ~0u;
+        switch (this->algorithm) {
+            case DownmixAlgorithm::FrontOnly:
+                keep = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
+                break;
+            case DownmixAlgorithm::RearOnly:
+                keep = SPEAKER_BACK_LEFT | SPEAKER_BACK_RIGHT | SPEAKER_BACK_CENTER;
+                break;
+            case DownmixAlgorithm::SideOnly:
+                keep = SPEAKER_SIDE_LEFT | SPEAKER_SIDE_RIGHT;
+                break;
+            default:
+                break;
+        }
+
+        // route one source channel into the output side(s) for its speaker at the given gain
+        auto route = [&](int ch, DWORD speaker, float gain) {
+            if (speaker & left_speakers) {
+                this->left_mix.push_back({ ch, gain });
+            } else if (speaker & right_speakers) {
+                this->right_mix.push_back({ ch, gain });
+            } else { // center: feed both sides
+                this->left_mix.push_back({ ch, gain });
+                this->right_mix.push_back({ ch, gain });
+            }
+        };
 
         // the speaker mask is only present on WAVE_FORMAT_EXTENSIBLE formats
         DWORD mask = 0;
@@ -96,10 +195,12 @@ namespace hooks::audio {
             mask = reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(game_format)->dwChannelMask;
         }
 
-        // without a mask, assume interleaved L/R pairs and fold each pair down at -3 dB
+        // without a mask the layout is unknown: fold interleaved L/R pairs. AC-4 attenuates by
+        // -3 dB, the other algorithms keep unity gain.
         if (mask == 0) {
+            const float gain = (this->algorithm == DownmixAlgorithm::AC4) ? att : 1.0f;
             for (int ch = 0; ch < channels; ch++) {
-                (((ch & 1) == 0) ? this->left_mix : this->right_mix).push_back({ ch, att });
+                (((ch & 1) == 0) ? this->left_mix : this->right_mix).push_back({ ch, gain });
             }
             return;
         }
@@ -112,48 +213,46 @@ namespace hooks::audio {
                 continue;
             }
 
-            if (speaker == SPEAKER_FRONT_LEFT) {
-                this->left_mix.push_back({ channel, 1.0f });
-            } else if (speaker == SPEAKER_FRONT_RIGHT) {
-                this->right_mix.push_back({ channel, 1.0f });
-            } else if (speaker & surround_left) {
-                this->left_mix.push_back({ channel, att });
-            } else if (speaker & surround_right) {
-                this->right_mix.push_back({ channel, att });
-            } else if (speaker != SPEAKER_LOW_FREQUENCY) {
-                // center (or unknown) goes to both speakers; LFE is dropped
-                this->left_mix.push_back({ channel, att });
-                this->right_mix.push_back({ channel, att });
+            const int ch = channel++;
+
+            // LFE is always dropped; extract modes skip channels outside their group
+            if (speaker == SPEAKER_LOW_FREQUENCY || (speaker & keep) == 0) {
+                continue;
             }
 
-            channel++;
+            // AC-4 keeps the front pair at unity and attenuates everything else by -3 dB
+            const bool front_pair = speaker & (SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT);
+            const float gain =
+                (this->algorithm == DownmixAlgorithm::AC4 && !front_pair) ? att : 1.0f;
+
+            route(ch, speaker, gain);
         }
     }
 
     void Downmix::process(BYTE *dst, const BYTE *src, UINT32 frames) const {
+        const int bps = this->bytes_per_sample;
         const int src_stride = this->game_frame_size;
+        const int dst_stride = 2 * bps;
 
-        // we only handle the game's 16-bit PCM samples
-        if (dst == nullptr || src == nullptr || this->bytes_per_sample != 2) {
+        if (dst == nullptr || src == nullptr || bps <= 0) {
             return;
         }
 
-        auto in = reinterpret_cast<const int16_t *>(src);
-        auto out = reinterpret_cast<int16_t *>(dst);
-        const int step = src_stride / 2;
-
         // sum each speaker's source channels into the matching stereo output
-        for (UINT32 i = 0; i < frames; i++, in += step, out += 2) {
+        for (UINT32 i = 0; i < frames; i++) {
+            const BYTE *in = src + (size_t) i * src_stride;
+            BYTE *out = dst + (size_t) i * dst_stride;
+
             float left = 0.0f;
             float right = 0.0f;
             for (const auto &c : this->left_mix) {
-                left += in[c.channel] * c.gain;
+                left += read_sample(in + c.channel * bps, bps, this->is_float) * c.gain;
             }
             for (const auto &c : this->right_mix) {
-                right += in[c.channel] * c.gain;
+                right += read_sample(in + c.channel * bps, bps, this->is_float) * c.gain;
             }
-            out[0] = (int16_t) std::clamp((int) std::lround(left), -32768, 32767);
-            out[1] = (int16_t) std::clamp((int) std::lround(right), -32768, 32767);
+            write_sample(out, bps, this->is_float, left);
+            write_sample(out + bps, bps, this->is_float, right);
         }
     }
 

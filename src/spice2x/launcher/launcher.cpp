@@ -72,6 +72,7 @@
 #include "games/museca/museca.h"
 #include "hooks/avshook.h"
 #include "hooks/audio/audio.h"
+#include "hooks/audio/backends/wasapi/downmix.h"
 #include "hooks/debughook.h"
 #include "hooks/devicehook.h"
 #include "hooks/graphics/nvenc_hook.h"
@@ -1094,8 +1095,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_DisableVolumeHook].value_bool()) {
         hooks::audio::VOLUME_HOOK_ENABLED = false;
     }
-    if (options[launcher::Options::DownmixAudioToStereo].value_bool()) {
-        hooks::audio::DOWNMIX_TO_STEREO = true;
+    if (options[launcher::Options::DownmixAudioToStereo].is_active()) {
+        auto &name = options[launcher::Options::DownmixAudioToStereo].value_text();
+        hooks::audio::DOWNMIX_ALGORITHM = hooks::audio::Downmix::name_to_algorithm(name.c_str());
     }
     if (options[launcher::Options::VolumeBoost].is_active()) {
         const double decibels = std::strtod(

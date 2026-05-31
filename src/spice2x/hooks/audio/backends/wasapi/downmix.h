@@ -1,10 +1,13 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include <windows.h>
 #include <mmreg.h>
 #include <audioclient.h>
+
+#include "hooks/audio/audio.h"
 
 struct IAudioClient;
 struct IAudioRenderClient;
@@ -15,10 +18,12 @@ namespace hooks::audio {
     // game keeps writing its native multi-channel audio into a scratch buffer; on release that
     // buffer is mixed down into the two front channels.
     //
-    // The mix is derived from the source format's speaker mask using the AC-4 stereo downmix
-    // coefficients (ETSI TS 103 190-1 §6.2.17): front left/right pass through at 0 dB, center
-    // folds into both sides at -3 dB, surrounds fold into their own side at -3 dB, and LFE is
-    // dropped.
+    // The mix is derived from the source format's speaker mask according to the selected
+    // DownmixAlgorithm:
+    //   FrontOnly / RearOnly / SideOnly - keep only that group of channels, routed to their side
+    //   AC4       - AC-4 stereo downmix coefficients (ETSI TS 103 190-1 §6.2.17): front left/right
+    //               pass at 0 dB, center and surrounds fold in at -3 dB, LFE dropped
+    //   Normalize - every channel at unity gain (center to both sides), LFE dropped
     struct Downmix {
 
         // a source channel routed into one output speaker at the given gain
@@ -27,8 +32,28 @@ namespace hooks::audio {
             float gain;
         };
 
+        // map an option value (front/rear/side/ac4/normalize) to its algorithm.
+        static std::optional<DownmixAlgorithm> name_to_algorithm(const char *value) {
+            if (_stricmp(value, "front") == 0) {
+                return DownmixAlgorithm::FrontOnly;
+            } else if (_stricmp(value, "rear") == 0) {
+                return DownmixAlgorithm::RearOnly;
+            } else if (_stricmp(value, "side") == 0) {
+                return DownmixAlgorithm::SideOnly;
+            } else if (_stricmp(value, "ac4") == 0) {
+                return DownmixAlgorithm::AC4;
+            } else if (_stricmp(value, "normalize") == 0) {
+                return DownmixAlgorithm::Normalize;
+            }
+
+            return std::nullopt;
+        }
+
         // whether the downmix is active for the current stream
         bool enabled = false;
+
+        // algorithm used to fold the multi-channel audio into stereo
+        DownmixAlgorithm algorithm = DownmixAlgorithm::AC4;
 
         // size in bytes of one frame of the game's multi-channel format
         int game_frame_size = 0;
@@ -36,9 +61,13 @@ namespace hooks::audio {
         // size in bytes of a single sample (per channel)
         int bytes_per_sample = 0;
 
+        // whether samples are IEEE floating point rather than integer PCM
+        bool is_float = false;
+
         // enable the downmix for the given game format and fill stereo_out with the equivalent
         // stereo format to open the real device with.
-        void setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out);
+        void setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out,
+                   DownmixAlgorithm algorithm);
 
         // build the stereo format equivalent to game_format (same sample rate and bit depth).
         static void make_stereo_format(const WAVEFORMATEX *game_format,
@@ -70,7 +99,7 @@ namespace hooks::audio {
 
     private:
 
-        // build the mix from the source speaker layout using the AC-4 coefficients
+        // build the mix from the source speaker layout for the selected algorithm
         void build_layout_mix(const WAVEFORMATEX *game_format);
 
         // source channels summed into each output speaker

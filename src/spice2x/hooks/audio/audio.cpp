@@ -39,7 +39,7 @@ namespace hooks::audio {
     // public globals
     bool ENABLED = true;
     bool VOLUME_HOOK_ENABLED = true;
-    bool DOWNMIX_TO_STEREO = false;
+    std::optional<DownmixAlgorithm> DOWNMIX_ALGORITHM = std::nullopt;
     float VOLUME_BOOST = 1.0f;
     bool USE_DUMMY = false;
     WAVEFORMATEXTENSIBLE FORMAT {};
