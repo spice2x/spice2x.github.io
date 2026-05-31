@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string>
 #include <mutex>
+#include <stddef.h>
 
 #include "avs/core.h"
 #include "avs/ea3.h"
@@ -18,12 +19,14 @@
 
 // hooking related stuff
 static decltype(GetAdaptersInfo) *GetAdaptersInfo_orig = nullptr;
+static decltype(GetIpAddrTable) *GetIpAddrTable_orig = nullptr;
 static decltype(bind) *bind_orig = nullptr;
 
 // settings
 std::string NETWORK_ADDRESS = "10.9.0.0";
 std::string NETWORK_SUBNET = "255.255.0.0";
 static bool GetAdaptersInfo_log = true;
+static bool GetIpAddrTable_log = true;
 
 // network structs
 static struct in_addr network;
@@ -41,6 +44,80 @@ static void defer_network_adapter_error() {
             "    you still need to do this even if you are connecting to a local server!",
             });
     });
+}
+
+static bool is_valid_ipaddr_row(const MIB_IPADDRROW &row) {
+    static const auto loopback = inet_addr("127.0.0.1");
+
+    return row.dwAddr != 0 && row.dwAddr != loopback;
+}
+
+static MIB_IPADDRROW *find_preferred_ipaddr_row(PMIB_IPADDRTABLE table) {
+
+    if (table == nullptr || table->dwNumEntries == 0) {
+        return nullptr;
+    }
+
+    // prefer the row matching -adapternetwork/-adaptersubnet
+    for (DWORD i = 0; i < table->dwNumEntries; i++) {
+        auto &row = table->table[i];
+        if (!is_valid_ipaddr_row(row)) {
+            continue;
+        }
+
+        auto row_prefix = row.dwAddr & row.dwMask;
+        if (row_prefix == prefix.s_addr && row.dwMask == subnet.s_addr) {
+            return &row;
+        }
+    }
+
+    // fall back to the interface Windows would route through by default
+    PMIB_IPFORWARDTABLE pIpForwardTable = (MIB_IPFORWARDTABLE *) malloc(sizeof(MIB_IPFORWARDTABLE));
+    DWORD dwSize = 0;
+    if (GetIpForwardTable(pIpForwardTable, &dwSize, TRUE) == ERROR_INSUFFICIENT_BUFFER) {
+        free(pIpForwardTable);
+        pIpForwardTable = (MIB_IPFORWARDTABLE *) malloc(dwSize);
+    }
+    if (GetIpForwardTable(pIpForwardTable, &dwSize, TRUE) != NO_ERROR || pIpForwardTable->dwNumEntries == 0) {
+        free(pIpForwardTable);
+        return nullptr;
+    }
+
+    DWORD best = pIpForwardTable->table[0].dwForwardIfIndex;
+    free(pIpForwardTable);
+
+    for (DWORD i = 0; i < table->dwNumEntries; i++) {
+        auto &row = table->table[i];
+        if (row.dwIndex == best && is_valid_ipaddr_row(row)) {
+            return &row;
+        }
+    }
+
+    // last resort: keep a deterministic valid row instead of exposing all adapters
+    for (DWORD i = 0; i < table->dwNumEntries; i++) {
+        auto &row = table->table[i];
+        if (is_valid_ipaddr_row(row)) {
+            return &row;
+        }
+    }
+
+    return nullptr;
+}
+
+static void keep_only_ipaddr_row(PMIB_IPADDRTABLE table, MIB_IPADDRROW *row) {
+    if (table == nullptr || row == nullptr) {
+        return;
+    }
+
+    if (GetIpAddrTable_log) {
+        in_addr addr {};
+        addr.s_addr = row->dwAddr;
+        log_info("network", "Using preferred IP address row: {}", inet_ntoa(addr));
+    }
+
+    table->table[0] = *row;
+    table->dwNumEntries = 1;
+    GetIpAddrTable_log = false;
 }
 
 static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG pOutBufLen) {
@@ -183,6 +260,50 @@ static ULONG WINAPI GetAdaptersInfo_hook(PIP_ADAPTER_INFO pAdapterInfo, PULONG p
     return ret;
 }
 
+static DWORD WINAPI GetIpAddrTable_hook(PMIB_IPADDRTABLE pIpAddrTable, PULONG pdwSize, BOOL bOrder) {
+
+    auto input_size = pdwSize != nullptr ? *pdwSize : 0;
+    auto ret = GetIpAddrTable_orig(pIpAddrTable, pdwSize, bOrder);
+
+    if (ret == NO_ERROR) {
+        auto row = find_preferred_ipaddr_row(pIpAddrTable);
+        if (row != nullptr) {
+            keep_only_ipaddr_row(pIpAddrTable, row);
+        }
+        return ret;
+    }
+
+    if (ret != ERROR_INSUFFICIENT_BUFFER || pIpAddrTable == nullptr || pdwSize == nullptr) {
+        return ret;
+    }
+
+    // If the caller's buffer is large enough for the filtered single-row table,
+    // satisfy the call even when Windows needed more room for all adapters.
+    const auto one_row_size = offsetof(MIB_IPADDRTABLE, table) + sizeof(MIB_IPADDRROW);
+    if (input_size < one_row_size) {
+        return ret;
+    }
+
+    auto full_size = *pdwSize;
+    auto table = (PMIB_IPADDRTABLE) malloc(full_size);
+    if (table == nullptr) {
+        return ret;
+    }
+
+    auto full_ret = GetIpAddrTable_orig(table, &full_size, bOrder);
+    if (full_ret == NO_ERROR) {
+        auto row = find_preferred_ipaddr_row(table);
+        if (row != nullptr) {
+            keep_only_ipaddr_row(pIpAddrTable, row);
+            *pdwSize = one_row_size;
+            ret = NO_ERROR;
+        }
+    }
+
+    free(table);
+    return ret;
+}
+
 static int WINAPI bind_hook(SOCKET s, const struct sockaddr *name, int namelen) {
 
 #ifdef __clang__
@@ -241,6 +362,15 @@ void networkhook_init() {
         log_warning("network", "Could not hook GetAdaptersInfo");
     } else if (GetAdaptersInfo_orig == nullptr) {
         GetAdaptersInfo_orig = orig_addr;
+    }
+
+    // GetIpAddrTable hook
+    auto ip_addr_table_orig_addr = detour::iat_try(
+        "GetIpAddrTable", GetIpAddrTable_hook, nullptr);
+    if (!ip_addr_table_orig_addr) {
+        log_warning("network", "Could not hook GetIpAddrTable");
+    } else if (GetIpAddrTable_orig == nullptr) {
+        GetIpAddrTable_orig = ip_addr_table_orig_addr;
     }
 
     /*
