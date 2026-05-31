@@ -9,6 +9,8 @@
 #include <ks.h>
 #include <ksmedia.h>
 
+#include "util/logging.h"
+
 namespace hooks::audio {
 
     void Downmix::setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out,
@@ -16,6 +18,13 @@ namespace hooks::audio {
         this->enabled = true;
         this->bytes_per_sample = game_format->wBitsPerSample / 8;
         this->game_frame_size = game_format->nChannels * this->bytes_per_sample;
+
+        if (this->bytes_per_sample != 2) {
+            log_fatal(
+                "audio::downmix",
+                "unsupported sample format ({}-bit), downmix will output silence",
+                game_format->wBitsPerSample);
+        }
 
         this->left_mix.clear();
         this->right_mix.clear();
@@ -48,7 +57,36 @@ namespace hooks::audio {
         stereo_out->dwChannelMask = SPEAKER_FRONT_LEFT | SPEAKER_FRONT_RIGHT;
     }
 
+    HRESULT Downmix::initialize(IAudioClient *real, AUDCLNT_SHAREMODE share_mode, DWORD stream_flags,
+            REFERENCE_TIME buffer_duration, REFERENCE_TIME periodicity,
+            const WAVEFORMATEX *device_format, LPCGUID session_guid) {
+
+        HRESULT ret = real->Initialize(share_mode, stream_flags, buffer_duration, periodicity,
+                device_format, session_guid);
+
+        // the smaller stereo buffer can end up unaligned for the device when the game sized the
+        // duration for its larger multi-channel format. recover by asking the device for the next
+        // aligned buffer size and re-initializing with a matching duration.
+        if (ret == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
+            UINT32 aligned_frames = 0;
+            if (SUCCEEDED(real->GetBufferSize(&aligned_frames)) && aligned_frames > 0) {
+                REFERENCE_TIME aligned_duration = (REFERENCE_TIME)
+                        (10000.0 * 1000 / device_format->nSamplesPerSec * aligned_frames + 0.5);
+
+                log_info("audio::downmix",
+                        "buffer not aligned, retrying with {} frames ({} hns)",
+                        aligned_frames, aligned_duration);
+
+                ret = real->Initialize(share_mode, stream_flags, aligned_duration,
+                        periodicity != 0 ? aligned_duration : 0, device_format, session_guid);
+            }
+        }
+
+        return ret;
+    }
+
     void Downmix::build_layout_mix(const WAVEFORMATEX *game_format) {
+
         const int channels = game_format->nChannels;
 
         // gain for channels folded into both speakers, so they don't get a +3 dB boost

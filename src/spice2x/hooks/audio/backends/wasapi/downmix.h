@@ -5,7 +5,9 @@
 
 #include <windows.h>
 #include <mmreg.h>
+#include <audioclient.h>
 
+struct IAudioClient;
 struct IAudioRenderClient;
 
 namespace hooks::audio {
@@ -43,6 +45,14 @@ namespace hooks::audio {
         // build the stereo format equivalent to game_format (same sample rate and bit depth).
         static void make_stereo_format(const WAVEFORMATEX *game_format,
                                        WAVEFORMATEXTENSIBLE *stereo_out);
+
+        // initialize the real device with the stereo format. downmixing reduces the channel count,
+        // shrinking the buffer's byte size, so the duration the game sized for its multi-channel
+        // format can leave the smaller stereo buffer unaligned. on AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED
+        // this performs the standard WASAPI realignment and retries.
+        HRESULT initialize(IAudioClient *real, AUDCLNT_SHAREMODE share_mode, DWORD stream_flags,
+                           REFERENCE_TIME buffer_duration, REFERENCE_TIME periodicity,
+                           const WAVEFORMATEX *device_format, LPCGUID session_guid);
 
         // mix `frames` frames of multi-channel `src` down into stereo `dst`.
         void process(BYTE *dst, const BYTE *src, UINT32 frames) const;

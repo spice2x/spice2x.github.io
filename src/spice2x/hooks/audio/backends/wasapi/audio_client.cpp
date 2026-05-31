@@ -220,13 +220,25 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     }
 
     // call next
-    HRESULT ret = pReal->Initialize(
-            ShareMode,
-            StreamFlags,
-            hnsBufferDuration,
-            hnsPeriodicity,
-            device_format,
-            AudioSessionGuid);
+    HRESULT ret;
+    if (this->downmix.enabled) {
+        ret = this->downmix.initialize(
+                pReal,
+                ShareMode,
+                StreamFlags,
+                hnsBufferDuration,
+                hnsPeriodicity,
+                device_format,
+                AudioSessionGuid);
+    } else {
+        ret = pReal->Initialize(
+                ShareMode,
+                StreamFlags,
+                hnsBufferDuration,
+                hnsPeriodicity,
+                device_format,
+                AudioSessionGuid);
+    }
 
     // check for failure
     if (FAILED(ret)) {
