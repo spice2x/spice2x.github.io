@@ -19,6 +19,7 @@ namespace hooks::audio {
     extern bool ENABLED;
     extern bool VOLUME_HOOK_ENABLED;
     extern bool DOWNMIX_TO_STEREO;
+    extern float VOLUME_BOOST;
     extern bool USE_DUMMY;
     extern WAVEFORMATEXTENSIBLE FORMAT;
     extern std::optional<Backend> BACKEND;

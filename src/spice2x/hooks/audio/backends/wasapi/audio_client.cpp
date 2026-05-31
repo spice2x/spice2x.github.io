@@ -248,6 +248,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
 
     log_info("audio::wasapi", "IAudioClient::Initialize success, hr={}", FMT_HRESULT(ret));
     copy_wave_format(&hooks::audio::FORMAT, device_format);
+    copy_wave_format(&this->device_format, device_format);
 
     return ret;
 }
@@ -534,5 +535,6 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::InitializeSharedAudioStream(
 
     log_info("audio::wasapi", "IAudioClient3::InitializeSharedAudioStream success, hr={}", FMT_HRESULT(ret));
     copy_wave_format(&hooks::audio::FORMAT, pFormat);
+    copy_wave_format(&this->device_format, pFormat);
     return ret;
 }

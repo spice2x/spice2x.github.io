@@ -96,6 +96,10 @@ struct WrappedIAudioClient : IAudioClient3 {
     bool exclusive_mode = false;
     int frame_size = 0;
 
+    // the format the real device was opened with (after any downmix). used to scale the final
+    // output buffer for the volume boost.
+    WAVEFORMATEXTENSIBLE device_format = {};
+
     // surround -> stereo downmix. the real device is opened as stereo while the game keeps
     // writing multi-channel audio into a scratch buffer that we downmix in the render client.
     hooks::audio::Downmix downmix;

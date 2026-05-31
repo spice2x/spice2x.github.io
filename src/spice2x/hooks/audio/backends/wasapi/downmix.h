@@ -60,8 +60,15 @@ namespace hooks::audio {
         // grab the real stereo device buffer and hand the game the scratch buffer to write into.
         HRESULT get_buffer(IAudioRenderClient *real, UINT32 frames, BYTE **ppData);
 
-        // mix the scratch buffer into the stereo device buffer and release it.
-        HRESULT release_buffer(IAudioRenderClient *real, UINT32 frames, DWORD flags);
+        // mix the scratch buffer into the stereo device buffer held since get_buffer. the caller
+        // owns releasing the device buffer afterwards (see current_buffer / buffer_released).
+        void write_device_buffer(UINT32 frames, DWORD flags);
+
+        // the real device buffer currently held, or null.
+        BYTE *current_buffer() const { return this->device_buffer; }
+
+        // forget the held device buffer once the caller has released it.
+        void buffer_released() { this->device_buffer = nullptr; }
 
     private:
 

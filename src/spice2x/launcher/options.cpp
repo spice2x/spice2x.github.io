@@ -1950,6 +1950,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Audio",
     },
     {
+        // VolumeBoost
+        .title = "WASAPI Boost Audio Volume",
+        .name = "volumeboost",
+        .desc = "Artificially amplifies the hooked audio output by the selected amount, applied "
+            "right before the audio reaches the device. Works regardless of channel layout or "
+            "downmixing.\n\n"
+            "Louder settings may cause clipping/distortion.",
+        .type = OptionType::Enum,
+        .category = "Audio",
+        .elements = {
+            {"3", "+3 dB"},
+            {"6", "+6 dB"},
+            {"9", "+9 dB"},
+            {"12", "+12 dB"},
+        },
+    },
+    {
         // DelayBy5Seconds
         .title = "Delay by 5 Seconds (DEPRECATED - use -sleepduration instead)",
         .name = "sleep",

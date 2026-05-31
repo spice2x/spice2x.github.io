@@ -40,6 +40,7 @@ namespace hooks::audio {
     bool ENABLED = true;
     bool VOLUME_HOOK_ENABLED = true;
     bool DOWNMIX_TO_STEREO = false;
+    float VOLUME_BOOST = 1.0f;
     bool USE_DUMMY = false;
     WAVEFORMATEXTENSIBLE FORMAT {};
     std::optional<Backend> BACKEND = std::nullopt;

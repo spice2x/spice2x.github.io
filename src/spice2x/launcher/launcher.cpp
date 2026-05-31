@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 
+#include <cmath>
+#include <cstdlib>
 #include <assert.h>
 #include <shlwapi.h>
 #include <windows.h>
@@ -1094,6 +1096,13 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::DownmixAudioToStereo].value_bool()) {
         hooks::audio::DOWNMIX_TO_STEREO = true;
+    }
+    if (options[launcher::Options::VolumeBoost].is_active()) {
+        const double decibels = std::strtod(
+            options[launcher::Options::VolumeBoost].value_text().c_str(), nullptr);
+        if (decibels > 0.0) {
+            hooks::audio::VOLUME_BOOST = (float) std::pow(10.0, decibels / 20.0);
+        }
     }
 
     if (options[launcher::Options::AudioBackend].is_active()) {

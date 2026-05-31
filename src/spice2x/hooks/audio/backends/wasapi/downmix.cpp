@@ -198,24 +198,20 @@ namespace hooks::audio {
         return S_OK;
     }
 
-    HRESULT Downmix::release_buffer(IAudioRenderClient *real, UINT32 frames, DWORD flags) {
+    void Downmix::write_device_buffer(UINT32 frames, DWORD flags) {
         const int bps = this->bytes_per_sample;
         const int dst_stride = 2 * bps;
 
-        if (this->device_buffer != nullptr && frames > 0 && bps > 0) {
-
-            // mute the first few buffers to avoid a pop on stream start
-            if (this->buffers_to_mute > 0) {
-                memset(this->device_buffer, 0, (size_t) frames * dst_stride);
-                this->buffers_to_mute--;
-            } else if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
-                this->process(this->device_buffer, this->scratch.data(), frames);
-            }
+        if (this->device_buffer == nullptr || frames == 0 || bps <= 0) {
+            return;
         }
 
-        HRESULT ret = real->ReleaseBuffer(frames, flags);
-        this->device_buffer = nullptr;
-
-        return ret;
+        // mute the first few buffers to avoid a pop on stream start
+        if (this->buffers_to_mute > 0) {
+            memset(this->device_buffer, 0, (size_t) frames * dst_stride);
+            this->buffers_to_mute--;
+        } else if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
+            this->process(this->device_buffer, this->scratch.data(), frames);
+        }
     }
 }

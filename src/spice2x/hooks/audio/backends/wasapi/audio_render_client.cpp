@@ -1,11 +1,71 @@
 #include "audio_render_client.h"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <cstring>
 
 #include "audio_client.h"
+#include "hooks/audio/audio.h"
 #include "wasapi_private.h"
 
 const char CLASS_NAME[] = "WrappedIAudioRenderClient";
+
+// scale every sample of an interleaved device buffer by `gain`, clamped to the format's range.
+// supports 16/24/32-bit PCM and 32-bit float; other formats are left untouched.
+static void apply_gain(BYTE *buffer, UINT32 frames, const WAVEFORMATEXTENSIBLE &fmt, float gain) {
+    const WAVEFORMATEX &f = fmt.Format;
+    const size_t samples = (size_t) frames * f.nChannels;
+
+    // KSDATAFORMAT_SUBTYPE_IEEE_FLOAT has Data1 == 3, _PCM has Data1 == 1
+    bool is_float = f.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
+        || (f.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt.SubFormat.Data1 == 0x00000003);
+
+    if (is_float && f.wBitsPerSample == 32) {
+        auto p = reinterpret_cast<float *>(buffer);
+        for (size_t i = 0; i < samples; i++) {
+            p[i] = std::clamp(p[i] * gain, -1.0f, 1.0f);
+        }
+        return;
+    }
+
+    switch (f.wBitsPerSample) {
+        case 16: {
+            auto p = reinterpret_cast<int16_t *>(buffer);
+            for (size_t i = 0; i < samples; i++) {
+                p[i] = (int16_t) std::clamp((int) std::lround(p[i] * gain), -32768, 32767);
+            }
+            break;
+        }
+        case 24: {
+            // packed 24-bit little-endian
+            for (size_t i = 0; i < samples; i++) {
+                BYTE *s = buffer + i * 3;
+                int32_t v = s[0] | (s[1] << 8) | (s[2] << 16);
+                if (v & 0x800000) {
+                    v |= ~0xFFFFFF; // sign extend
+                }
+                int64_t scaled = std::clamp<int64_t>(
+                    std::llround((double) v * gain), -8388608, 8388607);
+                s[0] = scaled & 0xFF;
+                s[1] = (scaled >> 8) & 0xFF;
+                s[2] = (scaled >> 16) & 0xFF;
+            }
+            break;
+        }
+        case 32: {
+            auto p = reinterpret_cast<int32_t *>(buffer);
+            for (size_t i = 0; i < samples; i++) {
+                p[i] = (int32_t) std::clamp(
+                    std::llround((double) p[i] * gain),
+                    (long long) INT32_MIN, (long long) INT32_MAX);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
 
 HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::QueryInterface(REFIID riid, void **ppvObj) {
     if (ppvObj == nullptr) {
@@ -83,20 +143,40 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::ReleaseBuffer(UINT32 NumFra
         return S_OK;
     }
 
-    // surround downmix: write the chosen source channels of the game's multi-channel
-    // scratch buffer into the real stereo device buffer, then release the device buffer
+    // resolve the real device buffer for whichever path produced the audio
+    BYTE *device_buffer;
     if (this->client->downmix.enabled) {
-        CHECK_RESULT(this->client->downmix.release_buffer(pReal, NumFramesWritten, dwFlags));
+
+        // downmix the game's multi-channel scratch into the real stereo buffer held since GetBuffer
+        this->client->downmix.write_device_buffer(NumFramesWritten, dwFlags);
+        device_buffer = this->client->downmix.current_buffer();
+    } else {
+        device_buffer = this->audio_buffer;
+
+        // mute the first few buffers to avoid a startup pop
+        if (this->buffers_to_mute > 0 && this->client->frame_size > 0) {
+            memset(this->audio_buffer, 0, NumFramesWritten * this->client->frame_size);
+            this->buffers_to_mute--;
+        }
     }
 
-    // fix for audio pop effect
-    if (this->buffers_to_mute > 0 && this->client->frame_size > 0) {
-
-        // zero out = mute
-        memset(this->audio_buffer, 0, NumFramesWritten * this->client->frame_size);
-
-        this->buffers_to_mute--;
+    // boost the final output volume just before it reaches the device, layout-agnostic
+    if (hooks::audio::VOLUME_BOOST != 1.0f
+            && device_buffer != nullptr
+            && (dwFlags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
+        apply_gain(device_buffer, NumFramesWritten, this->client->device_format,
+                hooks::audio::VOLUME_BOOST);
     }
 
-    CHECK_RESULT(pReal->ReleaseBuffer(NumFramesWritten, dwFlags));
+    HRESULT ret = pReal->ReleaseBuffer(NumFramesWritten, dwFlags);
+
+    if (this->client->downmix.enabled) {
+        this->client->downmix.buffer_released();
+    }
+
+    if (FAILED(ret)) {
+        PRINT_FAILED_RESULT(CLASS_NAME, __func__, ret);
+    }
+
+    return ret;
 }
