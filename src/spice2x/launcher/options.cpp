@@ -1078,7 +1078,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "GitaDora Two Channel Audio",
         .name = "2ch",
         .desc = "Attempt to reduce audio channels down to just two channels.\n\n"
-            "Arena Model: downmixes 7.1 to stereo by combining front and rear channels.",
+            "Arena Model: downmixes 7.1 to stereo using the AC-4 stereo downmix coefficients "
+            "(ETSI TS 103 190-1), the same algorithm as the WASAPI Stereo Downmix option.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
@@ -1945,7 +1946,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "downmix",
         .desc = "Downmixes multi-channel (surround) audio output to stereo.\n\n"
             "Check this to always pretend that your audio device supports surround, "
-            "but transparently mix all channels (except subwoofer) down into the front speakers.",
+            "but transparently mix all channels down into the front speakers.\n\n"
+            "Uses the AC-4 stereo downmix coefficients (ETSI TS 103 190-1): front left/right "
+            "pass through, center and surrounds fold in at -3 dB, and the subwoofer (LFE) is "
+            "dropped.",
         .type = OptionType::Bool,
         .category = "Audio",
     },

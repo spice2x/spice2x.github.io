@@ -1,8 +1,5 @@
 #include "audio_client.h"
 
-#include <utility>
-#include <vector>
-
 #include <ks.h>
 #include <ksmedia.h>
 
@@ -45,30 +42,17 @@ static void fix_rec_format(WAVEFORMATEX *pFormat) {
     pFormat->nAvgBytesPerSec = pFormat->nSamplesPerSec * pFormat->nBlockAlign;
 }
 
-// decide whether the given format should be downmixed to stereo. on success, `pairs` holds the
-// (left, right) source channels to mix; an empty list means mix by speaker layout.
-static bool resolve_downmix(const WAVEFORMATEX *format, std::vector<std::pair<int, int>> &pairs) {
+// decide whether the given multi-channel format should be downmixed to stereo using the generic
+// AC-4 algorithm. enabled by the user (-downmixstereo) or by gitadora arena two-channel mode.
+static bool resolve_downmix(const WAVEFORMATEX *format) {
     if (format == nullptr
             || format->nChannels <= 2
             || format->wFormatTag != WAVE_FORMAT_EXTENSIBLE) {
         return false;
     }
 
-    // gitadora arena two-channel mode: fold the 7.1 front + rear speakers into stereo
-    if (games::gitadora::is_arena_model()
-            && games::gitadora::TWOCHANNEL
-            && format->nChannels == 8) {
-        pairs = { { 0, 1 }, { 4, 5 } };
-        return true;
-    }
-
-    // user-enabled generic downmix: mix everything down to stereo
-    if (hooks::audio::DOWNMIX_TO_STEREO) {
-        pairs.clear();
-        return true;
-    }
-
-    return false;
+    return hooks::audio::DOWNMIX_TO_STEREO
+        || (games::gitadora::is_arena_model() && games::gitadora::TWOCHANNEL);
 }
 
 IAudioClient *wrap_audio_client(IAudioClient *audio_client) {
@@ -180,9 +164,8 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     WAVEFORMATEXTENSIBLE stereo_storage = {};
     const WAVEFORMATEX *device_format = pFormat;
 
-    std::vector<std::pair<int, int>> downmix_pairs;
-    if (resolve_downmix(pFormat, downmix_pairs)) {
-        this->downmix.setup(pFormat, &stereo_storage, downmix_pairs);
+    if (resolve_downmix(pFormat)) {
+        this->downmix.setup(pFormat, &stereo_storage);
         device_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
         log_info("audio::wasapi", "downmix enabled: {} channels -> 2 channels", pFormat->nChannels);
     } else if (games::gitadora::is_arena_model()) {
@@ -333,8 +316,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
 
     // when downmixing, the real device is opened as stereo, so check whether the equivalent
     // stereo format is supported instead of the multi-channel one.
-    std::vector<std::pair<int, int>> downmix_pairs;
-    if (resolve_downmix(pFormat, downmix_pairs)) {
+    if (resolve_downmix(pFormat)) {
         WAVEFORMATEXTENSIBLE stereo_storage = {};
         hooks::audio::Downmix::make_stereo_format(pFormat, &stereo_storage);
         const auto stereo_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <utility>
 #include <vector>
 
 #include <windows.h>
@@ -16,9 +15,10 @@ namespace hooks::audio {
     // game keeps writing its native multi-channel audio into a scratch buffer; on release that
     // buffer is mixed down into the two front channels.
     //
-    // Callers may pass explicit (left, right) channel pairs to mix. With no pairs, the mix is
-    // derived from the format's speaker mask: left/right speakers stay on their own side,
-    // center channels fold into both at -3 dB, and LFE is dropped.
+    // The mix is derived from the source format's speaker mask using the AC-4 stereo downmix
+    // coefficients (ETSI TS 103 190-1 §6.2.17): front left/right pass through at 0 dB, center
+    // folds into both sides at -3 dB, surrounds fold into their own side at -3 dB, and LFE is
+    // dropped.
     struct Downmix {
 
         // a source channel routed into one output speaker at the given gain
@@ -37,10 +37,8 @@ namespace hooks::audio {
         int bytes_per_sample = 0;
 
         // enable the downmix for the given game format and fill stereo_out with the equivalent
-        // stereo format to open the real device with. `pairs` picks which channels to mix; an
-        // empty list mixes by speaker layout (see class comment).
-        void setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out,
-                   const std::vector<std::pair<int, int>> &pairs = {});
+        // stereo format to open the real device with.
+        void setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out);
 
         // build the stereo format equivalent to game_format (same sample rate and bit depth).
         static void make_stereo_format(const WAVEFORMATEX *game_format,
@@ -72,7 +70,7 @@ namespace hooks::audio {
 
     private:
 
-        // build the mix from the source speaker layout (used when no pairs are given)
+        // build the mix from the source speaker layout using the AC-4 coefficients
         void build_layout_mix(const WAVEFORMATEX *game_format);
 
         // source channels summed into each output speaker

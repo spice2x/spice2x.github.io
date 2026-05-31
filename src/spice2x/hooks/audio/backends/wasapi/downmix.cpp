@@ -13,8 +13,7 @@
 
 namespace hooks::audio {
 
-    void Downmix::setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out,
-            const std::vector<std::pair<int, int>> &pairs) {
+    void Downmix::setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out) {
         this->enabled = true;
         this->bytes_per_sample = game_format->wBitsPerSample / 8;
         this->game_frame_size = game_format->nChannels * this->bytes_per_sample;
@@ -28,36 +27,7 @@ namespace hooks::audio {
 
         this->left_mix.clear();
         this->right_mix.clear();
-
-        if (!pairs.empty()) {
-
-            // mix exactly the channels the caller asked for, at unity gain
-            for (const auto &pair : pairs) {
-                this->left_mix.push_back({ pair.first, 1.0f });
-                this->right_mix.push_back({ pair.second, 1.0f });
-            }
-        } else {
-
-            // otherwise mix based on the source speaker layout
-            this->build_layout_mix(game_format);
-        }
-
-        // scale each side so its gains sum to 1.0. this averages the contributing channels
-        // instead of summing them, which keeps the result from clipping no matter how many
-        // channels fold into one speaker.
-        auto normalize = [](std::vector<Contribution> &mix) {
-            float total = 0.0f;
-            for (const auto &c : mix) {
-                total += c.gain;
-            }
-            if (total > 0.0f) {
-                for (auto &c : mix) {
-                    c.gain /= total;
-                }
-            }
-        };
-        normalize(this->left_mix);
-        normalize(this->right_mix);
+        this->build_layout_mix(game_format);
 
         make_stereo_format(game_format, stereo_out);
     }
@@ -106,16 +76,18 @@ namespace hooks::audio {
 
         const int channels = game_format->nChannels;
 
-        // gain for channels folded into both speakers, so they don't get a +3 dB boost
-        constexpr float center_gain = 0.70710678f;
+        // AC-4 stereo downmix coefficients (ETSI TS 103 190-1 §6.2.17, spec default values):
+        //   front left/right -> same side at  0 dB
+        //   center           -> both sides at -3 dB
+        //   surrounds        -> same side at  -3 dB
+        //   LFE              -> dropped (-inf dB)
+        constexpr float att = 0.70710678f; // -3 dB
 
-        // speaker positions belonging to one side
-        constexpr DWORD left_speakers = SPEAKER_FRONT_LEFT | SPEAKER_BACK_LEFT
-            | SPEAKER_SIDE_LEFT | SPEAKER_FRONT_LEFT_OF_CENTER
-            | SPEAKER_TOP_FRONT_LEFT | SPEAKER_TOP_BACK_LEFT;
-        constexpr DWORD right_speakers = SPEAKER_FRONT_RIGHT | SPEAKER_BACK_RIGHT
-            | SPEAKER_SIDE_RIGHT | SPEAKER_FRONT_RIGHT_OF_CENTER
-            | SPEAKER_TOP_FRONT_RIGHT | SPEAKER_TOP_BACK_RIGHT;
+        // speaker positions that fold into one side at -3 dB
+        constexpr DWORD surround_left = SPEAKER_BACK_LEFT | SPEAKER_SIDE_LEFT
+            | SPEAKER_FRONT_LEFT_OF_CENTER | SPEAKER_TOP_FRONT_LEFT | SPEAKER_TOP_BACK_LEFT;
+        constexpr DWORD surround_right = SPEAKER_BACK_RIGHT | SPEAKER_SIDE_RIGHT
+            | SPEAKER_FRONT_RIGHT_OF_CENTER | SPEAKER_TOP_FRONT_RIGHT | SPEAKER_TOP_BACK_RIGHT;
 
         // the speaker mask is only present on WAVE_FORMAT_EXTENSIBLE formats
         DWORD mask = 0;
@@ -124,10 +96,10 @@ namespace hooks::audio {
             mask = reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(game_format)->dwChannelMask;
         }
 
-        // without a mask, just alternate channels left/right
+        // without a mask, assume interleaved L/R pairs and fold each pair down at -3 dB
         if (mask == 0) {
             for (int ch = 0; ch < channels; ch++) {
-                (((ch & 1) == 0) ? this->left_mix : this->right_mix).push_back({ ch, 1.0f });
+                (((ch & 1) == 0) ? this->left_mix : this->right_mix).push_back({ ch, att });
             }
             return;
         }
@@ -140,14 +112,18 @@ namespace hooks::audio {
                 continue;
             }
 
-            if (speaker & left_speakers) {
+            if (speaker == SPEAKER_FRONT_LEFT) {
                 this->left_mix.push_back({ channel, 1.0f });
-            } else if (speaker & right_speakers) {
+            } else if (speaker == SPEAKER_FRONT_RIGHT) {
                 this->right_mix.push_back({ channel, 1.0f });
+            } else if (speaker & surround_left) {
+                this->left_mix.push_back({ channel, att });
+            } else if (speaker & surround_right) {
+                this->right_mix.push_back({ channel, att });
             } else if (speaker != SPEAKER_LOW_FREQUENCY) {
                 // center (or unknown) goes to both speakers; LFE is dropped
-                this->left_mix.push_back({ channel, center_gain });
-                this->right_mix.push_back({ channel, center_gain });
+                this->left_mix.push_back({ channel, att });
+                this->right_mix.push_back({ channel, att });
             }
 
             channel++;
