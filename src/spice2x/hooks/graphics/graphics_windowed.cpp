@@ -26,6 +26,10 @@ bool GRAPHICS_WINDOW_ALWAYS_ON_TOP = false;
 bool GRAPHICS_WINDOW_BACKBUFFER_SCALE = false;
 bool GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS = false;
 std::optional<HWND> GRAPHICS_HOOKED_WINDOW;
+std::string GRAPHICS_GITADORA_MAIN_MONITOR;
+std::string GRAPHICS_GITADORA_LEFT_MONITOR;
+std::string GRAPHICS_GITADORA_RIGHT_MONITOR;
+std::string GRAPHICS_GITADORA_SMALL_MONITOR;
 
 // IIDX Windowed Subscreen - starts out as false, enabled by IIDX module on pre-attach as needed
 bool GRAPHICS_IIDX_WSUB = false;
@@ -50,6 +54,173 @@ static const DWORD SETWINDOWPOS_NOOP =
     SWP_DEFERERASE |
     SWP_NOZORDER |
     SWP_ASYNCWINDOWPOS;
+
+static int graphics_effective_window_decoration() {
+    if (GRAPHICS_WINDOW_STYLE.has_value()) {
+        return GRAPHICS_WINDOW_STYLE.value();
+    }
+    if (cfg::SCREENRESIZE != nullptr) {
+        return cfg::SCREENRESIZE->window_decoration;
+    }
+    return cfg::WindowDecorationMode::Default;
+}
+
+bool graphics_gitadora_is_borderless_windowed() {
+    return GRAPHICS_WINDOWED &&
+        graphics_effective_window_decoration() == cfg::WindowDecorationMode::Borderless;
+}
+
+static const std::string &graphics_gitadora_monitor_for_window_name(
+        const std::string &window_name) {
+    if (window_name == "GITADORA") {
+        return GRAPHICS_GITADORA_MAIN_MONITOR;
+    }
+    if (window_name == "LEFT") {
+        return GRAPHICS_GITADORA_LEFT_MONITOR;
+    }
+    if (window_name == "RIGHT") {
+        return GRAPHICS_GITADORA_RIGHT_MONITOR;
+    }
+    if (window_name == "SMALL") {
+        return GRAPHICS_GITADORA_SMALL_MONITOR;
+    }
+
+    static const std::string empty;
+    return empty;
+}
+
+bool graphics_gitadora_has_window_monitor(const std::string &window_name) {
+    const auto &monitor_name = graphics_gitadora_monitor_for_window_name(window_name);
+    return !monitor_name.empty();
+}
+
+static bool graphics_monitor_rect_from_name(
+        const std::string &monitor_name,
+        RECT &rect,
+        bool log_change) {
+    DEVMODEA devmode {};
+    devmode.dmSize = sizeof(devmode);
+    if (!EnumDisplaySettingsA(monitor_name.c_str(), ENUM_CURRENT_SETTINGS, &devmode)) {
+        if (log_change) {
+            log_warning(
+                "graphics-windowed",
+                "failed to get monitor settings for {}",
+                monitor_name);
+        }
+        return false;
+    }
+
+    rect.left = devmode.dmPosition.x;
+    rect.top = devmode.dmPosition.y;
+    rect.right = rect.left + static_cast<LONG>(devmode.dmPelsWidth);
+    rect.bottom = rect.top + static_cast<LONG>(devmode.dmPelsHeight);
+    return true;
+}
+
+static bool graphics_gitadora_apply_monitor_rect(
+        const std::string &monitor_name,
+        const std::string &window_name,
+        int &x,
+        int &y,
+        int &width,
+        int &height,
+        bool log_change) {
+    if (!GRAPHICS_WINDOWED || !games::gitadora::is_arena_model()) {
+        return false;
+    }
+    if (monitor_name.empty()) {
+        return false;
+    }
+
+    RECT rect {};
+    if (!graphics_monitor_rect_from_name(monitor_name, rect, log_change)) {
+        return false;
+    }
+
+    x = rect.left;
+    y = rect.top;
+    width = rect.right - rect.left;
+    height = rect.bottom - rect.top;
+
+    if (log_change) {
+        log_info(
+            "graphics-windowed",
+            "GITADORA {} monitor override: {} => pos=({}, {}), size={}x{}",
+            window_name,
+            monitor_name,
+            x,
+            y,
+            width,
+            height);
+    }
+    return true;
+}
+
+static bool graphics_gitadora_apply_main_monitor_to_config() {
+    if (cfg::SCREENRESIZE == nullptr || !graphics_gitadora_is_borderless_windowed()) {
+        return false;
+    }
+
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+    if (!graphics_gitadora_apply_monitor_rect(
+            GRAPHICS_GITADORA_MAIN_MONITOR,
+            "GITADORA",
+            x,
+            y,
+            width,
+            height,
+            false)) {
+        return false;
+    }
+
+    cfg::SCREENRESIZE->enable_window_resize = true;
+    cfg::SCREENRESIZE->client_keep_aspect_ratio = false;
+    cfg::SCREENRESIZE->window_offset_x = x;
+    cfg::SCREENRESIZE->window_offset_y = y;
+    cfg::SCREENRESIZE->client_width = width;
+    cfg::SCREENRESIZE->client_height = height;
+    return true;
+}
+
+void graphics_gitadora_apply_window_style(DWORD &style, DWORD &style_ex) {
+    if (!GRAPHICS_WINDOWED || !games::gitadora::is_arena_model()) {
+        return;
+    }
+
+    switch (graphics_effective_window_decoration()) {
+        case cfg::WindowDecorationMode::Borderless:
+            style &= ~WS_OVERLAPPEDWINDOW;
+            style_ex &= ~WS_EX_CLIENTEDGE;
+            style_ex &= ~WS_EX_WINDOWEDGE;
+            break;
+        case cfg::WindowDecorationMode::ResizableFrame:
+            style |= WS_OVERLAPPEDWINDOW;
+            break;
+        case cfg::WindowDecorationMode::Default:
+        default:
+            break;
+    }
+}
+
+bool graphics_gitadora_apply_window_monitor(
+        const std::string &window_name,
+        int &x,
+        int &y,
+        int &width,
+        int &height,
+        bool log_change) {
+    return graphics_gitadora_apply_monitor_rect(
+        graphics_gitadora_monitor_for_window_name(window_name),
+        window_name,
+        x,
+        y,
+        width,
+        height,
+        log_change);
+}
 
 void graphics_capture_initial_window(HWND hWnd) {
     if (!GRAPHICS_WINDOWED) {
@@ -180,6 +351,8 @@ void graphics_load_windowed_parameters() {
             log_fatal("graphics-windowed", "failed to parse -windowpos");
         }
     }
+
+    graphics_gitadora_apply_main_monitor_to_config();
 
     // only override if true; don't stomp on user setting
     if (GRAPHICS_WINDOW_ALWAYS_ON_TOP) {

@@ -56,6 +56,10 @@ extern bool GRAPHICS_WINDOW_ALWAYS_ON_TOP;
 extern bool GRAPHICS_WINDOW_BACKBUFFER_SCALE;
 extern bool GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS;
 extern std::optional<HWND> GRAPHICS_HOOKED_WINDOW;
+extern std::string GRAPHICS_GITADORA_MAIN_MONITOR;
+extern std::string GRAPHICS_GITADORA_LEFT_MONITOR;
+extern std::string GRAPHICS_GITADORA_RIGHT_MONITOR;
+extern std::string GRAPHICS_GITADORA_SMALL_MONITOR;
 
 extern bool GRAPHICS_IIDX_WSUB;
 extern std::optional<std::string> GRAPHICS_WSUB_SIZE;
@@ -116,6 +120,16 @@ bool graphics_window_resize_breaks_game();
 bool graphics_window_move_and_resize_breaks_game();
 void graphics_load_windowed_subscreen_parameters();
 void graphics_window_check_bounds_before_creation(int &x, int &y, const int width, const int height);
+bool graphics_gitadora_is_borderless_windowed();
+void graphics_gitadora_apply_window_style(DWORD &style, DWORD &style_ex);
+bool graphics_gitadora_apply_window_monitor(
+        const std::string &window_name,
+        int &x,
+        int &y,
+        int &width,
+        int &height,
+        bool log_change);
+bool graphics_gitadora_has_window_monitor(const std::string &window_name);
 
 void change_primary_monitor(const std::string &monitor_name);
 void update_monitor_on_boot(

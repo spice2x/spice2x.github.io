@@ -2321,6 +2321,54 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Graphics (Windowed)",
     },
     {
+        // GitaDoraWindowedMainMonitor
+        .title = "GitaDora Windowed Main Monitor",
+        .name = "gdwmainmonitor",
+        .desc = "For GITADORA Arena windowed mode: place and size the "
+            "main window to fill this monitor.",
+        .type = OptionType::Text,
+        .setting_name = "\\\\.\\DISPLAY1",
+        .game_name = "GitaDora",
+        .category = "Graphics (Windowed)",
+        .picker = OptionPickerType::Monitor,
+    },
+    {
+        // GitaDoraWindowedLeftMonitor
+        .title = "GitaDora Windowed LEFT Monitor",
+        .name = "gdwleftmonitor",
+        .desc = "For GITADORA Arena windowed mode: place and size the "
+            "LEFT window to fill this monitor.",
+        .type = OptionType::Text,
+        .setting_name = "\\\\.\\DISPLAY2",
+        .game_name = "GitaDora",
+        .category = "Graphics (Windowed)",
+        .picker = OptionPickerType::Monitor,
+    },
+    {
+        // GitaDoraWindowedRightMonitor
+        .title = "GitaDora Windowed RIGHT Monitor",
+        .name = "gdwrightmonitor",
+        .desc = "For GITADORA Arena windowed mode: place and size the "
+            "RIGHT window to fill this monitor.",
+        .type = OptionType::Text,
+        .setting_name = "\\\\.\\DISPLAY3",
+        .game_name = "GitaDora",
+        .category = "Graphics (Windowed)",
+        .picker = OptionPickerType::Monitor,
+    },
+    {
+        // GitaDoraWindowedSmallMonitor
+        .title = "GitaDora Windowed SMALL Monitor",
+        .name = "gdwsmallmonitor",
+        .desc = "For GITADORA Arena windowed mode: place and size the "
+            "SMALL touch window to fill this monitor.",
+        .type = OptionType::Text,
+        .setting_name = "\\\\.\\DISPLAY4",
+        .game_name = "GitaDora",
+        .category = "Graphics (Windowed)",
+        .picker = OptionPickerType::Monitor,
+    },
+    {
         // spice2x_IIDXWindowedSubscreenSize
         .title = "IIDX Windowed Subscreen Size",
         .name = "iidxwsubsize",

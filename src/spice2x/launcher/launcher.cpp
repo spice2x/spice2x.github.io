@@ -1182,6 +1182,22 @@ int main_implementation(int argc, char *argv[]) {
     GRAPHICS_WINDOW_ALWAYS_ON_TOP = options[launcher::Options::spice2x_WindowAlwaysOnTop].value_bool();
     GRAPHICS_WINDOW_BACKBUFFER_SCALE = options[launcher::Options::WindowForceScaling].value_bool();
     GRAPHICS_WINDOW_DISABLE_ROUNDED_CORNERS = options[launcher::Options::WindowDisableRoundedCorners].value_bool();
+    if (options[launcher::Options::GitaDoraWindowedMainMonitor].is_active()) {
+        GRAPHICS_GITADORA_MAIN_MONITOR =
+            options[launcher::Options::GitaDoraWindowedMainMonitor].value_text();
+    }
+    if (options[launcher::Options::GitaDoraWindowedLeftMonitor].is_active()) {
+        GRAPHICS_GITADORA_LEFT_MONITOR =
+            options[launcher::Options::GitaDoraWindowedLeftMonitor].value_text();
+    }
+    if (options[launcher::Options::GitaDoraWindowedRightMonitor].is_active()) {
+        GRAPHICS_GITADORA_RIGHT_MONITOR =
+            options[launcher::Options::GitaDoraWindowedRightMonitor].value_text();
+    }
+    if (options[launcher::Options::GitaDoraWindowedSmallMonitor].is_active()) {
+        GRAPHICS_GITADORA_SMALL_MONITOR =
+            options[launcher::Options::GitaDoraWindowedSmallMonitor].value_text();
+    }
 
     // IIDX/SDVX Windowed Subscreen
     if (options[launcher::Options::spice2x_IIDXWindowedSubscreenSize].is_active()) {
