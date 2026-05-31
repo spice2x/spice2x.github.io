@@ -42,6 +42,17 @@ static void fix_rec_format(WAVEFORMATEX *pFormat) {
     pFormat->nAvgBytesPerSec = pFormat->nSamplesPerSec * pFormat->nBlockAlign;
 }
 
+static const char *downmix_algorithm_name(hooks::audio::DownmixAlgorithm algorithm) {
+    switch (algorithm) {
+        case hooks::audio::DownmixAlgorithm::FrontOnly: return "front";
+        case hooks::audio::DownmixAlgorithm::RearOnly: return "rear";
+        case hooks::audio::DownmixAlgorithm::SideOnly: return "side";
+        case hooks::audio::DownmixAlgorithm::AC4: return "ac4";
+        case hooks::audio::DownmixAlgorithm::Normalize: return "normalize";
+        default: return "unknown";
+    }
+}
+
 // decide whether the given multi-channel format should be downmixed to stereo and which algorithm
 // to use. an explicit user selection (-downmix) takes precedence; otherwise gitadora arena
 // two-channel mode defaults to the AC-4 algorithm.
@@ -175,7 +186,8 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     if (auto algorithm = resolve_downmix(pFormat)) {
         this->downmix.setup(pFormat, &stereo_storage, *algorithm);
         device_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
-        log_info("audio::wasapi", "downmix enabled: {} channels -> 2 channels", pFormat->nChannels);
+        log_info("audio::wasapi", "downmix enabled: {} channels -> 2 channels ({})",
+                pFormat->nChannels, downmix_algorithm_name(*algorithm));
     } else if (games::gitadora::is_arena_model()) {
         games::gitadora::fix_audio_channel_mask(const_cast<WAVEFORMATEX *>(pFormat));
     }
