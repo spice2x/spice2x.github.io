@@ -184,6 +184,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     if (resolve_downmix(pFormat, downmix_pairs)) {
         this->downmix.setup(pFormat, &stereo_storage, downmix_pairs);
         device_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
+        log_info("audio::wasapi", "downmix enabled: {} channels -> 2 channels", pFormat->nChannels);
     } else if (games::gitadora::is_arena_model()) {
         games::gitadora::fix_audio_channel_mask(const_cast<WAVEFORMATEX *>(pFormat));
     }

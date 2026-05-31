@@ -164,6 +164,10 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::ReleaseBuffer(UINT32 NumFra
     if (hooks::audio::VOLUME_BOOST != 1.0f
             && device_buffer != nullptr
             && (dwFlags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
+        static std::once_flag boost_printed;
+        std::call_once(boost_printed, []() {
+            log_info("audio::wasapi", "volume boost active: gain={}", hooks::audio::VOLUME_BOOST);
+        });
         apply_gain(device_buffer, NumFramesWritten, this->client->device_format,
                 hooks::audio::VOLUME_BOOST);
     }
