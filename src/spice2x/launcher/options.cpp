@@ -1970,7 +1970,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Artificially amplifies the hooked audio output by the selected amount, applied "
             "right before the audio reaches the device. Works regardless of channel layout or "
             "downmixing.\n\n"
-            "Louder settings may cause clipping/distortion.",
+            "Louder settings may cause clipping/distortion, use caution.",
         .type = OptionType::Enum,
         .category = "Audio",
         .elements = {
@@ -1978,6 +1978,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"6", "+6 dB"},
             {"9", "+9 dB"},
             {"12", "+12 dB"},
+            {"15", "+15 dB"},
+            {"20", "+20 dB"},
+            {"25", "+25 dB"},
+            {"30", "+30 dB"},
         },
     },
     {
