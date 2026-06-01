@@ -4,6 +4,7 @@
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
+#include "util/sigscan.h"
 
 #define OTOCA_DEBUG_VERBOSE 0
 #if OTOCA_DEBUG_VERBOSE
@@ -116,6 +117,73 @@ namespace games::otoca {
         return ret;
     }
 
+    static void patch_holo_print_hang() {
+
+        // arkkep.dll's print method sets the printer busy (0x66 / Printing_Busy),
+        // then bails out with -1 WITHOUT printing when its holo parameter is
+        // nonzero (the card path passes 0 and works). The completion callback that
+        // clears busy never fires, so the page's poll loop spins forever -> hang.
+        // The image band is already built, so flip the je that skips the bail-out
+        // into a jmp (74 -> EB) to route holo through the print path like card.
+        //
+        //   je   issue_print     ; <- patched to jmp
+        //   or   eax, -1         ; holo: return without printing
+        //   ret  10h
+        auto arkkep = libutils::try_module("arkkep.dll");
+        if (arkkep == nullptr) {
+            log_warning("otoca", "arkkep.dll not loaded; skipping holo print hang fix");
+            return;
+        }
+
+        auto result = replace_pattern(
+            arkkep,
+            "C7465866000000895DC0C74710080700007416",
+            "C7465866000000895DC0C7471008070000EB16",
+            0, 0);
+        if (result) {
+            log_info("otoca", "patched hologram print hang in arkkep.dll");
+        } else {
+            log_warning("otoca", "could not patch hologram print hang (incompatible arkkep.dll?)");
+        }
+    }
+
+    static void patch_holo_print_search() {
+
+        // before printing, arkkep walks the page's printer list looking for one
+        // whose capability flag (byte at entry+120h) matches the job type
+        // (0 = card, 1 = holo). Our emulated printer is only card-capable, so a
+        // holo job finds no match and aborts without printing ("not found holo
+        // printer"). The emulated printer serves both media, so force the compare
+        // to always match by turning `cmp cl,[edi+120h]` into `cmp cl,cl` + NOPs,
+        // which always sets ZF. Two such compares exist, so patch both.
+        //
+        //   cmp  cl, [edi+120h]  ; <- patched to `cmp cl,cl` (3A 8F.. -> 3A C9..)
+        //   je   printer_found
+        auto arkkep = libutils::try_module("arkkep.dll");
+        if (arkkep == nullptr) {
+            log_warning("otoca", "arkkep.dll not loaded; skipping holo print search fix");
+            return;
+        }
+
+        int patched = 0;
+        while (patched < 2) {
+            auto result = replace_pattern(
+                arkkep,
+                "3A8F20010000",
+                "3AC990909090",
+                0, 0);
+            if (!result) {
+                break;
+            }
+            patched++;
+        }
+        if (patched > 0) {
+            log_info("otoca", "patched hologram printer search in arkkep.dll ({} site(s))", patched);
+        } else {
+            log_warning("otoca", "could not patch hologram printer search (incompatible arkkep.dll?)");
+        }
+    }
+
     void OtocaGame::attach() {
         Game::attach();
 
@@ -128,6 +196,12 @@ namespace games::otoca {
         // initialize IO hooks
         p4io_hook();
         games::shared::printer_attach();
+
+        // fix hologram print hard hang in arkkep.dll
+        patch_holo_print_hang();
+
+        // make hologram jobs find the emulated printer (else they abort unprinted)
+        patch_holo_print_search();
 
         if (BYPASS_CAMERA) {
             libutils::try_library("libcamera.dll");
