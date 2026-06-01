@@ -3,6 +3,10 @@
 #include "handle.h"
 #include "bi2x_hook.h"
 #include <unordered_map>
+
+#include <ks.h>
+#include <ksmedia.h>
+
 #include "cfg/configurator.h"
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
@@ -659,26 +663,32 @@ namespace games::gitadora {
         }
 
         // two channel mod
-        if (TWOCHANNEL) {
-            if (is_arena_model()) {
-                log_warning("gitadora", "two channel audio (-2ch) is not supported on Arena Model - use a patch instead");
-                deferredlogs::defer_error_messages({
-                    "two channel audio (-2ch) is not supported on Arena Model - use a patch instead",
-                    });
+        if (TWOCHANNEL && !is_arena_model()) {
+            HMODULE bmsd_engine_module = libutils::try_module("libbmsd-engine.dll");
+            HMODULE bmsd_module = libutils::try_module("libbmsd.dll");
 
-            } else {
-                HMODULE bmsd_engine_module = libutils::try_module("libbmsd-engine.dll");
-                HMODULE bmsd_module = libutils::try_module("libbmsd.dll");
-
-                bmsd2_boot_orig = detour::iat_try("bmsd2_boot", bmsd2_boot_hook, bmsd_module);
-                if (!(replace_pattern(bmsd_engine_module, "33000000488D", "03??????????", 0, 0) ||
-                        replace_pattern(bmsd_engine_module, "330000000F10", "03??????????", 0, 0))) {
-                    log_warning("gitadora", "two channel mode failed");
-                }
+            bmsd2_boot_orig = detour::iat_try("bmsd2_boot", bmsd2_boot_hook, bmsd_module);
+            if (!(replace_pattern(bmsd_engine_module, "33000000488D", "03??????????", 0, 0) ||
+                    replace_pattern(bmsd_engine_module, "330000000F10", "03??????????", 0, 0))) {
+                log_warning("gitadora", "two channel mode failed");
             }
         }
 
 #endif
 
+    }
+
+    void fix_audio_channel_mask(WAVEFORMATEX *format) {
+        if (!format || format->wFormatTag != WAVE_FORMAT_EXTENSIBLE) {
+            return;
+        }
+
+        auto ext = reinterpret_cast<WAVEFORMATEXTENSIBLE *>(format);
+
+        // fix the legacy 7.1 channel mask to the modern surround layout
+        // makes it more compatible with modern audio cards
+        if (ext->dwChannelMask == KSAUDIO_SPEAKER_7POINT1) {
+            ext->dwChannelMask = KSAUDIO_SPEAKER_7POINT1_SURROUND;
+        }
     }
 }

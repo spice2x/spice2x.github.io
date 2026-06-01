@@ -8,6 +8,8 @@
 #include "hooks/audio/audio_private.h"
 #include "util/logging.h"
 
+#include "downmix.h"
+
 #include "audio_render_client.h"
 
 // {1FBC8530-AF3E-4128-B418-115DE72F76B6}
@@ -93,4 +95,12 @@ struct WrappedIAudioClient : IAudioClient3 {
     AudioBackend *const backend;
     bool exclusive_mode = false;
     int frame_size = 0;
+
+    // the format the real device was opened with (after any downmix). used to scale the final
+    // output buffer for the volume boost.
+    WAVEFORMATEXTENSIBLE device_format = {};
+
+    // surround -> stereo downmix. the real device is opened as stereo while the game keeps
+    // writing multi-channel audio into a scratch buffer that we downmix in the render client.
+    hooks::audio::Downmix downmix;
 };

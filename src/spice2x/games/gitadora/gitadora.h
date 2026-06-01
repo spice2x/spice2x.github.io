@@ -2,6 +2,9 @@
 
 #include <optional>
 
+#include <windows.h>
+#include <mmreg.h>
+
 #include "avs/game.h"
 #include "games/game.h"
 #include "util/socd_cleaner.h"
@@ -24,6 +27,8 @@ namespace games::gitadora {
         virtual void pre_attach() override;
         virtual void attach() override;
     };
+
+    void fix_audio_channel_mask(WAVEFORMATEX *format);
 
     static inline bool is_drum() {
         return (

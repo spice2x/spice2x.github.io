@@ -1075,10 +1075,12 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options (Advanced)",
     },
     {
-        .title = "GitaDora Two Channel Audio (DX/SD only)",
+        .title = "GitaDora Two Channel Audio",
         .name = "2ch",
-        .desc = "Attempt to reduce audio channels down to just two channels. "
-            "This option does nothing for Arena Model (GW Delta and above); need a patch for that.",
+        .desc = "Attempt to reduce audio channels down to just two channels.\n\n"
+            "Arena Model: downmixes 7.1 to stereo using the AC-4 stereo downmix coefficients "
+            "(ETSI TS 103 190-1). The WASAPI Stereo Downmix option, if set, overrides this "
+            "algorithm.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
@@ -1938,6 +1940,49 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .hidden = true,
         .category = "Audio (Hacks)",
+    },
+    {
+        // DownmixAudioToStereo
+        .title = "WASAPI Stereo Downmix",
+        .name = "downmix",
+        .desc = "Downmixes multi-channel (surround) audio output to stereo.\n\n"
+            "Note that in all of the options, subwoofer (LFE) is dropped.\n\n"
+            "ac4 (recommended): AC-4 algorithm (ETSI TS 103 190-1) - front left/right pass "
+            "through, center and surrounds fold in at -3 dB.\n\n"
+            "normalize: all channels equally loud.\n\n"
+            "front: Front channels only.\n\n"
+            "rear: Rear channels only.\n\n"
+            "side: Side channels only.",
+        .type = OptionType::Enum,
+        .category = "Audio",
+        .elements = {
+            {"ac4", "AC-4 (ETSI TS 103 190-1)"},
+            {"normalize", "Normalize (drop LFE)"},
+            {"front", "Front channels only"},
+            {"rear", "Rear channels only"},
+            {"side", "Side channels only"},
+        },
+    },
+    {
+        // VolumeBoost
+        .title = "WASAPI Boost Audio Volume",
+        .name = "volumeboost",
+        .desc = "Artificially amplifies the hooked audio output by the selected amount, applied "
+            "right before the audio reaches the device. Works regardless of channel layout or "
+            "downmixing.\n\n"
+            "Louder settings may cause clipping/distortion, use caution.",
+        .type = OptionType::Enum,
+        .category = "Audio",
+        .elements = {
+            {"3", "+3 dB"},
+            {"6", "+6 dB"},
+            {"9", "+9 dB"},
+            {"12", "+12 dB"},
+            {"15", "+15 dB"},
+            {"20", "+20 dB"},
+            {"25", "+25 dB"},
+            {"30", "+30 dB"},
+        },
     },
     {
         // DelayBy5Seconds

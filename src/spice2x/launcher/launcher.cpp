@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 
+#include <cmath>
+#include <cstdlib>
 #include <assert.h>
 #include <shlwapi.h>
 #include <windows.h>
@@ -70,6 +72,7 @@
 #include "games/museca/museca.h"
 #include "hooks/avshook.h"
 #include "hooks/audio/audio.h"
+#include "hooks/audio/backends/wasapi/downmix.h"
 #include "hooks/debughook.h"
 #include "hooks/devicehook.h"
 #include "hooks/graphics/nvenc_hook.h"
@@ -1091,6 +1094,17 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::spice2x_DisableVolumeHook].value_bool()) {
         hooks::audio::VOLUME_HOOK_ENABLED = false;
+    }
+    if (options[launcher::Options::DownmixAudioToStereo].is_active()) {
+        auto &name = options[launcher::Options::DownmixAudioToStereo].value_text();
+        hooks::audio::DOWNMIX_ALGORITHM = hooks::audio::Downmix::name_to_algorithm(name.c_str());
+    }
+    if (options[launcher::Options::VolumeBoost].is_active()) {
+        const double decibels = std::strtod(
+            options[launcher::Options::VolumeBoost].value_text().c_str(), nullptr);
+        if (decibels > 0.0) {
+            hooks::audio::VOLUME_BOOST = (float) std::pow(10.0, decibels / 20.0);
+        }
     }
 
     if (options[launcher::Options::AudioBackend].is_active()) {

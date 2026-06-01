@@ -199,6 +199,8 @@ namespace launcher {
             AsioDriverId,
             AsioDriverName,
             AudioDummy,
+            DownmixAudioToStereo,
+            VolumeBoost,
             DelayBy5Seconds,
             spice2x_DelayByNSeconds,
             LoadStubs,

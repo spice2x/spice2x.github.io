@@ -16,8 +16,19 @@ namespace hooks::audio {
         WaveOut,
     };
 
+    // surround-to-stereo downmix algorithm
+    enum class DownmixAlgorithm {
+        FrontOnly, // keep only the front channels
+        RearOnly,  // keep only the rear/back channels
+        SideOnly,  // keep only the side channels
+        AC4,       // AC-4 stereo downmix coefficients (ETSI TS 103 190-1)
+        Normalize, // all channels equally loud, LFE dropped
+    };
+
     extern bool ENABLED;
     extern bool VOLUME_HOOK_ENABLED;
+    extern std::optional<DownmixAlgorithm> DOWNMIX_ALGORITHM;
+    extern float VOLUME_BOOST;
     extern bool USE_DUMMY;
     extern WAVEFORMATEXTENSIBLE FORMAT;
     extern std::optional<Backend> BACKEND;
