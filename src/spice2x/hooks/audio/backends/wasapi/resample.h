@@ -17,8 +17,8 @@ namespace hooks::audio {
 
     // Streaming sample-rate converter for the WASAPI render path. The real device is opened at the
     // target rate while the game keeps writing its native-rate audio into a scratch buffer; on
-    // release that buffer is converted with a windowed-sinc polyphase kernel and pushed to the
-    // device. Channel count and sample format are preserved; only the sample rate changes.
+    // release that buffer is converted with a windowed-sinc kernel and pushed to the device.
+    // Channel count and sample format are preserved; only the sample rate changes.
     //
     // Frame counts differ between the two rates, so unlike the per-frame downmix this is stateful:
     // a fractional read position and a window of input history carry across ReleaseBuffer calls,

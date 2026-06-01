@@ -1991,7 +1991,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Resamples the hooked audio output to a fixed sample rate before it reaches the "
             "device. Useful when a game requests a sample rate the device cannot output in "
             "exclusive mode (e.g. the game wants 44100 Hz but the device is locked to 48000 Hz).\n\n"
-            "Select the TARGET sample rate (one that your audio card supports).",
+            "Select the TARGET sample rate (one that your audio card supports).\n\n"
+            "Will result in couple milliseconds of latency and increased CPU usage when active.",
         .type = OptionType::Enum,
         .category = "Audio",
         .elements = {

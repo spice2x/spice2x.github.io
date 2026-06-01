@@ -128,7 +128,7 @@ namespace hooks::audio {
         if (!supported) {
             log_fatal(
                 "audio::resample",
-                "unsupported sample format ({}-bit {}), resample will output silence",
+                "unsupported sample format ({}-bit {}) for -resample",
                 game_format->wBitsPerSample, this->is_float ? "float" : "int");
         }
 
