@@ -1950,14 +1950,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "ac4 (recommended): AC-4 algorithm (ETSI TS 103 190-1) - front left/right pass "
             "through, center and surrounds fold in at -3 dB.\n\n"
             "normalize: all channels equally loud.\n\n"
-            "front: Front channels only.\n\n"
-            "rear: Rear channels only.\n\n"
-            "side: Side channels only.",
+            "front: front channels only.\n\n"
+            "rear: rear channels only.\n\n"
+            "side: side channels only.",
         .type = OptionType::Enum,
         .category = "Audio",
         .elements = {
-            {"ac4", "AC-4 (ETSI TS 103 190-1)"},
-            {"normalize", "Normalize (drop LFE)"},
+            {"ac4", "AC-4 downmix"},
+            {"normalize", "All channels"},
             {"front", "Front channels only"},
             {"rear", "Rear channels only"},
             {"side", "Side channels only"},
