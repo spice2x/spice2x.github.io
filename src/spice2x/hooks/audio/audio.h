@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 
@@ -29,6 +30,9 @@ namespace hooks::audio {
     extern bool VOLUME_HOOK_ENABLED;
     extern std::optional<DownmixAlgorithm> DOWNMIX_ALGORITHM;
     extern float VOLUME_BOOST;
+
+    // target sample rate the hooked output is resampled to, if set
+    extern std::optional<uint32_t> RESAMPLE_RATE;
     extern bool USE_DUMMY;
     extern WAVEFORMATEXTENSIBLE FORMAT;
     extern std::optional<Backend> BACKEND;

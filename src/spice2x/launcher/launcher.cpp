@@ -1106,6 +1106,13 @@ int main_implementation(int argc, char *argv[]) {
             hooks::audio::VOLUME_BOOST = (float) std::pow(10.0, decibels / 20.0);
         }
     }
+    if (options[launcher::Options::AudioResample].is_active()) {
+        const long rate = std::strtol(
+            options[launcher::Options::AudioResample].value_text().c_str(), nullptr, 10);
+        if (rate > 0) {
+            hooks::audio::RESAMPLE_RATE = (uint32_t) rate;
+        }
+    }
 
     if (options[launcher::Options::AudioBackend].is_active()) {
         auto &name = options[launcher::Options::AudioBackend].value_text();

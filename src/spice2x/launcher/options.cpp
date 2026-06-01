@@ -1985,6 +1985,25 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
+        // AudioResample
+        .title = "WASAPI Exclusive Resample Audio",
+        .name = "resample",
+        .desc = "Resamples the hooked audio output to a fixed sample rate before it reaches the "
+            "device. Useful when a game requests a sample rate the device cannot output in "
+            "exclusive mode (e.g. the game wants 44100 Hz but the device is locked to 48000 Hz).\n\n"
+            "Select the TARGET sample rate (one that your audio card supports).",
+        .type = OptionType::Enum,
+        .category = "Audio",
+        .elements = {
+            {"44100", "44100 Hz"},
+            {"48000", "48000 Hz"},
+            {"88200", "88200 Hz"},
+            {"96000", "96000 Hz"},
+            {"176400", "176400 Hz"},
+            {"192000", "192000 Hz"},
+        },
+    },
+    {
         // DelayBy5Seconds
         .title = "Delay by 5 Seconds (DEPRECATED - use -sleepduration instead)",
         .name = "sleep",

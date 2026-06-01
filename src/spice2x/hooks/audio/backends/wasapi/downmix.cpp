@@ -313,6 +313,21 @@ namespace hooks::audio {
         return S_OK;
     }
 
+    HRESULT Downmix::get_scratch(UINT32 frames, BYTE **ppData) {
+        const size_t needed = (size_t) frames * this->game_frame_size;
+        if (this->scratch.size() < needed) {
+            this->scratch.resize(needed);
+        }
+
+        *ppData = this->scratch.data();
+
+        return S_OK;
+    }
+
+    void Downmix::downmix_into(BYTE *dst, UINT32 frames) const {
+        this->process(dst, this->scratch.data(), frames);
+    }
+
     void Downmix::write_device_buffer(UINT32 frames, DWORD flags) {
         const int bps = this->bytes_per_sample;
         const int dst_stride = 2 * bps;

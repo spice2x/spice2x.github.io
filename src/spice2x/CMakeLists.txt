@@ -505,6 +505,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/audio/backends/wasapi/audio_client.cpp
         hooks/audio/backends/wasapi/audio_render_client.cpp
         hooks/audio/backends/wasapi/downmix.cpp
+        hooks/audio/backends/wasapi/resample.cpp
         hooks/audio/backends/wasapi/dummy_audio_client.cpp
         hooks/audio/backends/wasapi/dummy_audio_clock.cpp
         hooks/audio/backends/wasapi/dummy_audio_render_client.cpp

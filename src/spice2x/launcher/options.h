@@ -201,6 +201,7 @@ namespace launcher {
             AudioDummy,
             DownmixAudioToStereo,
             VolumeBoost,
+            AudioResample,
             DelayBy5Seconds,
             spice2x_DelayByNSeconds,
             LoadStubs,

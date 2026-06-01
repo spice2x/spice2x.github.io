@@ -181,6 +181,19 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
         games::gitadora::fix_audio_channel_mask(const_cast<WAVEFORMATEX *>(pFormat));
     }
 
+    // when resampling, open the real device at the target rate while the game keeps writing its
+    // native-rate audio into the scratch buffer. this runs on whatever device_format is now: the
+    // game's native format, or the stereo format produced above when downmix is also active, so
+    // the two stages chain as multi-channel -> stereo -> resampled stereo.
+    WAVEFORMATEXTENSIBLE resample_storage = {};
+    if (auto target_rate = hooks::audio::Resampler::resolve(device_format)) {
+        const uint32_t src_rate = device_format->nSamplesPerSec;
+        this->resample.setup(device_format, &resample_storage, *target_rate);
+        device_format = reinterpret_cast<const WAVEFORMATEX *>(&resample_storage);
+        log_info("audio::wasapi", "resample enabled: {} Hz -> {} Hz{}",
+                src_rate, *target_rate, this->downmix.enabled ? " (after downmix)" : "");
+    }
+
     // verbose output
     log_info("audio::wasapi", "IAudioClient::Initialize hook hit");
     log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(ShareMode));
@@ -212,9 +225,20 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
         this->frame_size = device_format->nChannels * (device_format->wBitsPerSample / 8);
     }
 
-    // call next
+    // call next. the resampler owns the device interaction whenever it is active (including when
+    // chained after the downmix), otherwise the downmix does, otherwise the device is opened
+    // directly.
     HRESULT ret;
-    if (this->downmix.enabled) {
+    if (this->resample.enabled) {
+        ret = this->resample.initialize(
+                pReal,
+                ShareMode,
+                StreamFlags,
+                hnsBufferDuration,
+                hnsPeriodicity,
+                device_format,
+                AudioSessionGuid);
+    } else if (this->downmix.enabled) {
         ret = this->downmix.initialize(
                 pReal,
                 ShareMode,
@@ -263,7 +287,15 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSize(UINT32 *pNumBufferF
         }
     }
 
-    CHECK_RESULT(pReal->GetBufferSize(pNumBufferFrames));
+    HRESULT ret = pReal->GetBufferSize(pNumBufferFrames);
+
+    // report the buffer size at the game's native rate; the real device buffer is at the
+    // resampled rate, so translate it back so the game paces its writes correctly.
+    if (SUCCEEDED(ret) && this->resample.enabled && pNumBufferFrames) {
+        *pNumBufferFrames = this->resample.frames_device_to_game(*pNumBufferFrames);
+    }
+
+    CHECK_RESULT(ret);
 }
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetStreamLatency(REFERENCE_TIME *phnsLatency) {
     static std::once_flag printed;
@@ -305,7 +337,15 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetCurrentPadding(UINT32 *pNumPad
         }
     }
 
-    CHECK_RESULT(pReal->GetCurrentPadding(pNumPaddingFrames));
+    HRESULT ret = pReal->GetCurrentPadding(pNumPaddingFrames);
+
+    // the device buffer is at the resampled rate; report padding at the game's native rate so the
+    // game's free-space calculation stays paced correctly.
+    if (SUCCEEDED(ret) && this->resample.enabled && pNumPaddingFrames) {
+        *pNumPaddingFrames = this->resample.padding_device_to_game(*pNumPaddingFrames);
+    }
+
+    CHECK_RESULT(ret);
 }
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
     AUDCLNT_SHAREMODE ShareMode,
@@ -324,15 +364,31 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
     }
 
     // when downmixing, the real device is opened as stereo, so check whether the equivalent
-    // stereo format is supported instead of the multi-channel one.
+    // stereo format is supported instead of the multi-channel one. when resampling is also active
+    // it chains onto that stereo format, so check the resampled stereo format.
     if (resolve_downmix(pFormat)) {
         WAVEFORMATEXTENSIBLE stereo_storage = {};
         hooks::audio::Downmix::make_stereo_format(pFormat, &stereo_storage);
-        const auto stereo_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
+        const WAVEFORMATEX *check_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
 
-        CHECK_RESULT(pReal->IsFormatSupported(ShareMode, stereo_format, ppClosestMatch));
+        WAVEFORMATEXTENSIBLE resample_storage = {};
+        if (auto target_rate = hooks::audio::Resampler::resolve(check_format)) {
+            hooks::audio::Resampler::make_device_format(check_format, &resample_storage, *target_rate);
+            check_format = reinterpret_cast<const WAVEFORMATEX *>(&resample_storage);
+        }
+
+        CHECK_RESULT(pReal->IsFormatSupported(ShareMode, check_format, ppClosestMatch));
     } else if (games::gitadora::is_arena_model()) {
         games::gitadora::fix_audio_channel_mask(const_cast<WAVEFORMATEX *>(pFormat));
+    } else if (auto target_rate = hooks::audio::Resampler::resolve(pFormat)) {
+
+        // when resampling, the real device is opened at the target rate, so check whether the
+        // equivalent format at that rate is supported instead of the game's native rate.
+        WAVEFORMATEXTENSIBLE resample_storage = {};
+        hooks::audio::Resampler::make_device_format(pFormat, &resample_storage, *target_rate);
+        const auto resample_format = reinterpret_cast<const WAVEFORMATEX *>(&resample_storage);
+
+        CHECK_RESULT(pReal->IsFormatSupported(ShareMode, resample_format, ppClosestMatch));
     }
 
     if (this->backend) {
