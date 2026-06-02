@@ -2008,11 +2008,11 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // AudioExclusiveBuffer
         .title = "WASAPI Exclusive Buffer Size",
         .name = "exclusivebuffer",
-        .desc = "Enlarges the WASAPI exclusive-mode device buffer to the speciifed duration in milliseconds.\n\n"
+        .desc = "Enlarges the WASAPI exclusive-mode device buffer to the specifed duration in milliseconds.\n\n"
             "Try setting this to 10 or even 20 if you hear crackling or glitches "
             "(at the cost of slightly increased latency).",
         .type = OptionType::Integer,
-        .setting_name = "10",
+        .setting_name = "16",
         .category = "Audio",
     },
     {

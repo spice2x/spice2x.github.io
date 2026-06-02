@@ -1107,17 +1107,15 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
     if (options[launcher::Options::AudioResample].is_active()) {
-        const long rate = std::strtol(
-            options[launcher::Options::AudioResample].value_text().c_str(), nullptr, 10);
+        const uint32_t rate = options[launcher::Options::AudioResample].value_uint32();
         if (rate > 0) {
-            hooks::audio::RESAMPLE_RATE = (uint32_t) rate;
+            hooks::audio::RESAMPLE_RATE = rate;
         }
     }
     if (options[launcher::Options::AudioExclusiveBuffer].is_active()) {
         const uint32_t ms = options[launcher::Options::AudioExclusiveBuffer].value_uint32();
         if (ms > 0) {
             hooks::audio::EXCLUSIVE_BUFFER_MS = ms;
-            log_info("launcher", "WASAPI exclusive buffer size set to {}ms", ms);
         }
     }
 
