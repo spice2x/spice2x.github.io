@@ -28,6 +28,11 @@ namespace hooks::audio {
         // whether the resampler is active for the current stream
         bool enabled = false;
 
+        // whether the stream is event-driven (AUDCLNT_STREAMFLAGS_EVENTCALLBACK). timer-driven
+        // streams instead poll padding and write variable partial chunks, so they drain the
+        // pending output to the device's free space rather than pushing a full buffer per period.
+        bool event_driven = true;
+
         // decide whether the stream should be resampled and to which rate. returns the target rate
         // when RESAMPLE_RATE is set and differs from the game's rate, otherwise nullopt.
         static std::optional<uint32_t> resolve(const WAVEFORMATEX *game_format);
@@ -59,9 +64,9 @@ namespace hooks::audio {
         // downmix writes its stereo output here for the resampler to consume on the next flush.
         BYTE *input_data() { return this->scratch.data(); }
 
-        // convert the `frames` the game wrote and push exactly one full device buffer of output
-        // to the real render client. `boost` is applied to the converted output. only event-driven
-        // exclusive streams are supported.
+        // convert the `frames` the game wrote and push output to the real render client. `boost`
+        // is applied to the converted output. event-driven streams fill exactly one device buffer
+        // per period; timer-driven streams push as many converted frames as the device has free.
         HRESULT flush(IAudioRenderClient *real, IAudioClient *client, UINT32 frames, DWORD flags,
                       float boost);
 
@@ -70,10 +75,22 @@ namespace hooks::audio {
         // append `frames` of the scratch buffer (native format), or silence, to the input queue
         void enqueue_input(UINT32 frames, bool silent);
 
+        // event-driven path: produce exactly one full device buffer and push it.
+        HRESULT flush_event(IAudioRenderClient *real, float boost);
+
+        // timer-driven path: convert all queued input into the pending output FIFO, then push as
+        // many frames as the device currently has free, keeping the remainder for the next call.
+        HRESULT flush_timer(IAudioRenderClient *real, IAudioClient *client, float boost);
+
         // produce exactly out_frames output frames using the fixed src/dst ratio. event-driven
         // exclusive streams must fill the whole device buffer every period; a small input cushion
         // is buffered first (see priming) so the sinc kernel always has lookahead.
         UINT32 produce_exact(UINT32 out_frames);
+
+        // convert all input the kernel can fully support into the pending output FIFO (out_float),
+        // appending without clearing. returns the number of frames produced. used by the
+        // timer-driven path where output is drained to the device in device-paced chunks.
+        UINT32 produce_variable();
 
         // convolve the windowed-sinc kernel at the current in_pos and append the resulting frame
         // (one sample per channel) to out_float
