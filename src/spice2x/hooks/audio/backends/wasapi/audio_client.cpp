@@ -223,6 +223,25 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     if (ShareMode == AUDCLNT_SHAREMODE_EXCLUSIVE) {
         this->exclusive_mode = true;
         this->frame_size = device_format->nChannels * (device_format->wBitsPerSample / 8);
+
+        // optionally enlarge the exclusive buffer. games request a very small buffer (e.g. 3 ms)
+        // which some endpoints (notably NVIDIA HDMI/DP display audio) cannot service in time,
+        // underrunning mid-period and crackling. a larger buffer gives the device slack. exclusive
+        // mode requires periodicity == buffer_duration, so raise both together; the initialize
+        // paths below handle any required buffer-size realignment.
+        if (hooks::audio::EXCLUSIVE_BUFFER_MS.has_value()) {
+            const REFERENCE_TIME min_duration =
+                    (REFERENCE_TIME) hooks::audio::EXCLUSIVE_BUFFER_MS.value() * 10000;
+            if (hnsBufferDuration < min_duration) {
+                log_info("audio::wasapi",
+                        "raising exclusive buffer from {} hns to {} hns ({} ms)",
+                        hnsBufferDuration, min_duration, hooks::audio::EXCLUSIVE_BUFFER_MS.value());
+                hnsBufferDuration = min_duration;
+                if (hnsPeriodicity != 0) {
+                    hnsPeriodicity = min_duration;
+                }
+            }
+        }
     }
 
     // call next. the resampler owns the device interaction whenever it is active (including when
@@ -255,6 +274,28 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
                 hnsPeriodicity,
                 device_format,
                 AudioSessionGuid);
+
+        // enlarging the buffer above can require a device-specific aligned size; recover by
+        // retrying with the next aligned buffer size and a matching duration.
+        if (ret == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
+            UINT32 aligned_frames = 0;
+            if (SUCCEEDED(pReal->GetBufferSize(&aligned_frames)) && aligned_frames > 0) {
+                REFERENCE_TIME aligned_duration = (REFERENCE_TIME)
+                        (10000.0 * 1000 / device_format->nSamplesPerSec * aligned_frames + 0.5);
+
+                log_info("audio::wasapi",
+                        "buffer not aligned, retrying with {} frames ({} hns)",
+                        aligned_frames, aligned_duration);
+
+                ret = pReal->Initialize(
+                        ShareMode,
+                        StreamFlags,
+                        aligned_duration,
+                        hnsPeriodicity != 0 ? aligned_duration : 0,
+                        device_format,
+                        AudioSessionGuid);
+            }
+        }
     }
 
     // check for failure
@@ -363,6 +404,11 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
         fix_rec_format(const_cast<WAVEFORMATEX *>(pFormat));
     }
 
+    // log the format the game is asking about
+    log_info("audio::wasapi", "IAudioClient::IsFormatSupported hook hit");
+    log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(ShareMode));
+    print_format(pFormat);
+
     // when downmixing, the real device is opened as stereo, so check whether the equivalent
     // stereo format is supported instead of the multi-channel one. when resampling is also active
     // it chains onto that stereo format, so check the resampled stereo format.
@@ -377,6 +423,9 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
             check_format = reinterpret_cast<const WAVEFORMATEX *>(&resample_storage);
         }
 
+        log_info("audio::wasapi", "... checking device format instead (after downmix/resample):");
+        print_format(check_format);
+
         CHECK_RESULT(pReal->IsFormatSupported(ShareMode, check_format, ppClosestMatch));
     } else if (games::gitadora::is_arena_model()) {
         games::gitadora::fix_audio_channel_mask(const_cast<WAVEFORMATEX *>(pFormat));
@@ -387,6 +436,9 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
         WAVEFORMATEXTENSIBLE resample_storage = {};
         hooks::audio::Resampler::make_device_format(pFormat, &resample_storage, *target_rate);
         const auto resample_format = reinterpret_cast<const WAVEFORMATEX *>(&resample_storage);
+
+        log_info("audio::wasapi", "... checking device format instead (after resample):");
+        print_format(resample_format);
 
         CHECK_RESULT(pReal->IsFormatSupported(ShareMode, resample_format, ppClosestMatch));
     }

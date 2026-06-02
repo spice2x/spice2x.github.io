@@ -33,6 +33,10 @@ namespace hooks::audio {
 
     // target sample rate the hooked output is resampled to, if set
     extern std::optional<uint32_t> RESAMPLE_RATE;
+
+    // minimum WASAPI exclusive buffer duration (milliseconds), if set. enlarges the device buffer
+    // to avoid underrun crackle on endpoints that cannot service a tiny buffer in time.
+    extern std::optional<uint32_t> EXCLUSIVE_BUFFER_MS;
     extern bool USE_DUMMY;
     extern WAVEFORMATEXTENSIBLE FORMAT;
     extern std::optional<Backend> BACKEND;

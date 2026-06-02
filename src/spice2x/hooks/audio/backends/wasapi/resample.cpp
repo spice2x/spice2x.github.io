@@ -139,6 +139,9 @@ namespace hooks::audio {
         this->cutoff = std::min(1.0, (double) this->dst_rate / (double) this->src_rate);
         this->half_taps = 16;
 
+        // precompute the windowed-sinc kernel now that cutoff is known
+        this->build_kernel();
+
         // prime the queue with half a window of silence so the first outputs have left history
         this->in_queue.assign((size_t) this->half_taps * this->channels, 0.0f);
         this->in_pos = this->half_taps;
@@ -250,22 +253,52 @@ namespace hooks::audio {
         }
     }
 
+    void Resampler::build_kernel() {
+        const int taps = 2 * this->half_taps;
+        const int phases = this->kernel_phases;
+        const double cut = this->cutoff;
+        const double radius = (double) this->half_taps;
+
+        // one extra row at frac == 1.0 so emit_frame can interpolate against row p + 1 safely
+        this->kernel_table.resize((size_t) (phases + 1) * taps);
+
+        for (int p = 0; p <= phases; p++) {
+            const double frac = (double) p / (double) phases;
+            for (int k = 0; k < taps; k++) {
+                // tap k maps to input offset t = k - (half_taps - 1), matching emit_frame
+                const double x = frac - (double) (k - (this->half_taps - 1));
+                this->kernel_table[(size_t) p * taps + k] =
+                        (float) (cut * sinc(cut * x) * blackman(x, radius));
+            }
+        }
+    }
+
     void Resampler::emit_frame() {
         const int ch = this->channels;
         const int radius = this->half_taps;
-        const double cut = this->cutoff;
+        const int taps = 2 * radius;
         const long avail = (long) (this->in_queue.size() / ch);
         const long center = (long) std::floor(this->in_pos);
 
+        // pick the two kernel rows bracketing this fractional position and the blend between them
+        const double frac = this->in_pos - (double) center;
+        const double fp = frac * (double) this->kernel_phases;
+        const int p0 = (int) fp;
+        const float blend = (float) (fp - (double) p0);
+        const float *row0 = &this->kernel_table[(size_t) p0 * taps];
+        const float *row1 = &this->kernel_table[(size_t) (p0 + 1) * taps];
+
+        // base input index for tap 0 (t = -(radius - 1))
+        const long base = center - (radius - 1);
+
         for (int c = 0; c < ch; c++) {
             double acc = 0.0;
-            for (int t = -radius + 1; t <= radius; t++) {
-                const long idx = center + t;
+            for (int k = 0; k < taps; k++) {
+                const long idx = base + k;
                 if (idx < 0 || idx >= avail) {
                     continue;
                 }
-                const double x = this->in_pos - (double) idx;
-                const double w = cut * sinc(cut * x) * blackman(x, (double) radius);
+                const float w = row0[k] + blend * (row1[k] - row0[k]);
                 acc += (double) this->in_queue[(size_t) idx * ch + c] * w;
             }
             this->out_float.push_back((float) acc);
@@ -293,25 +326,37 @@ namespace hooks::audio {
         }
         this->out_float.reserve((size_t) out_frames * ch);
 
-        // keep a right-side window of `half_taps` future samples available for the sinc kernel
-        const double usable = (double) (this->in_queue.size() / ch) - this->half_taps;
-        const double span = usable - this->in_pos;
+        // resample ratio. drive it from the buffer size actually advertised to the game rather
+        // than the nominal src/dst ratio: GetBufferSize reports floor(dev_buf * src/dst) game
+        // frames, so the game only ever delivers that many input frames per device period.
+        // consuming at the nominal ratio would eat slightly more input than arrives on any device
+        // where dev_buf * src/dst is non-integer (e.g. 144 -> 132.3, floored to 132), slowly
+        // draining the queue until it underruns to permanent silence. using the advertised integer
+        // ratio keeps input and output exactly balanced; the resulting pitch error is below 0.3%
+        // and inaudible, and it collapses to the exact ratio when the division is integer (160 ->
+        // 147 stays 147/160 = 44100/48000).
+        const double step = (double) this->frames_device_to_game(this->device_buffer_frames)
+                / (double) this->device_buffer_frames;
 
-        // not enough input buffered yet (stream start): feed silence to keep the device fed
-        if (span <= 0.0) {
-            this->out_float.assign((size_t) out_frames * ch, 0.0f);
-            return out_frames;
+        // input frames the block will touch: from in_pos through the right edge of the sinc kernel
+        // at the final output sample. if the queue is short of this, the kernel tail reads past the
+        // end and distorts every buffer, so buffer one extra block of input before the first output
+        // (emitting silence without consuming) to build a cushion the kernel can always reach into.
+        const long avail = (long) (this->in_queue.size() / ch);
+        const long need = (long) std::ceil(this->in_pos + step * (double) out_frames)
+                + this->half_taps;
+
+        if (this->priming) {
+            if (avail < need + (long) out_frames) {
+                this->out_float.assign((size_t) out_frames * ch, 0.0f);
+                return out_frames;
+            }
+            this->priming = false;
         }
-
-        // map exactly `span` input frames onto the full output buffer. the step varies slightly
-        // from the nominal src/dst ratio, which shows up as a tiny constant pitch offset (well
-        // under 1%, set by the integer buffer-size rounding) but keeps the queue bounded and the
-        // device buffer always completely filled, avoiding underrun glitches.
-        const double local_step = span / (double) out_frames;
 
         for (UINT32 o = 0; o < out_frames; o++) {
             this->emit_frame();
-            this->in_pos += local_step;
+            this->in_pos += step;
         }
 
         this->drop_consumed();

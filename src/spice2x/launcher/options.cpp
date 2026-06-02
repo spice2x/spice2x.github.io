@@ -2005,6 +2005,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         },
     },
     {
+        // AudioExclusiveBuffer
+        .title = "WASAPI Exclusive Buffer Size",
+        .name = "exclusivebuffer",
+        .desc = "Enlarges the WASAPI exclusive-mode device buffer to the speciifed duration in milliseconds.\n\n"
+            "Try setting this to 10 or even 20 if you hear crackling or glitches "
+            "(at the cost of slightly increased latency).",
+        .type = OptionType::Integer,
+        .setting_name = "10",
+        .category = "Audio",
+    },
+    {
         // DelayBy5Seconds
         .title = "Delay by 5 Seconds (DEPRECATED - use -sleepduration instead)",
         .name = "sleep",

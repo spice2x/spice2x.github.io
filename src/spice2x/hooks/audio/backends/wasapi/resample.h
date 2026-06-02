@@ -70,14 +70,19 @@ namespace hooks::audio {
         // append `frames` of the scratch buffer (native format), or silence, to the input queue
         void enqueue_input(UINT32 frames, bool silent);
 
-        // produce exactly out_frames output frames from all input currently available, stretching
-        // the block with a per-call step so the input maps onto the full buffer. event-driven
-        // exclusive streams must fill the whole device buffer every period.
+        // produce exactly out_frames output frames using the fixed src/dst ratio. event-driven
+        // exclusive streams must fill the whole device buffer every period; a small input cushion
+        // is buffered first (see priming) so the sinc kernel always has lookahead.
         UINT32 produce_exact(UINT32 out_frames);
 
         // convolve the windowed-sinc kernel at the current in_pos and append the resulting frame
         // (one sample per channel) to out_float
         void emit_frame();
+
+        // precompute the windowed-sinc kernel sampled at kernel_phases sub-sample positions, so
+        // emit_frame is a table lookup instead of recomputing sin/cos per tap (which is far too
+        // expensive to run per sample on the audio callback thread and causes underrun crackle).
+        void build_kernel();
 
         // drop input frames that in_pos has advanced past, keeping a window of history for the
         // next block's left context
@@ -99,9 +104,18 @@ namespace hooks::audio {
         double cutoff = 1.0;
         int half_taps = 16;
 
+        // precomputed kernel: (kernel_phases + 1) rows of 2*half_taps weights, indexed by the
+        // fractional sample position (linearly interpolated between adjacent rows in emit_frame)
+        std::vector<float> kernel_table;
+        int kernel_phases = 1024;
+
         // interleaved float input queue and the fractional read position within it (in frames)
         std::vector<float> in_queue;
         double in_pos = 0.0;
+
+        // emit silence until a full block of input lookahead has accumulated, so the sinc kernel
+        // never reads past the end of the queue (which would distort the tail of every buffer)
+        bool priming = true;
 
         // interleaved float scratch for produced output
         std::vector<float> out_float;

@@ -1113,6 +1113,13 @@ int main_implementation(int argc, char *argv[]) {
             hooks::audio::RESAMPLE_RATE = (uint32_t) rate;
         }
     }
+    if (options[launcher::Options::AudioExclusiveBuffer].is_active()) {
+        const uint32_t ms = options[launcher::Options::AudioExclusiveBuffer].value_uint32();
+        if (ms > 0) {
+            hooks::audio::EXCLUSIVE_BUFFER_MS = ms;
+            log_info("launcher", "WASAPI exclusive buffer size set to {}ms", ms);
+        }
+    }
 
     if (options[launcher::Options::AudioBackend].is_active()) {
         auto &name = options[launcher::Options::AudioBackend].value_text();
