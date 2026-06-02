@@ -119,17 +119,15 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::GetBuffer(UINT32 NumFramesR
         BYTE *resample_scratch = nullptr;
         this->client->resample.get_buffer(NumFramesRequested, &resample_scratch);
         CHECK_RESULT(this->client->downmix.get_scratch(NumFramesRequested, ppData));
-    }
 
     // surround downmix: reserve the real (stereo) device buffer, but hand the game a
     // multi-channel scratch buffer that we downmix on release
-    if (this->client->downmix.enabled) {
+    } else if (this->client->downmix.enabled) {
         CHECK_RESULT(this->client->downmix.get_buffer(pReal, NumFramesRequested, ppData));
-    }
 
     // resample: hand the game a native-rate scratch buffer that we convert on release. the real
     // device buffer is acquired in ReleaseBuffer once the converted frame count is known.
-    if (this->client->resample.enabled) {
+    } else if (this->client->resample.enabled) {
         CHECK_RESULT(this->client->resample.get_buffer(NumFramesRequested, ppData));
     }
 
