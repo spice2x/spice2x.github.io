@@ -11,6 +11,7 @@
 
 #include "cfg/screen_resize.h"
 #include "games/gitadora/gitadora.h"
+#include "games/gitadora/gitadora_arena.h"
 #include "games/iidx/iidx.h"
 #include "games/popn/popn.h"
 #include "hooks/graphics/graphics.h"
@@ -175,6 +176,7 @@ namespace wintouchemu {
                 auto x = touch_event->x;
                 auto y = touch_event->y;
                 auto valid = true;
+                auto scale_arena_touch = true;
 
                 // log_misc("wintouchemu", "touch event ({}, {})", to_string(x), to_string(y));
 
@@ -187,8 +189,13 @@ namespace wintouchemu {
                 } else if (overlay::OVERLAY) {
                     // touch was received on global coords
                     valid = overlay::OVERLAY->transform_touch_point(&x, &y);
+                    scale_arena_touch = !overlay::OVERLAY->can_transform_touch_input();
                 } else {
                     valid = false;
+                }
+
+                if (scale_arena_touch) {
+                    games::gitadora::scale_arena_fullscreen_touch_point(x, y);
                 }
 
                 touch_input->x = x * 100;
@@ -257,9 +264,17 @@ namespace wintouchemu {
                     //     to_string(touch_input->x), to_string(touch_input->y), mouse_state.touch_event);
 
                     auto valid = true;
+                    auto scale_arena_touch = true;
                     if (overlay::OVERLAY) {
                         valid = overlay::OVERLAY->transform_touch_point(
                             &touch_input->x, &touch_input->y);
+                        scale_arena_touch = !overlay::OVERLAY->can_transform_touch_input();
+                    }
+
+                    if (scale_arena_touch) {
+                        games::gitadora::scale_arena_fullscreen_touch_point(
+                            touch_input->x,
+                            touch_input->y);
                     }
 
                     // touch inputs require 100x precision per pixel
@@ -519,4 +534,3 @@ namespace wintouchemu {
         }
     }
 }
- 

@@ -416,6 +416,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/nost/io.cpp
         games/nost/poke.cpp
         games/gitadora/gitadora.cpp
+        games/gitadora/gitadora_arena.cpp
         games/gitadora/asio.cpp
         games/gitadora/io.cpp
         games/gitadora/handle.cpp

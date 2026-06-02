@@ -14,6 +14,7 @@
 #include "cfg/icon.h"
 #include "cfg/screen_resize.h"
 #include "games/ddr/ddr.h"
+#include "games/gitadora/gitadora_arena.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
 #include "games/popn/popn.h"
@@ -173,8 +174,34 @@ static bool gitadora_should_block_game_window_placement(HWND hWnd) {
     return window_name != nullptr && graphics_gitadora_has_window_monitor(window_name);
 }
 
+static bool gitadora_apply_arena_fullscreen_window_placement(
+        HWND hWnd,
+        int &x,
+        int &y,
+        int &width,
+        int &height) {
+    const auto window_name = gitadora_window_name_for_hwnd(hWnd);
+    if (window_name == nullptr) {
+        return false;
+    }
+
+    const auto old_x = x;
+    const auto old_y = y;
+    const auto old_width = width;
+    const auto old_height = height;
+    games::gitadora::apply_arena_fullscreen_window_size(
+        window_name,
+        x,
+        y,
+        width,
+        height);
+    return x != old_x || y != old_y || width != old_width || height != old_height;
+}
+
 static void gitadora_remember_window(HWND hWnd, const std::string &window_name) {
-    if (window_name == "LEFT") {
+    if (window_name == "GITADORA") {
+        GRAPHICS_HOOKED_WINDOW = hWnd;
+    } else if (window_name == "LEFT") {
         GFDM_LEFT_WINDOW = hWnd;
     } else if (window_name == "RIGHT") {
         GFDM_RIGHT_WINDOW = hWnd;
@@ -560,6 +587,12 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             nWidth,
             nHeight,
             true);
+        games::gitadora::apply_arena_fullscreen_window_size(
+            gfdm_window_name,
+            x,
+            y,
+            nWidth,
+            nHeight);
     }
 
     if (GRAPHICS_WINDOWED) {
@@ -585,6 +618,10 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     if (is_sdvx_sub_window) {
         SDVX_SUBSCREEN_WINDOW = result;
         graphics_hook_subscreen_window(SDVX_SUBSCREEN_WINDOW);
+    }
+
+    if (gfdm_window_name == "GITADORA") {
+        gitadora_remember_window(result, gfdm_window_name);
     }
 
     // only hook touch window if multiple windows are allowed
@@ -792,6 +829,8 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
         return TRUE;
     }
 
+    gitadora_apply_arena_fullscreen_window_placement(hWnd, X, Y, nWidth, nHeight);
+
     // call original
     return MoveWindow_orig(hWnd, X, Y, nWidth, nHeight, bRepaint);
 }
@@ -891,6 +930,38 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
     if (gitadora_should_block_game_window_placement(hWnd) &&
         (uFlags & (SWP_NOMOVE | SWP_NOSIZE)) != (SWP_NOMOVE | SWP_NOSIZE)) {
         return TRUE;
+    }
+
+    if (!GRAPHICS_WINDOWED && games::gitadora::is_arena_model()) {
+        int target_x = X;
+        int target_y = Y;
+        int target_cx = cx;
+        int target_cy = cy;
+
+        RECT rect {};
+        if ((uFlags & (SWP_NOMOVE | SWP_NOSIZE)) && GetWindowRect(hWnd, &rect)) {
+            if (uFlags & SWP_NOMOVE) {
+                target_x = rect.left;
+                target_y = rect.top;
+            }
+            if (uFlags & SWP_NOSIZE) {
+                target_cx = rect.right - rect.left;
+                target_cy = rect.bottom - rect.top;
+            }
+        }
+
+        if (gitadora_apply_arena_fullscreen_window_placement(
+                hWnd,
+                target_x,
+                target_y,
+                target_cx,
+                target_cy)) {
+            X = target_x;
+            Y = target_y;
+            cx = target_cx;
+            cy = target_cy;
+            uFlags &= ~(SWP_NOMOVE | SWP_NOSIZE);
+        }
     }
 
     // prevent gitadora arena model from shifting windows around if the user has preferences

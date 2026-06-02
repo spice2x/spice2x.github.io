@@ -1205,6 +1205,45 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .picker = OptionPickerType::AsioDriver,
     },
     {
+        // GitaDoraArenaResolution
+        .title = "GitaDora Arena Render Resolution",
+        .name = "gdaresolution",
+        .desc = "For Arena Model: select the main game render resolution.\n\n"
+            "auto: if the primary monitor supports 3840x2160 at 60Hz, use the game's native 4K mode; "
+            "otherwise choose the highest supported 16:9 mode up to 3840x2160.\n\n"
+            "off: do not patch the game's native 3840x2160 render target.",
+        .type = OptionType::Enum,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+        .elements = {
+            {"auto", "Automatic"},
+            {"1920,1080", "1920x1080"},
+            {"2560,1440", "2560x1440"},
+            {"3840,2160", "3840x2160"},
+            {"off", "Off"},
+        },
+    },
+    {
+        // GitaDoraArenaForce1080p
+        .title = "GitaDora Arena 1080p Render (DEPRECATED - use -gdaresolution 1920,1080)",
+        .name = "gda1080p",
+        .desc = "DEPRECATED - use -gdaresolution 1920,1080.\n\n"
+            "For Arena Model: render the main game at 1920x1080 instead of 3840x2160.",
+        .type = OptionType::Bool,
+        .hidden = true,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+    },
+    {
+        // GitaDoraDisableLive2D
+        .title = "GitaDora Disable Live2D (EXPERIMENTAL)",
+        .name = "gddisablelive2d",
+        .desc = "For Arena Model: attempt to skip Live2D character rendering to reduce GPU load.",
+        .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+    },
+    {
         .title = "Force Load Jubeat Module",
         .name = "jb",
         .desc = "Manually enable Jubeat module.",
