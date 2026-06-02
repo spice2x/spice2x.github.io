@@ -1986,7 +1986,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // AudioResample
-        .title = "WASAPI Exclusive Resample Audio",
+        .title = "WASAPI Exclusive Mode Resampling",
         .name = "resample",
         .desc = "Resamples the hooked audio output to a fixed sample rate before it reaches the "
             "device. Useful when a game requests a sample rate the device cannot output in "
@@ -1996,19 +1996,19 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Enum,
         .category = "Audio",
         .elements = {
-            {"44100", "44100 Hz"},
-            {"48000", "48000 Hz"},
-            {"88200", "88200 Hz"},
-            {"96000", "96000 Hz"},
-            {"176400", "176400 Hz"},
-            {"192000", "192000 Hz"},
+            {"44100", "44.1 kHz"},
+            {"48000", "48 kHz"},
+            {"88200", "88.2 kHz"},
+            {"96000", "96 kHz"},
+            {"176400", "176.4 kHz"},
+            {"192000", "192 kHz"},
         },
     },
     {
         // AudioExclusiveBuffer
         .title = "WASAPI Exclusive Buffer Size",
         .name = "exclusivebuffer",
-        .desc = "Enlarges the WASAPI exclusive-mode device buffer to the specifed duration in milliseconds.\n\n"
+        .desc = "Enlarges the WASAPI exclusive-mode device buffer to the specified duration in milliseconds.\n\n"
             "Try setting this to 10 or even 20 if you hear crackling or glitches "
             "(at the cost of slightly increased latency).",
         .type = OptionType::Integer,

@@ -11,6 +11,8 @@
 
 #include "util/logging.h"
 
+#include "util.h"
+
 namespace hooks::audio {
 
     namespace {
@@ -155,28 +157,10 @@ namespace hooks::audio {
             REFERENCE_TIME buffer_duration, REFERENCE_TIME periodicity,
             const WAVEFORMATEX *device_format, LPCGUID session_guid) {
 
-        HRESULT ret = real->Initialize(share_mode, stream_flags, buffer_duration, periodicity,
-                device_format, session_guid);
-
         // the smaller stereo buffer can end up unaligned for the device when the game sized the
-        // duration for its larger multi-channel format. recover by asking the device for the next
-        // aligned buffer size and re-initializing with a matching duration.
-        if (ret == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
-            UINT32 aligned_frames = 0;
-            if (SUCCEEDED(real->GetBufferSize(&aligned_frames)) && aligned_frames > 0) {
-                REFERENCE_TIME aligned_duration = (REFERENCE_TIME)
-                        (10000.0 * 1000 / device_format->nSamplesPerSec * aligned_frames + 0.5);
-
-                log_info("audio::downmix",
-                        "buffer not aligned, retrying with {} frames ({} hns)",
-                        aligned_frames, aligned_duration);
-
-                ret = real->Initialize(share_mode, stream_flags, aligned_duration,
-                        periodicity != 0 ? aligned_duration : 0, device_format, session_guid);
-            }
-        }
-
-        return ret;
+        // duration for its larger multi-channel format; the helper recovers from that.
+        return initialize_with_alignment_retry(real, "audio::downmix", share_mode, stream_flags,
+                buffer_duration, periodicity, device_format, session_guid);
     }
 
     void Downmix::add_channel(int channel, DWORD speaker, float gain) {

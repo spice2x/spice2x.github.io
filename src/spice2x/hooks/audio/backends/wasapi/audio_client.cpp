@@ -267,35 +267,15 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
                 device_format,
                 AudioSessionGuid);
     } else {
-        ret = pReal->Initialize(
+        ret = initialize_with_alignment_retry(
+                pReal,
+                "audio::wasapi",
                 ShareMode,
                 StreamFlags,
                 hnsBufferDuration,
                 hnsPeriodicity,
                 device_format,
                 AudioSessionGuid);
-
-        // enlarging the buffer above can require a device-specific aligned size; recover by
-        // retrying with the next aligned buffer size and a matching duration.
-        if (ret == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
-            UINT32 aligned_frames = 0;
-            if (SUCCEEDED(pReal->GetBufferSize(&aligned_frames)) && aligned_frames > 0) {
-                REFERENCE_TIME aligned_duration = (REFERENCE_TIME)
-                        (10000.0 * 1000 / device_format->nSamplesPerSec * aligned_frames + 0.5);
-
-                log_info("audio::wasapi",
-                        "buffer not aligned, retrying with {} frames ({} hns)",
-                        aligned_frames, aligned_duration);
-
-                ret = pReal->Initialize(
-                        ShareMode,
-                        StreamFlags,
-                        aligned_duration,
-                        hnsPeriodicity != 0 ? aligned_duration : 0,
-                        device_format,
-                        AudioSessionGuid);
-            }
-        }
     }
 
     // check for failure
