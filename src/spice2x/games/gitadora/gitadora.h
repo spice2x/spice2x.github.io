@@ -21,7 +21,6 @@ namespace games::gitadora {
     extern std::optional<uint8_t> ARENA_WINDOW_COUNT;
     extern std::optional<std::string> ASIO_DRIVER;
     extern std::optional<std::string> ARENA_RESOLUTION;
-    extern bool ARENA_FORCE_1080P;
     extern bool DISABLE_LIVE2D;
 
     class GitaDoraGame : public games::Game {

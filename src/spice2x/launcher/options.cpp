@@ -1217,22 +1217,12 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Game Options",
         .elements = {
             {"auto", "Automatic"},
+            {"1280,720", "1280x720"},
             {"1920,1080", "1920x1080"},
             {"2560,1440", "2560x1440"},
             {"3840,2160", "3840x2160"},
             {"off", "Off"},
         },
-    },
-    {
-        // GitaDoraArenaForce1080p
-        .title = "GitaDora Arena 1080p Render (DEPRECATED - use -gdaresolution 1920,1080)",
-        .name = "gda1080p",
-        .desc = "DEPRECATED - use -gdaresolution 1920,1080.\n\n"
-            "For Arena Model: render the main game at 1920x1080 instead of 3840x2160.",
-        .type = OptionType::Bool,
-        .hidden = true,
-        .game_name = "GitaDora",
-        .category = "Game Options",
     },
     {
         // GitaDoraDisableLive2D

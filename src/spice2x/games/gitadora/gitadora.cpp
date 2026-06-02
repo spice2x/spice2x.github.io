@@ -34,7 +34,6 @@ namespace games::gitadora {
     std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
     std::optional<std::string> ARENA_RESOLUTION = std::nullopt;
-    bool ARENA_FORCE_1080P = false;
     bool DISABLE_LIVE2D = false;
 
     /*
