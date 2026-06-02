@@ -2,6 +2,7 @@
 
 #include <audioclient.h>
 
+#include "hooks/audio/util.h"
 #include "util/flags_helper.h"
 #include "util/logging.h"
 
@@ -18,6 +19,22 @@ std::string stream_flags_str(DWORD flags) {
     FLAG(flags, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM);
     FLAG(flags, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY);
     FLAGS_END(flags);
+}
+
+void print_format(AUDCLNT_SHAREMODE share_mode, DWORD stream_flags, REFERENCE_TIME buffer_duration,
+        REFERENCE_TIME periodicity, const WAVEFORMATEX *device_format) {
+    log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(share_mode));
+    log_info("audio::wasapi", "... StreamFlags       : {}", stream_flags_str(stream_flags));
+    log_info("audio::wasapi", "... hnsBufferDuration : {} ({:.3f} ms)",
+            buffer_duration, buffer_duration / 10000.0);
+    log_info("audio::wasapi", "... hnsPeriodicity    : {} ({:.3f} ms)",
+            periodicity, periodicity / 10000.0);
+    print_format(device_format);
+}
+
+void print_format(AUDCLNT_SHAREMODE share_mode, const WAVEFORMATEX *device_format) {
+    log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(share_mode));
+    print_format(device_format);
 }
 
 HRESULT initialize_with_alignment_retry(IAudioClient *client, const char *log_group,

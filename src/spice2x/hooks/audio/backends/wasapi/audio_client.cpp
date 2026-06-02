@@ -196,11 +196,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
 
     // verbose output
     log_info("audio::wasapi", "IAudioClient::Initialize hook hit");
-    log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(ShareMode));
-    log_info("audio::wasapi", "... StreamFlags       : {}", stream_flags_str(StreamFlags));
-    log_info("audio::wasapi", "... hnsBufferDuration : {}", hnsBufferDuration);
-    log_info("audio::wasapi", "... hnsPeriodicity    : {}", hnsPeriodicity);
-    print_format(device_format);
+    print_format(ShareMode, StreamFlags, hnsBufferDuration, hnsPeriodicity, device_format);
 
     if (this->backend) {
         SAFE_CALL("AudioBackend", "on_initialize", this->backend->on_initialize(
@@ -212,11 +208,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
                 AudioSessionGuid));
 
         log_info("audio::wasapi", "AudioBackend::on_initialize call finished");
-        log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(ShareMode));
-        log_info("audio::wasapi", "... StreamFlags       : {}", stream_flags_str(StreamFlags));
-        log_info("audio::wasapi", "... hnsBufferDuration : {}", hnsBufferDuration);
-        log_info("audio::wasapi", "... hnsPeriodicity    : {}", hnsPeriodicity);
-        print_format(pFormat);
+        print_format(ShareMode, StreamFlags, hnsBufferDuration, hnsPeriodicity, pFormat);
     }
 
     // check for exclusive mode
@@ -386,8 +378,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
 
     // log the format the game is asking about
     log_info("audio::wasapi", "IAudioClient::IsFormatSupported hook hit");
-    log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(ShareMode));
-    print_format(pFormat);
+    print_format(ShareMode, pFormat);
 
     // when downmixing, the real device is opened as stereo, so check whether the equivalent
     // stereo format is supported instead of the multi-channel one. when resampling is also active

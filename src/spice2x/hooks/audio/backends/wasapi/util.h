@@ -12,6 +12,15 @@
 
 std::string stream_flags_str(DWORD flags);
 
+// log the stream parameters (share mode, flags, buffer duration, periodicity) followed by the wave
+// format, matching the block printed at the top of IAudioClient::Initialize.
+void print_format(AUDCLNT_SHAREMODE share_mode, DWORD stream_flags, REFERENCE_TIME buffer_duration,
+        REFERENCE_TIME periodicity, const WAVEFORMATEX *device_format);
+
+// log the share mode followed by the wave format, for paths that only have a share mode (e.g.
+// IAudioClient::IsFormatSupported).
+void print_format(AUDCLNT_SHAREMODE share_mode, const WAVEFORMATEX *device_format);
+
 // detect IEEE float samples: WAVE_FORMAT_IEEE_FLOAT, or WAVE_FORMAT_EXTENSIBLE whose SubFormat is
 // KSDATAFORMAT_SUBTYPE_IEEE_FLOAT (Data1 == 3; _PCM has Data1 == 1)
 inline bool is_ieee_float(const WAVEFORMATEX *fmt) {
