@@ -9,9 +9,9 @@
 #include "util/logging.h"
 
 #include "downmix.h"
+#include "resample.h"
 
 #include "audio_render_client.h"
-
 // {1FBC8530-AF3E-4128-B418-115DE72F76B6}
 static const GUID IID_WrappedIAudioClient = {
     0x1fbc8530, 0xaf3e, 0x4128, { 0xb4, 0x18, 0x11, 0x5d, 0xe7, 0x2f, 0x76, 0xb6 }
@@ -103,4 +103,9 @@ struct WrappedIAudioClient : IAudioClient3 {
     // surround -> stereo downmix. the real device is opened as stereo while the game keeps
     // writing multi-channel audio into a scratch buffer that we downmix in the render client.
     hooks::audio::Downmix downmix;
+
+    // native-rate -> target-rate sample-rate conversion. the real device is opened at the target
+    // rate while the game keeps writing its native-rate audio into a scratch buffer that we
+    // resample in the render client.
+    hooks::audio::Resampler resample;
 };

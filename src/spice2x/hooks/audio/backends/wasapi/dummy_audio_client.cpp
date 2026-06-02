@@ -73,11 +73,7 @@ HRESULT STDMETHODCALLTYPE DummyIAudioClient::Initialize(
 
     // verbose output
     log_info("audio::wasapi", "IAudioClient::Initialize hook hit");
-    log_info("audio::wasapi", "... ShareMode         : {}", share_mode_str(ShareMode));
-    log_info("audio::wasapi", "... StreamFlags       : {}", stream_flags_str(StreamFlags));
-    log_info("audio::wasapi", "... hnsBufferDuration : {}", hnsBufferDuration);
-    log_info("audio::wasapi", "... hnsPeriodicity    : {}", hnsPeriodicity);
-    print_format(pFormat);
+    print_format(ShareMode, StreamFlags, hnsBufferDuration, hnsPeriodicity, pFormat);
 
     CHECK_RESULT(this->backend->on_initialize(
         &ShareMode,

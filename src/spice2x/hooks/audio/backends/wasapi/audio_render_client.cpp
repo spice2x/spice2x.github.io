@@ -7,6 +7,7 @@
 
 #include "audio_client.h"
 #include "hooks/audio/audio.h"
+#include "util.h"
 #include "wasapi_private.h"
 
 const char CLASS_NAME[] = "WrappedIAudioRenderClient";
@@ -17,9 +18,7 @@ static void apply_gain(BYTE *buffer, UINT32 frames, const WAVEFORMATEXTENSIBLE &
     const WAVEFORMATEX &f = fmt.Format;
     const size_t samples = (size_t) frames * f.nChannels;
 
-    // KSDATAFORMAT_SUBTYPE_IEEE_FLOAT has Data1 == 3, _PCM has Data1 == 1
-    bool is_float = f.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
-        || (f.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt.SubFormat.Data1 == 0x00000003);
+    bool is_float = is_ieee_float(&f);
 
     if (is_float && f.wBitsPerSample == 32) {
         auto p = reinterpret_cast<float *>(buffer);
@@ -113,10 +112,23 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::GetBuffer(UINT32 NumFramesR
         return S_OK;
     }
 
+    // downmix + resample chained: the game writes its multi-channel native-rate audio into the
+    // downmix scratch, which is downmixed to stereo and then resampled on release. size the
+    // resampler's (stereo) input scratch now and hand the game the multi-channel downmix scratch.
+    if (this->client->downmix.enabled && this->client->resample.enabled) {
+        BYTE *resample_scratch = nullptr;
+        this->client->resample.get_buffer(NumFramesRequested, &resample_scratch);
+        CHECK_RESULT(this->client->downmix.get_scratch(NumFramesRequested, ppData));
+
     // surround downmix: reserve the real (stereo) device buffer, but hand the game a
     // multi-channel scratch buffer that we downmix on release
-    if (this->client->downmix.enabled) {
+    } else if (this->client->downmix.enabled) {
         CHECK_RESULT(this->client->downmix.get_buffer(pReal, NumFramesRequested, ppData));
+
+    // resample: hand the game a native-rate scratch buffer that we convert on release. the real
+    // device buffer is acquired in ReleaseBuffer once the converted frame count is known.
+    } else if (this->client->resample.enabled) {
+        CHECK_RESULT(this->client->resample.get_buffer(NumFramesRequested, ppData));
     }
 
     // call original
@@ -141,6 +153,34 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::ReleaseBuffer(UINT32 NumFra
                 dwFlags));
 
         return S_OK;
+    }
+
+    // downmix + resample chained: downmix the game's multi-channel scratch into the resampler's
+    // stereo input scratch, then let the resampler convert and push it to the device. a silent
+    // buffer skips the downmix and feeds silence straight through.
+    if (this->client->downmix.enabled && this->client->resample.enabled) {
+        if ((dwFlags & AUDCLNT_BUFFERFLAGS_SILENT) == 0) {
+            this->client->downmix.downmix_into(
+                    this->client->resample.input_data(), NumFramesWritten);
+        }
+        return this->client->resample.flush(
+                pReal,
+                this->client->pReal,
+                NumFramesWritten,
+                dwFlags,
+                hooks::audio::VOLUME_BOOST);
+    }
+
+    // resample: convert the game's native-rate scratch and push as many output frames as the
+    // device has room for, applying the volume boost to the converted output. handles acquiring
+    // and releasing the real device buffer itself.
+    if (this->client->resample.enabled) {
+        return this->client->resample.flush(
+                pReal,
+                this->client->pReal,
+                NumFramesWritten,
+                dwFlags,
+                hooks::audio::VOLUME_BOOST);
     }
 
     // resolve the real device buffer for whichever path produced the audio

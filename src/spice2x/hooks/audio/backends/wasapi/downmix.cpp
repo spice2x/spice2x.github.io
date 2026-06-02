@@ -11,6 +11,8 @@
 
 #include "util/logging.h"
 
+#include "util.h"
+
 namespace hooks::audio {
 
     namespace {
@@ -45,69 +47,6 @@ namespace hooks::audio {
         }
     }
 
-    // read one sample at `p` as a normalized float in [-1, 1]
-    static inline float read_sample(const BYTE *p, int bytes, bool is_float) {
-        if (is_float) {
-            float v;
-            memcpy(&v, p, sizeof(float));
-            return v;
-        }
-        switch (bytes) {
-            case 2: {
-                int16_t v;
-                memcpy(&v, p, sizeof(v));
-                return v * (1.0f / 32768.0f);
-            }
-            case 3: {
-                int32_t v = p[0] | (p[1] << 8) | (p[2] << 16);
-                if (v & 0x800000) {
-                    v |= ~0xFFFFFF; // sign extend
-                }
-                return v * (1.0f / 8388608.0f);
-            }
-            case 4: {
-                int32_t v;
-                memcpy(&v, p, sizeof(v));
-                return (float) (v * (1.0 / 2147483648.0));
-            }
-            default:
-                return 0.0f;
-        }
-    }
-
-    // write the normalized float `value` to the sample at `p`, clamping to the format's range
-    static inline void write_sample(BYTE *p, int bytes, bool is_float, float value) {
-        if (is_float) {
-            float v = std::clamp(value, -1.0f, 1.0f);
-            memcpy(p, &v, sizeof(v));
-            return;
-        }
-        switch (bytes) {
-            case 2: {
-                int16_t v = (int16_t) std::clamp(
-                    (int) std::lround(value * 32768.0f), -32768, 32767);
-                memcpy(p, &v, sizeof(v));
-                break;
-            }
-            case 3: {
-                int32_t v = (int32_t) std::clamp<int64_t>(
-                    std::llround((double) value * 8388608.0), -8388608, 8388607);
-                p[0] = v & 0xFF;
-                p[1] = (v >> 8) & 0xFF;
-                p[2] = (v >> 16) & 0xFF;
-                break;
-            }
-            case 4: {
-                int32_t v = (int32_t) std::clamp<int64_t>(
-                    std::llround((double) value * 2147483648.0), INT32_MIN, INT32_MAX);
-                memcpy(p, &v, sizeof(v));
-                break;
-            }
-            default:
-                break;
-        }
-    }
-
     void Downmix::setup(const WAVEFORMATEX *game_format, WAVEFORMATEXTENSIBLE *stereo_out,
             DownmixAlgorithm algorithm) {
         this->enabled = true;
@@ -115,11 +54,7 @@ namespace hooks::audio {
         this->bytes_per_sample = game_format->wBitsPerSample / 8;
         this->game_frame_size = game_format->nChannels * this->bytes_per_sample;
 
-        // KSDATAFORMAT_SUBTYPE_IEEE_FLOAT has Data1 == 3 (matches apply_gain detection)
-        this->is_float = game_format->wFormatTag == WAVE_FORMAT_IEEE_FLOAT
-            || (game_format->wFormatTag == WAVE_FORMAT_EXTENSIBLE
-                && reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(game_format)
-                    ->SubFormat.Data1 == 0x00000003);
+        this->is_float = is_ieee_float(game_format);
 
         // supported: 16/24/32-bit integer PCM and 32-bit float; anything else mixes to silence
         const bool supported = this->is_float
@@ -155,28 +90,10 @@ namespace hooks::audio {
             REFERENCE_TIME buffer_duration, REFERENCE_TIME periodicity,
             const WAVEFORMATEX *device_format, LPCGUID session_guid) {
 
-        HRESULT ret = real->Initialize(share_mode, stream_flags, buffer_duration, periodicity,
-                device_format, session_guid);
-
         // the smaller stereo buffer can end up unaligned for the device when the game sized the
-        // duration for its larger multi-channel format. recover by asking the device for the next
-        // aligned buffer size and re-initializing with a matching duration.
-        if (ret == AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED) {
-            UINT32 aligned_frames = 0;
-            if (SUCCEEDED(real->GetBufferSize(&aligned_frames)) && aligned_frames > 0) {
-                REFERENCE_TIME aligned_duration = (REFERENCE_TIME)
-                        (10000.0 * 1000 / device_format->nSamplesPerSec * aligned_frames + 0.5);
-
-                log_info("audio::downmix",
-                        "buffer not aligned, retrying with {} frames ({} hns)",
-                        aligned_frames, aligned_duration);
-
-                ret = real->Initialize(share_mode, stream_flags, aligned_duration,
-                        periodicity != 0 ? aligned_duration : 0, device_format, session_guid);
-            }
-        }
-
-        return ret;
+        // duration for its larger multi-channel format; the helper recovers from that.
+        return initialize_with_alignment_retry(real, "audio::downmix", share_mode, stream_flags,
+                buffer_duration, periodicity, device_format, session_guid);
     }
 
     void Downmix::add_channel(int channel, DWORD speaker, float gain) {
@@ -311,6 +228,21 @@ namespace hooks::audio {
         *ppData = this->scratch.data();
 
         return S_OK;
+    }
+
+    HRESULT Downmix::get_scratch(UINT32 frames, BYTE **ppData) {
+        const size_t needed = (size_t) frames * this->game_frame_size;
+        if (this->scratch.size() < needed) {
+            this->scratch.resize(needed);
+        }
+
+        *ppData = this->scratch.data();
+
+        return S_OK;
+    }
+
+    void Downmix::downmix_into(BYTE *dst, UINT32 frames) const {
+        this->process(dst, this->scratch.data(), frames);
     }
 
     void Downmix::write_device_buffer(UINT32 frames, DWORD flags) {

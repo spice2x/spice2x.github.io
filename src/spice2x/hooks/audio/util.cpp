@@ -48,33 +48,33 @@ void copy_wave_format(WAVEFORMATEXTENSIBLE *destination, const WAVEFORMATEX *sou
 }
 
 void print_format(const WAVEFORMATEX *pFormat) {
-    log_info("audio", "Wave Format:");
+    log_info("audio::wasapi", "Wave Format:");
 
     // format specific
     if (pFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
         auto format = reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(pFormat);
-        log_info("audio", "... SubFormat           : {}", guid2s(format->SubFormat));
+        log_info("audio::wasapi", "... SubFormat           : {}", guid2s(format->SubFormat));
     } else {
-        log_info("audio", "... wFormatTag          : {}", pFormat->wFormatTag);
+        log_info("audio::wasapi", "... wFormatTag          : {}", pFormat->wFormatTag);
     }
 
     // generic
-    log_info("audio", "... nChannels           : {}", pFormat->nChannels);
-    log_info("audio", "... nSamplesPerSec      : {}", pFormat->nSamplesPerSec);
-    log_info("audio", "... nAvgBytesPerSec     : {}", pFormat->nAvgBytesPerSec);
-    log_info("audio", "... nBlockAlign         : {}", pFormat->nBlockAlign);
-    log_info("audio", "... wBitsPerSample      : {}", pFormat->wBitsPerSample);
+    log_info("audio::wasapi", "... nChannels           : {}", pFormat->nChannels);
+    log_info("audio::wasapi", "... nSamplesPerSec      : {}", pFormat->nSamplesPerSec);
+    log_info("audio::wasapi", "... nAvgBytesPerSec     : {}", pFormat->nAvgBytesPerSec);
+    log_info("audio::wasapi", "... nBlockAlign         : {}", pFormat->nBlockAlign);
+    log_info("audio::wasapi", "... wBitsPerSample      : {}", pFormat->wBitsPerSample);
 
     // format specific
     if (pFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
         auto format = reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(pFormat);
 
         if (pFormat->wBitsPerSample == 0) {
-            log_info("audio", "... wSamplesPerBlock    : {}", format->Samples.wSamplesPerBlock);
+            log_info("audio::wasapi", "... wSamplesPerBlock    : {}", format->Samples.wSamplesPerBlock);
         } else {
-            log_info("audio", "... wValidBitsPerSample : {}", format->Samples.wValidBitsPerSample);
+            log_info("audio::wasapi", "... wValidBitsPerSample : {}", format->Samples.wValidBitsPerSample);
         }
 
-        log_info("audio", "... dwChannelMask       : {}", channel_mask_str(format->dwChannelMask));
+        log_info("audio::wasapi", "... dwChannelMask       : {}", channel_mask_str(format->dwChannelMask));
     }
 }

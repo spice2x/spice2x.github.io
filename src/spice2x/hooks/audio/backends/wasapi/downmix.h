@@ -100,6 +100,14 @@ namespace hooks::audio {
         // grab the real stereo device buffer and hand the game the scratch buffer to write into.
         HRESULT get_buffer(IAudioRenderClient *real, UINT32 frames, BYTE **ppData);
 
+        // size the scratch and hand it to the game without acquiring a device buffer. used when a
+        // later stage (the resampler) owns the device interaction.
+        HRESULT get_scratch(UINT32 frames, BYTE **ppData);
+
+        // downmix the scratch the game wrote into the caller's stereo buffer, without touching the
+        // device. used to feed the resampler when the two stages are chained.
+        void downmix_into(BYTE *dst, UINT32 frames) const;
+
         // mix the scratch buffer into the stereo device buffer held since get_buffer. the caller
         // owns releasing the device buffer afterwards (see current_buffer / buffer_released).
         void write_device_buffer(UINT32 frames, DWORD flags);

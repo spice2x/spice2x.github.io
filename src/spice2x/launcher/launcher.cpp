@@ -1106,6 +1106,18 @@ int main_implementation(int argc, char *argv[]) {
             hooks::audio::VOLUME_BOOST = (float) std::pow(10.0, decibels / 20.0);
         }
     }
+    if (options[launcher::Options::AudioResample].is_active()) {
+        const uint32_t rate = options[launcher::Options::AudioResample].value_uint32();
+        if (rate > 0) {
+            hooks::audio::RESAMPLE_RATE = rate;
+        }
+    }
+    if (options[launcher::Options::AudioExclusiveBuffer].is_active()) {
+        const uint32_t ms = options[launcher::Options::AudioExclusiveBuffer].value_uint32();
+        if (ms > 0) {
+            hooks::audio::EXCLUSIVE_BUFFER_MS = ms;
+        }
+    }
 
     if (options[launcher::Options::AudioBackend].is_active()) {
         auto &name = options[launcher::Options::AudioBackend].value_text();
