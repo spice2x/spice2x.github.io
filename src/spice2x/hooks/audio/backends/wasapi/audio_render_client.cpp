@@ -7,6 +7,7 @@
 
 #include "audio_client.h"
 #include "hooks/audio/audio.h"
+#include "util.h"
 #include "wasapi_private.h"
 
 const char CLASS_NAME[] = "WrappedIAudioRenderClient";
@@ -17,9 +18,7 @@ static void apply_gain(BYTE *buffer, UINT32 frames, const WAVEFORMATEXTENSIBLE &
     const WAVEFORMATEX &f = fmt.Format;
     const size_t samples = (size_t) frames * f.nChannels;
 
-    // KSDATAFORMAT_SUBTYPE_IEEE_FLOAT has Data1 == 3, _PCM has Data1 == 1
-    bool is_float = f.wFormatTag == WAVE_FORMAT_IEEE_FLOAT
-        || (f.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt.SubFormat.Data1 == 0x00000003);
+    bool is_float = is_ieee_float(&f);
 
     if (is_float && f.wBitsPerSample == 32) {
         auto p = reinterpret_cast<float *>(buffer);
