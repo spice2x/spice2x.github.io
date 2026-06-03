@@ -593,6 +593,12 @@ namespace games::gitadora {
 #ifdef SPICE64
         // gitadora arena model 
         auto aio = libutils::try_library("libaio.dll");
+
+        // before we start patching and hooking things, detect invalid configuration
+        if (aio != nullptr && !is_arena_model()) {
+            log_fatal("gitadora", "arena model i/o (libaio.dll) detected, but <spec> is not an arena model - bad prop XML files?");
+        }
+
         if (aio != nullptr) {
             SETUPAPI_SETTINGS settings{};
             settings.class_guid[0] = 0x86E0D1E0;
