@@ -893,38 +893,10 @@ namespace games::iidx {
             }
         }
 
-        // patch iidx32+ for asio compatibility
-        // only do this if NOT wasapi (as opposed to checking if it's asio)
-        // the patch is only really needed for (some) non-XONAR devices but since people sometimes disguise
-        // other devices as a XONAR, don't check for the exact string (common ASIO workaround for INF)
-        if (avs::game::is_ext(2024090100, INT_MAX) &&
-            !(SOUND_OUTPUT_DEVICE_IN_EFFECT.has_value() &&
-              SOUND_OUTPUT_DEVICE_IN_EFFECT.value() == "wasapi")) {
-
-            // in iidx32 final:
-            // ff 50 08      call   QWORD PTR [rax+0x8]     ; ASIO instance AddRef
-            // 48 8b 4b 08   mov    rcx,QWORD PTR [rbx+0x8]
-            // 48 8b 01      mov    rax,QWORD PTR [rcx]
-            // ff 50 08      call   QWORD PTR [rax+0x8]     ; ASIO instance AddRef
-
-            intptr_t result = replace_pattern(
-                avs::game::DLL_INSTANCE,
-                "FF50????????????????FF50??4533C94533C0418D51",
-                "????????????????????909090??????????????????",
-                0, 0);
-
-            if (result == 0) {
-                log_warning(
-                    "iidx",
-                    "Failed to apply ASIO compatibility fix for iidx32+. "
-                    "Unless patches are applied, your ASIO device may hang or fail to work");
-            } else {
-                log_info(
-                    "iidx",
-                    "Successfully applied ASIO compatibility fix for iidx32+ using signature matching @ 0x{:x}.",
-                    result);
-            }
-        }
+        // note: the iidx32+ ASIO refcount bug (a duplicate AddRef on the ASIO instance with
+        // no matching Release, which leaks the driver and can hang non-XONAR devices) is now
+        // handled transparently by the WrappedAsio proxy (see hooks/audio/asio_proxy.cpp),
+        // so no game-DLL signature patch is needed here anymore
 
 #endif
 
