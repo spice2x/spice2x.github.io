@@ -1,7 +1,9 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <windows.h>
 
@@ -30,6 +32,17 @@ struct WrappedAsio final : IAsio {
     WrappedAsio &operator=(const WrappedAsio &) = delete;
 
     virtual ~WrappedAsio();
+
+    // when set, the proxy presents the game's expected multichannel layout to the host so
+    // it proceeds to create_buffers, then forwards only the device's real front pair and
+    // discards the rest (see create_buffers). set once at boot, before any wrapper exists,
+    // so it needs no synchronization
+    static bool FORCE_TWO_CHANNELS;
+
+    // some games hardcode a multichannel ASIO output and bail before create_buffers if
+    // get_channels reports fewer, so we report at least this many output channels when
+    // FORCE_TWO_CHANNELS is active
+    static constexpr long FORCED_OUTPUT_CHANNELS = 8;
 
 #pragma region IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppv) override;
@@ -70,6 +83,14 @@ struct WrappedAsio final : IAsio {
 #pragma endregion
 
 private:
+    // create_buffers implementation used when FORCE_TWO_CHANNELS is active: forwards only
+    // the channels the real device has and hands the game throwaway buffers for the rest
+    AsioError create_buffers_front_pair(
+        AsioBufferInfo *buffer_infos,
+        long num_channels,
+        long buffer_size,
+        AsioCallbacks *callbacks);
+
     IAsio *const pReal;
     const CLSID clsid;
 
@@ -80,4 +101,9 @@ private:
     // our own reference count; we hold one reference on pReal and release it when this
     // drops to zero
     std::atomic<ULONG> ref_count {1};
+
+    // throwaway double buffers handed to the channels we discard when FORCE_TWO_CHANNELS
+    // is active (see create_buffers). owned for the lifetime of the buffer set and freed
+    // in dispose_buffers; only read by the game from its own bufferSwitch, never by us
+    std::vector<std::unique_ptr<uint8_t[]>> dummy_buffers;
 };

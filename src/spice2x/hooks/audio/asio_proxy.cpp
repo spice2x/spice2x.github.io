@@ -1,5 +1,6 @@
 #include "asio_proxy.h"
 
+#include <cstring>
 #include <mutex>
 #include <vector>
 
@@ -119,6 +120,8 @@ namespace hooks::audio::asio {
 }
 
 #pragma region IUnknown
+bool WrappedAsio::FORCE_TWO_CHANNELS = false;
+
 WrappedAsio::~WrappedAsio() {
     unregister_wrapper(this);
 
@@ -233,6 +236,20 @@ AsioError __thiscall WrappedAsio::stop() {
 AsioError __thiscall WrappedAsio::get_channels(long *num_input_channels, long *num_output_channels) {
     const AsioError result = this->pReal->get_channels(num_input_channels, num_output_channels);
     if (result == ASE_OK) {
+        if (FORCE_TWO_CHANNELS
+            && num_output_channels != nullptr
+            && *num_output_channels < FORCED_OUTPUT_CHANNELS)
+        {
+            // the device has fewer outputs than the game hardcodes; report the count it
+            // expects so it proceeds to create_buffers, where we forward only the real
+            // front pair and discard the rest
+            log_info(
+                "audio::wrappedasio",
+                "reporting output channel count as {} (device has {}) for forced two-channel",
+                FORCED_OUTPUT_CHANNELS,
+                *num_output_channels);
+            *num_output_channels = FORCED_OUTPUT_CHANNELS;
+        }
         log_info(
             "audio::wrappedasio",
             "get_channels -> in={}, out={}",
@@ -336,6 +353,32 @@ AsioError __thiscall WrappedAsio::get_sample_position(ASIOSamples *s_pos, ASIOTi
 }
 
 AsioError __thiscall WrappedAsio::get_channel_info(AsioChannelInfo *info) {
+    // forced two-channel: the game probes all output channels it thinks exist, but the
+    // device only has the real front pair. fabricate a plausible entry for the channels
+    // beyond the device without touching the real driver - they are discarded in
+    // create_buffers anyway
+    if (FORCE_TWO_CHANNELS && info != nullptr && info->is_input == AsioFalse) {
+        long real_in = 0, real_out = 0;
+        if (this->pReal->get_channels(&real_in, &real_out) == ASE_OK
+            && info->channel >= real_out)
+        {
+            const long channel = info->channel;
+            info->is_active = AsioTrue;
+            info->channel_group = 0;
+            info->type = ASIOSTInt32LSB;
+            snprintf(info->name, sizeof(info->name), "Spice FakeASIO OUT %ld", channel);
+            log_info(
+                "audio::wrappedasio",
+                "get_channel_info(channel={}, dir=output) -> fabricated (discarded surround "
+                "channel), type={} ({})",
+                channel,
+                asio_sample_type_name(info->type),
+                static_cast<long>(info->type));
+
+            return ASE_OK;
+        }
+    }
+
     const AsioError result = this->pReal->get_channel_info(info);
     if (result == ASE_OK && info != nullptr) {
         log_info(
@@ -361,6 +404,10 @@ AsioError __thiscall WrappedAsio::create_buffers(
     long buffer_size,
     AsioCallbacks *callbacks)
 {
+    if (FORCE_TWO_CHANNELS) {
+        return this->create_buffers_front_pair(buffer_infos, num_channels, buffer_size, callbacks);
+    }
+
     const AsioError result = this->pReal->create_buffers(buffer_infos, num_channels, buffer_size, callbacks);
     if (result == ASE_OK) {
         log_info(
@@ -380,8 +427,99 @@ AsioError __thiscall WrappedAsio::create_buffers(
     return result;
 }
 
+AsioError WrappedAsio::create_buffers_front_pair(
+    AsioBufferInfo *buffer_infos,
+    long num_channels,
+    long buffer_size,
+    AsioCallbacks *callbacks)
+{
+    // front-pair extraction (forced two-channel ASIO): the game asks for more output
+    // channels than the real device has (e.g. 8 vs 2). forward only the channels the
+    // device actually provides (channel 0/1 = front L/R) and hand the game throwaway
+    // buffers for the rest, so its front mix lands on the device and the surround
+    // channels are discarded. callbacks are forwarded unchanged, so the game writes
+    // directly into the driver/dummy buffers from its own bufferSwitch and we do no
+    // realtime work
+    long real_in = 0, real_out = 0;
+    const AsioError ch_result = this->pReal->get_channels(&real_in, &real_out);
+    if (ch_result != ASE_OK) {
+        log_warning(
+            "audio::wrappedasio",
+            "create_buffers: get_channels failed, err={}",
+            static_cast<long>(ch_result));
+        return ch_result;
+    }
+
+    // partition the requested channels: those the device can serve are forwarded, the rest
+    // are discarded. record source indices for both so we can patch the game's array after
+    std::vector<AsioBufferInfo> forwarded;
+    std::vector<long> forwarded_src;
+    std::vector<long> discarded_src;
+    forwarded.reserve(num_channels);
+    forwarded_src.reserve(num_channels);
+    discarded_src.reserve(num_channels);
+    for (long i = 0; i < num_channels; i++) {
+        const AsioBufferInfo &bi = buffer_infos[i];
+        const long limit = (bi.is_input == AsioTrue) ? real_in : real_out;
+        if (bi.channel_num < limit) {
+            forwarded.push_back(bi);
+            forwarded_src.push_back(i);
+        } else {
+            discarded_src.push_back(i);
+        }
+    }
+
+    const AsioError result = this->pReal->create_buffers(
+        forwarded.data(), static_cast<long>(forwarded.size()), buffer_size, callbacks);
+    if (result != ASE_OK) {
+        log_warning(
+            "audio::wrappedasio",
+            "create_buffers(forwarded={} of {}, size={} frames) failed, err={}",
+            forwarded.size(),
+            num_channels,
+            buffer_size,
+            static_cast<long>(result));
+        return result;
+    }
+
+    // copy the real driver buffer pointers back into the game's array
+    for (size_t k = 0; k < forwarded.size(); k++) {
+        AsioBufferInfo &dst = buffer_infos[forwarded_src[k]];
+        dst.buffers[0] = forwarded[k].buffers[0];
+        dst.buffers[1] = forwarded[k].buffers[1];
+    }
+
+    // hand throwaway double buffers to the discarded channels. sized generously at
+    // 8 bytes/sample (covers every ASIO sample type) so the game can never overrun them
+    // regardless of the negotiated format
+    this->dummy_buffers.clear();
+    this->dummy_buffers.reserve(discarded_src.size() * 2);
+    const size_t dummy_bytes = static_cast<size_t>(buffer_size) * 8;
+    for (const long i : discarded_src) {
+        for (void *&buffer : buffer_infos[i].buffers) {
+            auto buf = std::make_unique<uint8_t[]>(dummy_bytes);
+            std::memset(buf.get(), 0, dummy_bytes);
+            buffer = buf.get();
+            this->dummy_buffers.push_back(std::move(buf));
+        }
+    }
+
+    log_info(
+        "audio::wrappedasio",
+        "create_buffers: front-pair extraction - forwarded {} channel(s) to device, "
+        "discarded {} (requested {}, size={} frames)",
+        forwarded.size(),
+        discarded_src.size(),
+        num_channels,
+        buffer_size);
+
+    return ASE_OK;
+}
+
 AsioError __thiscall WrappedAsio::dispose_buffers() {
-    return this->pReal->dispose_buffers();
+    const AsioError result = this->pReal->dispose_buffers();
+    this->dummy_buffers.clear();
+    return result;
 }
 
 AsioError __thiscall WrappedAsio::control_panel() {
