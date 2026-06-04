@@ -36,6 +36,15 @@ namespace {
         }
     }
 
+    // duration in milliseconds of a buffer of the given frame count at a sample rate, or a
+    // negative sentinel when the frame count or sample rate is unusable
+    double frames_to_ms(long frames, AsioSampleRate sample_rate) {
+        if (frames < 0 || sample_rate <= 0.0) {
+            return -1.0;
+        }
+        return (frames * 1000.0) / sample_rate;
+    }
+
     // live wrappers by CLSID. ASIO drivers are single-instance, so a host that creates a
     // new instance without releasing the old one has leaked it; we track this to tear the
     // stale one down
@@ -235,29 +244,31 @@ AsioError __thiscall WrappedAsio::stop() {
 
 AsioError __thiscall WrappedAsio::get_channels(long *num_input_channels, long *num_output_channels) {
     const AsioError result = this->pReal->get_channels(num_input_channels, num_output_channels);
-    if (result == ASE_OK) {
-        if (FORCE_TWO_CHANNELS
-            && num_output_channels != nullptr
-            && *num_output_channels < FORCED_OUTPUT_CHANNELS)
-        {
-            // the device has fewer outputs than the game hardcodes; report the count it
-            // expects so it proceeds to create_buffers, where we forward only the real
-            // front pair and discard the rest
-            log_info(
-                "audio::wrappedasio",
-                "reporting output channel count as {} (device has {}) for forced two-channel",
-                FORCED_OUTPUT_CHANNELS,
-                *num_output_channels);
-            *num_output_channels = FORCED_OUTPUT_CHANNELS;
-        }
+    if (result != ASE_OK) {
+        log_warning("audio::wrappedasio", "get_channels failed, err={}", static_cast<long>(result));
+        return result;
+    }
+
+    if (FORCE_TWO_CHANNELS
+        && num_output_channels != nullptr
+        && *num_output_channels < FORCED_OUTPUT_CHANNELS)
+    {
+        // the device has fewer outputs than the game hardcodes; report the count it
+        // expects so it proceeds to create_buffers, where we forward only the real
+        // front pair and discard the rest
         log_info(
             "audio::wrappedasio",
-            "get_channels -> in={}, out={}",
-            num_input_channels ? *num_input_channels : -1,
-            num_output_channels ? *num_output_channels : -1);
-    } else {
-        log_warning("audio::wrappedasio", "get_channels failed, err={}", static_cast<long>(result));
+            "reporting output channel count as {} (device has {}) for forced two-channel",
+            FORCED_OUTPUT_CHANNELS,
+            *num_output_channels);
+        *num_output_channels = FORCED_OUTPUT_CHANNELS;
     }
+
+    log_info(
+        "audio::wrappedasio",
+        "get_channels -> in={}, out={}",
+        num_input_channels ? *num_input_channels : -1,
+        num_output_channels ? *num_output_channels : -1);
 
     return result;
 }
@@ -265,11 +276,18 @@ AsioError __thiscall WrappedAsio::get_channels(long *num_input_channels, long *n
 AsioError __thiscall WrappedAsio::get_latencies(long *input_latency, long *output_latency) {
     const AsioError result = this->pReal->get_latencies(input_latency, output_latency);
     if (result == ASE_OK) {
+        // include millisecond equivalents alongside the frame counts for readability
+        AsioSampleRate sample_rate = 0.0;
+        this->pReal->get_sample_rate(&sample_rate);
+        const long in_frames = input_latency ? *input_latency : -1;
+        const long out_frames = output_latency ? *output_latency : -1;
         log_info(
             "audio::wrappedasio",
-            "get_latencies -> in={} frames, out={} frames",
-            input_latency ? *input_latency : -1,
-            output_latency ? *output_latency : -1);
+            "get_latencies -> in={} frames ({:.2f} ms), out={} frames ({:.2f} ms)",
+            in_frames,
+            frames_to_ms(in_frames, sample_rate),
+            out_frames,
+            frames_to_ms(out_frames, sample_rate));
     } else {
         log_warning("audio::wrappedasio", "get_latencies failed, err={}", static_cast<long>(result));
     }
@@ -284,17 +302,28 @@ AsioError __thiscall WrappedAsio::get_buffer_size(
     long *granularity)
 {
     const AsioError result = this->pReal->get_buffer_size(min_size, max_size, preferred_size, granularity);
-    if (result == ASE_OK) {
-        log_info(
-            "audio::wrappedasio",
-            "get_buffer_size -> min={} frames, max={} frames, preferred={} frames, granularity={}",
-            min_size ? *min_size : -1,
-            max_size ? *max_size : -1,
-            preferred_size ? *preferred_size : -1,
-            granularity ? *granularity : -1);
-    } else {
+    if (result != ASE_OK) {
         log_warning("audio::wrappedasio", "get_buffer_size failed, err={}", static_cast<long>(result));
+        return result;
     }
+
+    // include millisecond equivalents alongside the frame counts for readability
+    AsioSampleRate sample_rate = 0.0;
+    this->pReal->get_sample_rate(&sample_rate);
+    const long min_frames = min_size ? *min_size : -1;
+    const long max_frames = max_size ? *max_size : -1;
+    const long preferred_frames = preferred_size ? *preferred_size : -1;
+    log_info(
+        "audio::wrappedasio",
+        "get_buffer_size -> min={} frames ({:.2f} ms), max={} frames ({:.2f} ms), "
+        "preferred={} frames ({:.2f} ms), granularity={}",
+        min_frames,
+        frames_to_ms(min_frames, sample_rate),
+        max_frames,
+        frames_to_ms(max_frames, sample_rate),
+        preferred_frames,
+        frames_to_ms(preferred_frames, sample_rate),
+        granularity ? *granularity : -1);
 
     return result;
 }
@@ -357,26 +386,26 @@ AsioError __thiscall WrappedAsio::get_channel_info(AsioChannelInfo *info) {
     // device only has the real front pair. fabricate a plausible entry for the channels
     // beyond the device without touching the real driver - they are discarded in
     // create_buffers anyway
-    if (FORCE_TWO_CHANNELS && info != nullptr && info->is_input == AsioFalse) {
-        long real_in = 0, real_out = 0;
-        if (this->pReal->get_channels(&real_in, &real_out) == ASE_OK
-            && info->channel >= real_out)
-        {
-            const long channel = info->channel;
-            info->is_active = AsioTrue;
-            info->channel_group = 0;
-            info->type = ASIOSTInt32LSB;
-            snprintf(info->name, sizeof(info->name), "Spice FakeASIO OUT %ld", channel);
-            log_info(
-                "audio::wrappedasio",
-                "get_channel_info(channel={}, dir=output) -> fabricated (discarded surround "
-                "channel), type={} ({})",
-                channel,
-                asio_sample_type_name(info->type),
-                static_cast<long>(info->type));
+    long real_in = 0, real_out = 0;
+    if (FORCE_TWO_CHANNELS
+        && info != nullptr
+        && info->is_input == AsioFalse
+        && this->pReal->get_channels(&real_in, &real_out) == ASE_OK
+        && info->channel >= real_out)
+    {
+        const long channel = info->channel;
+        info->is_active = AsioTrue;
+        info->channel_group = 0;
+        info->type = ASIOSTInt32LSB;
+        snprintf(info->name, sizeof(info->name), "Fake ASIO OUT %ld", channel);
+        log_info(
+            "audio::wrappedasio",
+            "get_channel_info(channel={}, dir=output) -> fake channel, type={} ({})",
+            channel,
+            asio_sample_type_name(info->type),
+            static_cast<long>(info->type));
 
-            return ASE_OK;
-        }
+        return ASE_OK;
     }
 
     const AsioError result = this->pReal->get_channel_info(info);
