@@ -1974,7 +1974,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // VolumeBoost
-        .title = "WASAPI Boost Audio Volume",
+        .title = "WASAPI/ASIO Boost Audio Volume",
         .name = "volumeboost",
         .desc = "Artificially amplifies the hooked audio output by the selected amount, applied "
             "right before the audio reaches the device. Works regardless of channel layout or "

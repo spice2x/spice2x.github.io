@@ -91,6 +91,41 @@ private:
         long buffer_size,
         AsioCallbacks *callbacks);
 
+    // if hooks::audio::VOLUME_BOOST is set, saves the game's callbacks and returns a proxy
+    // callback set (our buffer-switch trampolines) to hand the real driver instead, so we
+    // can scale its output buffers after the game fills them. otherwise returns the game's
+    // callbacks unchanged. called at create_buffers time, before the stream starts
+    AsioCallbacks *install_volume_callbacks(AsioCallbacks *game_callbacks);
+
+    // records a device output channel whose buffers we scale by the volume boost. queries
+    // the real driver for the channel's sample format. called at create_buffers time
+    void record_volume_output_channel(const AsioBufferInfo &info);
+
+    // publishes the captured volume state to the realtime thread once the buffers exist,
+    // making our trampolines start scaling. called at the end of either create_buffers path
+    void publish_volume(long buffer_size);
+
+    // detaches this instance from the realtime trampolines so they stop touching its
+    // buffers. called from dispose_buffers and the destructor
+    void detach_volume();
+
+    // multiplies every recorded output channel's buffer for the given double-buffer index
+    // by the volume boost. runs on the driver's realtime thread from our buffer switch
+    void apply_output_volume(long double_buffer_index);
+
+    // realtime-thread trampolines for the buffer-switch callbacks, handed to the real
+    // driver in place of the game's; ASIO callbacks carry no user data, so they reach the
+    // active wrapper through volume_active_instance, call the game's original, then scale.
+    // the other two callbacks (sample_rate_did_change, asio_message) are forwarded as the
+    // game's own pointers, so they need no trampoline
+    static void __cdecl volume_buffer_switch(long double_buffer_index, AsioBool direct_process);
+    static AsioTime * __cdecl volume_buffer_switch_time_info(
+        AsioTime *params, long double_buffer_index, AsioBool direct_process);
+
+    // the single wrapper whose proxy callbacks are installed (ASIO is single-instance with
+    // one running stream); read by the static trampolines to reach the right wrapper
+    static std::atomic<WrappedAsio *> volume_active_instance;
+
     IAsio *const pReal;
     const CLSID clsid;
 
@@ -106,4 +141,20 @@ private:
     // is active (see create_buffers). owned for the lifetime of the buffer set and freed
     // in dispose_buffers; only read by the game from its own bufferSwitch, never by us
     std::vector<std::unique_ptr<uint8_t[]>> dummy_buffers;
+
+    // one device output channel scaled by the volume boost in our buffer switch
+    struct VolumeOutputChannel {
+        void *buffers[2];
+        AsioSampleType type;
+    };
+
+    // volume boost state, captured at create_buffers time and published to the realtime
+    // thread via volume_active_instance once fully built; untouched while the stream runs.
+    // volume_active gates whether we install our proxy callbacks at all
+    bool volume_active = false;
+    float volume_gain = 1.0f;
+    long volume_buffer_size = 0;
+    AsioCallbacks volume_game_callbacks {};
+    AsioCallbacks volume_proxy_callbacks {};
+    std::vector<VolumeOutputChannel> volume_channels;
 };

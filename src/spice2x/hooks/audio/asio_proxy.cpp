@@ -1,10 +1,14 @@
 #include "asio_proxy.h"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <mutex>
 #include <vector>
 
 #include "external/asio/asiolist.h"
+#include "hooks/audio/audio.h"
 #include "util/logging.h"
 #include "util/utils.h"
 
@@ -43,6 +47,68 @@ namespace {
             return -1.0;
         }
         return (frames * 1000.0) / sample_rate;
+    }
+
+    // scales one planar ASIO output buffer (frames samples of the given type) by gain in
+    // place, clamping integer formats so a boost saturates instead of wrapping. unsupported
+    // formats are left untouched. runs on the driver's realtime thread, so no allocation,
+    // locking or logging here
+    void apply_gain_planar(void *buffer, long frames, AsioSampleType type, float gain) {
+        if (buffer == nullptr || frames <= 0) {
+            return;
+        }
+        switch (type) {
+            case ASIOSTFloat32LSB: {
+                auto p = static_cast<float *>(buffer);
+                for (long i = 0; i < frames; i++) {
+                    p[i] = std::clamp(p[i] * gain, -1.0f, 1.0f);
+                }
+                break;
+            }
+            case ASIOSTFloat64LSB: {
+                auto p = static_cast<double *>(buffer);
+                for (long i = 0; i < frames; i++) {
+                    p[i] = std::clamp(p[i] * static_cast<double>(gain), -1.0, 1.0);
+                }
+                break;
+            }
+            case ASIOSTInt16LSB: {
+                auto p = static_cast<int16_t *>(buffer);
+                for (long i = 0; i < frames; i++) {
+                    p[i] = static_cast<int16_t>(
+                        std::clamp(std::lround(p[i] * gain), -32768L, 32767L));
+                }
+                break;
+            }
+            case ASIOSTInt24LSB: {
+                // packed 24-bit little-endian, 3 bytes per sample
+                auto bytes = static_cast<uint8_t *>(buffer);
+                for (long i = 0; i < frames; i++) {
+                    uint8_t *s = bytes + i * 3;
+                    int32_t v = s[0] | (s[1] << 8) | (s[2] << 16);
+                    if (v & 0x800000) {
+                        v |= ~0xFFFFFF; // sign extend
+                    }
+                    int64_t scaled = std::clamp<int64_t>(
+                        std::llround(static_cast<double>(v) * gain), -8388608, 8388607);
+                    s[0] = scaled & 0xFF;
+                    s[1] = (scaled >> 8) & 0xFF;
+                    s[2] = (scaled >> 16) & 0xFF;
+                }
+                break;
+            }
+            case ASIOSTInt32LSB: {
+                auto p = static_cast<int32_t *>(buffer);
+                for (long i = 0; i < frames; i++) {
+                    p[i] = static_cast<int32_t>(std::clamp<int64_t>(
+                        std::llround(static_cast<double>(p[i]) * gain), INT32_MIN, INT32_MAX));
+                }
+                break;
+            }
+            default:
+                // unsupported format (MSB, aligned 32-bit, DSD): leave untouched
+                break;
+        }
     }
 
     // live wrappers by CLSID. ASIO drivers are single-instance, so a host that creates a
@@ -130,9 +196,12 @@ namespace hooks::audio::asio {
 
 #pragma region IUnknown
 bool WrappedAsio::FORCE_TWO_CHANNELS = false;
+std::atomic<WrappedAsio *> WrappedAsio::volume_active_instance {nullptr};
 
 WrappedAsio::~WrappedAsio() {
     unregister_wrapper(this);
+
+    this->detach_volume();
 
     // our refcount is decoupled from the host's (see AddRef/Release), so pReal's count is
     // exactly one here and this releases/unloads it deterministically
@@ -427,23 +496,154 @@ AsioError __thiscall WrappedAsio::get_channel_info(AsioChannelInfo *info) {
     return result;
 }
 
+AsioCallbacks *WrappedAsio::install_volume_callbacks(AsioCallbacks *game_callbacks) {
+    const float gain = hooks::audio::VOLUME_BOOST;
+
+    // start from a clean slate; a previous buffer set may have left state behind
+    this->volume_channels.clear();
+    this->volume_active = false;
+
+    // no boost configured (or no callbacks to wrap): pass the game's callbacks straight
+    // through and do zero realtime work, exactly as before
+    if (gain == 1.0f || game_callbacks == nullptr) {
+        return game_callbacks;
+    }
+
+    this->volume_active = true;
+    this->volume_gain = gain;
+    this->volume_game_callbacks = *game_callbacks;
+
+    // wrap only the buffer-switch callbacks, where the audio data lives and we apply the
+    // gain. the other two carry no data we touch, so forward the game's own pointers
+    // unchanged - the driver expects them non-null and the game already owns their context
+    this->volume_proxy_callbacks = {};
+    this->volume_proxy_callbacks.buffer_switch = &WrappedAsio::volume_buffer_switch;
+    this->volume_proxy_callbacks.sample_rate_did_change = game_callbacks->sample_rate_did_change;
+    this->volume_proxy_callbacks.asio_message = game_callbacks->asio_message;
+    this->volume_proxy_callbacks.buffer_switch_time_info =
+        game_callbacks->buffer_switch_time_info ? &WrappedAsio::volume_buffer_switch_time_info : nullptr;
+
+    return &this->volume_proxy_callbacks;
+}
+
+void WrappedAsio::record_volume_output_channel(const AsioBufferInfo &info) {
+    if (info.is_input != AsioFalse) {
+        return;
+    }
+
+    // ask the real driver for this channel's sample format so the realtime path knows how
+    // to scale it; fall back to a sentinel that apply_gain_planar leaves untouched
+    AsioChannelInfo ci {};
+    ci.channel = info.channel_num;
+    ci.is_input = AsioFalse;
+    AsioSampleType type = ASIOSTLastEntry;
+    if (this->pReal->get_channel_info(&ci) == ASE_OK) {
+        type = ci.type;
+    }
+
+    VolumeOutputChannel ch;
+    ch.buffers[0] = info.buffers[0];
+    ch.buffers[1] = info.buffers[1];
+    ch.type = type;
+    this->volume_channels.push_back(ch);
+}
+
+void WrappedAsio::publish_volume(long buffer_size) {
+    if (!this->volume_active) {
+        return;
+    }
+
+    // everything the realtime thread reads is now in place; make ourselves reachable
+    this->volume_buffer_size = buffer_size;
+    WrappedAsio::volume_active_instance.store(this, std::memory_order_release);
+    log_info(
+        "audio::wrappedasio",
+        "volume boost active: gain={}, scaling {} output channel(s)",
+        this->volume_gain,
+        this->volume_channels.size());
+}
+
+void WrappedAsio::detach_volume() {
+    // stop our realtime trampolines from reaching this wrapper, but only if we are the
+    // currently published instance
+    WrappedAsio *expected = this;
+    WrappedAsio::volume_active_instance.compare_exchange_strong(expected, nullptr);
+}
+
+void WrappedAsio::apply_output_volume(long double_buffer_index) {
+    if (double_buffer_index != 0 && double_buffer_index != 1) {
+        return;
+    }
+    const float gain = this->volume_gain;
+    const long frames = this->volume_buffer_size;
+    for (const VolumeOutputChannel &ch : this->volume_channels) {
+        apply_gain_planar(ch.buffers[double_buffer_index], frames, ch.type, gain);
+    }
+}
+
+void __cdecl WrappedAsio::volume_buffer_switch(long double_buffer_index, AsioBool direct_process) {
+    WrappedAsio *self = WrappedAsio::volume_active_instance.load(std::memory_order_acquire);
+    if (self == nullptr) {
+        return;
+    }
+
+    // let the game write its samples into the driver buffers first, then scale them before
+    // the driver plays this half on the next switch
+    if (self->volume_game_callbacks.buffer_switch != nullptr) {
+        self->volume_game_callbacks.buffer_switch(double_buffer_index, direct_process);
+    }
+    self->apply_output_volume(double_buffer_index);
+}
+
+AsioTime * __cdecl WrappedAsio::volume_buffer_switch_time_info(
+    AsioTime *params, long double_buffer_index, AsioBool direct_process)
+{
+    WrappedAsio *self = WrappedAsio::volume_active_instance.load(std::memory_order_acquire);
+    if (self == nullptr) {
+        return params;
+    }
+
+    AsioTime *ret = params;
+    if (self->volume_game_callbacks.buffer_switch_time_info != nullptr) {
+        ret = self->volume_game_callbacks.buffer_switch_time_info(
+            params, double_buffer_index, direct_process);
+    } else if (self->volume_game_callbacks.buffer_switch != nullptr) {
+        self->volume_game_callbacks.buffer_switch(double_buffer_index, direct_process);
+    }
+    self->apply_output_volume(double_buffer_index);
+    return ret;
+}
+
 AsioError __thiscall WrappedAsio::create_buffers(
     AsioBufferInfo *buffer_infos,
     long num_channels,
     long buffer_size,
     AsioCallbacks *callbacks)
 {
+    // swap in our buffer-switch trampolines if a volume boost is configured, so the real
+    // driver calls us and we scale its output after the game fills it (no-op otherwise)
+    AsioCallbacks *effective = this->install_volume_callbacks(callbacks);
+
     if (FORCE_TWO_CHANNELS) {
-        return this->create_buffers_front_pair(buffer_infos, num_channels, buffer_size, callbacks);
+        return this->create_buffers_front_pair(buffer_infos, num_channels, buffer_size, effective);
     }
 
-    const AsioError result = this->pReal->create_buffers(buffer_infos, num_channels, buffer_size, callbacks);
+    const AsioError result = this->pReal->create_buffers(buffer_infos, num_channels, buffer_size, effective);
     if (result == ASE_OK) {
         log_info(
             "audio::wrappedasio",
             "create_buffers(channels={}, size={} frames) succeeded",
             num_channels,
             buffer_size);
+
+        // capture the device output channels we will scale, then publish ourselves to the
+        // realtime thread once everything is in place
+        if (this->volume_active) {
+            for (long i = 0; i < num_channels; i++) {
+                this->record_volume_output_channel(buffer_infos[i]);
+            }
+            this->publish_volume(buffer_size);
+        }
     } else {
         log_warning(
             "audio::wrappedasio",
@@ -466,9 +666,9 @@ AsioError WrappedAsio::create_buffers_front_pair(
     // channels than the real device has (e.g. 8 vs 2). forward only the channels the
     // device actually provides (channel 0/1 = front L/R) and hand the game throwaway
     // buffers for the rest, so its front mix lands on the device and the surround
-    // channels are discarded. callbacks are forwarded unchanged, so the game writes
-    // directly into the driver/dummy buffers from its own bufferSwitch and we do no
-    // realtime work
+    // channels are discarded. the game writes directly into the driver/dummy buffers
+    // from its own bufferSwitch; the only realtime work we do is the volume boost (if
+    // configured), which scales the forwarded device channels via our trampolines
     long real_in = 0, real_out = 0;
     const AsioError ch_result = this->pReal->get_channels(&real_in, &real_out);
     if (ch_result != ASE_OK) {
@@ -516,7 +716,15 @@ AsioError WrappedAsio::create_buffers_front_pair(
         AsioBufferInfo &dst = buffer_infos[forwarded_src[k]];
         dst.buffers[0] = forwarded[k].buffers[0];
         dst.buffers[1] = forwarded[k].buffers[1];
+
+        // only the forwarded channels reach the device, so those are the ones the volume
+        // boost scales (the discarded channels go to throwaway buffers below)
+        if (this->volume_active) {
+            this->record_volume_output_channel(dst);
+        }
     }
+
+    this->publish_volume(buffer_size);
 
     // hand throwaway double buffers to the discarded channels. sized generously at
     // 8 bytes/sample (covers every ASIO sample type) so the game can never overrun them
@@ -546,8 +754,13 @@ AsioError WrappedAsio::create_buffers_front_pair(
 }
 
 AsioError __thiscall WrappedAsio::dispose_buffers() {
+    // stop our realtime trampolines from touching buffers the driver is about to free
+    this->detach_volume();
+
     const AsioError result = this->pReal->dispose_buffers();
     this->dummy_buffers.clear();
+    this->volume_channels.clear();
+    this->volume_active = false;
     return result;
 }
 
@@ -584,6 +797,14 @@ namespace hooks::audio::asio {
                 "audio::wrappedasio",
                 "host did not release previous instance for clsid={}, forcing teardown",
                 guid2s(clsid));
+
+            // the stale instance may still have a running stream on the driver's realtime
+            // thread. stop and dispose it before deleting so no in-flight buffer switch
+            // (e.g. our volume trampoline) touches buffers we are about to free. ASIO
+            // guarantees no further buffer_switch once stop() returns, and dispose_buffers
+            // detaches our trampolines, fully quiescing the realtime path before delete
+            stale->stop();
+            stale->dispose_buffers();
             delete stale;
         }
 
