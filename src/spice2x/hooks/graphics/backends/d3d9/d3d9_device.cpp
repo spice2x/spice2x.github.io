@@ -37,6 +37,44 @@ constexpr bool CUSTOM_RESET = false;
 
 constexpr D3DFORMAT D3DFMT_DF24 = static_cast<D3DFORMAT>(MAKEFOURCC('D', 'F', '2', '4'));
 
+static void apply_fullscreen_display_overrides(
+        D3DPRESENT_PARAMETERS *presentation_parameters,
+        D3DDISPLAYMODEEX *fullscreen_display_mode) {
+    if (GRAPHICS_WINDOWED) {
+        return;
+    }
+
+    if (presentation_parameters != nullptr) {
+        if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+            if (presentation_parameters->BackBufferWidth != GRAPHICS_FS_CUSTOM_RESOLUTION.value().first ||
+                    presentation_parameters->BackBufferHeight != GRAPHICS_FS_CUSTOM_RESOLUTION.value().second) {
+                log_misc(
+                    "graphics::d3d9",
+                    "use custom reset resolution {}x{} => {}x{}",
+                    presentation_parameters->BackBufferWidth,
+                    presentation_parameters->BackBufferHeight,
+                    GRAPHICS_FS_CUSTOM_RESOLUTION.value().first,
+                    GRAPHICS_FS_CUSTOM_RESOLUTION.value().second);
+            }
+            presentation_parameters->BackBufferWidth = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+            presentation_parameters->BackBufferHeight = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+        } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
+            std::swap(
+                presentation_parameters->BackBufferWidth,
+                presentation_parameters->BackBufferHeight);
+        }
+    }
+
+    if (fullscreen_display_mode != nullptr) {
+        if (GRAPHICS_FS_CUSTOM_RESOLUTION.has_value()) {
+            fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION.value().first;
+            fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION.value().second;
+        } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
+            std::swap(fullscreen_display_mode->Width, fullscreen_display_mode->Height);
+        }
+    }
+}
+
 auto format_as(D3DPOOL f) {
     return fmt::underlying(f);
 }
@@ -403,8 +441,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         if (GRAPHICS_WINDOWED) {
             pPresentationParameters->Windowed = true;
             pPresentationParameters->FullScreen_RefreshRateInHz = 0;
-        } else if (GRAPHICS_FORCE_REFRESH > 0) {
-            pPresentationParameters->FullScreen_RefreshRateInHz = GRAPHICS_FORCE_REFRESH;
+        } else {
+            apply_fullscreen_display_overrides(pPresentationParameters, nullptr);
+
+            if (GRAPHICS_FORCE_REFRESH > 0) {
+                pPresentationParameters->FullScreen_RefreshRateInHz = GRAPHICS_FORCE_REFRESH;
+            }
         }
     }
 
@@ -1855,12 +1897,16 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
         }
 
         pFullscreenDisplayMode = nullptr;
-    } else if (GRAPHICS_FORCE_REFRESH > 0) {
-        if (pPresentationParameters) {
-            pPresentationParameters->FullScreen_RefreshRateInHz = GRAPHICS_FORCE_REFRESH;
-        }
-        if (pFullscreenDisplayMode) {
-            pFullscreenDisplayMode->RefreshRate = GRAPHICS_FORCE_REFRESH;
+    } else {
+        apply_fullscreen_display_overrides(pPresentationParameters, pFullscreenDisplayMode);
+
+        if (GRAPHICS_FORCE_REFRESH > 0) {
+            if (pPresentationParameters) {
+                pPresentationParameters->FullScreen_RefreshRateInHz = GRAPHICS_FORCE_REFRESH;
+            }
+            if (pFullscreenDisplayMode) {
+                pFullscreenDisplayMode->RefreshRate = GRAPHICS_FORCE_REFRESH;
+            }
         }
     }
 

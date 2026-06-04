@@ -687,6 +687,13 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraArenaAsioDriver].is_active()) {
         games::gitadora::ASIO_DRIVER = options[launcher::Options::GitaDoraArenaAsioDriver].value_text();
     }
+    if (options[launcher::Options::GitaDoraArenaResolution].is_active()) {
+        games::gitadora::ARENA_RESOLUTION =
+            options[launcher::Options::GitaDoraArenaResolution].value_text();
+    }
+    if (options[launcher::Options::GitaDoraDisableLive2D].value_bool()) {
+        games::gitadora::DISABLE_LIVE2D = true;
+    }
     if (options[launcher::Options::LoadNostalgiaModule].value_bool()) {
         attach_nostalgia = true;
     }

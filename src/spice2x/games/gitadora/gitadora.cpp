@@ -2,18 +2,17 @@
 #include "asio.h"
 #include "handle.h"
 #include "bi2x_hook.h"
+#include "gitadora_arena.h"
+#include <cstring>
 #include <unordered_map>
-
 #include <ks.h>
 #include <ksmedia.h>
-
+#include <vector>
 #include "cfg/configurator.h"
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/wintouchemu.h"
-#include "overlay/overlay.h"
 #include "util/cpuutils.h"
-#include "util/deferlog.h"
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -34,6 +33,8 @@ namespace games::gitadora {
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
     std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
+    std::optional<std::string> ARENA_RESOLUTION = std::nullopt;
+    bool DISABLE_LIVE2D = false;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -238,6 +239,10 @@ namespace games::gitadora {
                 log_info("gitadora", "guitar pick SOCD algorithm: {}", static_cast<int>(PICK_ALGO.value()));
             } else {
                 log_info("gitadora", "guitar pick SOCD algorithm: legacy");
+            }
+
+            if (is_arena_model()) {
+                configure_arena_render_resolution();
             }
 
 #if SPICE64 && !SPICE_XP
@@ -560,17 +565,17 @@ namespace games::gitadora {
     void GitaDoraGame::attach() {
         Game::attach();
 
-        // arena model launches a tiny window yet backbuffer at 4k, resulting in unusable overlay
-        // force scaling to make things usable
-        if (!overlay::UI_SCALE_PERCENT.has_value() && is_arena_model()) {
-            log_info("gitadora", "forcing UI scale to 250% for arena model");
-            overlay::UI_SCALE_PERCENT = 250;
-        }
-
         // modules
         HMODULE sharepj_module = libutils::try_module("libshare-pj.dll");
         HMODULE bmsd2_module = libutils::try_module("libbmsd2.dll");
         HMODULE system_module = libutils::try_module("libsystem.dll");
+
+        if (is_arena_resolution_patch_enabled()) {
+            apply_arena_resolution_patch();
+        }
+        if (DISABLE_LIVE2D) {
+            apply_live2d_disable_patch();
+        }
 
         // patches
         detour::inline_hook((void *) eam_network_detected_ip_change, libutils::try_proc(
