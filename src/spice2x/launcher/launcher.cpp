@@ -72,6 +72,7 @@
 #include "games/museca/museca.h"
 #include "hooks/avshook.h"
 #include "hooks/audio/audio.h"
+#include "hooks/audio/asio_proxy.h"
 #include "hooks/audio/backends/wasapi/downmix.h"
 #include "hooks/debughook.h"
 #include "hooks/devicehook.h"
@@ -495,6 +496,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::spice2x_SDVXAsioDriver].is_active()) {
         games::sdvx::ASIO_DRIVER = options[launcher::Options::spice2x_SDVXAsioDriver].value_text();
+    }
+    if (options[launcher::Options::SDVXAsioTwoChannel].value_bool()) {
+        WrappedAsio::FORCE_TWO_CHANNELS = true;
     }
     if (options[launcher::Options::spice2x_SDVXSubPos].is_active()) {
         auto txt = options[launcher::Options::spice2x_SDVXSubPos].value_text();

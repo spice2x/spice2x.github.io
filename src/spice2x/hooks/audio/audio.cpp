@@ -14,6 +14,7 @@
 
 #include "audio_private.h"
 #include "acm.h"
+#include "asio_proxy.h"
 
 #ifdef _MSC_VER
 DEFINE_GUID(CLSID_MMDeviceEnumerator,
@@ -95,6 +96,10 @@ static HRESULT STDAPICALLTYPE CoCreateInstance_hook(
         // wrap object
         auto mmde = reinterpret_cast<IMMDeviceEnumerator **>(ppv);
         *mmde = new WrappedIMMDeviceEnumerator(*mmde);
+    } else if (ppv != nullptr && *ppv != nullptr && hooks::audio::asio::is_asio_creation(rclsid, riid)) {
+
+        // wrap every ASIO driver so calls pass through to the real driver
+        *ppv = hooks::audio::asio::wrap(rclsid, *ppv);
     }
 
     // return original result

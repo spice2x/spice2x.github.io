@@ -949,6 +949,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .picker = OptionPickerType::AsioDriver,
     },
     {
+        // SDVXAsioTwoChannel
+        .title = "SDVX ASIO Two Channel Audio",
+        .name = "sdvxasio2ch",
+        .desc = "Force the game to use two channels for ASIO output.",
+        .type = OptionType::Bool,
+        .game_name = "Sound Voltex",
+        .category = "Game Options",
+    },
+    {
         // spice2x_SDVXSubPos
         .title = "SDVX Subscreen Overlay Position",
         .name = "sp2x-sdvxsubpos",
@@ -1965,7 +1974,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // VolumeBoost
-        .title = "WASAPI Boost Audio Volume",
+        .title = "WASAPI/ASIO Boost Audio Volume",
         .name = "volumeboost",
         .desc = "Artificially amplifies the hooked audio output by the selected amount, applied "
             "right before the audio reaches the device. Works regardless of channel layout or "
