@@ -250,7 +250,7 @@ AsioError __thiscall WrappedAsio::get_latencies(long *input_latency, long *outpu
     if (result == ASE_OK) {
         log_info(
             "audio::wrappedasio",
-            "get_latencies -> in={}, out={}",
+            "get_latencies -> in={} frames, out={} frames",
             input_latency ? *input_latency : -1,
             output_latency ? *output_latency : -1);
     } else {
@@ -270,7 +270,7 @@ AsioError __thiscall WrappedAsio::get_buffer_size(
     if (result == ASE_OK) {
         log_info(
             "audio::wrappedasio",
-            "get_buffer_size -> min={}, max={}, preferred={}, granularity={}",
+            "get_buffer_size -> min={} frames, max={} frames, preferred={} frames, granularity={}",
             min_size ? *min_size : -1,
             max_size ? *max_size : -1,
             preferred_size ? *preferred_size : -1,
@@ -285,11 +285,11 @@ AsioError __thiscall WrappedAsio::get_buffer_size(
 AsioError __thiscall WrappedAsio::can_sample_rate(AsioSampleRate sample_rate) {
     const AsioError result = this->pReal->can_sample_rate(sample_rate);
     if (result == ASE_OK) {
-        log_misc("audio::wrappedasio", "can_sample_rate({}) -> supported", sample_rate);
+        log_misc("audio::wrappedasio", "can_sample_rate({} Hz) -> supported", sample_rate);
     } else {
         log_misc(
             "audio::wrappedasio",
-            "can_sample_rate({}) -> not supported, err={}",
+            "can_sample_rate({} Hz) -> not supported, err={}",
             sample_rate,
             static_cast<long>(result));
     }
@@ -300,7 +300,7 @@ AsioError __thiscall WrappedAsio::can_sample_rate(AsioSampleRate sample_rate) {
 AsioError __thiscall WrappedAsio::get_sample_rate(AsioSampleRate *sample_rate) {
     const AsioError result = this->pReal->get_sample_rate(sample_rate);
     if (result == ASE_OK) {
-        log_misc("audio::wrappedasio", "get_sample_rate -> {}", sample_rate ? *sample_rate : 0.0);
+        log_misc("audio::wrappedasio", "get_sample_rate -> {} Hz", sample_rate ? *sample_rate : 0.0);
     } else {
         log_warning("audio::wrappedasio", "get_sample_rate failed, err={}", static_cast<long>(result));
     }
@@ -311,11 +311,11 @@ AsioError __thiscall WrappedAsio::get_sample_rate(AsioSampleRate *sample_rate) {
 AsioError __thiscall WrappedAsio::set_sample_rate(AsioSampleRate sample_rate) {
     const AsioError result = this->pReal->set_sample_rate(sample_rate);
     if (result == ASE_OK) {
-        log_info("audio::wrappedasio", "set_sample_rate({}) succeeded", sample_rate);
+        log_info("audio::wrappedasio", "set_sample_rate({} Hz) succeeded", sample_rate);
     } else {
         log_warning(
             "audio::wrappedasio",
-            "set_sample_rate({}) failed, err={}",
+            "set_sample_rate({} Hz) failed, err={}",
             sample_rate,
             static_cast<long>(result));
     }
@@ -340,9 +340,9 @@ AsioError __thiscall WrappedAsio::get_channel_info(AsioChannelInfo *info) {
     if (result == ASE_OK && info != nullptr) {
         log_info(
             "audio::wrappedasio",
-            "get_channel_info(channel={}, input={}) -> active={}, group={}, type={} ({}), name='{}'",
+            "get_channel_info(channel={}, dir={}) -> active={}, group={}, type={} ({}), name='{}'",
             info->channel,
-            info->is_input == AsioTrue,
+            info->is_input == AsioTrue ? "input" : "output",
             info->is_active == AsioTrue,
             info->channel_group,
             asio_sample_type_name(info->type),
@@ -365,13 +365,13 @@ AsioError __thiscall WrappedAsio::create_buffers(
     if (result == ASE_OK) {
         log_info(
             "audio::wrappedasio",
-            "create_buffers(channels={}, size={}) succeeded",
+            "create_buffers(channels={}, size={} frames) succeeded",
             num_channels,
             buffer_size);
     } else {
         log_warning(
             "audio::wrappedasio",
-            "create_buffers(channels={}, size={}) failed, err={}",
+            "create_buffers(channels={}, size={} frames) failed, err={}",
             num_channels,
             buffer_size,
             static_cast<long>(result));
