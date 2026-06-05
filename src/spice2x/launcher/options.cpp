@@ -1207,7 +1207,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For Arena Model: ASIO driver name to use in place of XONAR. "
             "String should match a subkey under HKLM\\SOFTWARE\\ASIO\\\n\n"
             "Requires 7.1 @ 48kHz; if the game rejects your ASIO device, it will automatically "
-            "fall back to using WASAPI.",
+            "fall back to using WASAPI.\n\n"
+            "If the game crashes after successful ASIO init, try enabling -gdafakerealtek.",
         .type = OptionType::Text,
         .game_name = "GitaDora",
         .category = "Game Options",
