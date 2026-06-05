@@ -21,6 +21,7 @@ namespace games::gitadora {
 
     static decltype(RegCloseKey) *RegCloseKey_orig = nullptr;
     static decltype(RegEnumKeyA) *RegEnumKeyA_orig = nullptr;
+    static decltype(RegOpenKeyA) *RegOpenKeyA_orig = nullptr;
     static decltype(RegOpenKeyExA) *RegOpenKeyExA_orig = nullptr;
     static decltype(RegQueryValueExA) *RegQueryValueExA_orig = nullptr;
 
@@ -30,7 +31,6 @@ namespace games::gitadora {
     static LONG WINAPI RegOpenKeyExA_hook(HKEY hKey, LPCSTR lpSubKey, DWORD ulOptions, REGSAM samDesired,
             PHKEY phkResult)
     {
-        // ASIO\XONAR redirect to ASIO\<configured>
         if (ASIO_DRIVER.has_value() &&
             lpSubKey != nullptr &&
             phkResult != nullptr &&
@@ -60,7 +60,10 @@ namespace games::gitadora {
             return result;
         }
 
-        // open of the ASIO root: hand back a sentinel
+        return RegOpenKeyExA_orig(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+    }
+
+    static LONG WINAPI RegOpenKeyA_hook(HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult) {
         if (ASIO_DRIVER.has_value() &&
             lpSubKey != nullptr &&
             phkResult != nullptr &&
@@ -68,10 +71,10 @@ namespace games::gitadora {
             _stricmp(lpSubKey, "software\\asio") == 0)
         {
             *phkResult = PARENT_ASIO_REG_HANDLE;
-            return RegOpenKeyExA_orig(hKey, lpSubKey, ulOptions, samDesired, &real_asio_reg_handle);
+            return RegOpenKeyA_orig(hKey, lpSubKey, &real_asio_reg_handle);
         }
 
-        return RegOpenKeyExA_orig(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+        return RegOpenKeyA_orig(hKey, lpSubKey, phkResult);
     }
 
     static LONG WINAPI RegEnumKeyA_hook(HKEY hKey, DWORD dwIndex, LPSTR lpName, DWORD cchName) {
@@ -158,6 +161,8 @@ namespace games::gitadora {
                 "RegCloseKey", RegCloseKey_hook, avs::game::DLL_INSTANCE);
         RegEnumKeyA_orig = detour::iat_try(
                 "RegEnumKeyA", RegEnumKeyA_hook, avs::game::DLL_INSTANCE);
+        RegOpenKeyA_orig = detour::iat_try(
+                "RegOpenKeyA", RegOpenKeyA_hook, avs::game::DLL_INSTANCE);
         RegOpenKeyExA_orig = detour::iat_try(
                 "RegOpenKeyExA", RegOpenKeyExA_hook, avs::game::DLL_INSTANCE);
         RegQueryValueExA_orig = detour::iat_try(

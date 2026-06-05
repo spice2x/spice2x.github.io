@@ -45,7 +45,7 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDeviceEnumerator::EnumAudioEndpoints(
 {
     const auto hr = pReal->EnumAudioEndpoints(dataFlow, dwStateMask, ppDevices);
     if (SUCCEEDED(hr) && (ppDevices != nullptr) && (*ppDevices != nullptr)) {
-        *ppDevices = new WrappedIMMDeviceCollection(*ppDevices);
+        *ppDevices = new WrappedIMMDeviceCollection(*ppDevices, dataFlow);
     }
     return hr;
 }

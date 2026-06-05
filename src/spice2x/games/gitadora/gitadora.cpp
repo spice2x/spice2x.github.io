@@ -8,6 +8,7 @@
 #include <ksmedia.h>
 
 #include "cfg/configurator.h"
+#include "hooks/audio/audio.h"
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/wintouchemu.h"

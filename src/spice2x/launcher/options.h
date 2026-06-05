@@ -117,6 +117,7 @@ namespace launcher {
             GitaDoraArenaSingleWindow,
             GitaDoraArenaWindowLayout,
             GitaDoraArenaAsioDriver,
+            GitaDoraArenaFakeRealtekDevice,
             LoadJubeatModule,
             LoadReflecBeatModule,
             LoadShogikaiModule,

@@ -40,6 +40,11 @@ namespace hooks::audio {
     extern bool USE_DUMMY;
     extern WAVEFORMATEXTENSIBLE FORMAT;
     extern std::optional<Backend> BACKEND;
+
+    // when true, a synthetic "Realtek" render endpoint is injected into device enumeration that
+    // discards all audio. used by gitadora arena, whose device search crashes when no render
+    // endpoint reports a "Realtek" friendly name.
+    extern bool FAKE_REALTEK_RENDER_DEVICE;
     extern std::optional<size_t> ASIO_DRIVER_ID;
     extern std::string ASIO_DRIVER_NAME;
     extern bool ASIO_FORCE_UNLOAD_ON_STOP;

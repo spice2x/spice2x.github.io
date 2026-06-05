@@ -687,6 +687,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraArenaAsioDriver].is_active()) {
         games::gitadora::ASIO_DRIVER = options[launcher::Options::GitaDoraArenaAsioDriver].value_text();
     }
+    if (options[launcher::Options::GitaDoraArenaFakeRealtekDevice].value_bool()) {
+        hooks::audio::FAKE_REALTEK_RENDER_DEVICE = true;
+    }
     if (options[launcher::Options::LoadNostalgiaModule].value_bool()) {
         attach_nostalgia = true;
     }
