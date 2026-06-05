@@ -4,7 +4,8 @@
 #include <mmdeviceapi.h>
 
 struct WrappedIMMDeviceCollection : IMMDeviceCollection {
-    explicit WrappedIMMDeviceCollection(IMMDeviceCollection *orig) : pReal(orig) {
+    WrappedIMMDeviceCollection(IMMDeviceCollection *orig, EDataFlow dataFlow)
+        : pReal(orig), data_flow(dataFlow) {
     }
 
     WrappedIMMDeviceCollection(const WrappedIMMDeviceCollection &) = delete;
@@ -24,5 +25,9 @@ struct WrappedIMMDeviceCollection : IMMDeviceCollection {
 #pragma endregion
 
 private:
+    // whether the synthetic fake Realtek render device should be appended to this collection
+    bool should_inject_fake_realtek() const;
+
     IMMDeviceCollection *const pReal;
+    const EDataFlow data_flow;
 };

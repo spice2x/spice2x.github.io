@@ -1214,6 +1214,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .picker = OptionPickerType::AsioDriver,
     },
     {
+        // GitaDoraArenaFakeRealtekDevice
+        .title = "GitaDora Arena Fake Realtek Device",
+        .name = "gdafakerealtek",
+        .desc = "For Arena Model: inject a fake \"Realtek\" audio render device that discards all "
+            "audio sent to it. This is needed as the game crashes when ASIO is in use but Realtek "
+            "audio is not available. On an arcade cabinet, Realtek is used for headphone output.",
+        .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+    },
+    {
         .title = "Force Load Jubeat Module",
         .name = "jb",
         .desc = "Manually enable Jubeat module.",

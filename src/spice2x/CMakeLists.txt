@@ -503,6 +503,8 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/audio/backends/mmdevice/device.cpp
         hooks/audio/backends/mmdevice/device_collection.cpp
         hooks/audio/backends/mmdevice/device_enumerator.cpp
+        hooks/audio/backends/mmdevice/null_device.cpp
+        hooks/audio/backends/mmdevice/null_discard_backend.cpp
         hooks/audio/backends/wasapi/audio_client.cpp
         hooks/audio/backends/wasapi/audio_render_client.cpp
         hooks/audio/backends/wasapi/downmix.cpp
