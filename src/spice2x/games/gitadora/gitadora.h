@@ -20,6 +20,7 @@ namespace games::gitadora {
     extern std::optional<socd::SocdAlgorithm> PICK_ALGO;
     extern std::optional<uint8_t> ARENA_WINDOW_COUNT;
     extern std::optional<std::string> ASIO_DRIVER;
+    extern bool ALLOW_REALTEK_AUDIO;
 
     class GitaDoraGame : public games::Game {
     public:

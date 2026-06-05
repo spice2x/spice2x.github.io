@@ -47,7 +47,7 @@ namespace hooks::audio {
     bool USE_DUMMY = false;
     WAVEFORMATEXTENSIBLE FORMAT {};
     std::optional<Backend> BACKEND = std::nullopt;
-    bool FAKE_REALTEK_RENDER_DEVICE = false;
+    bool INJECT_FAKE_REALTEK_AUDIO = false;
     std::optional<size_t> ASIO_DRIVER_ID = std::nullopt;
     std::string ASIO_DRIVER_NAME = "";
     bool ASIO_FORCE_UNLOAD_ON_STOP = false;

@@ -1215,12 +1215,13 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .picker = OptionPickerType::AsioDriver,
     },
     {
-        // GitaDoraArenaFakeRealtekDevice
-        .title = "GitaDora Arena Fake Realtek Device",
-        .name = "gdafakerealtek",
-        .desc = "For Arena Model: inject a fake \"Realtek\" audio render device that discards all "
-            "audio sent to it. This is needed as the game crashes when ASIO is in use but Realtek "
-            "audio is not available. On an arcade cabinet, Realtek is used for headphone output.",
+        // GitaDoraArenaRealtekAccess
+        .title = "GitaDora Arena ASIO Allow Headphones",
+        .name = "gdarealtek",
+        .desc = "For Arena Model: allow the game to access the Realtek audio for headphone output.\n\n"
+            "After opening ASIO device, the game then tries to look for audio devices named Realtek to open "
+            "a second audio stream. For compatibility, spice prevents the game from doing this, but enabling "
+            "this option will allow the game to access the Realtek audio device again.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
