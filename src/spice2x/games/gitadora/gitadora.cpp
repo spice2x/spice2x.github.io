@@ -35,6 +35,7 @@ namespace games::gitadora {
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
     std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
+    bool ALLOW_REALTEK_AUDIO = false;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -630,7 +631,25 @@ namespace games::gitadora {
 
             // volume change prevention
             hooks::audio::mme::init(avs::game::DLL_INSTANCE);
-            
+
+            // fake Realtek audio injection
+            // if ASIO init succeeds, game tries to look for audio device with `Realtek` in friendly name
+            // if ASIO init fails, game opens default audio device
+            // therefore, it's safe to enable this hook by default regardless of ASIO preference
+            // (unless the user explicitly disables it, of course)
+            if (ALLOW_REALTEK_AUDIO) {
+                log_info(
+                    "gitadora",
+                    "fake Realtek audio injection disabled "
+                    "(user's real Realtek audio may be used after successful ASIO init)");
+            } else {
+                log_info(
+                    "gitadora",
+                    "fake Realtek audio injection enabled "
+                    "(create a fake Realtek audio device to prevent crashes after successful ASIO init)");
+                hooks::audio::INJECT_FAKE_REALTEK_AUDIO = true;
+            }
+
             // monitor/touch hooks (windowed or full screen)
             if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                 // enable touch hook for subscreen overlay

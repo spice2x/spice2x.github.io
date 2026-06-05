@@ -27,7 +27,7 @@ static const PROPERTYKEY PKEY_DEVICE_FRIENDLY_NAME_LOCAL = {
 };
 
 bool null_render_device_enabled() {
-    return hooks::audio::FAKE_REALTEK_RENDER_DEVICE;
+    return hooks::audio::INJECT_FAKE_REALTEK_AUDIO;
 }
 
 // duplicate a wide string into CoTaskMem so the caller can free it with

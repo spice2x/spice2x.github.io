@@ -44,7 +44,7 @@ namespace hooks::audio {
     // when true, a synthetic "Realtek" render endpoint is injected into device enumeration that
     // discards all audio. used by gitadora arena, whose device search crashes when no render
     // endpoint reports a "Realtek" friendly name.
-    extern bool FAKE_REALTEK_RENDER_DEVICE;
+    extern bool INJECT_FAKE_REALTEK_AUDIO;
     extern std::optional<size_t> ASIO_DRIVER_ID;
     extern std::string ASIO_DRIVER_NAME;
     extern bool ASIO_FORCE_UNLOAD_ON_STOP;
