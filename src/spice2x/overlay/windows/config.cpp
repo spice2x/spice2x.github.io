@@ -12,9 +12,9 @@
 #include "build/resource.h"
 #include "cfg/config.h"
 #include "cfg/configurator.h"
-#include "external/asio/asiolist.h"
 #include "external/imgui/imgui_internal.h"
 #include "external/imgui/misc/cpp/imgui_stdlib.h"
+#include "hooks/audio/asio_driver_scan.h"
 #include "games/io.h"
 #include "games/sdvx/sdvx.h"
 #include "games/popn/popn.h"
@@ -63,7 +63,7 @@ namespace overlay::windows {
     constexpr ImVec4 TEXT_COLOR_RED(1.f, 0.f, 0.f, 1.f);
     constexpr uint32_t OPTION_INPUT_TEXT_WIDTH = 512;
 
-    std::unique_ptr<AsioDriverList> asio_driver_list;
+    std::optional<std::vector<hooks::audio::AsioDriverScanEntry>> asio_driver_list;
 
     Config::Config(overlay::SpiceOverlay *overlay) : Window(overlay) {
         this->title = "Configuration";
@@ -4426,30 +4426,24 @@ namespace overlay::windows {
     void Config::build_option_value_picker(Option& option) {
         auto &definition = option.get_definition();
         if (definition.picker == OptionPickerType::AsioDriver) {
-            if (asio_driver_list == nullptr) {
-                asio_driver_list = std::make_unique<AsioDriverList>();
+            if (!asio_driver_list.has_value()) {
+                asio_driver_list = hooks::audio::scan_asio_drivers();
             }
 
-            ImGui::TextUnformatted("If your ASIO driver is not shown here, close this");
-            ImGui::TextUnformatted("popup and enter the driver name manually.");
-            ImGui::SameLine();
-            ImGui::HelpMarker(
-                "This list is populated by scanning the registry for ASIO drivers.\n\n"
-                "If your driver is not showing up, it may be because it is not properly registered in the system.\n\n"
-                "For 64-bit games, check in HKLM\\SOFTWARE\\ASIO\\.\n\n"
-                "For 32-bit games on 64-bit Windows, check in HKLM\\SOFTWARE\\WOW6432Node\\ASIO\\.\n\n"
-                "spicecfg runs in 32-bit, so it may not see 64-bit-only drivers.");
-
-            ImGui::TextUnformatted("");
-            if (asio_driver_list->driver_list.empty()) {
+            if (asio_driver_list->empty()) {
                 ImGui::TextUnformatted("No ASIO drivers found.");
             } else {
                 ImGui::TextUnformatted("Pick from ASIO drivers:");
                 ImGui::SetNextItemWidth(300.f);
                 if (ImGui::BeginListBox("##asiodrivers")) {
-                    for (const auto &driver : asio_driver_list->driver_list) {
-                        const bool is_selected = option.value == std::string(driver.name);
-                        if (ImGui::Selectable(fmt::format("[{}] {}", driver.id, driver.name).c_str(), is_selected)) {
+                    for (const auto &driver : *asio_driver_list) {
+                        const bool is_selected = option.value == driver.name;
+                        const char *arch = (driver.found_32bit && driver.found_64bit)
+                            ? "32/64-bit"
+                            : (driver.found_64bit ? "64-bit" : "32-bit");
+                        if (ImGui::Selectable(
+                                fmt::format("{} ({})", driver.name, arch).c_str(),
+                                is_selected)) {
                             option.value = driver.name;
                         }
                     }

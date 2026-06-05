@@ -494,6 +494,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         # hooks
         hooks/audio/acm.cpp
         hooks/audio/audio.cpp
+        hooks/audio/asio_driver_scan.cpp
         hooks/audio/asio_proxy.cpp
         hooks/audio/buffer.cpp
         hooks/audio/mme.cpp
