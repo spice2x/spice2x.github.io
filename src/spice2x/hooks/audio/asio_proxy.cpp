@@ -524,10 +524,15 @@ AsioError __thiscall WrappedAsio::get_channel_info(AsioChannelInfo *info) {
         // report the real device's output sample format rather than a fixed type: when
         // stereo downmix is active the game writes these dummy channels in this format and
         // we raw-copy the selected pair onto the device's front channels, so the formats
-        // must match or the copy produces static. fall back to Int32LSB if unavailable
-        AsioSampleType fake_type = this->device_output_sample_type();
-        if (fake_type == ASIOSTLastEntry) {
-            fake_type = ASIOSTInt32LSB;
+        // must match or the copy produces static. the guard above already proved the device
+        // has output channels, so query channel 0's format directly (avoiding a redundant
+        // get_channels) and fall back to Int32LSB if that query fails
+        AsioChannelInfo real_ci {};
+        real_ci.channel = 0;
+        real_ci.is_input = AsioFalse;
+        AsioSampleType fake_type = ASIOSTInt32LSB;
+        if (this->pReal->get_channel_info(&real_ci) == ASE_OK) {
+            fake_type = real_ci.type;
         }
 
         info->is_active = AsioTrue;
@@ -824,13 +829,14 @@ AsioError __thiscall WrappedAsio::create_buffers(
             buffer_size);
 
         // capture the post-process state now the buffers exist, then publish ourselves to
-        // the realtime thread once everything is in place
+        // the realtime thread once everything is in place. downmix is not recorded here: any
+        // active stereo extraction forces the front-pair path above, so this path only ever
+        // runs the volume boost
         if (this->volume_active) {
             for (long i = 0; i < num_channels; i++) {
                 this->record_volume_output_channel(buffer_infos[i]);
             }
         }
-        this->record_downmix_channels(buffer_infos, num_channels, buffer_size);
         this->publish_post_process(buffer_size);
     } else {
         log_warning(
