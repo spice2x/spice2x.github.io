@@ -33,16 +33,37 @@ struct WrappedAsio final : IAsio {
 
     virtual ~WrappedAsio();
 
-    // when set, the proxy presents the game's expected multichannel layout to the host so
-    // it proceeds to create_buffers, then forwards only the device's real front pair and
-    // discards the rest (see create_buffers). set once at boot, before any wrapper exists,
-    // so it needs no synchronization
-    static bool FORCE_TWO_CHANNELS;
+    // selects which source channel pair of a multichannel ASIO output reaches the device's
+    // 2.0 front pair. when not None, the proxy presents the game's expected multichannel
+    // layout to the host so it proceeds to create_buffers, then opens only a two-channel
+    // stream on the real device and routes the selected pair onto it (see create_buffers).
+    // Front is the plain "force two channel" case (forward the device's own front pair);
+    // the others copy a different pair onto 0/1. assumes a standard 7.1 layout (0-indexed).
+    // set once at boot, before any wrapper exists, so it needs no synchronization
+    enum class StereoDownmix {
+        None,   // feature disabled - full multichannel passthrough
+        Front,  // channels 0/1 - the device front pair is forwarded as-is (no copy)
+        Center, // channel 2 duplicated to both 0 and 1
+        Rear,   // channels 4/5 -> 0/1
+        Side,   // channels 6/7 -> 0/1
+    };
+    static StereoDownmix STEREO_DOWNMIX;
+
+    // true when a stereo extraction is configured, i.e. the real device should open a 2.0
+    // stream and only the selected pair should reach it. the former standalone
+    // FORCE_TWO_CHANNELS flag is now just the Front case of this
+    static bool force_two_channels() {
+        return STEREO_DOWNMIX != StereoDownmix::None;
+    }
 
     // some games hardcode a multichannel ASIO output and bail before create_buffers if
-    // get_channels reports fewer, so we report at least this many output channels when
-    // FORCE_TWO_CHANNELS is active
+    // get_channels reports fewer, so we report at least this many output channels when a
+    // stereo extraction is active
     static constexpr long FORCED_OUTPUT_CHANNELS = 8;
+
+    // maps an option string ("front", "center", "rear", "side") to a StereoDownmix value,
+    // returning None for anything unrecognized
+    static StereoDownmix name_to_stereo_downmix(const char *name);
 
 #pragma region IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppv) override;
@@ -83,7 +104,7 @@ struct WrappedAsio final : IAsio {
 #pragma endregion
 
 private:
-    // create_buffers implementation used when FORCE_TWO_CHANNELS is active: forwards only
+    // create_buffers implementation used when a stereo extraction is active: forwards only
     // the channels the real device has and hands the game throwaway buffers for the rest
     AsioError create_buffers_front_pair(
         AsioBufferInfo *buffer_infos,
@@ -91,40 +112,56 @@ private:
         long buffer_size,
         AsioCallbacks *callbacks);
 
-    // if hooks::audio::VOLUME_BOOST is set, saves the game's callbacks and returns a proxy
-    // callback set (our buffer-switch trampolines) to hand the real driver instead, so we
-    // can scale its output buffers after the game fills them. otherwise returns the game's
-    // callbacks unchanged. called at create_buffers time, before the stream starts
-    AsioCallbacks *install_volume_callbacks(AsioCallbacks *game_callbacks);
+    // if any post-processing effect (volume boost or stereo downmix) is active, saves the
+    // game's callbacks and returns a proxy callback set (our buffer-switch trampolines) to
+    // hand the real driver instead, so we can rework its output buffers after the game
+    // fills them. otherwise returns the game's callbacks unchanged. called at create_buffers
+    // time, before the stream starts
+    AsioCallbacks *install_proxy_callbacks(AsioCallbacks *game_callbacks);
 
     // records a device output channel whose buffers we scale by the volume boost. queries
     // the real driver for the channel's sample format. called at create_buffers time
     void record_volume_output_channel(const AsioBufferInfo &info);
 
-    // publishes the captured volume state to the realtime thread once the buffers exist,
-    // making our trampolines start scaling. called at the end of either create_buffers path
-    void publish_volume(long buffer_size);
+    // the real device's output sample format, queried from its first output channel. all
+    // output channels of a device share one format, so this characterizes them all. returns
+    // ASIOSTLastEntry if the device has no output channels or the query fails
+    AsioSampleType device_output_sample_type();
+
+    // locates the destination pair (device channels 0/1) and the configured source channels
+    // in the game's buffer set so the realtime path can copy the selected pair onto 0/1.
+    // a no-op unless STEREO_DOWNMIX selects a non-front pair. called at create_buffers time
+    void record_downmix_channels(AsioBufferInfo *buffer_infos, long num_channels, long buffer_size);
+
+    // publishes the captured post-process state to the realtime thread once the buffers
+    // exist, making our trampolines start reworking output. called at the end of either
+    // create_buffers path
+    void publish_post_process(long buffer_size);
 
     // detaches this instance from the realtime trampolines so they stop touching its
     // buffers. called from dispose_buffers and the destructor
-    void detach_volume();
+    void detach_post_process();
 
     // multiplies every recorded output channel's buffer for the given double-buffer index
     // by the volume boost. runs on the driver's realtime thread from our buffer switch
     void apply_output_volume(long double_buffer_index);
 
+    // copies the configured source channel pair onto device channels 0/1 for the given
+    // double-buffer index. runs on the driver's realtime thread from our buffer switch
+    void apply_downmix(long double_buffer_index);
+
     // realtime-thread trampolines for the buffer-switch callbacks, handed to the real
     // driver in place of the game's; ASIO callbacks carry no user data, so they reach the
-    // active wrapper through volume_active_instance, call the game's original, then scale.
+    // active wrapper through active_instance, call the game's original, then rework output.
     // the other two callbacks (sample_rate_did_change, asio_message) are forwarded as the
     // game's own pointers, so they need no trampoline
-    static void __cdecl volume_buffer_switch(long double_buffer_index, AsioBool direct_process);
-    static AsioTime * __cdecl volume_buffer_switch_time_info(
+    static void __cdecl proxy_buffer_switch(long double_buffer_index, AsioBool direct_process);
+    static AsioTime * __cdecl proxy_buffer_switch_time_info(
         AsioTime *params, long double_buffer_index, AsioBool direct_process);
 
     // the single wrapper whose proxy callbacks are installed (ASIO is single-instance with
     // one running stream); read by the static trampolines to reach the right wrapper
-    static std::atomic<WrappedAsio *> volume_active_instance;
+    static std::atomic<WrappedAsio *> active_instance;
 
     IAsio *const pReal;
     const CLSID clsid;
@@ -137,7 +174,7 @@ private:
     // drops to zero
     std::atomic<ULONG> ref_count {1};
 
-    // throwaway double buffers handed to the channels we discard when FORCE_TWO_CHANNELS
+    // throwaway double buffers handed to the channels we discard when a stereo extraction
     // is active (see create_buffers). owned for the lifetime of the buffer set and freed
     // in dispose_buffers; only read by the game from its own bufferSwitch, never by us
     std::vector<std::unique_ptr<uint8_t[]>> dummy_buffers;
@@ -148,13 +185,32 @@ private:
         AsioSampleType type;
     };
 
+    // the game's original callbacks (captured when we install our proxy set) and the proxy
+    // set we hand the real driver; the realtime trampolines reach the game's buffer_switch
+    // through game_callbacks regardless of which effect is active
+    AsioCallbacks game_callbacks {};
+    AsioCallbacks proxy_callbacks {};
+
     // volume boost state, captured at create_buffers time and published to the realtime
-    // thread via volume_active_instance once fully built; untouched while the stream runs.
-    // volume_active gates whether we install our proxy callbacks at all
+    // thread via active_instance once fully built; untouched while the stream runs.
+    // volume_active gates whether the realtime path scales any buffers
     bool volume_active = false;
     float volume_gain = 1.0f;
     long volume_buffer_size = 0;
-    AsioCallbacks volume_game_callbacks {};
-    AsioCallbacks volume_proxy_callbacks {};
     std::vector<VolumeOutputChannel> volume_channels;
+
+    // one device channel (0 or 1) fed by a source channel during stereo downmix; both
+    // buffer pointers are indexed by the ASIO double-buffer index, the same as the channels
+    struct DownmixCopy {
+        void *dst[2];
+        void *src[2];
+    };
+
+    // stereo downmix state, captured at create_buffers time and published alongside the
+    // volume state; untouched while the stream runs. downmix_active gates whether the
+    // realtime path copies the selected source pair onto device channels 0/1. copies[0]
+    // feeds device channel 0, copies[1] feeds device channel 1
+    bool downmix_active = false;
+    DownmixCopy downmix_copies[2] {};
+    size_t downmix_bytes = 0;
 };

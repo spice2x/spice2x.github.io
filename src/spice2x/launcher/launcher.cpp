@@ -498,7 +498,7 @@ int main_implementation(int argc, char *argv[]) {
         games::sdvx::ASIO_DRIVER = options[launcher::Options::spice2x_SDVXAsioDriver].value_text();
     }
     if (options[launcher::Options::SDVXAsioTwoChannel].value_bool()) {
-        WrappedAsio::FORCE_TWO_CHANNELS = true;
+        WrappedAsio::STEREO_DOWNMIX = WrappedAsio::StereoDownmix::Front;
     }
     if (options[launcher::Options::spice2x_SDVXSubPos].is_active()) {
         auto txt = options[launcher::Options::spice2x_SDVXSubPos].value_text();
@@ -710,6 +710,7 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::GitaDoraTwoChannelAudio].value_bool()) {
         games::gitadora::TWOCHANNEL = true;
+        WrappedAsio::STEREO_DOWNMIX = WrappedAsio::StereoDownmix::Center;
     }
     if (options[launcher::Options::GitaDoraLefty].is_active()) {
         const auto text = options[launcher::Options::GitaDoraLefty].value_text();
@@ -1105,6 +1106,12 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::DownmixAudioToStereo].is_active()) {
         auto &name = options[launcher::Options::DownmixAudioToStereo].value_text();
         hooks::audio::DOWNMIX_ALGORITHM = hooks::audio::Downmix::name_to_algorithm(name.c_str());
+    }
+    if (options[launcher::Options::AsioDownmixToStereo].is_active()) {
+        // routes the selected pair onto the device's 2.0 front output; a non-None selection
+        // implies force-two-channel (see WrappedAsio::force_two_channels)
+        auto &name = options[launcher::Options::AsioDownmixToStereo].value_text();
+        WrappedAsio::STEREO_DOWNMIX = WrappedAsio::name_to_stereo_downmix(name.c_str());
     }
     if (options[launcher::Options::VolumeBoost].is_active()) {
         const double decibels = std::strtod(

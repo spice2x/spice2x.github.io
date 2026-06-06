@@ -40,6 +40,49 @@ namespace {
         }
     }
 
+    // bytes occupied by one sample of the given ASIO type, or 0 for formats we cannot size
+    // (used to compute the byte length of a planar channel buffer for raw copies)
+    int asio_sample_bytes(AsioSampleType type) {
+        switch (type) {
+            case ASIOSTInt16LSB:
+            case ASIOSTInt16MSB:
+                return 2;
+            case ASIOSTInt24LSB:
+            case ASIOSTInt24MSB:
+                return 3;
+            case ASIOSTInt32LSB:
+            case ASIOSTInt32MSB:
+            case ASIOSTInt32LSB16:
+            case ASIOSTInt32LSB18:
+            case ASIOSTInt32LSB20:
+            case ASIOSTInt32LSB24:
+            case ASIOSTInt32MSB16:
+            case ASIOSTInt32MSB18:
+            case ASIOSTInt32MSB20:
+            case ASIOSTInt32MSB24:
+            case ASIOSTFloat32LSB:
+            case ASIOSTFloat32MSB:
+                return 4;
+            case ASIOSTFloat64LSB:
+            case ASIOSTFloat64MSB:
+                return 8;
+            default:
+                return 0;
+        }
+    }
+
+    // readable name for a stereo downmix selection, used in our logs
+    const char *stereo_downmix_name(WrappedAsio::StereoDownmix mode) {
+        switch (mode) {
+            case WrappedAsio::StereoDownmix::None: return "none";
+            case WrappedAsio::StereoDownmix::Front: return "front";
+            case WrappedAsio::StereoDownmix::Center: return "center";
+            case WrappedAsio::StereoDownmix::Rear: return "rear";
+            case WrappedAsio::StereoDownmix::Side: return "side";
+            default: return "unknown";
+        }
+    }
+
     // duration in milliseconds of a buffer of the given frame count at a sample rate, or a
     // negative sentinel when the frame count or sample rate is unusable
     double frames_to_ms(long frames, AsioSampleRate sample_rate) {
@@ -195,13 +238,27 @@ namespace hooks::audio::asio {
 }
 
 #pragma region IUnknown
-bool WrappedAsio::FORCE_TWO_CHANNELS = false;
-std::atomic<WrappedAsio *> WrappedAsio::volume_active_instance {nullptr};
+WrappedAsio::StereoDownmix WrappedAsio::STEREO_DOWNMIX = WrappedAsio::StereoDownmix::None;
+std::atomic<WrappedAsio *> WrappedAsio::active_instance {nullptr};
+
+WrappedAsio::StereoDownmix WrappedAsio::name_to_stereo_downmix(const char *name) {
+    if (_stricmp(name, "front") == 0) {
+        return StereoDownmix::Front;
+    } else if (_stricmp(name, "center") == 0) {
+        return StereoDownmix::Center;
+    } else if (_stricmp(name, "rear") == 0) {
+        return StereoDownmix::Rear;
+    } else if (_stricmp(name, "side") == 0) {
+        return StereoDownmix::Side;
+    }
+
+    return StereoDownmix::None;
+}
 
 WrappedAsio::~WrappedAsio() {
     unregister_wrapper(this);
 
-    this->detach_volume();
+    this->detach_post_process();
 
     // our refcount is decoupled from the host's (see AddRef/Release), so pReal's count is
     // exactly one here and this releases/unloads it deterministically
@@ -318,7 +375,7 @@ AsioError __thiscall WrappedAsio::get_channels(long *num_input_channels, long *n
         return result;
     }
 
-    if (FORCE_TWO_CHANNELS
+    if (force_two_channels()
         && num_output_channels != nullptr
         && *num_output_channels < FORCED_OUTPUT_CHANNELS)
     {
@@ -456,16 +513,31 @@ AsioError __thiscall WrappedAsio::get_channel_info(AsioChannelInfo *info) {
     // beyond the device without touching the real driver - they are discarded in
     // create_buffers anyway
     long real_in = 0, real_out = 0;
-    if (FORCE_TWO_CHANNELS
+    if (force_two_channels()
         && info != nullptr
         && info->is_input == AsioFalse
         && this->pReal->get_channels(&real_in, &real_out) == ASE_OK
         && info->channel >= real_out)
     {
         const long channel = info->channel;
+
+        // report the real device's output sample format rather than a fixed type: when
+        // stereo downmix is active the game writes these dummy channels in this format and
+        // we raw-copy the selected pair onto the device's front channels, so the formats
+        // must match or the copy produces static. the guard above already proved the device
+        // has output channels, so query channel 0's format directly (avoiding a redundant
+        // get_channels) and fall back to Int32LSB if that query fails
+        AsioChannelInfo real_ci {};
+        real_ci.channel = 0;
+        real_ci.is_input = AsioFalse;
+        AsioSampleType fake_type = ASIOSTInt32LSB;
+        if (this->pReal->get_channel_info(&real_ci) == ASE_OK) {
+            fake_type = real_ci.type;
+        }
+
         info->is_active = AsioTrue;
         info->channel_group = 0;
-        info->type = ASIOSTInt32LSB;
+        info->type = fake_type;
         snprintf(info->name, sizeof(info->name), "Fake ASIO OUT %ld", channel);
         log_info(
             "audio::wrappedasio",
@@ -496,34 +568,61 @@ AsioError __thiscall WrappedAsio::get_channel_info(AsioChannelInfo *info) {
     return result;
 }
 
-AsioCallbacks *WrappedAsio::install_volume_callbacks(AsioCallbacks *game_callbacks) {
+AsioCallbacks *WrappedAsio::install_proxy_callbacks(AsioCallbacks *game_callbacks) {
     const float gain = hooks::audio::VOLUME_BOOST;
 
     // start from a clean slate; a previous buffer set may have left state behind
     this->volume_channels.clear();
     this->volume_active = false;
+    this->downmix_active = false;
 
-    // no boost configured (or no callbacks to wrap): pass the game's callbacks straight
-    // through and do zero realtime work, exactly as before
-    if (gain == 1.0f || game_callbacks == nullptr) {
+    const bool want_volume = (gain != 1.0f);
+
+    // front is the device's own pair, so selecting it (or None) means no copy is needed
+    const bool want_downmix = (STEREO_DOWNMIX != StereoDownmix::None
+        && STEREO_DOWNMIX != StereoDownmix::Front);
+
+    // no post-processing configured (or no callbacks to wrap): pass the game's callbacks
+    // straight through and do zero realtime work, exactly as before
+    if ((!want_volume && !want_downmix) || game_callbacks == nullptr) {
         return game_callbacks;
     }
 
-    this->volume_active = true;
-    this->volume_gain = gain;
-    this->volume_game_callbacks = *game_callbacks;
+    if (want_volume) {
+        this->volume_active = true;
+        this->volume_gain = gain;
+    }
 
-    // wrap only the buffer-switch callbacks, where the audio data lives and we apply the
-    // gain. the other two carry no data we touch, so forward the game's own pointers
-    // unchanged - the driver expects them non-null and the game already owns their context
-    this->volume_proxy_callbacks = {};
-    this->volume_proxy_callbacks.buffer_switch = &WrappedAsio::volume_buffer_switch;
-    this->volume_proxy_callbacks.sample_rate_did_change = game_callbacks->sample_rate_did_change;
-    this->volume_proxy_callbacks.asio_message = game_callbacks->asio_message;
-    this->volume_proxy_callbacks.buffer_switch_time_info =
-        game_callbacks->buffer_switch_time_info ? &WrappedAsio::volume_buffer_switch_time_info : nullptr;
+    // the trampolines reach the game's buffer_switch through this copy, regardless of which
+    // effect is active
+    this->game_callbacks = *game_callbacks;
 
-    return &this->volume_proxy_callbacks;
+    // wrap only the buffer-switch callbacks, where the audio data lives and we rework it.
+    // the other two carry no data we touch, so forward the game's own pointers unchanged -
+    // the driver expects them non-null and the game already owns their context
+    this->proxy_callbacks = {};
+    this->proxy_callbacks.buffer_switch = &WrappedAsio::proxy_buffer_switch;
+    this->proxy_callbacks.sample_rate_did_change = game_callbacks->sample_rate_did_change;
+    this->proxy_callbacks.asio_message = game_callbacks->asio_message;
+    this->proxy_callbacks.buffer_switch_time_info =
+        game_callbacks->buffer_switch_time_info ? &WrappedAsio::proxy_buffer_switch_time_info : nullptr;
+
+    return &this->proxy_callbacks;
+}
+
+AsioSampleType WrappedAsio::device_output_sample_type() {
+    long real_in = 0, real_out = 0;
+    if (this->pReal->get_channels(&real_in, &real_out) != ASE_OK || real_out <= 0) {
+        return ASIOSTLastEntry;
+    }
+
+    AsioChannelInfo ci {};
+    ci.channel = 0;
+    ci.is_input = AsioFalse;
+    if (this->pReal->get_channel_info(&ci) != ASE_OK) {
+        return ASIOSTLastEntry;
+    }
+    return ci.type;
 }
 
 void WrappedAsio::record_volume_output_channel(const AsioBufferInfo &info) {
@@ -548,26 +647,97 @@ void WrappedAsio::record_volume_output_channel(const AsioBufferInfo &info) {
     this->volume_channels.push_back(ch);
 }
 
-void WrappedAsio::publish_volume(long buffer_size) {
-    if (!this->volume_active) {
+void WrappedAsio::record_downmix_channels(
+    AsioBufferInfo *buffer_infos, long num_channels, long buffer_size)
+{
+    // map the selected pair to source channel indices (0-indexed, standard 7.1 layout);
+    // None and Front need no copy
+    long src_left = 0, src_right = 0;
+    switch (STEREO_DOWNMIX) {
+        case StereoDownmix::Center: src_left = 2; src_right = 2; break;
+        case StereoDownmix::Rear: src_left = 4; src_right = 5; break;
+        case StereoDownmix::Side: src_left = 6; src_right = 7; break;
+        default: return;
+    }
+
+    // find the double-buffer pair for a given output channel among those the game created,
+    // or nullptr if the device does not expose it
+    auto find_output = [&](long channel) -> void ** {
+        for (long i = 0; i < num_channels; i++) {
+            AsioBufferInfo &bi = buffer_infos[i];
+            if (bi.is_input == AsioFalse && bi.channel_num == channel) {
+                return bi.buffers;
+            }
+        }
+        return nullptr;
+    };
+
+    // destinations are device channels 0/1; sources are the selected pair
+    void **dst0 = find_output(0);
+    void **dst1 = find_output(1);
+    void **src_l = find_output(src_left);
+    void **src_r = find_output(src_right);
+    if (dst0 == nullptr || dst1 == nullptr || src_l == nullptr || src_r == nullptr) {
+        log_warning(
+            "audio::wrappedasio",
+            "stereo downmix disabled: device is missing the front pair or source channels "
+            "{}/{} (game created {} channel(s))",
+            src_left,
+            src_right,
+            num_channels);
+        return;
+    }
+
+    // all device output channels share one sample format; query it to size the copy
+    const AsioSampleType type = this->device_output_sample_type();
+    const int sample_bytes = asio_sample_bytes(type);
+    if (sample_bytes <= 0) {
+        log_warning(
+            "audio::wrappedasio",
+            "stereo downmix disabled: unsupported sample format {} ({})",
+            asio_sample_type_name(type),
+            static_cast<long>(type));
+        return;
+    }
+
+    this->downmix_copies[0] = {{dst0[0], dst0[1]}, {src_l[0], src_l[1]}};
+    this->downmix_copies[1] = {{dst1[0], dst1[1]}, {src_r[0], src_r[1]}};
+    this->downmix_bytes = static_cast<size_t>(buffer_size) * sample_bytes;
+    this->downmix_active = true;
+
+    log_info(
+        "audio::wrappedasio",
+        "stereo downmix active: pair={} (src {}/{} -> device 0/1), {} frames, {} byte(s)/sample",
+        stereo_downmix_name(STEREO_DOWNMIX),
+        src_left,
+        src_right,
+        buffer_size,
+        sample_bytes);
+}
+
+void WrappedAsio::publish_post_process(long buffer_size) {
+    if (!this->volume_active && !this->downmix_active) {
         return;
     }
 
     // everything the realtime thread reads is now in place; make ourselves reachable
     this->volume_buffer_size = buffer_size;
-    WrappedAsio::volume_active_instance.store(this, std::memory_order_release);
-    log_info(
-        "audio::wrappedasio",
-        "volume boost active: gain={}, scaling {} output channel(s)",
-        this->volume_gain,
-        this->volume_channels.size());
+    WrappedAsio::active_instance.store(this, std::memory_order_release);
+
+    if (this->volume_active) {
+        log_info(
+            "audio::wrappedasio",
+            "volume boost active: gain={}, scaling {} output channel(s)",
+            this->volume_gain,
+            this->volume_channels.size());
+    }
 }
 
-void WrappedAsio::detach_volume() {
+void WrappedAsio::detach_post_process() {
     // stop our realtime trampolines from reaching this wrapper, but only if we are the
     // currently published instance
     WrappedAsio *expected = this;
-    WrappedAsio::volume_active_instance.compare_exchange_strong(expected, nullptr);
+    WrappedAsio::active_instance.compare_exchange_strong(expected, nullptr);
 }
 
 void WrappedAsio::apply_output_volume(long double_buffer_index) {
@@ -581,35 +751,57 @@ void WrappedAsio::apply_output_volume(long double_buffer_index) {
     }
 }
 
-void __cdecl WrappedAsio::volume_buffer_switch(long double_buffer_index, AsioBool direct_process) {
-    WrappedAsio *self = WrappedAsio::volume_active_instance.load(std::memory_order_acquire);
+void WrappedAsio::apply_downmix(long double_buffer_index) {
+    if (!this->downmix_active) {
+        return;
+    }
+    if (double_buffer_index != 0 && double_buffer_index != 1) {
+        return;
+    }
+
+    // raw planar copy of the selected source channels onto device channels 0/1; for the
+    // center selection both copies share one source. skip self-copies (front)
+    for (const DownmixCopy &copy : this->downmix_copies) {
+        void *dst = copy.dst[double_buffer_index];
+        const void *src = copy.src[double_buffer_index];
+        if (dst != nullptr && src != nullptr && dst != src) {
+            std::memcpy(dst, src, this->downmix_bytes);
+        }
+    }
+}
+
+void __cdecl WrappedAsio::proxy_buffer_switch(long double_buffer_index, AsioBool direct_process) {
+    WrappedAsio *self = WrappedAsio::active_instance.load(std::memory_order_acquire);
     if (self == nullptr) {
         return;
     }
 
-    // let the game write its samples into the driver buffers first, then scale them before
-    // the driver plays this half on the next switch
-    if (self->volume_game_callbacks.buffer_switch != nullptr) {
-        self->volume_game_callbacks.buffer_switch(double_buffer_index, direct_process);
+    // let the game write its samples into the driver buffers first, then rework them before
+    // the driver plays this half on the next switch: downmix first (arrange channels 0/1),
+    // then scale the device outputs by the volume boost
+    if (self->game_callbacks.buffer_switch != nullptr) {
+        self->game_callbacks.buffer_switch(double_buffer_index, direct_process);
     }
+    self->apply_downmix(double_buffer_index);
     self->apply_output_volume(double_buffer_index);
 }
 
-AsioTime * __cdecl WrappedAsio::volume_buffer_switch_time_info(
+AsioTime * __cdecl WrappedAsio::proxy_buffer_switch_time_info(
     AsioTime *params, long double_buffer_index, AsioBool direct_process)
 {
-    WrappedAsio *self = WrappedAsio::volume_active_instance.load(std::memory_order_acquire);
+    WrappedAsio *self = WrappedAsio::active_instance.load(std::memory_order_acquire);
     if (self == nullptr) {
         return params;
     }
 
     AsioTime *ret = params;
-    if (self->volume_game_callbacks.buffer_switch_time_info != nullptr) {
-        ret = self->volume_game_callbacks.buffer_switch_time_info(
+    if (self->game_callbacks.buffer_switch_time_info != nullptr) {
+        ret = self->game_callbacks.buffer_switch_time_info(
             params, double_buffer_index, direct_process);
-    } else if (self->volume_game_callbacks.buffer_switch != nullptr) {
-        self->volume_game_callbacks.buffer_switch(double_buffer_index, direct_process);
+    } else if (self->game_callbacks.buffer_switch != nullptr) {
+        self->game_callbacks.buffer_switch(double_buffer_index, direct_process);
     }
+    self->apply_downmix(double_buffer_index);
     self->apply_output_volume(double_buffer_index);
     return ret;
 }
@@ -620,11 +812,11 @@ AsioError __thiscall WrappedAsio::create_buffers(
     long buffer_size,
     AsioCallbacks *callbacks)
 {
-    // swap in our buffer-switch trampolines if a volume boost is configured, so the real
-    // driver calls us and we scale its output after the game fills it (no-op otherwise)
-    AsioCallbacks *effective = this->install_volume_callbacks(callbacks);
+    // swap in our buffer-switch trampolines if any post-processing is configured, so the
+    // real driver calls us and we rework its output after the game fills it (no-op otherwise)
+    AsioCallbacks *effective = this->install_proxy_callbacks(callbacks);
 
-    if (FORCE_TWO_CHANNELS) {
+    if (force_two_channels()) {
         return this->create_buffers_front_pair(buffer_infos, num_channels, buffer_size, effective);
     }
 
@@ -636,14 +828,16 @@ AsioError __thiscall WrappedAsio::create_buffers(
             num_channels,
             buffer_size);
 
-        // capture the device output channels we will scale, then publish ourselves to the
-        // realtime thread once everything is in place
+        // capture the post-process state now the buffers exist, then publish ourselves to
+        // the realtime thread once everything is in place. downmix is not recorded here: any
+        // active stereo extraction forces the front-pair path above, so this path only ever
+        // runs the volume boost
         if (this->volume_active) {
             for (long i = 0; i < num_channels; i++) {
                 this->record_volume_output_channel(buffer_infos[i]);
             }
-            this->publish_volume(buffer_size);
         }
+        this->publish_post_process(buffer_size);
     } else {
         log_warning(
             "audio::wrappedasio",
@@ -667,8 +861,9 @@ AsioError WrappedAsio::create_buffers_front_pair(
     // device actually provides (channel 0/1 = front L/R) and hand the game throwaway
     // buffers for the rest, so its front mix lands on the device and the surround
     // channels are discarded. the game writes directly into the driver/dummy buffers
-    // from its own bufferSwitch; the only realtime work we do is the volume boost (if
-    // configured), which scales the forwarded device channels via our trampolines
+    // from its own bufferSwitch; the realtime work we do is the optional volume boost
+    // (scaling the forwarded device channels) and, if a non-front stereo downmix is
+    // selected, copying that pair from its dummy buffers onto the device's front pair
     long real_in = 0, real_out = 0;
     const AsioError ch_result = this->pReal->get_channels(&real_in, &real_out);
     if (ch_result != ASE_OK) {
@@ -724,8 +919,6 @@ AsioError WrappedAsio::create_buffers_front_pair(
         }
     }
 
-    this->publish_volume(buffer_size);
-
     // hand throwaway double buffers to the discarded channels. sized generously at
     // 8 bytes/sample (covers every ASIO sample type) so the game can never overrun them
     // regardless of the negotiated format
@@ -741,6 +934,13 @@ AsioError WrappedAsio::create_buffers_front_pair(
         }
     }
 
+    // record the downmix source/destination buffers now the array is fully patched: the
+    // selected pair (e.g. rear) lives in the dummy buffers above, the device front pair in
+    // the forwarded driver buffers, so the realtime copy lands the chosen pair on the
+    // device's 2.0 output. then publish ourselves to the realtime thread
+    this->record_downmix_channels(buffer_infos, num_channels, buffer_size);
+    this->publish_post_process(buffer_size);
+
     log_info(
         "audio::wrappedasio",
         "create_buffers: front-pair extraction - forwarded {} channel(s) to device, "
@@ -755,12 +955,13 @@ AsioError WrappedAsio::create_buffers_front_pair(
 
 AsioError __thiscall WrappedAsio::dispose_buffers() {
     // stop our realtime trampolines from touching buffers the driver is about to free
-    this->detach_volume();
+    this->detach_post_process();
 
     const AsioError result = this->pReal->dispose_buffers();
     this->dummy_buffers.clear();
     this->volume_channels.clear();
     this->volume_active = false;
+    this->downmix_active = false;
     return result;
 }
 
