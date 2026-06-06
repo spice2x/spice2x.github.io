@@ -202,6 +202,7 @@ namespace launcher {
             AsioDriverName,
             AudioDummy,
             DownmixAudioToStereo,
+            AsioDownmixToStereo,
             VolumeBoost,
             AudioResample,
             AudioExclusiveBuffer,

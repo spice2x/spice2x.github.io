@@ -1086,10 +1086,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     {
         .title = "GitaDora Two Channel Audio",
         .name = "2ch",
-        .desc = "Attempt to reduce audio channels down to just two channels.\n\n"
-            "Arena Model: downmixes 7.1 to stereo using the AC-4 stereo downmix coefficients "
-            "(ETSI TS 103 190-1). The WASAPI Stereo Downmix option, if set, overrides this "
-            "algorithm.",
+        .desc = "Attempt to reduce audio channels down to just two channels.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
@@ -1983,6 +1980,26 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"front", "Front channels only"},
             {"rear", "Rear channels only"},
             {"side", "Side channels only"},
+        },
+    },
+    {
+        // AsioDownmixToStereo
+        .title = "ASIO 7.1 to Stereo Downmix",
+        .name = "asiodownmix",
+        .desc = "Extracts a single stereo channel pair from a multi-channel ASIO output, "
+            "mapping the selected pair to the device's first two channels.\n\n"
+            "Channel pairs assume a standard 7.1 ASIO layout (0-indexed):\n\n"
+            "front: channels 0/1 (front left/right).\n\n"
+            "center: channel 2 (front center, duplicated to both outputs).\n\n"
+            "rear: channels 4/5 (rear left/right).\n\n"
+            "side: channels 6/7 (side left/right).",
+        .type = OptionType::Enum,
+        .category = "Audio",
+        .elements = {
+            {"front", "Front channels (0/1)"},
+            {"center", "Center channel (2)"},
+            {"rear", "Rear channels (4/5)"},
+            {"side", "Side channels (6/7)"},
         },
     },
     {
