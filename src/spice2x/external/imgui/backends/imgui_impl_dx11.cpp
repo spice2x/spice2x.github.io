@@ -50,9 +50,35 @@
 #include <stdio.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
-#ifdef _MSC_VER
-#pragma comment(lib, "d3dcompiler") // Automatically link with d3dcompiler.lib as we are using D3DCompile() below.
-#endif
+// #ifdef _MSC_VER
+// #pragma comment(lib, "d3dcompiler") // Automatically link with d3dcompiler.lib as we are using D3DCompile() below.
+// #endif
+
+// spice2x: resolve D3DCompile at runtime rather than static-linking d3dcompiler,
+// which would hardwire an import on d3dcompiler_47.dll (absent on stock Win7).
+static pD3DCompile ImGui_ImplDX11_GetD3DCompile()
+{
+    static pD3DCompile fn = []() -> pD3DCompile {
+        static const char *dlls[] = {
+            "d3dcompiler_47.dll",
+            "d3dcompiler_46.dll",
+            "d3dcompiler_43.dll" };
+
+        for (const char *dll : dlls) {
+            HMODULE mod = GetModuleHandleA(dll);
+            if (!mod) {
+                mod = LoadLibraryA(dll);
+            }
+            if (mod) {
+                if (auto p = (pD3DCompile) GetProcAddress(mod, "D3DCompile")) {
+                    return p;
+                }
+            }
+        }
+        return nullptr;
+    }();
+    return fn;
+}
 
 // Clang/GCC warnings with -Weverything
 #if defined(__clang__)
@@ -442,6 +468,12 @@ bool    ImGui_ImplDX11_CreateDeviceObjects()
     //  2) use code to detect any version of the DLL and grab a pointer to D3DCompile from the DLL.
     // See https://github.com/ocornut/imgui/pull/638 for sources and details.
 
+    // spice2x: dynamically resolved; see ImGui_ImplDX11_GetD3DCompile.
+    pD3DCompile D3DCompile_fn = ImGui_ImplDX11_GetD3DCompile();
+    if (!D3DCompile_fn) {
+        return false;
+    }
+
     // Create the vertex shader
     {
         static const char* vertexShader =
@@ -473,7 +505,7 @@ bool    ImGui_ImplDX11_CreateDeviceObjects()
             }";
 
         ID3DBlob* vertexShaderBlob;
-        if (FAILED(D3DCompile(vertexShader, strlen(vertexShader), nullptr, nullptr, nullptr, "main", "vs_4_0", 0, 0, &vertexShaderBlob, nullptr)))
+        if (FAILED(D3DCompile_fn(vertexShader, strlen(vertexShader), nullptr, nullptr, nullptr, "main", "vs_4_0", 0, 0, &vertexShaderBlob, nullptr)))
             return false; // NB: Pass ID3DBlob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
         if (bd->pd3dDevice->CreateVertexShader(vertexShaderBlob->GetBufferPointer(), vertexShaderBlob->GetBufferSize(), nullptr, &bd->pVertexShader) != S_OK)
         {
@@ -530,7 +562,7 @@ bool    ImGui_ImplDX11_CreateDeviceObjects()
             }";
 
         ID3DBlob* pixelShaderBlob;
-        if (FAILED(D3DCompile(pixelShader, strlen(pixelShader), nullptr, nullptr, nullptr, "main", "ps_4_0", 0, 0, &pixelShaderBlob, nullptr)))
+        if (FAILED(D3DCompile_fn(pixelShader, strlen(pixelShader), nullptr, nullptr, nullptr, "main", "ps_4_0", 0, 0, &pixelShaderBlob, nullptr)))
             return false; // NB: Pass ID3DBlob* pErrorBlob to D3DCompile() to get error showing in (const char*)pErrorBlob->GetBufferPointer(). Make sure to Release() the blob!
         if (bd->pd3dDevice->CreatePixelShader(pixelShaderBlob->GetBufferPointer(), pixelShaderBlob->GetBufferSize(), nullptr, &bd->pPixelShader) != S_OK)
         {
