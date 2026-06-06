@@ -236,7 +236,7 @@ add_compile_definitions(
 )
 
 # SPICE_XP: set by build_all.sh for the WinXP-compat toolchains. Gates out
-# the DX11 overlay backend (WinXP lacks D3DCOMPILER_47.dll).
+# the DX11 overlay backend
 option(SPICE_XP "Build for the WinXP-compat toolchain" OFF)
 if(SPICE_XP)
     add_compile_definitions(SPICE_XP=1)
@@ -734,7 +734,7 @@ set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64 PROPERTIES OUTPUT_NAME "spice64")
 target_compile_definitions(spicetools_spice64 PRIVATE SPICE64=1)
 if(NOT SPICE_XP)
-    target_link_libraries(spicetools_spice64 PUBLIC d3d11 dxgi d3dcompiler)
+    target_link_libraries(spicetools_spice64 PUBLIC d3d11 dxgi)
     target_compile_definitions(spicetools_spice64 PRIVATE SPICE_D3D11=1)
 endif()
 
@@ -757,7 +757,7 @@ set_target_properties(spicetools_spice64_linux PROPERTIES OUTPUT_NAME "spice64_l
 target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE64=1)
 target_compile_definitions(spicetools_spice64_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
 # spice64_linux is never built under the WinXP toolchain, so dx11 is always on.
-target_link_libraries(spicetools_spice64_linux PUBLIC d3d11 dxgi d3dcompiler)
+target_link_libraries(spicetools_spice64_linux PUBLIC d3d11 dxgi)
 target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE_D3D11=1)
 
 IF(NOT MSVC)

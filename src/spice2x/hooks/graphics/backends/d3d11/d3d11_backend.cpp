@@ -213,6 +213,27 @@ void poll_thread() {
     }
 }
 
+// the overlay's imgui dx11 backend needs D3DCompile (d3dcompiler_XX.dll) to
+// build its shaders. _43 ships with the DX June 2010 redist on stock Win7;
+// _46/_47 come with newer Windows.
+bool d3dcompiler_available() {
+    static const wchar_t *names[] = {
+        L"d3dcompiler_47.dll",
+        L"d3dcompiler_46.dll",
+        L"d3dcompiler_43.dll",
+    };
+    for (auto name : names) {
+        HMODULE mod = GetModuleHandleW(name);
+        if (!mod) {
+            mod = LoadLibraryW(name);
+        }
+        if (mod && GetProcAddress(mod, "D3DCompile")) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 void graphics_d3d11_init() {
@@ -220,6 +241,14 @@ void graphics_d3d11_init() {
     // their startup path completely untouched (no exports patched, no poll
     // thread, no LDR callback).
     if (!GetModuleHandleW(L"execexe.dll")) {
+        return;
+    }
+
+    // no d3dcompiler -> overlay can't build shaders; skip dx11 overlay
+    if (!d3dcompiler_available()) {
+        log_warning(
+            "graphics::d3d11",
+            "d3dcompiler not found; dx11 overlay disabled");
         return;
     }
 

@@ -21,8 +21,7 @@ set(IMGUI_SOURCES
         misc/cpp/imgui_stdlib.cpp
 )
 
-# spice2x: DX11 backend is only built for non-XP toolchains. WinXP lacks
-# D3DCOMPILER_47.dll, and including this TU would pull in D3DCompile imports.
+# spice2x: DX11 backend is only built for non-XP toolchains
 if(NOT SPICE_XP)
     list(APPEND IMGUI_HEADERS backends/imgui_impl_dx11.h)
     list(APPEND IMGUI_SOURCES backends/imgui_impl_dx11.cpp)
