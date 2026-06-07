@@ -60,7 +60,10 @@ namespace overlay::windows {
     }
 
     void ExitPrompt::build_content() {
-        const char *popup_id = "spice2x##mainmenu";
+        // use ### so the visible label is the full title (with version) while the
+        // popup keeps a stable identifier regardless of the title text
+        const std::string popup_id_str = this->title + "###mainmenu";
+        const char *popup_id = popup_id_str.c_str();
 
         // open the popup once when the menu becomes active; popup_opened is reset
         // in update() while inactive so it reopens the next time it is shown
