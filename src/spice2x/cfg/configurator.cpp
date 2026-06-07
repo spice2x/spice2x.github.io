@@ -93,7 +93,6 @@ namespace cfg {
             overlay::create_software(this->wnd.hWnd);
         }
         overlay::OVERLAY->set_active(true);
-        overlay::OVERLAY->hotkeys_enable = false;
         ImGui::GetIO().MouseDrawCursor = false;
 
         // run window

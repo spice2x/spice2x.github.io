@@ -65,7 +65,6 @@ namespace overlay {
 
         D3DDEVICE_CREATION_PARAMETERS creation_parameters {};
         D3DADAPTER_IDENTIFIER9 adapter_identifier {};
-        bool hotkeys_enable = true;
 
         // windows
         Window *window_iopanel = nullptr;
