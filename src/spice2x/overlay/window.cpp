@@ -105,8 +105,12 @@ void overlay::Window::build() {
                 &this->active,
                 this->flags | ImGuiWindowFlags_NoFocusOnAppearing)) {
 
-            // window attributes
-            this->calculate_initial_window();
+            // window attributes - init_pos / init_size are only honored once
+            // (ImGuiCond_Once), so compute them a single time instead of every frame
+            if (!this->initial_window_calculated) {
+                this->initial_window_calculated = true;
+                this->calculate_initial_window();
+            }
             ImGui::SetWindowPos(this->init_pos, ImGuiCond_Once);
             ImGui::SetWindowSize(this->init_size, ImGuiCond_Once);
 

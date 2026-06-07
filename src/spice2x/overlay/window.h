@@ -52,6 +52,8 @@ namespace overlay {
         bool toggle_button_state = false;
 
         // init settings
+        // calculate_initial_window() runs only once; results feed ImGuiCond_Once
+        bool initial_window_calculated = false;
         ImVec2 init_pos = ImVec2(0, 0);
         ImVec2 init_size = ImVec2(0, 0);
         ImVec2 size_min = ImVec2(0, 0);
