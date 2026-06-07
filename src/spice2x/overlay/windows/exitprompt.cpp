@@ -54,10 +54,6 @@ namespace overlay::windows {
             (size.x - (ImGui::GetStyle().ItemSpacing.x * 2)) / 3,
             ImGui::GetFontSize() * 2.5f);
 
-        if (ImGui::Button("Hide overlay", size)) {
-            overlay::OVERLAY->set_active(false);
-        }
-        ImGui::Spacing();
         build_button(this->overlay->window_config, "Show Config", size, NextItem::NEW_LINE, false);
 
         std::string sub = "Show Subscreen";

@@ -756,15 +756,7 @@ void overlay::SpiceOverlay::d3d9_render_draw(const bool force_submit) {
 
 void overlay::SpiceOverlay::update() {
 
-    // check overlay toggle
     auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
-    bool toggle_down_new = overlay_buttons
-            && this->hotkeys_triggered()
-            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleOverlay));
-    if (toggle_down_new && !this->toggle_down) {
-        toggle_active();
-    }
-    this->toggle_down = toggle_down_new;
 
     // check main menu
     const auto main_menu_down_new = overlay_buttons
@@ -778,7 +770,7 @@ void overlay::SpiceOverlay::update() {
     // check FPS toggle - controls the persistent FPS window only, never the overlay
     const auto fps_down_new = overlay_buttons
             && this->hotkeys_triggered()
-            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleFPS));
+            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleFps));
     if (fps_down_new && !this->fps_down) {
         this->window_fps->toggle_active();
     }
@@ -789,10 +781,10 @@ void overlay::SpiceOverlay::update() {
         window->update();
     }
 
-    // FPS window lives outside `windows`
+    // FPS window
     this->window_fps->update();
 
-    // deactivate if no windows are shown (the FPS window is excluded by design)
+    // deactivate if no windows are shown
     bool window_active = false;
     for (auto &window : this->windows) {
         if (window->get_active()) {

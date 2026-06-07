@@ -198,7 +198,6 @@ namespace overlay {
         std::function<bool(LONG *, LONG *)> subscreen_mouse_handler = nullptr;
 
         bool active = false;
-        bool toggle_down = false;
         bool main_menu_down = false;
         bool fps_down = false;
         bool hotkey_toggle = false;

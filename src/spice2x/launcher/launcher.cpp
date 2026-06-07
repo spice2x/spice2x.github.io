@@ -1187,7 +1187,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::FpsLocation].is_active()) {
         const auto txt = options[launcher::Options::FpsLocation].value_text();
-        if (txt == "topleft") {
+        if (txt == "topright") {
+            overlay::FPS_LOCATION = overlay::FpsLocation::TopRight;
+        } else if (txt == "topleft") {
             overlay::FPS_LOCATION = overlay::FpsLocation::TopLeft;
         } else if (txt == "bottomleft") {
             overlay::FPS_LOCATION = overlay::FpsLocation::BottomLeft;
