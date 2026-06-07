@@ -496,11 +496,27 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // spice2x_FpsOpposite
-        .title = "Show FPS/Clock top-left",
+        .title = "Show FPS/Clock top-left (DEPRECATED - use -fpslocation instead)",
         .name = "fpsflip",
-        .desc = "Show FPS / clock / timer overlay on the top left of the screen instead of the top right.",
+        .desc = "Show FPS / clock / timer overlay on the top left of the screen instead of the top right. "
+            "Deprecated - use -fpslocation instead.",
         .type = OptionType::Bool,
+        .hidden = true,
         .category = "Overlay",
+    },
+    {
+        // FpsLocation
+        .title = "FPS/Clock Location",
+        .name = "fpslocation",
+        .desc = "Select which corner of the screen the FPS / clock / timer overlay appears in.",
+        .type = OptionType::Enum,
+        .category = "Overlay",
+        .elements = {
+            {"topright", ""},
+            {"topleft", ""},
+            {"bottomleft", ""},
+            {"bottomright", ""},
+        },
     },
     {
         // spice2x_SubScreenAutoShow

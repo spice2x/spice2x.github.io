@@ -66,7 +66,7 @@ namespace overlay {
     bool AUTO_SHOW_KEYPAD_P1 = false;
     bool AUTO_SHOW_KEYPAD_P2 = false;
     bool USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT = false;
-    bool FPS_SHOULD_FLIP = false;
+    FpsLocation FPS_LOCATION = FpsLocation::TopRight;
     std::optional<uint32_t> UI_SCALE_PERCENT;
 
     // global
@@ -396,11 +396,10 @@ void overlay::SpiceOverlay::init() {
 
     bool set_overlay_active = false;
 
-    // referenced windows
-    this->window_add(window_fps = new overlay::windows::FPS(this));
+    // owned separately from `windows` so it never affects overlay activation/input gating
+    window_fps = std::make_unique<overlay::windows::FPS>(this);
     if (!cfg::CONFIGURATOR_STANDALONE && AUTO_SHOW_FPS) {
         window_fps->set_active(true);
-        set_overlay_active = true;
     }
 
     this->window_add(window_main_menu = new overlay::windows::ExitPrompt(this));
@@ -544,9 +543,13 @@ void overlay::SpiceOverlay::new_frame() {
     const bool draw_notifications = this->renderer != OverlayRenderer::SOFTWARE
         && overlay::notifications::has_pending();
 
+    // persistent FPS window: drawn whenever active, independent of the overlay
+    const bool draw_fps_persistent = this->renderer != OverlayRenderer::SOFTWARE
+        && this->window_fps->get_active();
+
     // check if there is nothing to draw
     this->has_pending_frame = false;
-    if (!this->active && !draw_notifications) {
+    if (!this->active && !draw_notifications && !draw_fps_persistent) {
         return;
     }
 
@@ -582,6 +585,9 @@ void overlay::SpiceOverlay::new_frame() {
         }
     }
 
+    if (draw_fps_persistent) {
+        this->window_fps->build();
+    }
     // draw notifications last so they paint on top of any overlay windows
     if (draw_notifications) {
         overlay::notifications::draw();
@@ -756,7 +762,7 @@ void overlay::SpiceOverlay::update() {
             && this->hotkeys_triggered()
             && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleOverlay));
     if (toggle_down_new && !this->toggle_down) {
-        toggle_active(true);
+        toggle_active();
     }
     this->toggle_down = toggle_down_new;
 
@@ -769,12 +775,24 @@ void overlay::SpiceOverlay::update() {
     }
     this->main_menu_down = main_menu_down_new;
 
+    // check FPS toggle - controls the persistent FPS window only, never the overlay
+    const auto fps_down_new = overlay_buttons
+            && this->hotkeys_triggered()
+            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleFPS));
+    if (fps_down_new && !this->fps_down) {
+        this->window_fps->toggle_active();
+    }
+    this->fps_down = fps_down_new;
+
     // update windows
     for (auto &window : this->windows) {
         window->update();
     }
 
-    // deactivate if no windows are shown
+    // FPS window lives outside `windows`
+    this->window_fps->update();
+
+    // deactivate if no windows are shown (the FPS window is excluded by design)
     bool window_active = false;
     for (auto &window : this->windows) {
         if (window->get_active()) {
@@ -791,7 +809,7 @@ bool overlay::SpiceOverlay::update_cursor() {
     return ImGui_ImplSpice_UpdateMouseCursor();
 }
 
-void overlay::SpiceOverlay::toggle_active(bool overlay_key) {
+void overlay::SpiceOverlay::toggle_active() {
 
     // invert active state
     this->active = !this->active;
@@ -799,11 +817,6 @@ void overlay::SpiceOverlay::toggle_active(bool overlay_key) {
     // get rid of main menu if it was visible
     if (this->window_main_menu) {
         this->window_main_menu->set_active(false);
-    }
-
-    // show FPS window if toggled with overlay key
-    if (overlay_key) {
-        this->window_fps->set_active(this->active);
     }
 }
 

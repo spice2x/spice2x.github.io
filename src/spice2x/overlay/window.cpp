@@ -81,6 +81,12 @@ void overlay::Window::build() {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         }
 
+        const bool custom_window_padding =
+            !this->remove_window_padding && this->window_padding.x >= 0.f;
+        if (custom_window_padding) {
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, this->window_padding);
+        }
+
         // create window
         if (ImGui::Begin(
                 (this->title + "###" + to_string(this)).c_str(),
@@ -106,6 +112,10 @@ void overlay::Window::build() {
         if (this->remove_window_padding) {
             ImGui::PopStyleVar();
             ImGui::PopStyleVar();
+            ImGui::PopStyleVar();
+        }
+
+        if (custom_window_padding) {
             ImGui::PopStyleVar();
         }
 

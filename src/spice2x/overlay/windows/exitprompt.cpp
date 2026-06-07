@@ -81,7 +81,7 @@ namespace overlay::windows {
 
         ImGui::TextDisabled("Graphics");
         build_button(this->overlay->window_camera, "Camera control", size, NextItem::NEW_LINE);
-        build_button(this->overlay->window_fps, "FPS", size_half, NextItem::SAME_LINE);
+        build_button(this->overlay->window_fps.get(), "FPS", size_half, NextItem::SAME_LINE);
         build_button(this->overlay->window_resize, "Resize", size_half, NextItem::NEW_LINE);
 
         ImGui::TextDisabled("I/O");

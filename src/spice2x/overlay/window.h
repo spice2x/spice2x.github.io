@@ -33,6 +33,9 @@ namespace overlay {
 
         // settings
         bool remove_window_padding = false;
+        // custom inner window padding, applied before Begin() (preserving border /
+        // rounding) when x >= 0; ignored if remove_window_padding is set
+        ImVec2 window_padding = ImVec2(-1, -1);
         bool draws_window = true;
         ImGuiSizeCallback resize_callback = nullptr;
         std::string title = "Title";

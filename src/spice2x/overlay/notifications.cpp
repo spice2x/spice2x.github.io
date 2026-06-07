@@ -146,6 +146,10 @@ namespace overlay::notifications {
 
         float height = 0.f;
         if (ImGui::Begin(window_id.c_str(), nullptr, TOAST_FLAGS)) {
+            // keep toasts above other overlay windows (e.g. the persistent FPS
+            // window, which may be toggled on after a toast already exists)
+            ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+
             const ImVec2 win_pos = ImGui::GetWindowPos();
             const ImVec2 win_size = ImGui::GetWindowSize();
 

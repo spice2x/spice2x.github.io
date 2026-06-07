@@ -15,7 +15,5 @@ namespace overlay::windows {
 
         void calculate_initial_window() override;
         void build_content() override;
-
-        bool should_flip = false;
     };
 }

@@ -448,10 +448,13 @@ namespace games {
         vkey_defaults.push_back(VK_ESCAPE);
         names.emplace_back("Toggle Sub Screen");
         vkey_defaults.push_back(VK_PRIOR);
-        names.emplace_back("Insert Coin");
+
+        names.emplace_back("Toggle Overlay");
         vkey_defaults.push_back(VK_F1);
         names.emplace_back("Toggle IO Panel");
         vkey_defaults.push_back(VK_F2);
+        names.emplace_back("Insert Coin");
+        vkey_defaults.push_back(VK_F3);
         names.emplace_back("Toggle Config");
         vkey_defaults.push_back(VK_F4);
         names.emplace_back("Toggle Virtual Keypad P1");
@@ -468,8 +471,9 @@ namespace games {
         vkey_defaults.push_back(VK_F10);
         names.emplace_back("Toggle Screen Resize");
         vkey_defaults.push_back(VK_F11);
-        names.emplace_back("Toggle Overlay");
+        names.emplace_back("Toggle FPS");
         vkey_defaults.push_back(VK_F12);
+
         names.emplace_back("Toggle Camera Control");
         vkey_defaults.push_back(0xFF);
         names.emplace_back("Player 1 PIN Macro");

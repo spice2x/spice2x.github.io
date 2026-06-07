@@ -29,6 +29,14 @@ namespace overlay {
         SOFTWARE,
     };
 
+    // corner of the screen the FPS / clock / timer window is anchored to
+    enum class FpsLocation {
+        TopLeft,
+        TopRight,
+        BottomLeft,
+        BottomRight,
+    };
+
     // settings
     extern bool ENABLED;
     extern bool AUTO_SHOW_FPS;
@@ -37,7 +45,7 @@ namespace overlay {
     extern bool AUTO_SHOW_KEYPAD_P1;
     extern bool AUTO_SHOW_KEYPAD_P2;
     extern bool USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT;
-    extern bool FPS_SHOULD_FLIP;
+    extern FpsLocation FPS_LOCATION;
     extern bool SHOW_DEBUG_LOG_WINDOW;
     extern std::optional<uint32_t> UI_SCALE_PERCENT;
 
@@ -60,7 +68,6 @@ namespace overlay {
         bool hotkeys_enable = true;
 
         // windows
-        Window *window_fps = nullptr;
         Window *window_iopanel = nullptr;
         Window *window_config = nullptr;
         Window *window_keypad1 = nullptr;
@@ -71,6 +78,10 @@ namespace overlay {
         Window *window_camera = nullptr;
         Window *window_sub = nullptr;
         Window *window_log = nullptr;
+
+        // not part of `windows`: drawn/updated on the persistent layer (like
+        // notifications), independent of the overlay's active state and input gates.
+        std::unique_ptr<Window> window_fps;
 
         explicit SpiceOverlay(HWND hWnd, IDirect3D9 *d3d, IDirect3DDevice9 *device);
 #ifdef SPICE_D3D11
@@ -87,7 +98,7 @@ namespace overlay {
         // after render() when the frame is being presented. In-game overlay draws in render().
         void d3d9_render_draw(bool force_submit = false);
         void update();
-        void toggle_active(bool overlay_key = false);
+        void toggle_active();
         void show_main_menu();
         void set_active(bool active);
         bool get_active();
@@ -189,6 +200,7 @@ namespace overlay {
         bool active = false;
         bool toggle_down = false;
         bool main_menu_down = false;
+        bool fps_down = false;
         bool hotkey_toggle = false;
         bool hotkey_toggle_last = false;
 

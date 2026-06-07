@@ -1182,7 +1182,18 @@ int main_implementation(int argc, char *argv[]) {
         overlay::AUTO_SHOW_FPS = true;
     }
     if (options[launcher::Options::spice2x_FpsOpposite].value_bool()) {
-        overlay::FPS_SHOULD_FLIP = true;
+        // deprecated flag: equivalent to anchoring the FPS window top-left
+        overlay::FPS_LOCATION = overlay::FpsLocation::TopLeft;
+    }
+    if (options[launcher::Options::FpsLocation].is_active()) {
+        const auto txt = options[launcher::Options::FpsLocation].value_text();
+        if (txt == "topleft") {
+            overlay::FPS_LOCATION = overlay::FpsLocation::TopLeft;
+        } else if (txt == "bottomleft") {
+            overlay::FPS_LOCATION = overlay::FpsLocation::BottomLeft;
+        } else if (txt == "bottomright") {
+            overlay::FPS_LOCATION = overlay::FpsLocation::BottomRight;
+        }
     }
     if (options[launcher::Options::spice2x_SubScreenAutoShow].value_bool()) {
         overlay::AUTO_SHOW_SUBSCREEN = true;
