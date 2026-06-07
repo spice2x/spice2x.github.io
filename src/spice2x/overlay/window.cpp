@@ -3,6 +3,7 @@
 #include "util/logging.h"
 #include "games/io.h"
 #include "misc/eamuse.h"
+#include "external/imgui/imgui_internal.h"
 
 
 overlay::Window::Window(SpiceOverlay *overlay) : overlay(overlay) {
@@ -34,6 +35,12 @@ void overlay::Window::update() {
                 this->overlay->set_active(true);
             } else {
                 this->toggle_active();
+            }
+
+            // raise to the top, but only because the user pressed the hotkey and
+            // the window is now visible
+            if (this->active) {
+                this->bring_to_front();
             }
         }
         this->toggle_button_state = toggle_button_new;
@@ -88,10 +95,15 @@ void overlay::Window::build() {
         }
 
         // create window
+        // NoFocusOnAppearing: when the overlay is re-shown every window reappears at
+        // once and ImGui would auto-focus whichever is submitted last, stealing the
+        // top spot. suppress that so only an explicit focus request (see below)
+        // decides what comes to the front.
+        const std::string window_id = this->title + "###" + to_string(this);
         if (ImGui::Begin(
-                (this->title + "###" + to_string(this)).c_str(),
+                window_id.c_str(),
                 &this->active,
-                this->flags)) {
+                this->flags | ImGuiWindowFlags_NoFocusOnAppearing)) {
 
             // window attributes
             this->calculate_initial_window();
@@ -108,6 +120,17 @@ void overlay::Window::build() {
         }
         // end window
         ImGui::End();
+
+        // apply an explicit focus request now that the window exists. FocusWindow
+        // with UnlessBelowModal raises it to the front, but keeps it right below
+        // any blocking popup/modal instead of jumping in front of it (this also
+        // re-orders brand-new windows that ImGui places on top by default).
+        if (this->request_focus) {
+            this->request_focus = false;
+            if (ImGuiWindow *w = ImGui::FindWindowByName(window_id.c_str())) {
+                ImGui::FocusWindow(w, ImGuiFocusRequestFlags_UnlessBelowModal);
+            }
+        }
 
         if (this->remove_window_padding) {
             ImGui::PopStyleVar();
@@ -150,6 +173,10 @@ void overlay::Window::set_active(bool active) {
             child->set_active(this->active);
         }
     }
+}
+
+void overlay::Window::bring_to_front() {
+    this->request_focus = true;
 }
 
 bool overlay::Window::get_active() {

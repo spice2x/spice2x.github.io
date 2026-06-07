@@ -24,11 +24,19 @@ namespace overlay {
         void toggle_active();
         void set_active(bool active);
         bool get_active();
+
+        // raise this window to the top of the z-order on its next build. only
+        // call in response to an explicit user action (keyboard toggle, UI
+        // button) - not for auto-show / programmatic shows.
+        void bring_to_front();
     protected:
 
         // state
         SpiceOverlay *overlay;
         bool active = false;
+        // set when the window transitions to visible so build() raises it to the
+        // top of the z-order on the next frame
+        bool request_focus = false;
         std::vector<Window*> children;
 
         // settings

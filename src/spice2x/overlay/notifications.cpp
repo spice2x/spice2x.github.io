@@ -147,8 +147,15 @@ namespace overlay::notifications {
         float height = 0.f;
         if (ImGui::Begin(window_id.c_str(), nullptr, TOAST_FLAGS)) {
             // keep toasts above other overlay windows (e.g. the persistent FPS
-            // window, which may be toggled on after a toast already exists)
-            ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+            // window, which may be toggled on after a toast already exists), but
+            // tuck them behind a blocking modal so they get dimmed/occluded by the
+            // modal backdrop instead of floating on top of it.
+            ImGuiWindow *toast_window = ImGui::GetCurrentWindow();
+            if (ImGuiWindow *modal = ImGui::GetTopMostPopupModal()) {
+                ImGui::BringWindowToDisplayBehind(toast_window, modal);
+            } else {
+                ImGui::BringWindowToDisplayFront(toast_window);
+            }
 
             const ImVec2 win_pos = ImGui::GetWindowPos();
             const ImVec2 win_size = ImGui::GetWindowSize();

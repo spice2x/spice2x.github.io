@@ -298,6 +298,7 @@ void overlay::SpiceOverlay::init() {
     colors[ImGuiCol_Separator]        = ImVec4(0.32f, 0.22f, 0.22f, 1.00f);
     colors[ImGuiCol_SeparatorHovered] = ImVec4(0.42f, 0.22f, 0.22f, 1.00f);
     colors[ImGuiCol_SeparatorActive]  = ImVec4(0.52f, 0.22f, 0.22f, 1.00f);
+    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(1.00f, 1.00f, 1.00f, 0.5f);
 
 #ifdef IMGUI_HAS_DOCK
     colors[ImGuiCol_DockingPreview] = ImVec4(0.85f, 0.15f, 0.15f, 0.40f);
@@ -402,7 +403,8 @@ void overlay::SpiceOverlay::init() {
         window_fps->set_active(true);
     }
 
-    this->window_add(window_main_menu = new overlay::windows::ExitPrompt(this));
+    // owned separately from `windows` so it is not part of the overlay window layer
+    window_main_menu = std::make_unique<overlay::windows::ExitPrompt>(this);
 
     // add default windows
     this->window_add(window_config = new overlay::windows::Config(this));
@@ -580,6 +582,9 @@ void overlay::SpiceOverlay::new_frame() {
             window->build();
         }
 
+        // draw the main menu on top of the overlay windows
+        this->window_main_menu->build();
+
         if (SHOW_DEBUG_LOG_WINDOW) {
             ImGui::ShowDebugLogWindow(&SHOW_DEBUG_LOG_WINDOW);
         }
@@ -756,7 +761,21 @@ void overlay::SpiceOverlay::d3d9_render_draw(const bool force_submit) {
 
 void overlay::SpiceOverlay::update() {
 
+    // there are three layers -
+    // bottommost layer - FPS, notifications (non-interactable)
+    // overlay layer - most windows
+    // topmost layer - main menu (popup)
+
     auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
+
+    // check overlay toggle
+    const bool toggle_down_new = overlay_buttons
+            && this->hotkeys_triggered()
+            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleAllWindows));
+    if (toggle_down_new && !this->toggle_down) {
+        toggle_active();
+    }
+    this->toggle_down = toggle_down_new;
 
     // check main menu
     const auto main_menu_down_new = overlay_buttons
@@ -784,12 +803,18 @@ void overlay::SpiceOverlay::update() {
     // FPS window
     this->window_fps->update();
 
-    // deactivate if no windows are shown
-    bool window_active = false;
-    for (auto &window : this->windows) {
-        if (window->get_active()) {
-            window_active = true;
-            break;
+    // main menu (owned separately from the overlay window layer)
+    this->window_main_menu->update();
+
+    // deactivate if nothing is shown - the main menu keeps the overlay active
+    // while open even though it is not part of `windows`
+    bool window_active = this->window_main_menu->get_active();
+    if (!window_active) {
+        for (auto &window : this->windows) {
+            if (window->get_active()) {
+                window_active = true;
+                break;
+            }
         }
     }
     if (!window_active) {

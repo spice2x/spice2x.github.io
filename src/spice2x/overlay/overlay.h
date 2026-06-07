@@ -83,6 +83,11 @@ namespace overlay {
         // notifications), independent of the overlay's active state and input gates.
         std::unique_ptr<Window> window_fps;
 
+        // not part of `windows`: the main menu / launcher. owned and drawn
+        // separately from the overlay window layer; it drives the overlay's
+        // active state while shown so its buttons still receive input.
+        std::unique_ptr<Window> window_main_menu;
+
         explicit SpiceOverlay(HWND hWnd, IDirect3D9 *d3d, IDirect3DDevice9 *device);
 #ifdef SPICE_D3D11
         explicit SpiceOverlay(HWND hWnd, ID3D11Device *d3d11_device,
@@ -193,11 +198,10 @@ namespace overlay {
 
         std::vector<std::unique_ptr<Window>> windows;
 
-        Window *window_main_menu = nullptr;
-
         std::function<bool(LONG *, LONG *)> subscreen_mouse_handler = nullptr;
 
         bool active = false;
+        bool toggle_down = false;
         bool main_menu_down = false;
         bool fps_down = false;
         bool hotkey_toggle = false;
