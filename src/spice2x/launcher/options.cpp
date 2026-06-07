@@ -105,6 +105,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "url",
         .desc = "Sets a custom service URL override.",
         .type = OptionType::Text,
+        .setting_name = "http://example.com:8083",
         .category = "Network",
     },
     {
