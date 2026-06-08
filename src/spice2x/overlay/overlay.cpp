@@ -66,7 +66,7 @@ namespace overlay {
     bool AUTO_SHOW_KEYPAD_P1 = false;
     bool AUTO_SHOW_KEYPAD_P2 = false;
     bool USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT = false;
-    bool FPS_SHOULD_FLIP = false;
+    FpsLocation FPS_LOCATION = FpsLocation::TopRight;
     std::optional<uint32_t> UI_SCALE_PERCENT;
 
     // global
@@ -298,6 +298,7 @@ void overlay::SpiceOverlay::init() {
     colors[ImGuiCol_Separator]        = ImVec4(0.32f, 0.22f, 0.22f, 1.00f);
     colors[ImGuiCol_SeparatorHovered] = ImVec4(0.42f, 0.22f, 0.22f, 1.00f);
     colors[ImGuiCol_SeparatorActive]  = ImVec4(0.52f, 0.22f, 0.22f, 1.00f);
+    colors[ImGuiCol_ModalWindowDimBg] = ImVec4(1.00f, 1.00f, 1.00f, 0.5f);
 
 #ifdef IMGUI_HAS_DOCK
     colors[ImGuiCol_DockingPreview] = ImVec4(0.85f, 0.15f, 0.15f, 0.40f);
@@ -396,14 +397,14 @@ void overlay::SpiceOverlay::init() {
 
     bool set_overlay_active = false;
 
-    // referenced windows
-    this->window_add(window_fps = new overlay::windows::FPS(this));
+    // owned separately from `windows` so it never affects overlay activation/input gating
+    window_fps = std::make_unique<overlay::windows::FPS>(this);
     if (!cfg::CONFIGURATOR_STANDALONE && AUTO_SHOW_FPS) {
         window_fps->set_active(true);
-        set_overlay_active = true;
     }
 
-    this->window_add(window_main_menu = new overlay::windows::ExitPrompt(this));
+    // owned separately from `windows` so it is not part of the overlay window layer
+    window_main_menu = std::make_unique<overlay::windows::ExitPrompt>(this);
 
     // add default windows
     this->window_add(window_config = new overlay::windows::Config(this));
@@ -544,9 +545,13 @@ void overlay::SpiceOverlay::new_frame() {
     const bool draw_notifications = this->renderer != OverlayRenderer::SOFTWARE
         && overlay::notifications::has_pending();
 
+    // persistent FPS window: drawn whenever active, independent of the overlay
+    const bool draw_fps_persistent = this->renderer != OverlayRenderer::SOFTWARE
+        && this->window_fps->get_active();
+
     // check if there is nothing to draw
     this->has_pending_frame = false;
-    if (!this->active && !draw_notifications) {
+    if (!this->active && !draw_notifications && !draw_fps_persistent) {
         return;
     }
 
@@ -577,11 +582,17 @@ void overlay::SpiceOverlay::new_frame() {
             window->build();
         }
 
+        // draw the main menu on top of the overlay windows
+        this->window_main_menu->build();
+
         if (SHOW_DEBUG_LOG_WINDOW) {
             ImGui::ShowDebugLogWindow(&SHOW_DEBUG_LOG_WINDOW);
         }
     }
 
+    if (draw_fps_persistent) {
+        this->window_fps->build();
+    }
     // draw notifications last so they paint on top of any overlay windows
     if (draw_notifications) {
         overlay::notifications::draw();
@@ -750,13 +761,19 @@ void overlay::SpiceOverlay::d3d9_render_draw(const bool force_submit) {
 
 void overlay::SpiceOverlay::update() {
 
-    // check overlay toggle
+    // there are three layers -
+    // bottommost layer - FPS, notifications (non-interactable)
+    // overlay layer - most windows
+    // topmost layer - main menu (popup)
+
     auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
-    bool toggle_down_new = overlay_buttons
+
+    // check overlay toggle
+    const bool toggle_down_new = overlay_buttons
             && this->hotkeys_triggered()
-            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleOverlay));
+            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleAllWindows));
     if (toggle_down_new && !this->toggle_down) {
-        toggle_active(true);
+        toggle_active();
     }
     this->toggle_down = toggle_down_new;
 
@@ -769,17 +786,35 @@ void overlay::SpiceOverlay::update() {
     }
     this->main_menu_down = main_menu_down_new;
 
+    // check FPS toggle - controls the persistent FPS window only, never the overlay
+    const auto fps_down_new = overlay_buttons
+            && this->hotkeys_triggered()
+            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleFps));
+    if (fps_down_new && !this->fps_down) {
+        this->window_fps->toggle_active();
+    }
+    this->fps_down = fps_down_new;
+
     // update windows
     for (auto &window : this->windows) {
         window->update();
     }
 
-    // deactivate if no windows are shown
-    bool window_active = false;
-    for (auto &window : this->windows) {
-        if (window->get_active()) {
-            window_active = true;
-            break;
+    // FPS window
+    this->window_fps->update();
+
+    // main menu (owned separately from the overlay window layer)
+    this->window_main_menu->update();
+
+    // deactivate if nothing is shown - the main menu keeps the overlay active
+    // while open even though it is not part of `windows`
+    bool window_active = this->window_main_menu->get_active();
+    if (!window_active) {
+        for (auto &window : this->windows) {
+            if (window->get_active()) {
+                window_active = true;
+                break;
+            }
         }
     }
     if (!window_active) {
@@ -791,7 +826,7 @@ bool overlay::SpiceOverlay::update_cursor() {
     return ImGui_ImplSpice_UpdateMouseCursor();
 }
 
-void overlay::SpiceOverlay::toggle_active(bool overlay_key) {
+void overlay::SpiceOverlay::toggle_active() {
 
     // invert active state
     this->active = !this->active;
@@ -799,11 +834,6 @@ void overlay::SpiceOverlay::toggle_active(bool overlay_key) {
     // get rid of main menu if it was visible
     if (this->window_main_menu) {
         this->window_main_menu->set_active(false);
-    }
-
-    // show FPS window if toggled with overlay key
-    if (overlay_key) {
-        this->window_fps->set_active(this->active);
     }
 }
 
@@ -847,9 +877,8 @@ bool overlay::SpiceOverlay::has_focus() {
 }
 
 bool overlay::SpiceOverlay::hotkeys_triggered() {
-
-    // check if disabled first
-    if (!this->hotkeys_enable) {
+    // prevent hotkeys in spicecfg
+    if (cfg::CONFIGURATOR_STANDALONE) {
         return false;
     }
 

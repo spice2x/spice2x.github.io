@@ -444,6 +444,8 @@ namespace games {
         // overlay button definitions
         names.emplace_back("Screenshot");
         vkey_defaults.push_back(VK_SNAPSHOT);
+        names.emplace_back("Toggle All Windows");
+        vkey_defaults.push_back(VK_OEM_3); // backtick `
         names.emplace_back("Toggle Main Menu");
         vkey_defaults.push_back(VK_ESCAPE);
         names.emplace_back("Toggle Sub Screen");
@@ -468,7 +470,7 @@ namespace games {
         vkey_defaults.push_back(VK_F10);
         names.emplace_back("Toggle Screen Resize");
         vkey_defaults.push_back(VK_F11);
-        names.emplace_back("Toggle Overlay");
+        names.emplace_back("Toggle FPS");
         vkey_defaults.push_back(VK_F12);
         names.emplace_back("Toggle Camera Control");
         vkey_defaults.push_back(0xFF);

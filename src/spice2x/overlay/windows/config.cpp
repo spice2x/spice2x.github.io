@@ -324,20 +324,12 @@ namespace overlay::windows {
             }
             if (ImGui::BeginTabItem("Overlay")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_OVERLAY;
-
-                const auto offset = cfg::CONFIGURATOR_STANDALONE ? page_offset : page_offset2;
-
                 ImGui::BeginChild("Overlay", ImVec2(
-                    0, ImGui::GetWindowContentRegionMax().y - offset), false);
+                    0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
 
                 // overlay buttons
                 this->build_buttons("Overlay", games::get_buttons_overlay(this->games_selected_name));
                 ImGui::EndChild();
-
-                // standalone configurator extras
-                if (cfg::CONFIGURATOR_STANDALONE) {
-                    ImGui::Checkbox("Enable Overlay in Config", &OVERLAY->hotkeys_enable);
-                }
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Lights")) {
@@ -4316,7 +4308,7 @@ namespace overlay::windows {
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "NFC card reader status");
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "NFC / API card reader status");
         ImGui::Spacing();
         if (cfg::CONFIGURATOR_STANDALONE) {
 
@@ -4379,14 +4371,16 @@ namespace overlay::windows {
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "More tips");
+        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Card Manager");
         ImGui::Spacing();
-        ImGui::BeginDisabled();
-        ImGui::TextWrapped("To debug card reader issues, run spice.exe -cfg in command line and check the log.");
-        ImGui::TextWrapped(
-            "If you have multiple players, try opening Card Manager window in the game. "
-            "Check the key bind in Overlay tab for Toggle Card Manager.");
-        ImGui::EndDisabled();
+        if (ImGui::Button("Open Card Manager")) {
+            if (this->overlay->window_cards != nullptr) {
+                this->overlay->window_cards->set_active(true);
+                this->overlay->window_cards->bring_to_front();
+            }
+        }
+        ImGui::TextUnformatted("");
+        ImGui::TextUnformatted("");
     }
 
     bool Config::validate_ea_card(char card_number[16]) {

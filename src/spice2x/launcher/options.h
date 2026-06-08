@@ -56,6 +56,7 @@ namespace launcher {
             NotificationPosition,
             spice2x_FpsAutoShow,
             spice2x_FpsOpposite,
+            FpsLocation,
             spice2x_SubScreenAutoShow,
             spice2x_IOPanelAutoShow,
             spice2x_KeypadAutoShow,

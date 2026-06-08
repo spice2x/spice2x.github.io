@@ -8,6 +8,7 @@ namespace games {
     namespace OverlayButtons {
         enum {
             Screenshot,
+            ToggleAllWindows,
             ToggleMainMenu,
             ToggleSubScreen,
             InsertCoin,
@@ -20,7 +21,7 @@ namespace games {
             ToggleControl,
             TogglePatchManager,
             ToggleScreenResize,
-            ToggleOverlay,
+            ToggleFps,
             ToggleCameraControl,
             TriggerPinMacroP1,
             TriggerPinMacroP2,
