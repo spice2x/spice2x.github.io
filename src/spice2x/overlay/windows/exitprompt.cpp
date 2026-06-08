@@ -31,8 +31,10 @@ namespace overlay::windows {
     void ExitPrompt::update() {
         Window::update();
 
-        // allow the popup to be reopened the next time the menu is shown
-        if (!this->active) {
+        // allow the popup to be reopened the next time the menu is shown.
+        // also reset while the overlay is hidden: new_frame() doesn't submit the
+        // popup then, so ImGui closes it and it must be re-opened when shown again
+        if (!this->active || !this->overlay->get_active()) {
             this->popup_opened = false;
         }
     }
