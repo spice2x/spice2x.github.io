@@ -93,25 +93,25 @@ namespace overlay::windows {
             ImGui::GetFontSize() * 1.9f);
         const ImVec2 size_third(
             (size.x - (ImGui::GetStyle().ItemSpacing.x * 2)) / 3,
-            ImGui::GetFontSize() * 2.5f);
+            ImGui::GetFontSize() * 1.9f);
 
         build_button(this->overlay->window_config, "Options", size, NextItem::NEW_LINE);
 
-        std::string sub = "Show Subscreen";
+        std::string sub = "Subscreen";
         if (avs::game::is_model("LDJ")) {
             if (games::iidx::TDJ_MODE) {
-                sub = "Show TDJ Subscreen";
+                sub = "IIDX TDJ Subscreen";
             } else {
-                sub = "Show LDJ LED Ticker";
+                sub = "IIDX LDJ LED Ticker";
             }
         } else if (avs::game::is_model("KFC")) {
-            sub = "Show Valkyrie Subscreen";
+            sub = "SDVX Valkyrie Subscreen";
         } else if (avs::game::is_model("REC")) {
-            sub = "Show DRS Dance Floor";
+            sub = "DRS Dance Floor";
         } else if (games::gitadora::is_arena_model()) {
-            sub = "Show GITADORA Subscreen";
+            sub = "GITADORA Subscreen";
         } else if (games::popn::is_pikapika_model()) {
-            sub = "Show Pop'n Subscreen";
+            sub = "Pop'n Subscreen";
         }
 
         build_button(this->overlay->window_sub, sub, size, NextItem::NEW_LINE);
@@ -130,9 +130,9 @@ namespace overlay::windows {
             build_button(this->overlay->window_iopanel, "I/O panel", size_half, NextItem::NEW_LINE);
         } else {
             // 1p and 2p
-            build_button(this->overlay->window_keypad1, "Keypad\n  P1", size_third, NextItem::SAME_LINE);
-            build_button(this->overlay->window_iopanel, " I/O\npanel", size_third, NextItem::SAME_LINE);
-            build_button(this->overlay->window_keypad2, "Keypad\n  P2", size_third, NextItem::NEW_LINE);
+            build_button(this->overlay->window_keypad1, "P1 #", size_third, NextItem::SAME_LINE);
+            build_button(this->overlay->window_iopanel, "I/O", size_third, NextItem::SAME_LINE);
+            build_button(this->overlay->window_keypad2, "P2 #", size_third, NextItem::NEW_LINE);
         }
 
         ImGui::TextDisabled("Debug");
