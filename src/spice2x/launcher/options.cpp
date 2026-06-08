@@ -261,7 +261,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Force the graphics device to be opened utilizing only one adapter in multi-monitor systems.\n\n"
             "May cause unstable framerate and desyncs, especially if monitors have different refresh rates!",
         .type = OptionType::Bool,
-        .category = "Monitor",
+        .category = "Graphics (Full Screen)",
     },
     {
         .title = "Monitor Refresh Rate",
@@ -1000,7 +1000,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Sound Voltex",
-        .category = "Monitor",
+        .category = "Graphics (Full Screen)",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -1069,7 +1069,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Pop'n Music",
-        .category = "Monitor",
+        .category = "Graphics (Full Screen)",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2705,7 +2705,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Beatmania IIDX",
-        .category = "Monitor",
+        .category = "Graphics (Full Screen)",
         .picker = OptionPickerType::Monitor,
     },
     {
