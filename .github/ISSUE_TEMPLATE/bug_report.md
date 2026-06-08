@@ -22,3 +22,7 @@ assignees: ''
 > [!WARNING]
 > Please make sure you remove any personally identifiable information from the log file.
 > Please set `-loglevel` to `all` before launching the game for more verbose logs.
+
+## A note on issue management
+
+`Closed as not planned` means exactly that - it's closed, because it's not on our plans to address them any time soon. It doesn't mean your issue is invalid, it just means it's not a priority, and we can always revisit them later.
