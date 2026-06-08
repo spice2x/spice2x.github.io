@@ -827,14 +827,8 @@ bool overlay::SpiceOverlay::update_cursor() {
 }
 
 void overlay::SpiceOverlay::toggle_active() {
-
     // invert active state
     this->active = !this->active;
-
-    // get rid of main menu if it was visible
-    if (this->window_main_menu) {
-        this->window_main_menu->set_active(false);
-    }
 }
 
 void overlay::SpiceOverlay::show_main_menu() {
@@ -844,12 +838,17 @@ void overlay::SpiceOverlay::show_main_menu() {
     if (this->window_main_menu->get_active()) {
         // window already visible - close the window
         this->window_main_menu->set_active(false);
+        // if the overlay was not visible when this came into view, turn off overlay as well
+        if (!this->overlay_active_when_main_menu_shown) {
+            this->set_active(false);
+        }
         return;
     }
     if (ImGui::IsPopupOpen(0, ImGuiPopupFlags_AnyPopup)) {
         return;
     }
 
+    this->overlay_active_when_main_menu_shown = this->get_active();
     if (this->get_active()) {
         if (!ImGui::IsAnyItemActive() && !ImGui::IsAnyItemFocused()) {
             this->window_main_menu->set_active(true);

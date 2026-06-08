@@ -31,6 +31,12 @@ void overlay::Window::update() {
 
             // if the overlay is hidden just reactivate it
             if (!this->overlay->get_active()) {
+
+                // but don't let the main menu occlude it if it was previously visible
+                if (this->overlay->window_main_menu) {
+                    this->overlay->window_main_menu->set_active(false);
+                }
+
                 this->active = true;
                 this->overlay->set_active(true);
             } else {

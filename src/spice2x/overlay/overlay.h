@@ -202,6 +202,7 @@ namespace overlay {
         bool active = false;
         bool toggle_down = false;
         bool main_menu_down = false;
+        bool overlay_active_when_main_menu_shown = false;
         bool fps_down = false;
         bool hotkey_toggle = false;
         bool hotkey_toggle_last = false;
