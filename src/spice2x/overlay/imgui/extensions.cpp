@@ -66,7 +66,9 @@ namespace ImGui {
 
     void DummyMarker() {
         // dummy marker that is the same width as HelpMarker/WarnMarker.
-        ImGui::Dummy(ImVec2(22, 0));
+        // "(?)" and "(!)" render to the same width, so calc it so the spacing
+        // tracks the current font size/scale instead of a fixed pixel count.
+        ImGui::Dummy(ImVec2(ImGui::CalcTextSize("(?)").x, 0));
     }
 
     void Knob(float fraction, float size, float thickness, float pos_x, float pos_y) {
