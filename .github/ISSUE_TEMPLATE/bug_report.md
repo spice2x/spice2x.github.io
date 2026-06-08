@@ -11,9 +11,7 @@ assignees: ''
 *name of game, version of game*
 
 ## Version of spice2x
-*version of spice, this can be seen in the About tab, and in log.txt*
-
-*please remember to test the LATEST beta version before posting a bug about it**
+*please remember to test the LATEST beta version before posting a bug about it*
 
 ## Describe the issue
 *what's the issue?*
