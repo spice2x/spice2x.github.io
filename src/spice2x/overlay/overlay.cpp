@@ -877,7 +877,7 @@ bool overlay::SpiceOverlay::has_focus() {
 }
 
 bool overlay::SpiceOverlay::hotkeys_triggered() {
-    // prevent hotkeys in spicecfg, though still allowed when launched with -cfg
+    // prevent hotkeys in spicecfg
     if (cfg::CONFIGURATOR_STANDALONE) {
         return false;
     }
