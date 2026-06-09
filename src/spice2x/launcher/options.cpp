@@ -28,6 +28,7 @@ static const std::vector<std::string> CATEGORY_ORDER_BASIC = {
     "Graphics (Full Screen)",
     "Graphics (Windowed)",
     "Audio",
+    "Audio (Conversion)",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
@@ -1934,6 +1935,31 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Audio (Hacks)",
     },
     {
+        // AudioShared
+        .title = "WASAPI Compatibility Mode (Force WASAPI Shared)",
+        .name = "wasapishared",
+        .desc = "This option turns on compatibility mode for WASAPI:\n\n"
+            "If the game uses WASAPI exclusive mode, automatically switches to shared mode.\n\n"
+            "If the game uses WASAPI shared mode, enables OS audio resampler for maximum compatibility "
+            "(i.e., no need to change sample rate to match the game).\n\n"
+            "As a trade-off, this will increase audio latency, of course.",
+        .type = OptionType::Bool,
+        .category = "Audio",
+    },
+    {
+        // spice2x_LowLatencySharedAudio
+        .title = "Low Latency Shared Audio",
+        .name = "sp2x-lowlatencysharedaudio",
+        .display_name = "lowlatencysharedaudio",
+        .aliases= "lowlatencysharedaudio",
+        .desc = "Force the usage of smallest buffer size supported by the device when shared mode audio is used. "
+            "Works for games using DirectSound or shared WASAPI; no effect for exclusive WASAPI and ASIO. " 
+            "For best results (under 10ms), use the default Windows inbox audio driver instead of manufacturer supplied driver. " 
+            "Requires Windows 10 and above.",
+        .type = OptionType::Bool,
+        .category = "Audio",
+    },
+    {
         // AudioBackend
         .title = "Spice Audio Hook Backend (DEPRECATED - use -asioconvert instead)",
         .name = "audiobackend",
@@ -1941,7 +1967,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Does nothing for games that do not output to exclusive WASAPI.",
         .type = OptionType::Enum,
         .hidden = true,
-        .category = "Audio",
+        .category = "Audio (Conversion)",
         .elements = {
             {"asio", "ASIO"},
             {"waveout", "broken, do not use"}
@@ -1954,7 +1980,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Selects the ASIO driver id to use when Spice Audio Backend is set to ASIO.",
         .type = OptionType::Integer,
         .hidden = true,
-        .category = "Audio",
+        .category = "Audio (Conversion)",
     },
     {
         // AsioDriverName
@@ -1965,7 +1991,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "This should only be used as last resort if your audio device does not support WASAPI Exclusive.\n\n"
             "Does nothing for games that do not output to exclusive WASAPI.",
         .type = OptionType::Text,
-        .category = "Audio",
+        .category = "Audio (Conversion)",
         .picker = OptionPickerType::AsioDriver,
     },
     {
@@ -1990,33 +2016,13 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "rear: rear channels only.\n\n"
             "side: side channels only.",
         .type = OptionType::Enum,
-        .category = "Audio",
+        .category = "Audio (Conversion)",
         .elements = {
             {"ac4", "AC-4 downmix"},
             {"normalize", "All channels"},
             {"front", "Front channels only"},
             {"rear", "Rear channels only"},
             {"side", "Side channels only"},
-        },
-    },
-    {
-        // AsioDownmixToStereo
-        .title = "ASIO 7.1 to Stereo Downmix",
-        .name = "asiodownmix",
-        .desc = "Extracts a single stereo channel pair from a multi-channel ASIO output, "
-            "mapping the selected pair to the device's first two channels.\n\n"
-            "Channel pairs assume a standard 7.1 ASIO layout (0-indexed):\n\n"
-            "front: channels 0/1 (front left/right).\n\n"
-            "center: channel 2 (front center, duplicated to both outputs).\n\n"
-            "rear: channels 4/5 (rear left/right).\n\n"
-            "side: channels 6/7 (side left/right).",
-        .type = OptionType::Enum,
-        .category = "Audio",
-        .elements = {
-            {"front", "Front channels (0/1)"},
-            {"center", "Center channel (2)"},
-            {"rear", "Rear channels (4/5)"},
-            {"side", "Side channels (6/7)"},
         },
     },
     {
@@ -2050,7 +2056,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Select the TARGET sample rate (one that your audio card supports).\n\n"
             "Will result in couple milliseconds of latency and increased CPU usage when active.",
         .type = OptionType::Enum,
-        .category = "Audio",
+        .category = "Audio (Conversion)",
         .elements = {
             {"44100", "44.1 kHz"},
             {"48000", "48 kHz"},
@@ -2069,7 +2075,27 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "(at the cost of slightly increased latency).",
         .type = OptionType::Integer,
         .setting_name = "16",
-        .category = "Audio",
+        .category = "Audio (Conversion)",
+    },
+    {
+        // AsioDownmixToStereo
+        .title = "ASIO 7.1 to Stereo Downmix",
+        .name = "asiodownmix",
+        .desc = "Extracts a single stereo channel pair from a multi-channel ASIO output, "
+            "mapping the selected pair to the device's first two channels.\n\n"
+            "Channel pairs assume a standard 7.1 ASIO layout (0-indexed):\n\n"
+            "front: channels 0/1 (front left/right).\n\n"
+            "center: channel 2 (front center, duplicated to both outputs).\n\n"
+            "rear: channels 4/5 (rear left/right).\n\n"
+            "side: channels 6/7 (side left/right).",
+        .type = OptionType::Enum,
+        .category = "Audio (Conversion)",
+        .elements = {
+            {"front", "Front (ch 0/1)"},
+            {"center", "Center (ch 2)"},
+            {"rear", "Rear (ch 4/5)"},
+            {"side", "Side (ch 6/7)"},
+        },
     },
     {
         // DelayBy5Seconds
@@ -2739,19 +2765,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"p2", ""},
             {"both", ""},
         },
-    },
-    {
-        // spice2x_LowLatencySharedAudio
-        .title = "Low Latency Shared Audio",
-        .name = "sp2x-lowlatencysharedaudio",
-        .display_name = "lowlatencysharedaudio",
-        .aliases= "lowlatencysharedaudio",
-        .desc = "Force the usage of smallest buffer size supported by the device when shared mode audio is used. "
-            "Works for games using DirectSound or shared WASAPI; no effect for exclusive WASAPI and ASIO. " 
-            "For best results (under 10ms), use the default Windows inbox audio driver instead of manufacturer supplied driver. " 
-            "Requires Windows 10 and above.",
-        .type = OptionType::Bool,
-        .category = "Audio",
     },
     {
         // spice2x_TapeLedAlgorithm

@@ -167,31 +167,43 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
         fix_rec_format(const_cast<WAVEFORMATEX *>(pFormat));
     }
 
-    // when downmixing, open the real device as stereo while the game keeps writing its native
-    // multi-channel format into the scratch buffer.
-    WAVEFORMATEXTENSIBLE stereo_storage = {};
-    const WAVEFORMATEX *device_format = pFormat;
-
-    if (auto algorithm = resolve_downmix(pFormat)) {
-        this->downmix.setup(pFormat, &stereo_storage, *algorithm);
-        device_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
-        log_info("audio::wasapi", "downmix enabled: {} channels -> 2 channels ({})",
-                pFormat->nChannels, hooks::audio::Downmix::algorithm_name(*algorithm));
-    } else if (games::gitadora::is_arena_model()) {
-        games::gitadora::fix_audio_channel_mask(const_cast<WAVEFORMATEX *>(pFormat));
+    // apply the -audioshared option: redirect an exclusive request to shared mode, or just add the
+    // format converter to an already-shared one. when redirected, the engine does all conversion, so
+    // spice's own downmix/resample/exclusive paths below are skipped (matching IsFormatSupported).
+    if (hooks::audio::SharedRedirect::wants(ShareMode)) {
+        this->shared.apply(&ShareMode, &StreamFlags, &hnsPeriodicity, pFormat);
+    } else if (hooks::audio::WASAPI_COMPATIBILITY_MODE && ShareMode == AUDCLNT_SHAREMODE_SHARED) {
+        hooks::audio::SharedRedirect::add_compat_converter(&StreamFlags, pFormat);
     }
 
-    // when resampling, open the real device at the target rate while the game keeps writing its
-    // native-rate audio into the scratch buffer. this runs on whatever device_format is now: the
-    // game's native format, or the stereo format produced above when downmix is also active, so
-    // the two stages chain as multi-channel -> stereo -> resampled stereo.
+    WAVEFORMATEXTENSIBLE stereo_storage = {};
     WAVEFORMATEXTENSIBLE resample_storage = {};
-    if (auto target_rate = hooks::audio::Resampler::resolve(device_format)) {
-        const uint32_t src_rate = device_format->nSamplesPerSec;
-        this->resample.setup(device_format, &resample_storage, *target_rate);
-        device_format = reinterpret_cast<const WAVEFORMATEX *>(&resample_storage);
-        log_info("audio::wasapi", "resample enabled: {} Hz -> {} Hz{}",
-                src_rate, *target_rate, this->downmix.enabled ? " (after downmix)" : "");
+    const WAVEFORMATEX *device_format = pFormat;
+
+    if (!this->shared.redirected_from_exclusive) {
+
+        // when downmixing, open the real device as stereo while the game keeps writing its native
+        // multi-channel format into the scratch buffer.
+        if (auto algorithm = resolve_downmix(pFormat)) {
+            this->downmix.setup(pFormat, &stereo_storage, *algorithm);
+            device_format = reinterpret_cast<const WAVEFORMATEX *>(&stereo_storage);
+            log_info("audio::wasapi", "downmix enabled: {} channels -> 2 channels ({})",
+                    pFormat->nChannels, hooks::audio::Downmix::algorithm_name(*algorithm));
+        } else if (games::gitadora::is_arena_model()) {
+            games::gitadora::fix_audio_channel_mask(const_cast<WAVEFORMATEX *>(pFormat));
+        }
+
+        // when resampling, open the real device at the target rate while the game keeps writing its
+        // native-rate audio into the scratch buffer. this runs on whatever device_format is now: the
+        // game's native format, or the stereo format produced above when downmix is also active, so
+        // the two stages chain as multi-channel -> stereo -> resampled stereo.
+        if (auto target_rate = hooks::audio::Resampler::resolve(device_format)) {
+            const uint32_t src_rate = device_format->nSamplesPerSec;
+            this->resample.setup(device_format, &resample_storage, *target_rate);
+            device_format = reinterpret_cast<const WAVEFORMATEX *>(&resample_storage);
+            log_info("audio::wasapi", "resample enabled: {} Hz -> {} Hz{}",
+                    src_rate, *target_rate, this->downmix.enabled ? " (after downmix)" : "");
+        }
     }
 
     // verbose output
@@ -308,6 +320,12 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSize(UINT32 *pNumBufferF
         *pNumBufferFrames = this->resample.frames_device_to_game(*pNumBufferFrames);
     }
 
+    // redirected to shared mode: clamp the reported buffer to one device period (see SharedRedirect).
+    if (SUCCEEDED(ret) && this->shared.redirected_from_exclusive && pNumBufferFrames) {
+        *pNumBufferFrames = this->shared.clamp_buffer_size(
+                pReal, this->device_format.Format.nSamplesPerSec, *pNumBufferFrames);
+    }
+
     CHECK_RESULT(ret);
 }
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetStreamLatency(REFERENCE_TIME *phnsLatency) {
@@ -379,6 +397,16 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
     // log the format the game is asking about
     log_info("audio::wasapi", "IAudioClient::IsFormatSupported hook hit");
     print_format(ShareMode, pFormat);
+
+    // under the exclusive->shared redirect, report the exclusive format as supported so the game
+    // doesn't fall back before reaching Initialize.
+    if (hooks::audio::SharedRedirect::wants(ShareMode)) {
+        log_info("audio::wasapi", "... reporting supported (will redirect to shared mode)");
+        if (ppClosestMatch) {
+            *ppClosestMatch = nullptr;
+        }
+        return S_OK;
+    }
 
     // when downmixing, the real device is opened as stereo, so check whether the equivalent
     // stereo format is supported instead of the multi-channel one. when resampling is also active

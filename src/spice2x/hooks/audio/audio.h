@@ -37,6 +37,12 @@ namespace hooks::audio {
     // minimum WASAPI exclusive buffer duration (milliseconds), if set. enlarges the device buffer
     // to avoid underrun crackle on endpoints that cannot service a tiny buffer in time.
     extern std::optional<uint32_t> EXCLUSIVE_BUFFER_MS;
+
+    // when true, WASAPI compatibility mode is active: exclusive-mode streams are redirected to
+    // shared mode and natively-shared streams gain the engine's format converter. the Windows audio
+    // engine performs any required sample-rate / channel / bit-depth conversion, so the game's
+    // format is passed through unchanged and other applications can play audio simultaneously.
+    extern bool WASAPI_COMPATIBILITY_MODE;
     extern bool USE_DUMMY;
     extern WAVEFORMATEXTENSIBLE FORMAT;
     extern std::optional<Backend> BACKEND;

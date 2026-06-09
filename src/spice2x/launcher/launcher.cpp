@@ -1132,6 +1132,9 @@ int main_implementation(int argc, char *argv[]) {
             hooks::audio::EXCLUSIVE_BUFFER_MS = ms;
         }
     }
+    if (options[launcher::Options::AudioShared].value_bool()) {
+        hooks::audio::WASAPI_COMPATIBILITY_MODE = true;
+    }
 
     if (options[launcher::Options::AudioBackend].is_active()) {
         auto &name = options[launcher::Options::AudioBackend].value_text();
