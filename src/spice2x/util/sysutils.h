@@ -20,6 +20,10 @@ namespace sysutils {
 
     const std::vector<MonitorEntry> &enumerate_monitors();
 
+    // reads the running module's PE header to determine whether the
+    // IMAGE_FILE_LARGE_ADDRESS_AWARE bit is set (i.e. spice_laa.exe)
+    bool is_large_address_aware();
+
     extern std::string SECOND_MONITOR_OVERRIDE;
     void hook_EnumDisplayDevicesA();
     

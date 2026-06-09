@@ -91,13 +91,19 @@ fi
 
 # is the XP-compatible toolchain installed?
 XP_MUST_BUILD=0
-BUILD_XP=0
-if [ -f "$TOOLCHAIN_WINXP_32" ] && [ -f "$TOOLCHAIN_WINXP_64" ]; then
-	BUILD_XP=1;
+# 64-bit WinXP builds are disabled by default; set to 1 to opt in
+BUILD_XP_64_ENABLE=0
+BUILD_XP_32=0
+BUILD_XP_64=0
+if [ -f "$TOOLCHAIN_WINXP_32" ]; then
+	BUILD_XP_32=1;
 elif ((XP_MUST_BUILD > 0))
 then
-	echo "WinXP toolchain not available, aborting"
+	echo "WinXP 32bit toolchain not available, aborting"
 	exit 1
+fi
+if ((BUILD_XP_64_ENABLE > 0)) && [ -f "$TOOLCHAIN_WINXP_64" ]; then
+	BUILD_XP_64=1;
 fi
 
 # determine number of cores
@@ -113,12 +119,17 @@ echo "Git Branch: $GIT_BRANCH"
 echo "Git Head: $GIT_HEAD"
 echo "Toolchain for 32bit targets: $TOOLCHAIN_32"
 echo "Toolchain for 64bit targets: $TOOLCHAIN_64"
-if ((BUILD_XP > 0))
+if ((BUILD_XP_32 > 0))
 then
 	echo "Toolchain for WinXP 32bit targets: $TOOLCHAIN_WINXP_32"
+else
+	echo "WinXP 32bit toolchain not available, skipping WinXP 32bit builds"
+fi
+if ((BUILD_XP_64 > 0))
+then
 	echo "Toolchain for WinXP 64bit targets: $TOOLCHAIN_WINXP_64"
 else
-	echo "WinXP toolchain not available, skipping WinXP builds"
+	echo "WinXP 64bit builds disabled, skipping WinXP 64bit builds"
 fi
 echo "Distribution Name: $DIST_NAME"
 echo "Build Type: $BUILD_TYPE"
@@ -160,7 +171,7 @@ time (
 	cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_64} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} "$OLDPWD" && ninja ${TARGETS_64}
 	popd > /dev/null
 
-	if ((BUILD_XP > 0))
+	if ((BUILD_XP_32 > 0))
 	then
 		# 32 bit Windows XP
 		echo ""
@@ -174,7 +185,13 @@ time (
 		pushd ${BUILDDIR_WINXP_32} > /dev/null
 		cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_WINXP_32} -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DSPICE_XP=ON "$OLDPWD" && ninja ${TARGETS_XP32}
 		popd > /dev/null
+	else
+		echo ""
+		echo "Skipping WinXP 32bit builds, toolchain not specified"
+	fi
 
+	if ((BUILD_XP_64 > 0))
+	then
 		# 64 bit Windows XP
 		echo ""
 		echo "Building 64bit targets (WinXP toolchain)..."
@@ -189,7 +206,7 @@ time (
 		popd > /dev/null
 	else
 		echo ""
-		echo "Skipping WinXP builds, toolchain not specified"
+		echo "Skipping WinXP 64bit builds"
 	fi
 
 	echo ""
@@ -197,7 +214,7 @@ time (
 	echo "==========================="
 )
 
-if ((BUILD_XP > 0))
+if ((BUILD_XP_32 > 0)) || ((BUILD_XP_64 > 0))
 then
 	echo ""
 	echo "Checking XP compatibility..."
@@ -205,11 +222,17 @@ then
 	if ! command -v windows_dll_compat_checker &> /dev/null; then
 		echo "WARNING: windows_dll_compat_checker not found, skipping XP compatibility check"
 	else
-		windows_dll_compat_checker -s PREMADE/winxp_x86_64.ini \
-			${BUILDDIR_WINXP_64}/spicetools/64/spice64.exe
-		windows_dll_compat_checker -s PREMADE/winxp_x86_64_32bit_dlls.ini \
-			${BUILDDIR_WINXP_32}/spicetools/spicecfg.exe \
-			${BUILDDIR_WINXP_32}/spicetools/32/spice.exe
+		if ((BUILD_XP_64 > 0))
+		then
+			windows_dll_compat_checker -s PREMADE/winxp_x86_64.ini \
+				${BUILDDIR_WINXP_64}/spicetools/64/spice64.exe
+		fi
+		if ((BUILD_XP_32 > 0))
+		then
+			windows_dll_compat_checker -s PREMADE/winxp_x86_64_32bit_dlls.ini \
+				${BUILDDIR_WINXP_32}/spicetools/spicecfg.exe \
+				${BUILDDIR_WINXP_32}/spicetools/32/spice.exe
+		fi
 	fi
 fi
 
@@ -271,7 +294,7 @@ mkdir -p ${OUTDIR_EXTRAS}/largeaddressaware
 mkdir -p ${OUTDIR_EXTRAS}/linux
 mkdir -p ${OUTDIR_EXTRAS}/sdk/samples/32
 mkdir -p ${OUTDIR_EXTRAS}/sdk/samples/64
-if ((BUILD_XP > 0))
+if ((BUILD_XP_32 > 0)) || ((BUILD_XP_64 > 0))
 then
 mkdir -p ${OUTDIR_EXTRAS}/winxp
 fi
@@ -301,10 +324,13 @@ else
 	cp ${BUILDDIR_32}/spicetools/32/sdk_sample_v0_flat_c.dll ${OUTDIR_EXTRAS}/sdk/samples/32/v0_flat_c.dll 2>/dev/null
 	cp ${BUILDDIR_64}/spicetools/64/sdk_sample_v0_flat_c.dll ${OUTDIR_EXTRAS}/sdk/samples/64/v0_flat_c.dll 2>/dev/null
 	cp ${BUILDDIR_64}/spicetools/64/sdk_sample_v0_cpp.dll ${OUTDIR_EXTRAS}/sdk/samples/64/v0_cpp.dll 2>/dev/null
-	if ((BUILD_XP > 0))
+	if ((BUILD_XP_32 > 0))
 	then
 		cp ${BUILDDIR_WINXP_32}/spicetools/spicecfg.exe ${OUTDIR_EXTRAS}/winxp 2>/dev/null
 		cp ${BUILDDIR_WINXP_32}/spicetools/32/spice.exe ${OUTDIR_EXTRAS}/winxp 2>/dev/null
+	fi
+	if ((BUILD_XP_64 > 0))
+	then
 		cp ${BUILDDIR_WINXP_64}/spicetools/64/spice64.exe ${OUTDIR_EXTRAS}/winxp 2>/dev/null
 	fi
 fi

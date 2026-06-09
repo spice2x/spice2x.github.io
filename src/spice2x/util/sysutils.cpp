@@ -589,6 +589,24 @@ namespace sysutils {
             (void**)&EnumDisplayDevicesA_orig);
     }
 
+    bool is_large_address_aware() {
+        auto image_base = reinterpret_cast<const uint8_t *>(GetModuleHandleW(nullptr));
+        if (image_base == nullptr) {
+            return false;
+        }
+        auto dos_header = reinterpret_cast<const IMAGE_DOS_HEADER *>(image_base);
+        if (dos_header->e_magic != IMAGE_DOS_SIGNATURE) {
+            return false;
+        }
+        auto nt_headers = reinterpret_cast<const IMAGE_NT_HEADERS *>(
+                image_base + dos_header->e_lfanew);
+        if (nt_headers->Signature != IMAGE_NT_SIGNATURE) {
+            return false;
+        }
+        return (nt_headers->FileHeader.Characteristics
+                & IMAGE_FILE_LARGE_ADDRESS_AWARE) != 0;
+    }
+
 #if !SPICE_XP
 
     bool is_running_as_admin() {
