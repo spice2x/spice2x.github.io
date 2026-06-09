@@ -1485,10 +1485,15 @@ int main_implementation(int argc, char *argv[]) {
 #else
     #ifdef SPICE64
         log_info("launcher", "SpiceTools Bootstrap (x64) (spice2x)");
-    #elif SPICE32_LARGE_ADDRESS_AWARE
-        log_info("launcher", "SpiceTools Bootstrap (x32 - Large Address Aware) (spice2x)");
     #else
-        log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x)");
+        // spice.exe and spice_laa.exe share the same compiled objects; the only
+        // difference is the large-address-aware bit set at link time. detect it
+        // at runtime so the log line stays accurate without a separate compile.
+        if (sysutils::is_large_address_aware()) {
+            log_info("launcher", "SpiceTools Bootstrap (x32 - Large Address Aware) (spice2x)");
+        } else {
+            log_info("launcher", "SpiceTools Bootstrap (x32) (spice2x)");
+        }
     #endif
 #endif
 

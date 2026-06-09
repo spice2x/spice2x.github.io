@@ -670,37 +670,47 @@ set(SOURCE_FILES ${SOURCE_FILES}
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${SOURCE_FILES})
 
+# spice.exe / spice_laa.exe shared objects
+###########################################
+# spice.exe and spice_laa.exe are compiled identically; the only difference is
+# the large-address-aware bit, which is set at link time. Compile the sources
+# once into a shared OBJECT library so spice_laa.exe only costs an extra link
+# instead of a full recompile.
+
+add_library(spicetools_spice_objs OBJECT ${SOURCE_FILES})
+target_link_libraries(spicetools_spice_objs
+        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+target_link_libraries(spicetools_spice_objs PUBLIC winscard)
+
+if(NOT MSVC)
+    set_target_properties(spicetools_spice_objs PROPERTIES COMPILE_FLAGS "-m32")
+endif()
+
 # spice.exe
 ###########
 
 set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/Win32D.rc)
-add_executable(spicetools_spice ${SOURCE_FILES} ${RESOURCE_FILES})
-target_link_libraries(spicetools_spice
-        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
-target_link_libraries(spicetools_spice PUBLIC winscard)
+add_executable(spicetools_spice ${RESOURCE_FILES})
+target_link_libraries(spicetools_spice PRIVATE spicetools_spice_objs)
 set_target_properties(spicetools_spice PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice PROPERTIES OUTPUT_NAME "spice")
 
 IF(NOT MSVC)
-    set_target_properties(spicetools_spice PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+    set_target_properties(spicetools_spice PROPERTIES LINK_FLAGS "-m32")
 endif()
 
 # spice_laa.exe
 ###########
 
 set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/Win32D.rc)
-add_executable(spicetools_spice_laa ${SOURCE_FILES} ${RESOURCE_FILES})
-target_link_libraries(spicetools_spice_laa
-        PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
-target_link_libraries(spicetools_spice_laa PUBLIC winscard)
+add_executable(spicetools_spice_laa ${RESOURCE_FILES})
+target_link_libraries(spicetools_spice_laa PRIVATE spicetools_spice_objs)
 set_target_properties(spicetools_spice_laa PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice_laa PROPERTIES OUTPUT_NAME "spice_laa")
-target_compile_definitions(spicetools_spice_laa PRIVATE SPICE32_LARGE_ADDRESS_AWARE=1)
 
 IF(NOT MSVC)
-    set_target_properties(spicetools_spice_laa PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32 -Wl,--large-address-aware")
+    set_target_properties(spicetools_spice_laa PROPERTIES LINK_FLAGS "-m32 -Wl,--large-address-aware")
 endif()
 
 # spice_linux.exe
