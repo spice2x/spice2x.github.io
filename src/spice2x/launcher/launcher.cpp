@@ -1585,6 +1585,13 @@ int main_implementation(int argc, char *argv[]) {
             "!!!   errors and loss of functionality.                         !!!\n"
             "!!!                                                             !!!\n"
             );
+        deferredlogs::defer_error_messages({
+            "-exec option disables all game-specific hooks and I/O emulation",
+            "    you must combine this with other flags or have appropriate arcade hardware",
+            "    this also turns off many auto-troubleshooter checks",
+            "    which means that this analysis will be incomplete",
+            "    you need to manually check the logs for failures"
+            });
     }
 
     if (launcher::signal::DISABLE && !cfg::CONFIGURATOR_STANDALONE) {
