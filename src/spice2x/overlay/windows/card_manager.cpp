@@ -166,7 +166,7 @@ namespace overlay::windows {
         if (ImGui::BeginPopupModal("Card Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             // card ID field (only editable for new cards)
             ImGui::BeginDisabled(this->current_card);
-            ImGui::InputTextWithHint("Card ID", "E0040123456789AB",
+            ImGui::InputTextWithHint("Card ID", "E0040100FFFFFFFF",
                     this->card_buffer,
                     std::size(this->card_buffer),
                     ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
