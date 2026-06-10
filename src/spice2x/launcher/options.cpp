@@ -114,7 +114,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "p",
         .desc = "Sets a custom PCBID override.",
         .type = OptionType::Text,
-        .setting_name = "04040000000000000000",
+        .setting_name = "01201000000000010101",
         .category = "Network",
         .sensitive = true,
     },
