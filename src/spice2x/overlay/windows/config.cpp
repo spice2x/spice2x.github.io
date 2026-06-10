@@ -65,10 +65,14 @@ namespace overlay::windows {
 
     // subtab groups shown in the "All" tab left navigation, in display order
     static const std::vector<std::pair<const char *, launcher::Options::OptionsCategory>> ALL_TAB_GROUPS = {
-        { "API", launcher::Options::OptionsCategory::API },
-        { "Options", launcher::Options::OptionsCategory::Basic },
+        { "Quick Options", launcher::Options::OptionsCategory::Basic },
+        { "Game Options", launcher::Options::OptionsCategory::GameOptions },
+        { "Display", launcher::Options::OptionsCategory::Display },
+        { "Audio", launcher::Options::OptionsCategory::Audio },
+        { "Network", launcher::Options::OptionsCategory::Network },
         { "Advanced", launcher::Options::OptionsCategory::Advanced },
         { "Development", launcher::Options::OptionsCategory::Dev },
+        { "API", launcher::Options::OptionsCategory::API },
     };
 
     // special "All" tab left-nav entry that shows the search box instead of a group
@@ -235,7 +239,7 @@ namespace overlay::windows {
 
     void Config::build_options_tab(float page_offset) {
         const float content_height = ImGui::GetWindowContentRegionMax().y - page_offset;
-        const float nav_width = overlay::apply_scaling(160);
+        const float nav_width = overlay::apply_scaling(130);
 
         // default to the first group on first display
         if (this->all_nav_group_selected.empty()) {
@@ -244,18 +248,62 @@ namespace overlay::windows {
 
         // left navigation: one header per subtab, each listing its categories. clicking a
         // header selects that group; clicking a category scrolls the content to that section.
-        ImGui::BeginChild("AllNav", ImVec2(nav_width, content_height), true);
+        ImGui::BeginChild("AllNav", ImVec2(nav_width, content_height), false);
+
+        // exact height of the global option controls pinned at the bottom of the nav
+        const bool show_restart = !cfg::CONFIGURATOR_STANDALONE && this->options_dirty;
+        const float ctrl_spacing = ImGui::GetStyle().ItemSpacing.y;
+        float nav_controls_height = ImGui::GetFrameHeight(); // "Show Hidden" checkbox
+        nav_controls_height += ctrl_spacing + ImGui::GetFrameHeight(); // "Reset All" button
+        if (show_restart) {
+            nav_controls_height += ctrl_spacing + ImGui::GetFrameHeight(); // "Restart Game" button
+        }
+        nav_controls_height += ctrl_spacing * 2.0f + 1.0f; // separator + padding
+
+        // scrollable nav list (group headers and categories)
+        ImGui::BeginChild("AllNavList",
+            ImVec2(0, content_height - nav_controls_height - ctrl_spacing), false);
+
+        // extra vertical padding between nav rows (headers and tree items)
+        const ImVec2 nav_item_spacing = ImGui::GetStyle().ItemSpacing;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+            ImVec2(nav_item_spacing.x, nav_item_spacing.y + overlay::apply_scaling(2)));
 
         // arrow-less, non-collapsible nav header; selecting it clears any highlighted category
         auto nav_header = [this](const char *label) {
+            const bool active = this->all_nav_group_selected == label;
             ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
-            if (this->all_nav_group_selected == label) {
+            if (active) {
                 flags |= ImGuiTreeNodeFlags_Selected;
             }
+
+            // give the active header a clear, distinct highlight
+            int colors_pushed = 0;
+            if (active) {
+                const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+                ImGui::PushStyleColor(ImGuiCol_Header, accent);
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, accent);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
+                colors_pushed = 3;
+            }
+
+            // taller frame padding so headers match the height of the category rows below
+            const ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                ImVec2(frame_padding.x, frame_padding.y + overlay::apply_scaling(4)));
+
             ImGui::CollapsingHeader(label, flags);
+
+            ImGui::PopStyleVar();
+
+            if (colors_pushed) {
+                ImGui::PopStyleColor(colors_pushed);
+            }
+
             if (ImGui::IsItemClicked()) {
                 this->all_nav_group_selected = label;
                 this->all_nav_selected.clear();
+                this->all_nav_scroll_top = true;
             }
         };
 
@@ -265,9 +313,13 @@ namespace overlay::windows {
         for (const auto &group : ALL_TAB_GROUPS) {
             nav_header(group.first);
 
+            // only the selected group expands to show its categories
+            if (this->all_nav_group_selected != group.first) {
+                continue;
+            }
+
             ImGui::PushID(group.first);
 
-            // categories are always listed under the header
             for (const auto &category : launcher::get_categories(group.second)) {
                 if (category.empty()) {
                     continue;
@@ -284,16 +336,64 @@ namespace overlay::windows {
             ImGui::PopID();
         }
 
-        ImGui::EndChild();
+        ImGui::PopStyleVar();
+
+        ImGui::EndChild(); // AllNavList
+
+        // global option controls pinned to the bottom of the nav
+        ImGui::SetCursorPosY(content_height - nav_controls_height);
+        ImGui::Separator();
+        ImGui::Checkbox("Show Hidden", &this->options_show_hidden);
+
+        // left-align the text inside the full-width control buttons
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
+
+        // reset configuration button
+        if (ImGui::Button("Reset All", ImVec2(ImGui::GetContentRegionAvail().x, 0))) {
+            ImGui::OpenPopup("Reset Config");
+        }
+        if (ImGui::BeginPopupModal("Reset Config", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
+                    "Do you really want to reset your configuration for all games?\n"
+                    "Warning: This can't be reverted!");
+            if (ImGui::Button("Yes")) {
+                ::Config::getInstance().createConfigFile();
+                launcher::restart();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Nope")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        if (show_restart) {
+            if (ImGui::Button("Restart Game")) {
+                launcher::restart();
+            }
+            ImGui::SameLine();
+            ImGui::HelpMarker("You need to restart the game to apply the changed settings.");
+        }
+
+        ImGui::PopStyleVar(); // ButtonTextAlign
+
+        ImGui::EndChild(); // AllNav
         ImGui::SameLine();
 
         // content: only the options belonging to the selected group.
         ImGui::BeginChild("AllOptions", ImVec2(0, content_height), false);
+        if (this->all_nav_scroll_top) {
+            ImGui::SetScrollY(0.0f);
+            this->all_nav_scroll_top = false;
+        }
+
+        // breathing room at the top of the content area
+        ImGui::Dummy(ImVec2(0.0f, overlay::apply_scaling(4)));
+
         auto options = games::get_options(this->games_selected_name);
         if (this->all_nav_group_selected == ALL_TAB_SEARCH) {
 
             // search from all options
-            ImGui::Spacing();
             ImGui::SetNextItemWidth(420.f);
             if (ImGui::InputTextWithHint(
                     "", "Type here to search in options..", &this->search_filter,
@@ -323,7 +423,6 @@ namespace overlay::windows {
                 if (this->all_nav_group_selected != group.first) {
                     continue;
                 }
-                ImGui::SeparatorText(group.first);
                 for (const auto &category : launcher::get_categories(group.second)) {
                     if (category.empty()) {
                         continue;
@@ -342,37 +441,6 @@ namespace overlay::windows {
         }
 
         ImGui::EndChild();
-
-        // hidden options checkbox
-        ImGui::Checkbox("Show Hidden Options", &this->options_show_hidden);
-        if (!cfg::CONFIGURATOR_STANDALONE && this->options_dirty) {
-            ImGui::SameLine();
-            if (ImGui::Button("Restart Game")) {
-                launcher::restart();
-            }
-            ImGui::SameLine();
-            ImGui::HelpMarker("You need to restart the game to apply the changed settings.");
-        }
-
-        // reset configuration button
-        ImGui::SameLine();
-        if (ImGui::Button("Reset Configuration")) {
-            ImGui::OpenPopup("Reset Config");
-        }
-        if (ImGui::BeginPopupModal("Reset Config", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
-                    "Do you really want to reset your configuration for all games?\n"
-                    "Warning: This can't be reverted!");
-            if (ImGui::Button("Yes")) {
-                ::Config::getInstance().createConfigFile();
-                launcher::restart();
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Nope")) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
     }
 
     void Config::build_content() {
@@ -421,7 +489,6 @@ namespace overlay::windows {
         // tab selection
         auto tab_selected_new = ConfigTab::CONFIG_TAB_INVALID;
         if (ImGui::BeginTabBar("Config Tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
-            const int page_offset = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 88 : 110);
             const int page_offset2 = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 65 : 87);
 
             if (ImGui::BeginTabItem("Buttons")) {
@@ -554,7 +621,7 @@ namespace overlay::windows {
             }
             if (ImGui::BeginTabItem("Options")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_ALL_OPTIONS;
-                this->build_options_tab(page_offset);
+                this->build_options_tab(page_offset2);
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
@@ -4682,7 +4749,7 @@ namespace overlay::windows {
         // render table
         // tables must share the same ID to have synced column settings
         if (ImGui::BeginTable("OptionsTable", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
-            const int widget_col_width = overlay::apply_scaling(264);
+            const int widget_col_width = overlay::apply_scaling(250);
             ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, widget_col_width);
 
@@ -5015,21 +5082,9 @@ namespace overlay::windows {
             if (options_count == 0) {
                 ImGui::TableNextRow();
 
-                // option category
-                if (filter != nullptr) {
-                    ImGui::TableNextColumn();
-                    ImGui::TextDisabled("-");
-                }
-
                 // name of option
                 ImGui::TableNextColumn();
-                if (filter == nullptr) {
-                    ImGui::Indent(INDENT);
-                }
                 ImGui::TextDisabled("-");
-                if (filter == nullptr) {
-                    ImGui::Unindent(INDENT);
-                }
 
                 // widget
                 ImGui::TableNextColumn();

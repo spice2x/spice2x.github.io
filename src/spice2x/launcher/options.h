@@ -40,6 +40,7 @@ namespace launcher {
             spice2x_Dx9On12,
             NoLegacy,
             RichPresence,
+            DiscordAppID,
             SmartEAmusement,
             EAmusementMaintenance,
             spice2x_EAmusementMaintenance,
@@ -218,7 +219,6 @@ namespace launcher {
             LogLevel,
             EAAutomap,
             EANetdump,
-            DiscordAppID,
             BlockingLogger,
             DebugCreateFile,
             VerboseGraphicsLogging,
@@ -310,6 +310,10 @@ namespace launcher {
         enum class OptionsCategory {
             Everything,
             Basic,
+            GameOptions,
+            Display,
+            Audio,
+            Network,
             Advanced,
             Dev,
             API

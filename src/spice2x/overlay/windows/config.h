@@ -134,6 +134,7 @@ namespace overlay::windows {
         std::string all_nav_group_selected = "";
         std::string all_nav_selected = "";
         bool all_nav_scroll_pending = false;
+        bool all_nav_scroll_top = false;
 
         std::filesystem::path file_picker_path;
         std::thread *file_picker_thread = nullptr;
