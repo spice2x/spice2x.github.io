@@ -10,6 +10,7 @@
 
 #include "downmix.h"
 #include "resample.h"
+#include "shared.h"
 
 #include "audio_render_client.h"
 // {1FBC8530-AF3E-4128-B418-115DE72F76B6}
@@ -94,6 +95,10 @@ struct WrappedIAudioClient : IAudioClient3 {
     IAudioClient3 *const pReal3;
     AudioBackend *const backend;
     bool exclusive_mode = false;
+
+    // -wasapishared redirect state: when an exclusive request was redirected to shared mode, the
+    // engine converts the native format and the reported buffer size is clamped (see SharedRedirect).
+    hooks::audio::SharedRedirect shared;
     int frame_size = 0;
 
     // the format the real device was opened with (after any downmix). used to scale the final
