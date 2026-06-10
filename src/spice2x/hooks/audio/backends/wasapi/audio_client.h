@@ -96,7 +96,7 @@ struct WrappedIAudioClient : IAudioClient3 {
     AudioBackend *const backend;
     bool exclusive_mode = false;
 
-    // -audioshared redirect state: when an exclusive request was redirected to shared mode, the
+    // -wasapishared redirect state: when an exclusive request was redirected to shared mode, the
     // engine converts the native format and the reported buffer size is clamped (see SharedRedirect).
     hooks::audio::SharedRedirect shared;
     int frame_size = 0;

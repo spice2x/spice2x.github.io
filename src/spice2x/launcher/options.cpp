@@ -1936,13 +1936,12 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // AudioShared
-        .title = "WASAPI Compatibility Mode (Force WASAPI Shared)",
+        .title = "WASAPI Force Shared Mode",
         .name = "wasapishared",
-        .desc = "This option turns on compatibility mode for WASAPI:\n\n"
-            "If the game uses WASAPI exclusive mode, automatically switches to shared mode.\n\n"
-            "If the game uses WASAPI shared mode, enables OS audio resampler for maximum compatibility "
-            "(i.e., no need to change sample rate to match the game).\n\n"
-            "As a trade-off, this will increase audio latency, of course.",
+        .desc = "This option converts all WASAPI exclusive mode requests to shared mode.\n\n"
+            "Many games have patches that turn on shared mode, but this option is better! "
+            "This will automatically perform sample rate conversion - "
+            "you do not need to manually set the sample rate of your audio device before launching the game.",
         .type = OptionType::Bool,
         .category = "Audio",
     },

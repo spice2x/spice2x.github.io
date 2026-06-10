@@ -167,13 +167,16 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
         fix_rec_format(const_cast<WAVEFORMATEX *>(pFormat));
     }
 
-    // apply the -audioshared option: redirect an exclusive request to shared mode, or just add the
-    // format converter to an already-shared one. when redirected, the engine does all conversion, so
-    // spice's own downmix/resample/exclusive paths below are skipped (matching IsFormatSupported).
-    if (hooks::audio::SharedRedirect::wants(ShareMode)) {
-        this->shared.apply(&ShareMode, &StreamFlags, &hnsPeriodicity, pFormat);
+    // apply the -wasapishared option: redirect an exclusive request to shared mode. once redirected,
+    // spice's own downmix/resample paths below are skipped (gated on redirected_from_exclusive) and
+    // the shared engine handles any format conversion via AUTOCONVERTPCM (PCM / float only).
+    if (hooks::audio::SharedRedirect::wants(ShareMode, pFormat)) {
+        this->shared.apply(&ShareMode, &StreamFlags, &hnsPeriodicity);
     } else if (hooks::audio::WASAPI_COMPATIBILITY_MODE && ShareMode == AUDCLNT_SHAREMODE_SHARED) {
-        hooks::audio::SharedRedirect::add_compat_converter(&StreamFlags, pFormat);
+        log_warning(
+            "audio::wasapi",
+            "-wasapishared is enabled but the game is already opening a shared-mode stream; "
+            "the option has no effect");
     }
 
     WAVEFORMATEXTENSIBLE stereo_storage = {};
@@ -400,7 +403,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::IsFormatSupported(
 
     // under the exclusive->shared redirect, report the exclusive format as supported so the game
     // doesn't fall back before reaching Initialize.
-    if (hooks::audio::SharedRedirect::wants(ShareMode)) {
+    if (hooks::audio::SharedRedirect::wants(ShareMode, pFormat)) {
         log_info("audio::wasapi", "... reporting supported (will redirect to shared mode)");
         if (ppClosestMatch) {
             *ppClosestMatch = nullptr;

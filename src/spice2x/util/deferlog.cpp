@@ -8,10 +8,10 @@
 namespace deferredlogs {
 
     const std::initializer_list<std::string> SUPERSTEP_SOUND_ERROR_MESSAGE = {
-        "audio initialization error was previously detected during boot!",
+        "audio initialization error was detected during boot!",
         "    this crash is most likely related to audio init failure",
+        "      * try enabling WASAPI Force Shared Mode (-wasapishared)",
         "      * check if the default audio device has changed",
-        "      * fix your audio device settings (e.g., sample rate)",
         "      * double check your spice audio options and patches",
         "      * ensure no other application is using the device in exclusive mode"
     };

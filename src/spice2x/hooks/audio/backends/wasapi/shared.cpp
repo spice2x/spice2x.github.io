@@ -9,12 +9,8 @@
 
 namespace hooks::audio {
 
-    bool SharedRedirect::wants(AUDCLNT_SHAREMODE share_mode) {
-        return hooks::audio::WASAPI_COMPATIBILITY_MODE && share_mode == AUDCLNT_SHAREMODE_EXCLUSIVE;
-    }
-
-    // whether the engine's PCM converter can handle this format. PCM / IEEE-float only; non-PCM
-    // bitstream (e.g. AC-3 / DTS passthrough) must be left alone.
+    // whether the engine's PCM converter can handle this format. PCM / float only; non-PCM
+    // bitstream (AC-3 / DTS passthrough) must be left alone.
     static bool is_pcm_or_float(const WAVEFORMATEX *format) {
         if (format == nullptr) {
             return false;
@@ -26,7 +22,7 @@ namespace hooks::audio {
                 return true;
             case WAVE_FORMAT_EXTENSIBLE: {
 
-                // SubFormat is only present when the extra-bytes block is large enough
+                // SubFormat is only valid when the extra-bytes block is large enough
                 if (format->cbSize < sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)) {
                     return false;
                 }
@@ -39,30 +35,26 @@ namespace hooks::audio {
         }
     }
 
+    bool SharedRedirect::wants(AUDCLNT_SHAREMODE share_mode, const WAVEFORMATEX *format) {
+
+        // only redirect PCM / float exclusive streams: the engine converter (AUTOCONVERTPCM) can
+        // handle those, but non-PCM bitstream (AC-3 / DTS passthrough) would fail in shared mode,
+        // so leave it in exclusive untouched.
+        return hooks::audio::WASAPI_COMPATIBILITY_MODE
+                && share_mode == AUDCLNT_SHAREMODE_EXCLUSIVE
+                && is_pcm_or_float(format);
+    }
+
     void SharedRedirect::apply(AUDCLNT_SHAREMODE *share_mode, DWORD *stream_flags,
-            REFERENCE_TIME *periodicity, const WAVEFORMATEX *format) {
+            REFERENCE_TIME *periodicity) {
 
         // shared mode requires periodicity == 0; AUTOCONVERTPCM lets the engine accept the game's
-        // native format (without it shared Initialize returns AUDCLNT_E_UNSUPPORTED_FORMAT).
+        // native format (else shared Initialize returns AUDCLNT_E_UNSUPPORTED_FORMAT).
         log_info("audio::wasapi", "redirecting exclusive WASAPI to shared mode");
         *share_mode = AUDCLNT_SHAREMODE_SHARED;
         *periodicity = 0;
-        if (is_pcm_or_float(format)) {
-            *stream_flags |= AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
-        }
+        *stream_flags |= AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
         this->redirected_from_exclusive = true;
-    }
-
-    void SharedRedirect::add_compat_converter(DWORD *stream_flags, const WAVEFORMATEX *format) {
-        if (is_pcm_or_float(format) && (*stream_flags & AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM) == 0) {
-
-            log_info("audio::wasapi", "adding shared-mode format converter for compatibility");
-
-            // already shared: add the converter so a non-mix-format submission still succeeds (the
-            // OS does the sample-rate conversion, so the device settings need not match the game).
-            // leave the redirect inactive since the game paces itself against the shared buffer.
-            *stream_flags |= AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
-        }
     }
 
     UINT32 SharedRedirect::clamp_buffer_size(IAudioClient *real, uint32_t sample_rate,
