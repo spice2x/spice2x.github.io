@@ -314,6 +314,7 @@ namespace launcher {
             Display,
             Audio,
             Network,
+            Overlay,
             Advanced,
             Dev,
             API

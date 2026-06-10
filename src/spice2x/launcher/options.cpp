@@ -53,8 +53,11 @@ static const std::vector<std::string> CATEGORY_ORDER_NETWORK = {
     "Network (Development)",
 };
 
-static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
+static const std::vector<std::string> CATEGORY_ORDER_OVERLAY = {
     "Overlay",
+};
+
+static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
     "Performance",
     "Miscellaneous",
     "Touch Parameters",
@@ -3161,6 +3164,8 @@ const std::vector<std::string> &launcher::get_categories(Options::OptionsCategor
             return CATEGORY_ORDER_AUDIO;
         case Options::OptionsCategory::Network:
             return CATEGORY_ORDER_NETWORK;
+        case Options::OptionsCategory::Overlay:
+            return CATEGORY_ORDER_OVERLAY;
         case Options::OptionsCategory::Advanced:
             return CATEGORY_ORDER_ADVANCED;
         case Options::OptionsCategory::Dev:

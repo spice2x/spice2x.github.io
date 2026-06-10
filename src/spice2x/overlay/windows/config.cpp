@@ -70,6 +70,7 @@ namespace overlay::windows {
         { "Display", launcher::Options::OptionsCategory::Display },
         { "Audio", launcher::Options::OptionsCategory::Audio },
         { "Network", launcher::Options::OptionsCategory::Network },
+        { "Overlay", launcher::Options::OptionsCategory::Overlay },
         { "Advanced", launcher::Options::OptionsCategory::Advanced },
         { "Development", launcher::Options::OptionsCategory::Dev },
         { "API", launcher::Options::OptionsCategory::API },
