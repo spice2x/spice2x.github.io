@@ -19,15 +19,8 @@ static const std::vector<std::string> CATEGORY_ORDER_API = {
     "BT5 API",
 };
 
-static const std::vector<std::string> CATEGORY_ORDER_BASIC = {
-    "Game Options",
-    "Common",
-    "Network",
-    "Graphics",
-    "Audio",
-};
-
 static const std::vector<std::string> CATEGORY_ORDER_GAME_OPTIONS = {
+    "DLL Hooks",
     "Game Options",
     "Advanced Game Options",
     "Cab Peripherals",
@@ -36,8 +29,8 @@ static const std::vector<std::string> CATEGORY_ORDER_GAME_OPTIONS = {
 static const std::vector<std::string> CATEGORY_ORDER_DISPLAY = {
     "Monitor",
     "Graphics",
-    "Full Screen",
-    "Windowed",
+    "Full Screen Settings",
+    "Windowed Settings",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_AUDIO = {
@@ -60,6 +53,7 @@ static const std::vector<std::string> CATEGORY_ORDER_OVERLAY = {
 static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
     "Performance",
     "Miscellaneous",
+    "Mouse",
     "Touch Parameters",
     "I/O Options",
     "NFC Card Readers",
@@ -72,6 +66,16 @@ static const std::vector<std::string> CATEGORY_ORDER_DEV = {
 };
 static const std::vector<std::string> CATEGORY_ORDER_NONE = {
     ""
+};
+
+// display order for the quick_setting_category names used by the Options tab's
+// "Quick Settings" view (these are independent of the regular option categories)
+static const std::vector<std::string> CATEGORY_ORDER_QUICK = {
+    "Game",
+    "Common",
+    "Network",
+    "Display",
+    "Audio",
 };
 
 static auto format_as(OptionType f) {
@@ -119,6 +123,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Enables the integrated local EA server, just enough to boot the game; no card in, no data saving.",
         .type = OptionType::Bool,
         .category = "Network",
+        .quick_setting_category = "Network",
     },
     {
         // ServiceURL
@@ -128,6 +133,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "http://example.com:8083",
         .category = "Network",
+        .quick_setting_category = "Network",
     },
     {
         .title = "PCBID",
@@ -137,6 +143,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "01201000000000010101",
         .category = "Network",
         .sensitive = true,
+        .quick_setting_category = "Network",
     },
     {
         .title = "Player 1 Card",
@@ -147,6 +154,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Network",
         .sensitive = true,
         .picker = OptionPickerType::EACard,
+        .quick_setting_category = "Network",
     },
     {
         .title = "Player 2 Card",
@@ -157,6 +165,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Network",
         .sensitive = true,
         .picker = OptionPickerType::EACard,
+        .quick_setting_category = "Network",
     },
     {
         // Player1PinMacro
@@ -205,7 +214,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "w",
         .desc = "Enables windowed mode.",
         .type = OptionType::Bool,
-        .category = "Graphics",
+        .category = "Windowed Settings",
+        .quick_setting_category = "Display",
     },
     {
         // InjectHook
@@ -216,7 +226,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "specified file before running the main game code.",
         .type = OptionType::Text,
         .setting_name = "a.dll b.dll c.dll",
-        .category = "Common",
+        .category = "DLL Hooks",
+        .quick_setting_category = "Common",
     },
     {
         // EarlyInjectHook
@@ -226,7 +237,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "the game module has been loaded into the process.",
         .type = OptionType::Text,
         .setting_name = "a.dll b.dll c.dll",
-        .category = "Common",
+        .category = "DLL Hooks",
     },
     {
         .title = "(REMOVED) Execute Lua Script",
@@ -242,14 +253,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "c",
         .desc = "Confines the cursor to be within the game window.",
         .type = OptionType::Bool,
-        .category = "Common",
+        .category = "Mouse",
     },
     {
         .title = "Show Cursor & Touch Emulation Enable",
         .name = "s",
         .desc = "Shows the cursor in the game window; also turns on touch emulation. Do not enable this if you have a real touch screen.",
         .type = OptionType::Bool,
-        .category = "Common",
+        .category = "Mouse",
+        .quick_setting_category = "Common",
     },
     {
         // PrimaryMonitor
@@ -274,7 +286,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Not all games will respect this. Not recommended for multi-monitor games like Lightning Model / Valkyrie Model modes. "
             "Disable Full Screen Optimizations for best results.",
         .type = OptionType::Integer,
-        .category = "Full Screen",
+        .category = "Full Screen Settings",
     },
     {
         .title = "Only Use Main Monitor For Full Screen",
@@ -282,7 +294,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Force the graphics device to be opened utilizing only one adapter in multi-monitor systems.\n\n"
             "May cause unstable framerate and desyncs, especially if monitors have different refresh rates!",
         .type = OptionType::Bool,
-        .category = "Full Screen",
+        .category = "Full Screen Settings",
+        .quick_setting_category = "Display",
     },
     {
         .title = "Monitor Refresh Rate",
@@ -290,6 +303,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Change the refresh rate for the primary monitor before launching the game. It will be restored on exit.",
         .type = OptionType::Integer,
         .category = "Monitor",
+        .quick_setting_category = "Display",
     },
     {
         // FullscreenResolution
@@ -302,7 +316,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "This should only be used as last resort if your GPU/monitor can't display the resolution required by the game.",
         .type = OptionType::Text,
         .setting_name = "1280,720",
-        .category = "Full Screen"
+        .category = "Full Screen Settings"
     },
     {
         // FullscreenOrientationFlip
@@ -316,7 +330,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "with Live2D!",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Full Screen"
+        .category = "Full Screen Settings"
     },
     {
         // FullscreenSubResolution
@@ -328,7 +342,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "WARNING: experimental as we have not done extensive testing to see if this causes desyncs.",
         .type = OptionType::Text,
         .setting_name = "1280,720",
-        .category = "Full Screen"
+        .category = "Full Screen Settings"
     },
     {
         // FullscreenSubRefreshRate
@@ -339,7 +353,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "useful if you have a sub monitor that is not quite exactly 60Hz.\n\n"
             "WARNING: experimental as we have not done extensive testing to see if this causes desyncs.",
         .type = OptionType::Integer,
-        .category = "Full Screen"
+        .category = "Full Screen Settings"
     },
     {
         // Graphics9On12
@@ -708,6 +722,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"wasapi", "Windows Audio"},
             {"asio", "ASIO"},
         },
+        .quick_setting_category = "Game",
     },
     {
         .title = "IIDX ASIO Driver",
@@ -719,6 +734,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
         .picker = OptionPickerType::AsioDriver,
+        .quick_setting_category = "Game",
     },
     {
         .title = "IIDX BIO2 Firmware Update",
@@ -736,6 +752,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // spice2x_IIDXDigitalTTSensitivity
@@ -992,6 +1009,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .game_name = "Sound Voltex",
         .category = "Game Options",
         .picker = OptionPickerType::AsioDriver,
+        .quick_setting_category = "Game",
     },
     {
         // SDVXAsioTwoChannel
@@ -1001,6 +1019,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // spice2x_SDVXSubPos
@@ -1028,7 +1047,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Sound Voltex",
-        .category = "Full Screen",
+        .category = "Full Screen Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -1071,6 +1090,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         .title = "Pop'n Music Force SD Mode",
@@ -1079,6 +1099,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // PopnNoSub
@@ -1088,6 +1109,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // PopnSubMonitorOverride
@@ -1097,7 +1119,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Pop'n Music",
-        .category = "Full Screen",
+        .category = "Full Screen Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -1135,6 +1157,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         .title = "GitaDora Cabinet Type",
@@ -1144,6 +1167,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .game_name = "GitaDora",
         .category = "Game Options",
         .elements = {{"1", "DX"}, {"2", "SD"}, {"3", "SD2 - white cab"}},
+        .quick_setting_category = "Game",
     },
     {
         // GitaDoraLefty
@@ -1163,6 +1187,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"p2", "p2 is lefty"},
             {"both", "both lefty"},
         },
+        .quick_setting_category = "Game",
     },
     {
         // GitaDoraWailHold
@@ -1241,6 +1266,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"2", "2 windows"},
             {"4", "4 windows"}
         },
+        .quick_setting_category = "Game",
     },
     {
         // GitaDoraArenaAsioDriver
@@ -1255,6 +1281,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .game_name = "GitaDora",
         .category = "Game Options",
         .picker = OptionPickerType::AsioDriver,
+        .quick_setting_category = "Game",
     },
     {
         // GitaDoraArenaRealtekAccess
@@ -1937,6 +1964,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "May not work as expected for some games; namely G-SYNC and SDVX.",
         .type = OptionType::Bool,
         .category = "Graphics",
+        .quick_setting_category = "Display",
     },
     {
         // DisableAudioHooks
@@ -1971,6 +1999,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "you do not need to manually set the sample rate of your audio device before launching the game.",
         .type = OptionType::Bool,
         .category = "Audio",
+        .quick_setting_category = "Audio",
     },
     {
         // spice2x_LowLatencySharedAudio
@@ -1984,6 +2013,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Requires Windows 10 and above.",
         .type = OptionType::Bool,
         .category = "Audio",
+        .quick_setting_category = "Audio",
     },
     {
         // AudioBackend
@@ -2071,6 +2101,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"25", "+25 dB"},
             {"30", "+30 dB"},
         },
+        .quick_setting_category = "Audio",
     },
     {
         // AudioResample
@@ -2175,6 +2206,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"2", "Landscape"},
             {"3", "Landscape, Flipped"}
         },
+        .quick_setting_category = "Display",
     },
     {
         // ChangeResolution
@@ -2335,6 +2367,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Chase Chase Jokers",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         .title = "CCJ Mouse Trackball Toggle",
@@ -2437,7 +2470,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Does not work for all games; can possibly make the game crash! "
             "Can also be changed in Screen Resize window (default F11).",
         .type = OptionType::Enum,
-        .category = "Windowed",
+        .category = "Windowed Settings",
         // match cfg::WindowDecorationMode
         .elements = {
             {"0", "default"},
@@ -2455,7 +2488,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Can also be changed in Screen Resize window (default F11).",
         .type = OptionType::Text,
         .setting_name = "1280,720",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // spice2x_WindowPosition
@@ -2467,7 +2500,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Can also be changed in Screen Resize window (default F11).",
         .type = OptionType::Text,
         .setting_name = "120,240",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // spice2x_WindowAlwaysOnTop
@@ -2478,7 +2511,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For windowed mode: make window to be always on top of other windows. "
             "Can also be changed in Screen Resize window (default F11).",
         .type = OptionType::Bool,
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // WindowForceScaling
@@ -2487,7 +2520,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For windowed mode: forcibly set DX9 back buffer dimensions to match window size. "
             "Reduces pixelated scaling artifacts. Works great for some games, but can COMPLETELY BREAK other games - YMMV!",
         .type = OptionType::Bool,
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // WindowDisableRoundedCorners
@@ -2495,7 +2528,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "windownoroundcorners",
         .desc = "Windows 11 and above only: Disables rounded corners on the game window(s).",
         .type = OptionType::Bool,
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // GitaDoraWindowedMainMonitor
@@ -2506,7 +2539,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY1",
         .game_name = "GitaDora",
-        .category = "Windowed",
+        .category = "Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2518,7 +2551,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY2",
         .game_name = "GitaDora",
-        .category = "Windowed",
+        .category = "Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2530,7 +2563,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "GitaDora",
-        .category = "Windowed",
+        .category = "Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2542,7 +2575,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY4",
         .game_name = "GitaDora",
-        .category = "Windowed",
+        .category = "Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2553,7 +2586,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "1280,720",
         .game_name = "Beatmania IIDX",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // spice2x_IIDXWindowedSubscreenPosition
@@ -2563,7 +2596,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "0,0",
         .game_name = "Beatmania IIDX",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // IIDXWindowedSubscreenBorderless
@@ -2572,7 +2605,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Remove window decoration from windowed subscreen.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // IIDXWindowedSubscreenAlwaysOnTop
@@ -2581,7 +2614,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Keep windowed subscreen on top.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // spice2x_JubeatLegacyTouch
@@ -2610,6 +2643,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"improved", ""},
             {"accurate", ""},
         },
+        .quick_setting_category = "Game",
     },
     {
         // spice2x_RBTouchScale
@@ -2741,6 +2775,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // IIDXSubMonitorOverride
@@ -2750,7 +2785,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Beatmania IIDX",
-        .category = "Full Screen",
+        .category = "Full Screen Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2784,6 +2819,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"p2", ""},
             {"both", ""},
         },
+        .quick_setting_category = "Network",
     },
     {
         // spice2x_TapeLedAlgorithm
@@ -2838,6 +2874,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // SDVXFullscreenLandscape
@@ -2999,7 +3036,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "1920,1080",
         .game_name = "Sound Voltex",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenPosition
@@ -3009,7 +3046,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "0,0",
         .game_name = "Sound Voltex",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenBorderless
@@ -3018,7 +3055,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Remove window decoration from windowed subscreen.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenAlwaysOnTop
@@ -3027,7 +3064,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Keep windowed subscreen on top.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Windowed",
+        .category = "Windowed Settings",
     },
     {
         // LovePlusCamEnable
@@ -3103,6 +3140,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Otoca D'or",
         .category = "Cab Peripherals",
+        .quick_setting_category = "Game",
     },
     {
         // DisableHighResTimer
@@ -3154,8 +3192,6 @@ const std::vector<std::string> &launcher::get_categories(Options::OptionsCategor
     switch (category) {
         case Options::OptionsCategory::API:
             return CATEGORY_ORDER_API;
-        case Options::OptionsCategory::Basic:
-            return CATEGORY_ORDER_BASIC;
         case Options::OptionsCategory::GameOptions:
             return CATEGORY_ORDER_GAME_OPTIONS;
         case Options::OptionsCategory::Display:
@@ -3174,6 +3210,10 @@ const std::vector<std::string> &launcher::get_categories(Options::OptionsCategor
         default:
             return CATEGORY_ORDER_NONE;
     }
+}
+
+const std::vector<std::string> &launcher::get_quick_setting_categories() {
+    return CATEGORY_ORDER_QUICK;
 }
 
 const std::vector<OptionDefinition> &launcher::get_option_definitions() {

@@ -309,7 +309,6 @@ namespace launcher {
 
         enum class OptionsCategory {
             Everything,
-            Basic,
             GameOptions,
             Display,
             Audio,
@@ -324,6 +323,7 @@ namespace launcher {
     extern bool USE_CMD_OVERRIDE;
     
     const std::vector<std::string> &get_categories(Options::OptionsCategory category);
+    const std::vector<std::string> &get_quick_setting_categories();
     const std::vector<OptionDefinition> &get_option_definitions();
     std::unique_ptr<std::vector<Option>> parse_options(int argc, char *argv[]);
     std::vector<Option> merge_options(const std::vector<Option> &options, const std::vector<Option> &overrides);

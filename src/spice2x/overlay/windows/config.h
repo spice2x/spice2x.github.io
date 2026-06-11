@@ -192,7 +192,8 @@ namespace overlay::windows {
         std::string build_option_value_picker_title(const OptionDefinition& option);
         void build_option_value_picker(Option& option);
         void build_options(
-            std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr);
+            std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr,
+            bool quick_only=false);
         void build_options_tab(float page_offset);
         void build_about();
         void build_launcher();
