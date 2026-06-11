@@ -1,5 +1,7 @@
 #include "capture.h"
 #include <functional>
+#include <mutex>
+#include <unordered_map>
 #include "external/rapidjson/document.h"
 #include "hooks/graphics/graphics.h"
 #include "util/crypt.h"
@@ -13,6 +15,56 @@ namespace api::modules {
     std::optional<uint32_t> CAPTURE_DIVIDE;
 
     static thread_local std::vector<uint8_t> CAPTURE_BUFFER;
+
+    struct CachedFrame {
+        std::vector<uint8_t> jpeg;
+        uint64_t timestamp = 0;
+        int width = 0;
+        int height = 0;
+    };
+
+    static std::mutex FRAME_CACHE_M;
+    static std::unordered_map<int, CachedFrame> FRAME_CACHE;
+
+    static void add_jpeg_response(
+            int screen,
+            uint64_t timestamp,
+            int width,
+            int height,
+            const std::vector<uint8_t> &jpeg,
+            Response &res) {
+
+        auto encoded = crypt::base64_encode(jpeg.data(), jpeg.size());
+
+        Value data;
+        data.SetString(encoded.c_str(), encoded.length(), res.doc()->GetAllocator());
+        res.add_data(timestamp);
+        res.add_data(width);
+        res.add_data(height);
+        res.add_data(data);
+
+        std::lock_guard<std::mutex> lock(FRAME_CACHE_M);
+        FRAME_CACHE[screen] = {jpeg, timestamp, width, height};
+    }
+
+    static bool try_cached_response(int screen, Response &res) {
+        std::lock_guard<std::mutex> lock(FRAME_CACHE_M);
+        const auto pos = FRAME_CACHE.find(screen);
+        if (pos == FRAME_CACHE.end() || pos->second.jpeg.empty()) {
+            return false;
+        }
+
+        const auto &cached = pos->second;
+        auto encoded = crypt::base64_encode(cached.jpeg.data(), cached.jpeg.size());
+
+        Value data;
+        data.SetString(encoded.c_str(), encoded.length(), res.doc()->GetAllocator());
+        res.add_data(cached.timestamp);
+        res.add_data(cached.width);
+        res.add_data(cached.height);
+        res.add_data(data);
+        return true;
+    }
 
     Capture::Capture() : Module("capture") {
         functions["get_screens"] = std::bind(&Capture::get_screens, this, _1, _2);
@@ -41,6 +93,7 @@ namespace api::modules {
      * reduce: uint for dividing image size
      */
     void Capture::get_jpg(Request &req, Response &res) {
+        CAPTURE_BUFFER.clear();
         CAPTURE_BUFFER.reserve(1024 * 128);
 
         // settings
@@ -71,24 +124,15 @@ namespace api::modules {
         bool success = graphics_capture_receive_jpeg(screen, [] (uint8_t byte) {
             CAPTURE_BUFFER.push_back(byte);
         }, true, quality, true, divide, &timestamp, &width, &height);
-        if (!success) {
+
+        if (success) {
+            add_jpeg_response(screen, timestamp, width, height, CAPTURE_BUFFER, res);
+            CAPTURE_BUFFER.clear();
             return;
         }
 
-        // encode to base64
-        auto encoded = crypt::base64_encode(
-                CAPTURE_BUFFER.data(),
-                CAPTURE_BUFFER.size());
-
-        // clear buffer
+        // fall back to the last successful frame while the game is busy loading
         CAPTURE_BUFFER.clear();
-
-        // add data to response
-        Value data;
-        data.SetString(encoded.c_str(), encoded.length(), res.doc()->GetAllocator());
-        res.add_data(timestamp);
-        res.add_data(width);
-        res.add_data(height);
-        res.add_data(data);
+        try_cached_response(screen, res);
     }
 }
