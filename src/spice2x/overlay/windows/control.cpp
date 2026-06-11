@@ -467,7 +467,7 @@ namespace overlay::windows {
 
     void Control::cards_view() {
         if (ImGui::CollapsingHeader("Cards")) {
-            ImGui::InputTextWithHint("Card ID", "E0040123456789AB",
+            ImGui::InputTextWithHint("Card ID", "E0040100FFFFFFFF",
                     this->card_input,
                     std::size(this->card_input),
                     ImGuiInputTextFlags_CharsHexadecimal

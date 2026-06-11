@@ -115,9 +115,9 @@ void generate_ea_card(char card[17]) {
     std::uniform_int_distribution<> uniform(0, 15);
 
     // randomize card
-    strcpy(card, "E00401");
+    strcpy(card, "E0040100");
     char hex[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
-    for (int i = 6; i < 16; i++) {
+    for (int i = 8; i < 16; i++) {
         card[i] = hex[uniform(generator)];
     }
 

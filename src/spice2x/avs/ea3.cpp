@@ -390,8 +390,8 @@ namespace avs {
 
             // fall back to default PCBID if node is not found
             if (!EA3_PCBID[0] && PCBID_CUSTOM.empty()) {
-                log_warning("avs-ea3", "no PCBID set, falling back to default PCBID value (04040000000000000000)");
-                PCBID_CUSTOM = "04040000000000000000";
+                log_warning("avs-ea3", "no PCBID set, falling back to default PCBID value (01201000000000010101)");
+                PCBID_CUSTOM = "01201000000000010101";
             }
 
             // custom PCBID

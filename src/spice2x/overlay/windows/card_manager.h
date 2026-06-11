@@ -9,7 +9,7 @@ namespace overlay::windows {
 
     struct CardEntry {
         std::string name = "unnamed";
-        std::string id = "E004010000000000";
+        std::string id = "E0040100FFFFFFFF";
         std::string search_string = "";
         bool read_only = false;
         float color[3] {};

@@ -3972,7 +3972,7 @@ namespace overlay::windows {
                     ImVec4(1.f, 0.f, 0.f, 1.f));
                 ImGui::SetNextItemWidth(TEXT_INPUT_WIDTH);
                 ImGui::BeginDisabled(option.disabled);
-                ImGui::InputTextWithHint("##OverrideCard", "E004010000000000",
+                ImGui::InputTextWithHint("##OverrideCard", "E0040100FFFFFFFF",
                         buffer, sizeof(buffer) - 1,
                         ImGuiInputTextFlags_CharsUppercase |
                         ImGuiInputTextFlags_CharsHexadecimal |
