@@ -327,12 +327,9 @@ namespace overlay::windows {
             }
 
             if (ImGui::IsItemClicked()) {
-                const bool group_changed = this->options_group_selected != label;
                 this->options_group_selected = label;
                 this->options_category_selected.clear();
-                if (group_changed) {
-                    this->options_scroll_top = true;
-                }
+                this->options_scroll_top = true;
             }
         };
 
@@ -341,12 +338,9 @@ namespace overlay::windows {
         auto nav_category = [this](const char *group_label, const std::string &category) {
             ImGui::Indent(INDENT * 0.5f);
             if (ImGui::Selectable(category.c_str(), this->options_category_selected == category)) {
-                const bool category_changed = this->options_category_selected != category;
                 this->options_group_selected = group_label;
                 this->options_category_selected = category;
-                if (category_changed) {
-                    this->options_scroll_pending = true;
-                }
+                this->options_scroll_pending = true;
             }
             ImGui::Unindent(INDENT * 0.5f);
         };
@@ -423,7 +417,8 @@ namespace overlay::windows {
         // when a category was clicked in the nav, record its Y for deferred scroll
         auto scroll_anchor = [this, &scroll_to_category_y](const std::string &category) {
             if (this->options_scroll_pending && this->options_category_selected == category) {
-                scroll_to_category_y = ImGui::GetCursorPosY();
+                const ImGuiWindow *window = ImGui::GetCurrentWindow();
+                scroll_to_category_y = window->DC.CursorPos.y - window->Pos.y;
                 this->options_scroll_pending = false;
             }
         };
@@ -487,7 +482,7 @@ namespace overlay::windows {
         } else if (scroll_to_category_y >= 0.0f) {
             const ImGuiWindow *window = ImGui::GetCurrentWindow();
             const float desired_scroll = ImTrunc(
-                scroll_to_category_y - window->DecoOuterSizeY1 - window->DecoInnerSizeY1 + window->Scroll.y);
+                scroll_to_category_y - window->DecoOuterSizeY1 - window->DecoInnerSizeY1);
             if (fabsf(ImGui::GetScrollY() - desired_scroll) > 0.5f) {
                 ImGui::SetScrollFromPosY(scroll_to_category_y, 0.0f);
             }
