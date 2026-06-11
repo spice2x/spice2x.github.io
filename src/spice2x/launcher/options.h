@@ -325,6 +325,7 @@ namespace launcher {
     const std::vector<std::string> &get_categories(Options::OptionsCategory category);
     const std::vector<std::string> &get_quick_setting_categories();
     const std::vector<OptionDefinition> &get_option_definitions();
+    void validate_option_categories();
     std::unique_ptr<std::vector<Option>> parse_options(int argc, char *argv[]);
     std::vector<Option> merge_options(const std::vector<Option> &options, const std::vector<Option> &overrides);
 

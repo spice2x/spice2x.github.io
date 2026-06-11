@@ -5,6 +5,8 @@
 #include "util/fileutils.h"
 
 #include <fstream>
+#include <mutex>
+#include <set>
 
 #ifdef NO_SCARD
 #define WITH_SCARD 0
@@ -14,8 +16,8 @@
 
 static const std::vector<std::string> CATEGORY_ORDER_API = {
     "Companion & API",
-    "API (Serial)",
-    "API (Dev)",
+    "API over Serial",
+    "API Dev",
     "BT5 API",
 };
 
@@ -31,23 +33,25 @@ static const std::vector<std::string> CATEGORY_ORDER_DISPLAY = {
     "Graphics",
     "Full Screen Settings",
     "Windowed Settings",
+    "Game Windowed Settings",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_AUDIO = {
     "Audio",
-    "Audio (Conversion)",
-    "Audio (Hacks)",
+    "Audio Conversion",
+    "Audio Hacks",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_NETWORK = {
     "Network",
     "Auto PIN",
-    "Network (Advanced)",
-    "Network (Development)",
+    "Advanced Network",
+    "Network Dev",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_OVERLAY = {
-    "Overlay",
+    "General Overlay",
+    "Game Overlay",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
@@ -406,7 +410,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "smartea",
         .desc = "Automatically enables -ea when server is offline.",
         .type = OptionType::Bool,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
     },
     {
         // EAmusementMaintenance
@@ -415,7 +419,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Enables EA Maintenance, 1 for on, 0 for off.",
         .type = OptionType::Enum,
         .hidden = true,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
         .elements = {{"0", "Off"}, {"1", "On"}},
     },
     {
@@ -426,7 +430,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "forceeamaint",
         .desc = "Causes local EA to start in maintenance mode. Must be used with -ea or -smartea.",
         .type = OptionType::Bool,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
     },
     {
         .title = "Preferred NetAdapter IP",
@@ -434,7 +438,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "This is NOT the EA service URL; use -url for that. "
             "Force the use of an adapter with the specified network. Must also provide -subnet.",
         .type = OptionType::Text,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
         .sensitive = true,
     },
     {
@@ -442,21 +446,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "subnet",
         .desc = "Force the use of an adapter with the specified subnet. Must also provide -network.",
         .type = OptionType::Text,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
     },
     {
         .title = "Disable Network Fixes",
         .name = "netfixdisable",
         .desc = "Force disables network fixes.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
+        .category = "Network Dev",
     },
     {
         .title = "HTTP/1.1",
         .name = "http11",
         .desc = "Sets EA3 http11 value.",
         .type = OptionType::Enum,
-        .category = "Network (Development)",
+        .category = "Network Dev",
         .elements = {{"0", "Off"}, {"1", "On"}},
     },
     {
@@ -464,14 +468,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "ssldisable",
         .desc = "Prevents the SSL protocol from being registered.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
+        .category = "Network Dev",
     },
     {
         .title = "URL Slash",
         .name = "urlslash",
         .desc = "Sets EA3 urlslash value.",
         .type = OptionType::Enum,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
         .elements = {{"0", "Off"}, {"1", "On"}},
     },
     {
@@ -498,7 +502,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "overlaydisable",
         .desc = "Disables the in-game overlay.",
         .type = OptionType::Bool,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // OverlayScaling
@@ -509,7 +513,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Enter value in percentage, between 10-400, inclusive.",
         .type = OptionType::Integer,
         .setting_name = "200",
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // NotificationPosition
@@ -517,7 +521,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "toast",
         .desc = "Select where notifications will appear on the screen.",
         .type = OptionType::Enum,
-        .category = "Overlay",
+        .category = "General Overlay",
         .elements = {
             {"off", ""},
             {"topleft", ""},
@@ -534,7 +538,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autofps",
         .desc = "Automatically show FPS / clock / timer overlay window when the game starts.",
         .type = OptionType::Bool,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // spice2x_FpsOpposite
@@ -544,7 +548,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Deprecated - use -fpslocation instead.",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // FpsLocation
@@ -552,7 +556,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "fpslocation",
         .desc = "Select which corner of the screen the FPS / clock / timer overlay appears in.",
         .type = OptionType::Enum,
-        .category = "Overlay",
+        .category = "General Overlay",
         .elements = {
             {"topright", ""},
             {"topleft", ""},
@@ -568,7 +572,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autosubscreen",
         .desc = "Automatically show the subscreen overlay when the game starts, if the game has one.",
         .type = OptionType::Bool,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // spice2x_IOPanelAutoShow
@@ -578,7 +582,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autoiopanel",
         .desc = "Automatically show I/O panel window when the game starts.",
         .type = OptionType::Bool,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // spice2x_KeypadAutoShow
@@ -588,7 +592,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autokeypad",
         .desc = "Automatically show virtual keypad window when the game starts.",
         .type = OptionType::Enum,
-        .category = "Overlay",
+        .category = "General Overlay",
         .elements = {
             {"0", "Off"},
             {"1", "P1"},
@@ -803,7 +807,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Default size of the subscreen overlay.\n\nNote: in windowed mode, subscreen will always be full size.\n\nDefault: medium.",
         .type = OptionType::Enum,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
         .elements = {
             {"small", ""},
             {"medium", ""},
@@ -820,7 +824,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Configure the font size of the segment display, in pixels. Default: 64 (px).",
         .type = OptionType::Integer,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
     },
     {
         // spice2x_IIDXLEDColor
@@ -832,7 +836,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "Default: 0xff0000 (red).",
         .type = OptionType::Hex,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
     },
     {
         // spice2x_IIDXLEDPos
@@ -843,7 +847,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Initial position of the segment display. Default: bottom.",
         .type = OptionType::Enum,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
         .elements = {
             {"topleft", ""},
             {"top", ""},
@@ -861,7 +865,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Make LED ticker overlay window borderless (remove window decoration).",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
     },
     {
         .title = "Force Load Sound Voltex Module",
@@ -1030,7 +1034,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Location for the subscreen overlay. Default: bottom.",
         .type = OptionType::Enum,
         .game_name = "Sound Voltex",
-        .category = "Overlay",
+        .category = "Game Overlay",
         .elements = {
             {"top", ""},
             {"center", ""},
@@ -1228,7 +1232,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Default size of the subscreen overlay. Default: medium.",
         .type = OptionType::Enum,
         .game_name = "GitaDora",
-        .category = "Overlay",
+        .category = "Game Overlay",
         .elements = {
             {"small", ""},
             {"medium", ""},
@@ -1629,35 +1633,35 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "apilogging",
         .desc = "Verbose logging of API activity.",
         .type = OptionType::Bool,
-        .category = "API (Dev)",
+        .category = "API Dev",
     },
     {
         .title = "API Serial Port",
         .name = "apiserial",
         .desc = "Serial port the API should be listening on.",
         .type = OptionType::Text,
-        .category = "API (Serial)",
+        .category = "API over Serial",
     },
     {
         .title = "API Serial Baud",
         .name = "apiserialbaud",
         .desc = "Baud rate for the serial port.",
         .type = OptionType::Integer,
-        .category = "API (Serial)",
+        .category = "API over Serial",
     },
     {
         .title = "API Pretty",
         .name = "apipretty",
         .desc = "Slower, but pretty API output.",
         .type = OptionType::Bool,
-        .category = "API (Dev)",
+        .category = "API Dev",
     },
     {
         .title = "API Debug Mode",
         .name = "apidebug",
         .desc = "Enables API debugging mode.",
         .type = OptionType::Bool,
-        .category = "API (Dev)",
+        .category = "API Dev",
     },
     {
         // APIScreenMirrorQuality
@@ -1975,7 +1979,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "you use a different backend instead of exclusive WASAPI).\n\n"
             "Check this to allow games to natively access your audio device.",
         .type = OptionType::Bool,
-        .category = "Audio (Hacks)",
+        .category = "Audio Hacks",
     },
     {
         // spice2x_DisableVolumeHook
@@ -1987,7 +1991,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Default: off (prevent games from changing audio volume by hooking IAudioEndpointVolume).\n\n"
             "Check this to allow games to freely change your volume.",
         .type = OptionType::Bool,
-        .category = "Audio (Hacks)",
+        .category = "Audio Hacks",
     },
     {
         // AudioShared
@@ -2023,7 +2027,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Does nothing for games that do not output to exclusive WASAPI.",
         .type = OptionType::Enum,
         .hidden = true,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .elements = {
             {"asio", "ASIO"},
             {"waveout", "broken, do not use"}
@@ -2036,7 +2040,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Selects the ASIO driver id to use when Spice Audio Backend is set to ASIO.",
         .type = OptionType::Integer,
         .hidden = true,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
     },
     {
         // AsioDriverName
@@ -2047,7 +2051,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "This should only be used as last resort if your audio device does not support WASAPI Exclusive.\n\n"
             "Does nothing for games that do not output to exclusive WASAPI.",
         .type = OptionType::Text,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .picker = OptionPickerType::AsioDriver,
     },
     {
@@ -2057,7 +2061,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "This is automatically enabled when required and not normally needed.",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Audio (Hacks)",
+        .category = "Audio Hacks",
     },
     {
         // DownmixAudioToStereo
@@ -2072,7 +2076,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "rear: rear channels only.\n\n"
             "side: side channels only.",
         .type = OptionType::Enum,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .elements = {
             {"ac4", "AC-4 downmix"},
             {"normalize", "All channels"},
@@ -2113,7 +2117,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Select the TARGET sample rate (one that your audio card supports).\n\n"
             "Will result in couple milliseconds of latency and increased CPU usage when active.",
         .type = OptionType::Enum,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .elements = {
             {"44100", "44.1 kHz"},
             {"48000", "48 kHz"},
@@ -2132,7 +2136,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "(at the cost of slightly increased latency).",
         .type = OptionType::Integer,
         .setting_name = "16",
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
     },
     {
         // AsioDownmixToStereo
@@ -2146,7 +2150,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "rear: channels 4/5 (rear left/right).\n\n"
             "side: channels 6/7 (side left/right).",
         .type = OptionType::Enum,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .elements = {
             {"front", "Front (ch 0/1)"},
             {"center", "Center (ch 2)"},
@@ -2230,15 +2234,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "automap",
         .desc = "Enable automap in patch configuration.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
+        .category = "Network Dev",
     },
     {
         .title = "EA Netdump",
         .name = "netdump",
         .desc = "Enable automap in network dumping configuration.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
-    },    
+        .category = "Network Dev",
+    },
     {
         .title = "Blocking Logger",
         .name = "logblock",
@@ -2539,7 +2543,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY1",
         .game_name = "GitaDora",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2551,7 +2555,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY2",
         .game_name = "GitaDora",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2563,7 +2567,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "GitaDora",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2575,7 +2579,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY4",
         .game_name = "GitaDora",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2586,7 +2590,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "1280,720",
         .game_name = "Beatmania IIDX",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
     },
     {
         // spice2x_IIDXWindowedSubscreenPosition
@@ -2596,7 +2600,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "0,0",
         .game_name = "Beatmania IIDX",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
     },
     {
         // IIDXWindowedSubscreenBorderless
@@ -2605,7 +2609,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Remove window decoration from windowed subscreen.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
     },
     {
         // IIDXWindowedSubscreenAlwaysOnTop
@@ -2614,7 +2618,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Keep windowed subscreen on top.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
     },
     {
         // spice2x_JubeatLegacyTouch
@@ -2691,7 +2695,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For certain buggy ASIO drivers, force unload of ASIO driver when audio stream stops. "
             "Used for working around ASIO drivers that lock up after force quitting games.",
         .type = OptionType::Bool,
-        .category = "Audio (Hacks)",
+        .category = "Audio Hacks",
     },
     {
         // spice2x_IIDXNoESpec
@@ -3036,7 +3040,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "1920,1080",
         .game_name = "Sound Voltex",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenPosition
@@ -3046,7 +3050,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "0,0",
         .game_name = "Sound Voltex",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenBorderless
@@ -3055,7 +3059,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Remove window decoration from windowed subscreen.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenAlwaysOnTop
@@ -3064,7 +3068,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Keep windowed subscreen on top.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Windowed Settings",
+        .category = "Game Windowed Settings",
     },
     {
         // LovePlusCamEnable
@@ -3159,7 +3163,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Emulate keepalive ping replies in user mode, so the game does not need to "
             "open privileged raw ICMP sockets.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
+        .category = "Network Dev",
     },
     {
         // AutoElevate
@@ -3220,7 +3224,45 @@ const std::vector<OptionDefinition> &launcher::get_option_definitions() {
     return OPTION_DEFINITIONS;
 }
 
+void launcher::validate_option_categories() {
+    // every category the grouped Options nav can display, gathered straight from
+    // get_categories() so this stays in sync with the actual nav. the Everything
+    // group maps to CATEGORY_ORDER_NONE ("") and is intentionally excluded.
+    static const Options::OptionsCategory groups[] = {
+        Options::OptionsCategory::GameOptions,
+        Options::OptionsCategory::Display,
+        Options::OptionsCategory::Audio,
+        Options::OptionsCategory::Network,
+        Options::OptionsCategory::Overlay,
+        Options::OptionsCategory::Advanced,
+        Options::OptionsCategory::Dev,
+        Options::OptionsCategory::API,
+    };
+    std::set<std::string> valid;
+    for (auto group : groups) {
+        for (const auto &category : get_categories(group)) {
+            if (!category.empty()) {
+                valid.insert(category);
+            }
+        }
+    }
+
+    // any definition whose category is not in a group list is orphaned: it only
+    // shows up under Search, never in the grouped Options nav/content. treat this
+    // as fatal so it is caught immediately during development.
+    for (const auto &definition : get_option_definitions()) {
+        if (!valid.contains(definition.category)) {
+            log_fatal("options", "option -{} has orphaned category \"{}\"",
+                definition.name, definition.category);
+        }
+    }
+}
+
 std::unique_ptr<std::vector<Option>> launcher::parse_options(int argc, char *argv[]) {
+
+    // one-time sanity check that every option lands in a known nav category
+    static std::once_flag validate_once;
+    std::call_once(validate_once, validate_option_categories);
 
     // generate options
     auto &definitions = get_option_definitions();

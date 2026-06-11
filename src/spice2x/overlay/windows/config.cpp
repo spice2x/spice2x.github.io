@@ -64,7 +64,7 @@ namespace overlay::windows {
     constexpr ImVec4 TEXT_COLOR_RED(1.f, 0.f, 0.f, 1.f);
     constexpr uint32_t OPTION_INPUT_TEXT_WIDTH = 512;
 
-    // subtab groups shown in the "All" tab left navigation, in display order
+    // subtab groups shown in the Options tab left navigation, in display order
     static const std::vector<std::pair<const char *, launcher::Options::OptionsCategory>> OPTIONS_TAB_GROUPS = {
         { "Game Options", launcher::Options::OptionsCategory::GameOptions },
         { "Display", launcher::Options::OptionsCategory::Display },
@@ -243,8 +243,8 @@ namespace overlay::windows {
         const float nav_width = overlay::apply_scaling(130);
 
         // default to the first group on first display
-        if (this->all_nav_group_selected.empty()) {
-            this->all_nav_group_selected = OPTIONS_TAB_QUICK;
+        if (this->options_group_selected.empty()) {
+            this->options_group_selected = OPTIONS_TAB_QUICK;
         }
 
         auto options = games::get_options(this->games_selected_name);
@@ -275,7 +275,7 @@ namespace overlay::windows {
 
         // left navigation: one header per subtab, each listing its categories. clicking a
         // header selects that group; clicking a category scrolls the content to that section.
-        ImGui::BeginChild("AllNav", ImVec2(nav_width, content_height), false);
+        ImGui::BeginChild("OptionsNav", ImVec2(nav_width, content_height), false);
 
         // exact height of the global option controls pinned at the bottom of the nav
         const bool show_restart = !cfg::CONFIGURATOR_STANDALONE && this->options_dirty;
@@ -287,7 +287,7 @@ namespace overlay::windows {
         nav_controls_height += ctrl_spacing * 2.0f + 1.0f; // separator + padding
 
         // scrollable nav list (group headers and categories)
-        ImGui::BeginChild("AllNavList",
+        ImGui::BeginChild("OptionsNavList",
             ImVec2(0, content_height - nav_controls_height - ctrl_spacing), false);
 
         // extra vertical padding between nav rows (headers and tree items)
@@ -297,7 +297,7 @@ namespace overlay::windows {
 
         // arrow-less, non-collapsible nav header; selecting it clears any highlighted category
         auto nav_header = [this](const char *label) {
-            const bool active = this->all_nav_group_selected == label;
+            const bool active = this->options_group_selected == label;
             ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
             if (active) {
                 flags |= ImGuiTreeNodeFlags_Selected;
@@ -327,10 +327,22 @@ namespace overlay::windows {
             }
 
             if (ImGui::IsItemClicked()) {
-                this->all_nav_group_selected = label;
-                this->all_nav_selected.clear();
-                this->all_nav_scroll_top = true;
+                this->options_group_selected = label;
+                this->options_category_selected.clear();
+                this->options_scroll_top = true;
             }
+        };
+
+        // indented, selectable category row under a header; clicking it flags the
+        // content pane to scroll to that category's section
+        auto nav_category = [this](const char *group_label, const std::string &category) {
+            ImGui::Indent(INDENT * 0.5f);
+            if (ImGui::Selectable(category.c_str(), this->options_category_selected == category)) {
+                this->options_group_selected = group_label;
+                this->options_category_selected = category;
+                this->options_scroll_pending = true;
+            }
+            ImGui::Unindent(INDENT * 0.5f);
         };
 
         // search entry: selecting it shows the search box in the content pane
@@ -340,19 +352,12 @@ namespace overlay::windows {
         nav_header(OPTIONS_TAB_QUICK);
 
         // when quick settings is selected, list its categories so they can be jumped to
-        if (this->all_nav_group_selected == OPTIONS_TAB_QUICK) {
+        if (this->options_group_selected == OPTIONS_TAB_QUICK) {
             ImGui::PushID(OPTIONS_TAB_QUICK);
             for (const auto &category : launcher::get_quick_setting_categories()) {
-                if (!quick_categories.contains(category)) {
-                    continue;
+                if (quick_categories.contains(category)) {
+                    nav_category(OPTIONS_TAB_QUICK, category);
                 }
-                ImGui::Indent(INDENT * 0.5f);
-                if (ImGui::Selectable(category.c_str(), this->all_nav_selected == category)) {
-                    this->all_nav_group_selected = OPTIONS_TAB_QUICK;
-                    this->all_nav_selected = category;
-                    this->all_nav_scroll_pending = true;
-                }
-                ImGui::Unindent(INDENT * 0.5f);
             }
             ImGui::PopID();
         }
@@ -361,34 +366,22 @@ namespace overlay::windows {
             nav_header(group.first);
 
             // only the selected group expands to show its categories
-            if (this->all_nav_group_selected != group.first) {
+            if (this->options_group_selected != group.first) {
                 continue;
             }
 
             ImGui::PushID(group.first);
-
             for (const auto &category : launcher::get_categories(group.second)) {
-                if (category.empty()) {
-                    continue;
+                if (!category.empty() && visible_categories.contains(category)) {
+                    nav_category(group.first, category);
                 }
-                if (!visible_categories.contains(category)) {
-                    continue;
-                }
-                ImGui::Indent(INDENT * 0.5f);
-                if (ImGui::Selectable(category.c_str(), this->all_nav_selected == category)) {
-                    this->all_nav_group_selected = group.first;
-                    this->all_nav_selected = category;
-                    this->all_nav_scroll_pending = true;
-                }
-                ImGui::Unindent(INDENT * 0.5f);
             }
-
             ImGui::PopID();
         }
 
         ImGui::PopStyleVar();
 
-        ImGui::EndChild(); // AllNavList
+        ImGui::EndChild(); // OptionsNavList
 
         // global option controls pinned to the bottom of the nav
         ImGui::SetCursorPosY(content_height - nav_controls_height);
@@ -408,20 +401,29 @@ namespace overlay::windows {
 
         ImGui::PopStyleVar(); // ButtonTextAlign
 
-        ImGui::EndChild(); // AllNav
+        ImGui::EndChild(); // OptionsNav
         ImGui::SameLine();
 
         // content: only the options belonging to the selected group.
-        ImGui::BeginChild("AllOptions", ImVec2(0, content_height), false);
-        if (this->all_nav_scroll_top) {
+        ImGui::BeginChild("OptionsContent", ImVec2(0, content_height), false);
+        if (this->options_scroll_top) {
             ImGui::SetScrollY(0.0f);
-            this->all_nav_scroll_top = false;
+            this->options_scroll_top = false;
         }
 
         // breathing room at the top of the content area
         ImGui::Dummy(ImVec2(0.0f, overlay::apply_scaling(4)));
 
-        if (this->all_nav_group_selected == OPTIONS_TAB_SEARCH) {
+        // when a category was clicked in the nav, scroll the content to its section
+        auto scroll_anchor = [this](const std::string &category) {
+            if (this->options_scroll_pending && this->options_category_selected == category) {
+                ImGui::Dummy(ImVec2(0.0f, 0.0f));
+                ImGui::SetScrollHereY(0.0f);
+                this->options_scroll_pending = false;
+            }
+        };
+
+        if (this->options_group_selected == OPTIONS_TAB_SEARCH) {
 
             // search from all options
             ImGui::SetNextItemWidth(420.f);
@@ -448,39 +450,25 @@ namespace overlay::windows {
                         const_cast<std::string *>(&this->search_filter_in_lower_case));
                 }
             }
-        } else if (this->all_nav_group_selected == OPTIONS_TAB_QUICK) {
+        } else if (this->options_group_selected == OPTIONS_TAB_QUICK) {
             for (const auto &category : launcher::get_quick_setting_categories()) {
                 if (!quick_categories.contains(category)) {
                     continue;
                 }
-
-                // scroll anchor: when this category was clicked in the nav, jump to it
-                if (this->all_nav_scroll_pending && this->all_nav_selected == category) {
-                    ImGui::Dummy(ImVec2(0.0f, 0.0f));
-                    ImGui::SetScrollHereY(0.0f);
-                    this->all_nav_scroll_pending = false;
-                }
-
+                scroll_anchor(category);
                 this->build_options(options, category, nullptr, true);
             }
 
         } else {
             for (const auto &group : OPTIONS_TAB_GROUPS) {
-                if (this->all_nav_group_selected != group.first) {
+                if (this->options_group_selected != group.first) {
                     continue;
                 }
                 for (const auto &category : launcher::get_categories(group.second)) {
                     if (category.empty()) {
                         continue;
                     }
-
-                    // scroll anchor: when this category was clicked in the nav, jump to it
-                    if (this->all_nav_scroll_pending && this->all_nav_selected == category) {
-                        ImGui::Dummy(ImVec2(0.0f, 0.0f));
-                        ImGui::SetScrollHereY(0.0f);
-                        this->all_nav_scroll_pending = false;
-                    }
-
+                    scroll_anchor(category);
                     this->build_options(options, category);
                 }
             }
@@ -666,7 +654,7 @@ namespace overlay::windows {
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Options")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_ALL_OPTIONS;
+                tab_selected_new = ConfigTab::CONFIG_TAB_OPTIONS;
                 this->build_options_tab(page_offset2);
                 ImGui::EndTabItem();
             }
@@ -4853,6 +4841,8 @@ namespace overlay::windows {
                 // option name
                 ImGui::TableNextColumn();
                 ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0);
+                const float row_indent = overlay::apply_scaling(8);
+                ImGui::Indent(row_indent);
 
                 if (option.is_active()) {
                     // active option
@@ -4894,6 +4884,7 @@ namespace overlay::windows {
                     clipboard::copy_text(param.c_str());
                 }
 
+                ImGui::Unindent(row_indent);
                 ImGui::PopStyleVar(); // ImGuiStyleVar_ItemSpacing
 
                 // option widgets
