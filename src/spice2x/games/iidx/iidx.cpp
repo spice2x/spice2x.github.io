@@ -543,11 +543,7 @@ namespace games::iidx {
         // if the user specified a value (other than auto), use it as the environment var
         // probably "wasapi" or "asio", but it's not explicitly checked here for forward compat
         if (SOUND_OUTPUT_DEVICE.has_value() && SOUND_OUTPUT_DEVICE.value() != "auto") {
-            log_info(
-                "iidx",
-                "using user-supplied \"{}\" for SOUND_OUTPUT_DEVICE",
-                SOUND_OUTPUT_DEVICE.value());
-            SetEnvironmentVariable("SOUND_OUTPUT_DEVICE", SOUND_OUTPUT_DEVICE.value().c_str());
+            // the environemnt variable was already set in launcher.cpp
             SOUND_OUTPUT_DEVICE_IN_EFFECT = SOUND_OUTPUT_DEVICE;
             return;
         }

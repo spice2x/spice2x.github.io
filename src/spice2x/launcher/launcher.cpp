@@ -1644,11 +1644,22 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_FS_ORIENTATION_SWAP = true;
     }
 
+
+    // for cab usage - set environment variables (outside of -iidx module)
     if (games::iidx::DISABLE_CAMS.has_value() &&
         games::iidx::DISABLE_CAMS.value() &&
         !cfg::CONFIGURATOR_STANDALONE) {
-        log_misc("launcher", "CONNECT_CAMERA env var set to 0");
+        log_misc("launcher::iidx", "CONNECT_CAMERA env var set to 0");
         SetEnvironmentVariable("CONNECT_CAMERA", "0");
+    }
+    if (games::iidx::SOUND_OUTPUT_DEVICE.has_value() &&
+        games::iidx::SOUND_OUTPUT_DEVICE.value() != "auto" &&
+        !cfg::CONFIGURATOR_STANDALONE) {
+        log_info(
+            "launcher::iidx",
+            "using user-supplied \"{}\" for SOUND_OUTPUT_DEVICE",
+            games::iidx::SOUND_OUTPUT_DEVICE.value());
+        SetEnvironmentVariable("SOUND_OUTPUT_DEVICE", games::iidx::SOUND_OUTPUT_DEVICE.value().c_str());
     }
 
     // deleted options
