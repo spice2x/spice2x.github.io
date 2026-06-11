@@ -16,7 +16,7 @@
 
 static const std::vector<std::string> CATEGORY_ORDER_API = {
     "Companion & API",
-    "API over Serial",
+    "Serial API",
     "API Dev",
     "BT5 API",
 };
@@ -1640,14 +1640,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "apiserial",
         .desc = "Serial port the API should be listening on.",
         .type = OptionType::Text,
-        .category = "API over Serial",
+        .category = "Serial API",
     },
     {
         .title = "API Serial Baud",
         .name = "apiserialbaud",
         .desc = "Baud rate for the serial port.",
         .type = OptionType::Integer,
-        .category = "API over Serial",
+        .category = "Serial API",
     },
     {
         .title = "API Pretty",
