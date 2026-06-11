@@ -417,8 +417,7 @@ namespace overlay::windows {
         // when a category was clicked in the nav, record its Y for deferred scroll
         auto scroll_anchor = [this, &scroll_to_category_y](const std::string &category) {
             if (this->options_scroll_pending && this->options_category_selected == category) {
-                const ImGuiWindow *window = ImGui::GetCurrentWindow();
-                scroll_to_category_y = window->DC.CursorPos.y - window->Pos.y;
+                scroll_to_category_y = ImGui::GetCursorPosY();
                 this->options_scroll_pending = false;
             }
         };
@@ -475,17 +474,20 @@ namespace overlay::windows {
         }
 
         // apply scroll after content layout to avoid mid-layout jitter
+        ImGuiWindow *content_window = ImGui::GetCurrentWindow();
         if (scroll_to_top) {
-            if (ImGui::GetScrollY() > 0.0f) {
-                ImGui::SetScrollY(0.0f);
+            if (content_window->Scroll.y > 0.0f) {
+                content_window->Scroll.y = 0.0f;
             }
+            content_window->ScrollTarget.y = FLT_MAX;
         } else if (scroll_to_category_y >= 0.0f) {
-            const ImGuiWindow *window = ImGui::GetCurrentWindow();
-            const float desired_scroll = ImTrunc(
-                scroll_to_category_y - window->DecoOuterSizeY1 - window->DecoInnerSizeY1);
-            if (fabsf(ImGui::GetScrollY() - desired_scroll) > 0.5f) {
-                ImGui::SetScrollFromPosY(scroll_to_category_y, 0.0f);
+            const float spacing_y = ImMax(
+                content_window->WindowPadding.y, ImGui::GetStyle().ItemSpacing.y);
+            const float desired_scroll = ImMax(0.0f, scroll_to_category_y - spacing_y);
+            if (fabsf(content_window->Scroll.y - desired_scroll) > 0.5f) {
+                content_window->Scroll.y = desired_scroll;
             }
+            content_window->ScrollTarget.y = FLT_MAX;
         }
 
         ImGui::EndChild();
