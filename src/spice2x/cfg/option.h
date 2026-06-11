@@ -46,6 +46,8 @@ struct OptionDefinition {
 
     // for OptionPickerType::FilePath
     std::string file_extension = "";
+
+    std::string quick_setting_category = "";
 };
 
 class Option {

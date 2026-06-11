@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <algorithm>
+#include <set>
 #include <thread>
 
 #include <windows.h>
@@ -62,6 +63,21 @@ namespace overlay::windows {
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
     constexpr ImVec4 TEXT_COLOR_RED(1.f, 0.f, 0.f, 1.f);
     constexpr uint32_t OPTION_INPUT_TEXT_WIDTH = 512;
+
+    // subtab groups shown in the Options tab left navigation, in display order
+    static const std::vector<std::pair<const char *, launcher::Options::OptionsCategory>> OPTIONS_TAB_GROUPS = {
+        { "Game Options", launcher::Options::OptionsCategory::GameOptions },
+        { "Display", launcher::Options::OptionsCategory::Display },
+        { "Audio", launcher::Options::OptionsCategory::Audio },
+        { "Network", launcher::Options::OptionsCategory::Network },
+        { "Overlay", launcher::Options::OptionsCategory::Overlay },
+        { "Others", launcher::Options::OptionsCategory::Advanced },
+        { "Development", launcher::Options::OptionsCategory::Dev },
+        { "API", launcher::Options::OptionsCategory::API },
+    };
+
+    static const char *OPTIONS_TAB_SEARCH = "Search";
+    static const char *OPTIONS_TAB_QUICK = "Quick Settings";
 
     std::optional<std::vector<hooks::audio::AsioDriverScanEntry>> asio_driver_list;
 
@@ -222,6 +238,245 @@ namespace overlay::windows {
         }
     }
 
+    void Config::build_options_tab(float page_offset) {
+        const float content_height = ImGui::GetWindowContentRegionMax().y - page_offset;
+        const float nav_width = overlay::apply_scaling(130);
+
+        // default to the first group on first display
+        if (this->options_group_selected.empty()) {
+            this->options_group_selected = OPTIONS_TAB_QUICK;
+        }
+
+        auto options = games::get_options(this->games_selected_name);
+
+        // collect the set of categories that currently have at least one option that
+        // would be rendered by build_options(), in a single pass. used to keep the nav
+        // in sync with the content so categories that only contain hidden options appear
+        // in the nav exactly when "Show Hidden" is enabled. quick_categories tracks the
+        // distinct quick_setting_category names (quick settings group under their own
+        // categories, separate from the regular option categories).
+        std::set<std::string> visible_categories;
+        std::set<std::string> quick_categories;
+        if (options) {
+            for (auto &option : *options) {
+                auto &definition = option.get_definition();
+                if (!this->options_show_hidden && option.value.empty() && definition.hidden) {
+                    continue;
+                }
+                if (!definition.game_name.empty() && definition.game_name != this->games_selected_name) {
+                    continue;
+                }
+                visible_categories.insert(definition.category);
+                if (!definition.quick_setting_category.empty()) {
+                    quick_categories.insert(definition.quick_setting_category);
+                }
+            }
+        }
+
+        // left navigation: one header per subtab, each listing its categories. clicking a
+        // header selects that group; clicking a category scrolls the content to that section.
+        ImGui::BeginChild("OptionsNav", ImVec2(nav_width, content_height), false);
+
+        // exact height of the global option controls pinned at the bottom of the nav
+        const bool show_restart = !cfg::CONFIGURATOR_STANDALONE && this->options_dirty;
+        const float ctrl_spacing = ImGui::GetStyle().ItemSpacing.y;
+        float nav_controls_height = ImGui::GetFrameHeight(); // "Show Hidden" checkbox
+        if (show_restart) {
+            nav_controls_height += ctrl_spacing + ImGui::GetFrameHeight(); // "Restart Game" button
+        }
+        nav_controls_height += ctrl_spacing * 2.0f + 1.0f; // separator + padding
+
+        // scrollable nav list (group headers and categories)
+        ImGui::BeginChild("OptionsNavList",
+            ImVec2(0, content_height - nav_controls_height - ctrl_spacing), false);
+
+        // extra vertical padding between nav rows (headers and tree items)
+        const ImVec2 nav_item_spacing = ImGui::GetStyle().ItemSpacing;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+            ImVec2(nav_item_spacing.x, nav_item_spacing.y + overlay::apply_scaling(2)));
+
+        // arrow-less, non-collapsible nav header; selecting it clears any highlighted category
+        auto nav_header = [this](const char *label) {
+            const bool active = this->options_group_selected == label;
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
+            if (active) {
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+
+            // give the active header a clear, distinct highlight
+            int colors_pushed = 0;
+            if (active) {
+                const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+                ImGui::PushStyleColor(ImGuiCol_Header, accent);
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, accent);
+                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
+                colors_pushed = 3;
+            }
+
+            // taller frame padding so headers match the height of the category rows below
+            const ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                ImVec2(frame_padding.x, frame_padding.y + overlay::apply_scaling(4)));
+
+            ImGui::CollapsingHeader(label, flags);
+
+            ImGui::PopStyleVar();
+
+            if (colors_pushed) {
+                ImGui::PopStyleColor(colors_pushed);
+            }
+
+            if (ImGui::IsItemClicked()) {
+                this->options_group_selected = label;
+                this->options_category_selected.clear();
+                this->options_scroll_top = true;
+            }
+        };
+
+        // indented, selectable category row under a header; clicking it flags the
+        // content pane to scroll to that category's section
+        auto nav_category = [this](const char *group_label, const std::string &category) {
+            ImGui::Indent(INDENT * 0.5f);
+            if (ImGui::Selectable(category.c_str(), this->options_category_selected == category)) {
+                this->options_group_selected = group_label;
+                this->options_category_selected = category;
+                this->options_scroll_pending = true;
+            }
+            ImGui::Unindent(INDENT * 0.5f);
+        };
+
+        // search entry: selecting it shows the search box in the content pane
+        nav_header(OPTIONS_TAB_SEARCH);
+
+        // quick settings entry: selecting it shows the quick settings in the content pane
+        nav_header(OPTIONS_TAB_QUICK);
+
+        // when quick settings is selected, list its categories so they can be jumped to
+        if (this->options_group_selected == OPTIONS_TAB_QUICK) {
+            ImGui::PushID(OPTIONS_TAB_QUICK);
+            for (const auto &category : launcher::get_quick_setting_categories()) {
+                if (quick_categories.contains(category)) {
+                    nav_category(OPTIONS_TAB_QUICK, category);
+                }
+            }
+            ImGui::PopID();
+        }
+
+        for (const auto &group : OPTIONS_TAB_GROUPS) {
+            nav_header(group.first);
+
+            // only the selected group expands to show its categories
+            if (this->options_group_selected != group.first) {
+                continue;
+            }
+
+            ImGui::PushID(group.first);
+            for (const auto &category : launcher::get_categories(group.second)) {
+                if (!category.empty() && visible_categories.contains(category)) {
+                    nav_category(group.first, category);
+                }
+            }
+            ImGui::PopID();
+        }
+
+        ImGui::PopStyleVar();
+
+        ImGui::EndChild(); // OptionsNavList
+
+        // global option controls pinned to the bottom of the nav
+        ImGui::SetCursorPosY(content_height - nav_controls_height);
+        ImGui::Separator();
+        ImGui::Checkbox("Show Hidden", &this->options_show_hidden);
+
+        // left-align the text inside the full-width control buttons
+        ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
+
+        if (show_restart) {
+            if (ImGui::Button("Restart Game")) {
+                launcher::restart();
+            }
+            ImGui::SameLine();
+            ImGui::HelpMarker("You need to restart the game to apply the changed settings.");
+        }
+
+        ImGui::PopStyleVar(); // ButtonTextAlign
+
+        ImGui::EndChild(); // OptionsNav
+        ImGui::SameLine();
+
+        // content: only the options belonging to the selected group.
+        ImGui::BeginChild("OptionsContent", ImVec2(0, content_height), false);
+        if (this->options_scroll_top) {
+            ImGui::SetScrollY(0.0f);
+            this->options_scroll_top = false;
+        }
+
+        // breathing room at the top of the content area
+        ImGui::Dummy(ImVec2(0.0f, overlay::apply_scaling(4)));
+
+        // when a category was clicked in the nav, scroll the content to its section
+        auto scroll_anchor = [this](const std::string &category) {
+            if (this->options_scroll_pending && this->options_category_selected == category) {
+                ImGui::Dummy(ImVec2(0.0f, 0.0f));
+                ImGui::SetScrollHereY(0.0f);
+                this->options_scroll_pending = false;
+            }
+        };
+
+        if (this->options_group_selected == OPTIONS_TAB_SEARCH) {
+
+            // search from all options
+            ImGui::SetNextItemWidth(420.f);
+            if (ImGui::InputTextWithHint(
+                    "", "Type here to search in options..", &this->search_filter,
+                    ImGuiInputTextFlags_EscapeClearsAll)) {
+                this->search_filter_in_lower_case = strtolower(this->search_filter);
+            }
+            if (!this->search_filter.empty()) {
+                ImGui::SameLine();
+                if (ImGui::Button("Clear")) {
+                    this->search_filter.clear();
+                    this->search_filter_in_lower_case.clear();
+                }
+            }
+            ImGui::Spacing();
+
+            // draw matching options
+            if (!this->search_filter.empty()) {
+                for (auto category : launcher::get_categories(launcher::Options::OptionsCategory::Everything)) {
+                    this->build_options(
+                        options,
+                        category,
+                        const_cast<std::string *>(&this->search_filter_in_lower_case));
+                }
+            }
+        } else if (this->options_group_selected == OPTIONS_TAB_QUICK) {
+            for (const auto &category : launcher::get_quick_setting_categories()) {
+                if (!quick_categories.contains(category)) {
+                    continue;
+                }
+                scroll_anchor(category);
+                this->build_options(options, category, nullptr, true);
+            }
+
+        } else {
+            for (const auto &group : OPTIONS_TAB_GROUPS) {
+                if (this->options_group_selected != group.first) {
+                    continue;
+                }
+                for (const auto &category : launcher::get_categories(group.second)) {
+                    if (category.empty()) {
+                        continue;
+                    }
+                    scroll_anchor(category);
+                    this->build_options(options, category);
+                }
+            }
+        }
+
+        ImGui::EndChild();
+    }
+
     void Config::build_content() {
 
         // if standalone then fullscreen window
@@ -268,7 +523,6 @@ namespace overlay::windows {
         // tab selection
         auto tab_selected_new = ConfigTab::CONFIG_TAB_INVALID;
         if (ImGui::BeginTabBar("Config Tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
-            const int page_offset = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 88 : 110);
             const int page_offset2 = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 65 : 87);
 
             if (ImGui::BeginTabItem("Buttons")) {
@@ -399,163 +653,9 @@ namespace overlay::windows {
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("API")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_API;
-
-                // API options list
-                ImGui::BeginChild("ApiTab", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
-                auto options = games::get_options(this->games_selected_name);
-                for (auto category : launcher::get_categories(launcher::Options::OptionsCategory::API)) {
-                    this->build_options(options, category);
-                }
-                ImGui::EndChild();
-                ImGui::EndTabItem();
-            }
             if (ImGui::BeginTabItem("Options")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_OPTIONS;
-
-                // options list
-                ImGui::BeginChild("Options", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset), false);
-                auto options = games::get_options(this->games_selected_name);
-                for (auto category : launcher::get_categories(launcher::Options::OptionsCategory::Basic)) {
-                    this->build_options(options, category);
-                }
-
-                ImGui::EndChild();
-
-                // hidden options checkbox
-                ImGui::Checkbox("Show Hidden Options", &this->options_show_hidden);
-                if (!cfg::CONFIGURATOR_STANDALONE && this->options_dirty) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Restart Game")) {
-                        launcher::restart();
-                    }
-                    ImGui::SameLine();
-                    ImGui::HelpMarker("You need to restart the game to apply the changed settings.");
-                }
-
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Advanced")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_ADVANCED;
-
-                // advanced options list
-                ImGui::BeginChild("AdvancedOptions", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset), false);
-                auto options = games::get_options(this->games_selected_name);
-                for (auto category : launcher::get_categories(launcher::Options::OptionsCategory::Advanced)) {
-                    this->build_options(options, category);
-                }
-                ImGui::EndChild();
-
-                // hidden options checkbox
-                ImGui::Checkbox("Show Hidden Options", &this->options_show_hidden);
-                if (!cfg::CONFIGURATOR_STANDALONE && this->options_dirty) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Restart Game")) {
-                        launcher::restart();
-                    }
-                    ImGui::SameLine();
-                    ImGui::HelpMarker("You need to restart the game to apply the changed settings.");
-                }
-
-                // reset configuration button
-                ImGui::SameLine();
-                if (ImGui::Button("Reset Configuration")) {
-                    ImGui::OpenPopup("Reset Config");
-                }
-                if (ImGui::BeginPopupModal("Reset Config", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
-                            "Do you really want to reset your configuration for all games?\n"
-                            "Warning: This can't be reverted!");
-                    if (ImGui::Button("Yes")) {
-                        ::Config::getInstance().createConfigFile();
-                        launcher::restart();
-                    }
-                    ImGui::SameLine();
-                    if (ImGui::Button("Nope")) {
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
-                }
-
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Development")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_DEV;
-
-                // dev options list
-                ImGui::BeginChild("DevOptions", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset), false);
-                auto options = games::get_options(this->games_selected_name);
-                for (auto category : launcher::get_categories(launcher::Options::OptionsCategory::Dev)) {
-                    this->build_options(options, category);
-                }
-
-                ImGui::EndChild();
-
-                // hidden options checkbox
-                ImGui::Checkbox("Show Hidden Options", &this->options_show_hidden);
-                if (!cfg::CONFIGURATOR_STANDALONE && this->options_dirty) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Restart Game")) {
-                        launcher::restart();
-                    }
-                    ImGui::SameLine();
-                    ImGui::HelpMarker("You need to restart the game to apply the changed settings.");
-                }
-
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Search")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_SEARCH;
-
-                ImGui::BeginChild("SearchOptions", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset), false);
-
-                // search from all options
-                ImGui::Spacing();
-                ImGui::SetNextItemWidth(420.f);
-                if (ImGui::InputTextWithHint(
-                        "", "Type here to search in options..", &this->search_filter,
-                        ImGuiInputTextFlags_EscapeClearsAll)) {
-                    this->search_filter_in_lower_case = strtolower(this->search_filter);
-                }
-                if (!this->search_filter.empty()) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Clear")) {
-                        this->search_filter.clear();
-                        this->search_filter_in_lower_case.clear();
-                    }
-                }
-                ImGui::Spacing();
-
-                // draw all options
-                auto options = games::get_options(this->games_selected_name);
-                if (!this->search_filter.empty()) {
-                    for (auto category : launcher::get_categories(launcher::Options::OptionsCategory::Everything)) {
-                        this->build_options(
-                            options,
-                            category,
-                            const_cast<std::string *>(&this->search_filter_in_lower_case));
-                    }
-                }
-
-                ImGui::EndChild();
-
-                // hidden options checkbox
-                ImGui::Checkbox("Show Hidden Options", &this->options_show_hidden);
-                if (!cfg::CONFIGURATOR_STANDALONE && this->options_dirty) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("Restart Game")) {
-                        launcher::restart();
-                    }
-                    ImGui::SameLine();
-                    ImGui::HelpMarker("You need to restart the game to apply the changed settings.");
-                }
-
+                this->build_options_tab(page_offset2);
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
@@ -4668,13 +4768,52 @@ namespace overlay::windows {
     }
 
     void Config::build_options(
-        std::vector<Option> *options, const std::string &category, const std::string *filter) {
-        int options_count;
+        std::vector<Option> *options, const std::string &category, const std::string *filter, bool quick_only) {
+
+        // collect the options that match the current filters. doing this once lets us
+        // skip rendering an empty header + table for categories with no matches, and
+        // avoids iterating the full option list a second time during rendering.
+        std::vector<Option *> matching;
+        for (auto &option : *options) {
+            auto &definition = option.get_definition();
+            if (quick_only) {
+                // quick settings group under quick_setting_category, not the regular category
+                if (definition.quick_setting_category.empty()) {
+                    continue;
+                }
+                if (!category.empty() && definition.quick_setting_category != category) {
+                    continue;
+                }
+            } else if (!category.empty() && definition.category != category) {
+                continue;
+            }
+            if (!this->options_show_hidden && option.value.empty() && definition.hidden) {
+                continue;
+            }
+            if (!definition.game_name.empty() && definition.game_name != this->games_selected_name) {
+                continue;
+            }
+            if (filter != nullptr) {
+                if (filter->empty() || !option.search_match(*filter)) {
+                    continue;
+                }
+                // limit to 30 results
+                if (matching.size() > 30) {
+                    continue;
+                }
+            }
+            matching.push_back(&option);
+        }
+        if (matching.empty()) {
+            return;
+        }
 
         // category name
         std::string cat = "Options";
         if (!category.empty()) {
             cat = category;
+        } else if (quick_only) {
+            cat = "Quick Settings";
         } else if (filter != nullptr) {
             cat = "Search results";
         }
@@ -4683,84 +4822,28 @@ namespace overlay::windows {
 
         // render table
         // tables must share the same ID to have synced column settings
-        const int num_columns = (filter != nullptr) ? 3 : 2;
-        if (ImGui::BeginTable("OptionsTable", num_columns, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
-            auto widget_col_width = 0;
-            if (filter != nullptr) {
-                ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(160));
-                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
-                widget_col_width = overlay::apply_scaling(220);
-            } else {
-                ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
-                widget_col_width = overlay::apply_scaling(264);
-            }
+        ImGui::PushStyleVarY(ImGuiStyleVar_CellPadding,
+                ImGui::GetStyle().CellPadding.y + overlay::apply_scaling(2));
+        if (ImGui::BeginTable("OptionsTable", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
+            const int widget_col_width = overlay::apply_scaling(260);
+            ImGui::TableSetupColumn("Option", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthFixed, widget_col_width);
 
             // iterate options
-            options_count = 0;
-            for (auto &option : *options) {
-
-                // get option definition
+            for (auto *option_ptr : matching) {
+                auto &option = *option_ptr;
                 auto &definition = option.get_definition();
-
-                // check category
-                if (!category.empty() && definition.category != category) {
-                    continue;
-                }
-
-                // check hidden option
-                if (!this->options_show_hidden && option.value.empty()) {
-                    // skip hidden entries
-                    if (definition.hidden) {
-                        continue;
-                    }
-                }
-
-                // check for game exclusivity
-                if (!definition.game_name.empty()) {
-                    if (definition.game_name != this->games_selected_name) {
-                        continue;
-                    }
-                }
-
-                // filter
-                if (filter != nullptr) {
-                    if (filter->empty()) {
-                        continue;
-                    }
-                    if (!option.search_match(*filter)) {
-                        continue;
-                    }
-                    // limit to 30 results
-                    if (30 < options_count) {
-                        continue;
-                    }
-                }
-
-                options_count += 1;
 
                 // list entry
                 ImGui::PushID(&option);
                 ImGui::TableNextRow();
 
-                // category (only shown for search results)
-                if (filter != nullptr) {
-                    ImGui::TableNextColumn();
-                    ImGui::AlignTextToFramePadding();
-                    if (definition.category.empty()) {
-                        ImGui::TextDisabled("-");
-                    } else {
-                        ImGui::TextDisabled("%s", definition.category.c_str());
-                    }
-                }
-
                 // option name
                 ImGui::TableNextColumn();
-                ImGui::AlignTextToFramePadding();
-                if (filter == nullptr) {
-                    // add indent to make options align under category header
-                    ImGui::Indent(INDENT);
-                }
+                ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0);
+                const float row_indent = overlay::apply_scaling(8);
+                ImGui::Indent(row_indent);
+
                 if (option.is_active()) {
                     // active option
                     if (option.disabled || definition.disabled) {
@@ -4776,9 +4859,6 @@ namespace overlay::windows {
                     // normal text
                     ImGui::TextUnformatted(definition.title.c_str());
                 }
-                if (filter == nullptr) {
-                    ImGui::Unindent(INDENT);
-                }
                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     ImGui::HelpTooltip(definition.desc.c_str());
                 }
@@ -4790,8 +4870,7 @@ namespace overlay::windows {
                 } else {
                     param += definition.display_name;
                 }
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.27f, 0.27f, 0.27f, 1.f), " %s", param.c_str());
+                ImGui::TextDisabled("%s", param.c_str());
                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                     const auto help =
                         param +
@@ -4805,8 +4884,21 @@ namespace overlay::windows {
                     clipboard::copy_text(param.c_str());
                 }
 
+                ImGui::Unindent(row_indent);
+                ImGui::PopStyleVar(); // ImGuiStyleVar_ItemSpacing
+
                 // option widgets
                 ImGui::TableNextColumn();
+
+                // make widgets span two text lines tall to match the two-line name column
+                ImGui::PushStyleVarY(ImGuiStyleVar_FramePadding, ImGui::GetFontSize() * 0.36f);
+                // vertically center the widget within the two-line row
+                float row_h = ImGui::GetTextLineHeight() * 2.f;
+                float widget_h = ImGui::GetFrameHeight();
+                if (row_h > widget_h) {
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (row_h - widget_h) * 0.5f);
+                }
+
                 ImGui::PushStyleVarX(ImGuiStyleVar_ItemSpacing, 4.f);
                 if (option.disabled || definition.disabled) {
                     ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
@@ -4979,6 +5071,7 @@ namespace overlay::windows {
                 }
 
                 ImGui::PopStyleVar(); // ImGuiStyleVar_ItemSpacing
+                ImGui::PopStyleVar(); // ImGuiStyleVar_FramePadding
 
                 // clean up disabled item flags
                 if (option.disabled || definition.disabled) {
@@ -5039,32 +5132,9 @@ namespace overlay::windows {
                 ImGui::PopID();
             }
 
-            // check if empty
-            if (options_count == 0) {
-                ImGui::TableNextRow();
-
-                // option category
-                if (filter != nullptr) {
-                    ImGui::TableNextColumn();
-                    ImGui::TextDisabled("-");
-                }
-
-                // name of option
-                ImGui::TableNextColumn();
-                if (filter == nullptr) {
-                    ImGui::Indent(INDENT);
-                }
-                ImGui::TextDisabled("-");
-                if (filter == nullptr) {
-                    ImGui::Unindent(INDENT);
-                }
-
-                // widget
-                ImGui::TableNextColumn();
-                ImGui::TextDisabled("-");
-            }
             ImGui::EndTable();
         }
+        ImGui::PopStyleVar(); // ImGuiStyleVar_CellPadding
 
         ImGui::TextUnformatted("");
     }
@@ -5118,6 +5188,7 @@ namespace overlay::windows {
 
     void Config::build_menu(int *game_selected) {
         bool about_popup = false;
+        bool reset_config_popup = false;
         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.14f, 0.14f, 0.14f, 1.0f));
         if (ImGui::BeginMenuBar()) {
 
@@ -5130,6 +5201,10 @@ namespace overlay::windows {
                 }
                 if (ImGui::MenuItem("About")) {
                     about_popup = true;
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem("Reset to Default")) {
+                    reset_config_popup = true;
                 }
                 ImGui::EndMenu();
             } else {
@@ -5188,6 +5263,25 @@ namespace overlay::windows {
         // workaround for popups triggered by menu, see https://github.com/ocornut/imgui/issues/331
         if (about_popup) {
             ImGui::OpenPopup("About##topbarpopup");
+        }
+        if (reset_config_popup) {
+            ImGui::OpenPopup("Reset Config");
+        }
+
+        // reset configuration confirmation popup
+        if (ImGui::BeginPopupModal("Reset Config", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1.f),
+                    "Do you really want to reset your configuration for all games?\n"
+                    "Warning: This can't be reverted!");
+            if (ImGui::Button("Yes")) {
+                ::Config::getInstance().createConfigFile();
+                launcher::restart();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Nope")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
         }
 
         // draw popups

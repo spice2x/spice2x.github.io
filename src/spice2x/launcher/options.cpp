@@ -5,6 +5,8 @@
 #include "util/fileutils.h"
 
 #include <fstream>
+#include <mutex>
+#include <set>
 
 #ifdef NO_SCARD
 #define WITH_SCARD 0
@@ -13,45 +15,71 @@
 #endif
 
 static const std::vector<std::string> CATEGORY_ORDER_API = {
-    "SpiceCompanion and API",
-    "API (Serial)",
-    "API (Dev)",
+    "Companion & API",
+    "Serial API",
+    "API Dev",
     "BT5 API",
 };
 
-static const std::vector<std::string> CATEGORY_ORDER_BASIC = {
+static const std::vector<std::string> CATEGORY_ORDER_GAME_OPTIONS = {
+    "DLL Hooks",
     "Game Options",
-    "Common",
-    "Network",
+    "Advanced Game Options",
+    "Cab Peripherals",
+};
+
+static const std::vector<std::string> CATEGORY_ORDER_DISPLAY = {
     "Monitor",
-    "Graphics (Common)",
-    "Graphics (Full Screen)",
-    "Graphics (Windowed)",
+    "Graphics",
+    "Full Screen Settings",
+    "Windowed Settings",
+    "Game Windowed Settings",
+};
+
+static const std::vector<std::string> CATEGORY_ORDER_AUDIO = {
     "Audio",
-    "Audio (Conversion)",
+    "Audio Conversion",
+    "Audio Hacks",
+};
+
+static const std::vector<std::string> CATEGORY_ORDER_NETWORK = {
+    "Network",
+    "Auto PIN",
+    "Advanced Network",
+    "Network Dev",
+};
+
+static const std::vector<std::string> CATEGORY_ORDER_OVERLAY = {
+    "General Overlay",
+    "Game Overlay",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
-    "Game Options (Advanced)",
-    "Game Options (Peripherals)",
-    "Overlay",
-    "Network (Advanced)",
     "Performance",
     "Miscellaneous",
+    "Mouse",
     "Touch Parameters",
     "I/O Options",
     "NFC Card Readers",
 };
 static const std::vector<std::string> CATEGORY_ORDER_DEV = {
     "Path Overrides",
-    "Network (Development)",
-    "Audio (Hacks)",
     "I/O Modules",
     "Development",
     "Debug Log",
 };
 static const std::vector<std::string> CATEGORY_ORDER_NONE = {
     ""
+};
+
+// display order for the quick_setting_category names used by the Options tab's
+// "Quick Settings" view (these are independent of the regular option categories)
+static const std::vector<std::string> CATEGORY_ORDER_QUICK = {
+    "Game",
+    "Common",
+    "Network",
+    "Display",
+    "Audio",
 };
 
 static auto format_as(OptionType f) {
@@ -99,6 +127,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Enables the integrated local EA server, just enough to boot the game; no card in, no data saving.",
         .type = OptionType::Bool,
         .category = "Network",
+        .quick_setting_category = "Network",
     },
     {
         // ServiceURL
@@ -108,6 +137,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "http://example.com:8083",
         .category = "Network",
+        .quick_setting_category = "Network",
     },
     {
         .title = "PCBID",
@@ -117,6 +147,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .setting_name = "01201000000000010101",
         .category = "Network",
         .sensitive = true,
+        .quick_setting_category = "Network",
     },
     {
         .title = "Player 1 Card",
@@ -127,6 +158,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Network",
         .sensitive = true,
         .picker = OptionPickerType::EACard,
+        .quick_setting_category = "Network",
     },
     {
         .title = "Player 2 Card",
@@ -137,6 +169,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Network",
         .sensitive = true,
         .picker = OptionPickerType::EACard,
+        .quick_setting_category = "Network",
     },
     {
         // Player1PinMacro
@@ -145,7 +178,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Set a PIN for Player 1 that will cause the PIN to be automatically typed when Player 1 PIN Macro overlay key is pressed.",
         .type = OptionType::Text,
         .setting_name = "1234",
-        .category = "Network (Advanced)",
+        .category = "Auto PIN",
         .sensitive = true,
     },
     {
@@ -155,7 +188,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Set a PIN for Player 2 that will cause the PIN to be automatically typed when Player 2 PIN Macro overlay key is pressed.",
         .type = OptionType::Text,
         .setting_name = "5678",
-        .category = "Network (Advanced)",
+        .category = "Auto PIN",
         .sensitive = true,
     },
     {
@@ -167,7 +200,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "screen is ready. When the substring appears in any log line, the PIN macro is "
             "typed for Player 1 only. Leave blank to disable auto-trigger for P1.",
         .type = OptionType::Text,
-        .category = "Network (Advanced)",
+        .category = "Auto PIN",
     },
     {
         // AutoPinMacroTrigger1
@@ -178,14 +211,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "screen is ready. When the substring appears in any log line, the PIN macro is "
             "typed for Player 2 only. Leave blank to disable auto-trigger for P2.",
         .type = OptionType::Text,
-        .category = "Network (Advanced)",
+        .category = "Auto PIN",
     },
     {
         .title = "Windowed Mode",
         .name = "w",
         .desc = "Enables windowed mode.",
         .type = OptionType::Bool,
-        .category = "Graphics (Windowed)",
+        .category = "Windowed Settings",
+        .quick_setting_category = "Display",
     },
     {
         // InjectHook
@@ -196,7 +230,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "specified file before running the main game code.",
         .type = OptionType::Text,
         .setting_name = "a.dll b.dll c.dll",
-        .category = "Common",
+        .category = "DLL Hooks",
+        .quick_setting_category = "Common",
     },
     {
         // EarlyInjectHook
@@ -206,7 +241,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "the game module has been loaded into the process.",
         .type = OptionType::Text,
         .setting_name = "a.dll b.dll c.dll",
-        .category = "Common",
+        .category = "DLL Hooks",
     },
     {
         .title = "(REMOVED) Execute Lua Script",
@@ -222,14 +257,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "c",
         .desc = "Confines the cursor to be within the game window.",
         .type = OptionType::Bool,
-        .category = "Common",
+        .category = "Mouse",
     },
     {
         .title = "Show Cursor & Touch Emulation Enable",
         .name = "s",
         .desc = "Shows the cursor in the game window; also turns on touch emulation. Do not enable this if you have a real touch screen.",
         .type = OptionType::Bool,
-        .category = "Common",
+        .category = "Mouse",
+        .quick_setting_category = "Common",
     },
     {
         // PrimaryMonitor
@@ -254,7 +290,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Not all games will respect this. Not recommended for multi-monitor games like Lightning Model / Valkyrie Model modes. "
             "Disable Full Screen Optimizations for best results.",
         .type = OptionType::Integer,
-        .category = "Graphics (Full Screen)",
+        .category = "Full Screen Settings",
     },
     {
         .title = "Only Use Main Monitor For Full Screen",
@@ -262,7 +298,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Force the graphics device to be opened utilizing only one adapter in multi-monitor systems.\n\n"
             "May cause unstable framerate and desyncs, especially if monitors have different refresh rates!",
         .type = OptionType::Bool,
-        .category = "Graphics (Full Screen)",
+        .category = "Full Screen Settings",
+        .quick_setting_category = "Display",
     },
     {
         .title = "Monitor Refresh Rate",
@@ -270,6 +307,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Change the refresh rate for the primary monitor before launching the game. It will be restored on exit.",
         .type = OptionType::Integer,
         .category = "Monitor",
+        .quick_setting_category = "Display",
     },
     {
         // FullscreenResolution
@@ -282,7 +320,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "This should only be used as last resort if your GPU/monitor can't display the resolution required by the game.",
         .type = OptionType::Text,
         .setting_name = "1280,720",
-        .category = "Graphics (Full Screen)"
+        .category = "Full Screen Settings"
     },
     {
         // FullscreenOrientationFlip
@@ -296,7 +334,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "with Live2D!",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Graphics (Full Screen)"
+        .category = "Full Screen Settings"
     },
     {
         // FullscreenSubResolution
@@ -308,7 +346,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "WARNING: experimental as we have not done extensive testing to see if this causes desyncs.",
         .type = OptionType::Text,
         .setting_name = "1280,720",
-        .category = "Graphics (Full Screen)"
+        .category = "Full Screen Settings"
     },
     {
         // FullscreenSubRefreshRate
@@ -319,7 +357,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "useful if you have a sub monitor that is not quite exactly 60Hz.\n\n"
             "WARNING: experimental as we have not done extensive testing to see if this causes desyncs.",
         .type = OptionType::Integer,
-        .category = "Graphics (Full Screen)"
+        .category = "Full Screen Settings"
     },
     {
         // Graphics9On12
@@ -328,7 +366,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Use D3D9On12 wrapper library, requires Windows 10. Deprecated - use -dx9on12 instead.",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Graphics (Common)",
+        .category = "Graphics",
     },
     {
         // spice2x_Dx9On12
@@ -339,7 +377,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Use D3D9On12 wrapper library, requires Windows 10. Has no effect on games that don't use DX9. Can cause some games to crash.\n\n"
             "Default: auto (use DX9 for most games, but turn on 9on12 for games that require it on non-NVIDIA GPUs).",
         .type = OptionType::Enum,
-        .category = "Graphics (Common)",
+        .category = "Graphics",
         .elements = {
             {"auto", "Automatic"},
             {"0", "Use DX9"},
@@ -361,11 +399,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Miscellaneous",
     },
     {
+        .title = "Discord RPC AppID Override",
+        .name = "discordappid",
+        .desc = "Set the discord RPC AppID override.",
+        .type = OptionType::Text,
+        .category = "Miscellaneous",
+    },
+    {
         .title = "Smart Local EA",
         .name = "smartea",
         .desc = "Automatically enables -ea when server is offline.",
         .type = OptionType::Bool,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
     },
     {
         // EAmusementMaintenance
@@ -374,7 +419,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Enables EA Maintenance, 1 for on, 0 for off.",
         .type = OptionType::Enum,
         .hidden = true,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
         .elements = {{"0", "Off"}, {"1", "On"}},
     },
     {
@@ -385,7 +430,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "forceeamaint",
         .desc = "Causes local EA to start in maintenance mode. Must be used with -ea or -smartea.",
         .type = OptionType::Bool,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
     },
     {
         .title = "Preferred NetAdapter IP",
@@ -393,7 +438,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "This is NOT the EA service URL; use -url for that. "
             "Force the use of an adapter with the specified network. Must also provide -subnet.",
         .type = OptionType::Text,
-        .category = "Network (Development)",
+        .category = "Advanced Network",
         .sensitive = true,
     },
     {
@@ -401,21 +446,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "subnet",
         .desc = "Force the use of an adapter with the specified subnet. Must also provide -network.",
         .type = OptionType::Text,
-        .category = "Network (Development)",
+        .category = "Advanced Network",
     },
     {
         .title = "Disable Network Fixes",
         .name = "netfixdisable",
         .desc = "Force disables network fixes.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
+        .category = "Network Dev",
     },
     {
         .title = "HTTP/1.1",
         .name = "http11",
         .desc = "Sets EA3 http11 value.",
         .type = OptionType::Enum,
-        .category = "Network (Development)",
+        .category = "Network Dev",
         .elements = {{"0", "Off"}, {"1", "On"}},
     },
     {
@@ -423,14 +468,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "ssldisable",
         .desc = "Prevents the SSL protocol from being registered.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
+        .category = "Network Dev",
     },
     {
         .title = "URL Slash",
         .name = "urlslash",
         .desc = "Sets EA3 urlslash value.",
         .type = OptionType::Enum,
-        .category = "Network (Advanced)",
+        .category = "Advanced Network",
         .elements = {{"0", "Off"}, {"1", "On"}},
     },
     {
@@ -457,7 +502,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "overlaydisable",
         .desc = "Disables the in-game overlay.",
         .type = OptionType::Bool,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // OverlayScaling
@@ -468,7 +513,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Enter value in percentage, between 10-400, inclusive.",
         .type = OptionType::Integer,
         .setting_name = "200",
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // NotificationPosition
@@ -476,7 +521,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "toast",
         .desc = "Select where notifications will appear on the screen.",
         .type = OptionType::Enum,
-        .category = "Overlay",
+        .category = "General Overlay",
         .elements = {
             {"off", ""},
             {"topleft", ""},
@@ -493,7 +538,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autofps",
         .desc = "Automatically show FPS / clock / timer overlay window when the game starts.",
         .type = OptionType::Bool,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // spice2x_FpsOpposite
@@ -503,7 +548,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Deprecated - use -fpslocation instead.",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // FpsLocation
@@ -511,7 +556,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "fpslocation",
         .desc = "Select which corner of the screen the FPS / clock / timer overlay appears in.",
         .type = OptionType::Enum,
-        .category = "Overlay",
+        .category = "General Overlay",
         .elements = {
             {"topright", ""},
             {"topleft", ""},
@@ -527,7 +572,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autosubscreen",
         .desc = "Automatically show the subscreen overlay when the game starts, if the game has one.",
         .type = OptionType::Bool,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // spice2x_IOPanelAutoShow
@@ -537,7 +582,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autoiopanel",
         .desc = "Automatically show I/O panel window when the game starts.",
         .type = OptionType::Bool,
-        .category = "Overlay",
+        .category = "General Overlay",
     },
     {
         // spice2x_KeypadAutoShow
@@ -547,7 +592,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .aliases= "autokeypad",
         .desc = "Automatically show virtual keypad window when the game starts.",
         .type = OptionType::Enum,
-        .category = "Overlay",
+        .category = "General Overlay",
         .elements = {
             {"0", "Off"},
             {"1", "P1"},
@@ -561,7 +606,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Beatmania IIDX module.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "IIDX Camera Order Flip",
@@ -569,7 +614,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Flip the camera order.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // IIDXDisableCameras
@@ -579,7 +624,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .hidden = true,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // IIDXCabCamAccess
@@ -589,7 +634,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Only turn this on if you have OFFICIAL arcade cameras connected to the correct USB ports. Default: auto.",
         .type = OptionType::Enum,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
         .elements = {
             {"auto", ""},
             {"off", ""},
@@ -605,7 +650,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Experimental camera support for IIDX 27+ via texture hooking. Requires camera(s) that support YUY2 or NV12 encoding.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // IIDXCamHookRatio
@@ -617,7 +662,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Enum,
         .hidden = true,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
         .elements = {
             {"43", "4:3"},
             {"169", "16:9"},
@@ -635,7 +680,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "0x5817a0,0x6fffbd8,0xbbae40,0xe0,0x30",
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // IIDXCamHookTopId
@@ -650,7 +695,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "vid_1234&pid_5678",
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // IIDXCamHookFrontId
@@ -665,7 +710,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "vid_90ab&pid_cdef",
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         .title = "IIDX Sound Output Device",
@@ -681,6 +726,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"wasapi", "Windows Audio"},
             {"asio", "ASIO"},
         },
+        .quick_setting_category = "Game",
     },
     {
         .title = "IIDX ASIO Driver",
@@ -692,6 +738,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
         .picker = OptionPickerType::AsioDriver,
+        .quick_setting_category = "Game",
     },
     {
         .title = "IIDX BIO2 Firmware Update",
@@ -700,7 +747,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .hidden = true,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "IIDX TDJ Mode (Lightning Model)",
@@ -709,6 +756,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // spice2x_IIDXDigitalTTSensitivity
@@ -720,7 +768,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Integer,
         .setting_name = "(0-255)",
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // IIDXDigitalTTSocd
@@ -732,7 +780,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "neutral (default): TT does not move when both directions are pressed, recommended to avoid excessive POORs.",
         .type = OptionType::Enum,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
         .elements = {
             {"last", ""},
             {"first", ""},
@@ -748,7 +796,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Force Definition Type HD (720p) mode instead of FHD (1080p) for IIDX30+. Only for LDJ! TDJ is always FHD in IIDX30+.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // spice2x_IIDXTDJSubSize
@@ -759,7 +807,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Default size of the subscreen overlay.\n\nNote: in windowed mode, subscreen will always be full size.\n\nDefault: medium.",
         .type = OptionType::Enum,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
         .elements = {
             {"small", ""},
             {"medium", ""},
@@ -776,7 +824,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Configure the font size of the segment display, in pixels. Default: 64 (px).",
         .type = OptionType::Integer,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
     },
     {
         // spice2x_IIDXLEDColor
@@ -788,7 +836,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "Default: 0xff0000 (red).",
         .type = OptionType::Hex,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
     },
     {
         // spice2x_IIDXLEDPos
@@ -799,7 +847,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Initial position of the segment display. Default: bottom.",
         .type = OptionType::Enum,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
         .elements = {
             {"topleft", ""},
             {"top", ""},
@@ -817,7 +865,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Make LED ticker overlay window borderless (remove window decoration).",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Overlay",
+        .category = "Game Overlay",
     },
     {
         .title = "Force Load Sound Voltex Module",
@@ -825,7 +873,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Sound Voltex Module.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "SDVX Vivid Wave Force 720p Window (DEPRECATED - use -windowsize instead)",
@@ -834,7 +882,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .hidden = true,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "SDVX Printer Emulation",
@@ -842,7 +890,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Enable Sound Voltex printer emulation.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // SDVXPrinterOutputPath
@@ -851,7 +899,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Path to folder where images will be stored.",
         .type = OptionType::Text,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
         .picker = OptionPickerType::DirectoryPath,
     },
     {
@@ -860,7 +908,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Clean up saved images in the output directory on startup.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         .title = "SDVX Printer Output Overwrite",
@@ -868,7 +916,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Always overwrite the same file in output directory.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // SDVXPrinterOutputFormat
@@ -878,7 +926,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "(png/bmp/tga/jpg)",
         .game_name = "Sound Voltex",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         .title = "SDVX Printer JPG Quality",
@@ -887,7 +935,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Integer,
         .setting_name = "(0-100)",
         .game_name = "Sound Voltex",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         .title = "SDVX Disable Cameras (DEPRECATED - no longer needed)",
@@ -898,7 +946,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .hidden = true,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         .title = "SDVX FS Subscreen Native Touch Handling",
@@ -909,7 +957,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "Enable this when you get duplicate touch inputs from an actual touch screen.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // spice2x_SDVXSubRedraw
@@ -921,7 +969,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "this option forces subscreen to redraw every frame.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // spice2x_SDVXDigitalKnobSensitivity
@@ -933,7 +981,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Integer,
         .setting_name = "(0-255)",
         .game_name = "Sound Voltex",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // SDVXDigitalKnobSocd
@@ -945,7 +993,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "neutral: knob does not move when both directions are pressed.",
         .type = OptionType::Enum,
         .game_name = "Sound Voltex",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
         .elements = {
             {"last", ""},
             {"first", ""},
@@ -965,6 +1013,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .game_name = "Sound Voltex",
         .category = "Game Options",
         .picker = OptionPickerType::AsioDriver,
+        .quick_setting_category = "Game",
     },
     {
         // SDVXAsioTwoChannel
@@ -974,6 +1023,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // spice2x_SDVXSubPos
@@ -984,7 +1034,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Location for the subscreen overlay. Default: bottom.",
         .type = OptionType::Enum,
         .game_name = "Sound Voltex",
-        .category = "Overlay",
+        .category = "Game Overlay",
         .elements = {
             {"top", ""},
             {"center", ""},
@@ -1001,7 +1051,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Sound Voltex",
-        .category = "Graphics (Full Screen)",
+        .category = "Full Screen Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -1010,7 +1060,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Dance Dance Revolution module.",
         .type = OptionType::Bool,
         .game_name = "Dance Dance Revolution",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "DDR 4:3 Mode",
@@ -1027,7 +1077,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Prevent automatic registration of codecs in the com folder.",
         .type = OptionType::Bool,
         .game_name = "Dance Dance Revolution",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Pop'n Music Module",
@@ -1035,7 +1085,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Pop'n Music module.",
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Pop'n Music Force HD Mode",
@@ -1044,6 +1094,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         .title = "Pop'n Music Force SD Mode",
@@ -1052,6 +1103,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // PopnNoSub
@@ -1061,6 +1113,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // PopnSubMonitorOverride
@@ -1070,7 +1123,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Pop'n Music",
-        .category = "Graphics (Full Screen)",
+        .category = "Full Screen Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -1083,7 +1136,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "Enable this when you get duplicate touch inputs from an actual touch screen.",
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load HELLO! Pop'n Music Module",
@@ -1091,7 +1144,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable HELLO! Pop'n Music module.",
         .type = OptionType::Bool,
         .game_name = "HELLO! Pop'n Music",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load GitaDora Module",
@@ -1099,7 +1152,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable GitaDora module.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "GitaDora Two Channel Audio",
@@ -1108,6 +1161,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         .title = "GitaDora Cabinet Type",
@@ -1117,6 +1171,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .game_name = "GitaDora",
         .category = "Game Options",
         .elements = {{"1", "DX"}, {"2", "SD"}, {"3", "SD2 - white cab"}},
+        .quick_setting_category = "Game",
     },
     {
         // GitaDoraLefty
@@ -1136,6 +1191,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"p2", "p2 is lefty"},
             {"both", "both lefty"},
         },
+        .quick_setting_category = "Game",
     },
     {
         // GitaDoraWailHold
@@ -1176,7 +1232,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Default size of the subscreen overlay. Default: medium.",
         .type = OptionType::Enum,
         .game_name = "GitaDora",
-        .category = "Overlay",
+        .category = "Game Overlay",
         .elements = {
             {"small", ""},
             {"medium", ""},
@@ -1214,6 +1270,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"2", "2 windows"},
             {"4", "4 windows"}
         },
+        .quick_setting_category = "Game",
     },
     {
         // GitaDoraArenaAsioDriver
@@ -1228,6 +1285,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .game_name = "GitaDora",
         .category = "Game Options",
         .picker = OptionPickerType::AsioDriver,
+        .quick_setting_category = "Game",
     },
     {
         // GitaDoraArenaRealtekAccess
@@ -1247,7 +1305,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Jubeat module.",
         .type = OptionType::Bool,
         .game_name = "Jubeat",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Reflec Beat Module",
@@ -1255,7 +1313,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Reflec Beat module.",
         .type = OptionType::Bool,
         .game_name = "Reflec Beat",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Tenkaichi Shogikai Module",
@@ -1263,7 +1321,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Tenkaichi Shogikai module.",
         .type = OptionType::Bool,
         .game_name = "Tenkaichi Shogikai",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Beatstream Module",
@@ -1271,7 +1329,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Beatstream module.",
         .type = OptionType::Bool,
         .game_name = "Beatstream",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Nostalgia Module",
@@ -1279,7 +1337,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Nostalgia module.",
         .type = OptionType::Bool,
         .game_name = "Nostalgia",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Dance Evolution Module",
@@ -1287,7 +1345,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Dance Evolution module.",
         .type = OptionType::Bool,
         .game_name = "Dance Evolution",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load FutureTomTom Module",
@@ -1295,7 +1353,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable FutureTomTom module.",
         .type = OptionType::Bool,
         .game_name = "FutureTomTom",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load BBC Module",
@@ -1303,7 +1361,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Bishi Bashi Channel module.",
         .type = OptionType::Bool,
         .game_name = "Bishi Bashi Channel",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Metal Gear Arcade Module",
@@ -1311,7 +1369,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Metal Gear Arcade module.",
         .type = OptionType::Bool,
         .game_name = "Metal Gear",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Quiz Magic Academy Module",
@@ -1319,7 +1377,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Quiz Magic Academy module.",
         .type = OptionType::Bool,
         .game_name = "Quiz Magic Academy",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Road Fighters 3D Module",
@@ -1327,7 +1385,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Road Fighters 3D module.",
         .type = OptionType::Bool,
         .game_name = "Road Fighters 3D",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Steel Chronicle Module",
@@ -1335,7 +1393,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Steel Chronicle module.",
         .type = OptionType::Bool,
         .game_name = "Steel Chronicle",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Mahjong Fight Club Module",
@@ -1343,7 +1401,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Mahjong Fight Club module.",
         .type = OptionType::Bool,
         .game_name = "Mahjong Fight Club",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Scotto Module",
@@ -1351,7 +1409,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Scotto module.",
         .type = OptionType::Bool,
         .game_name = "Scotto",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Dance Rush Module",
@@ -1359,7 +1417,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Dance Rush module.",
         .type = OptionType::Bool,
         .game_name = "DANCERUSH",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Winning Eleven Module",
@@ -1367,7 +1425,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Winning Eleven module.",
         .type = OptionType::Bool,
         .game_name = "Winning Eleven",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Otoca D'or Module",
@@ -1375,7 +1433,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Otoca D'or module.",
         .type = OptionType::Bool,
         .game_name = "Otoca D'or",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load LovePlus Module",
@@ -1383,7 +1441,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable LovePlus module.",
         .type = OptionType::Bool,
         .game_name = "LovePlus",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Charge Machine Module",
@@ -1391,7 +1449,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Charge Machine module.",
         .type = OptionType::Bool,
         .game_name = "Charge Machine",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Ongaku Paradise Module",
@@ -1399,7 +1457,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Ongaku Paradise module.",
         .type = OptionType::Bool,
         .game_name = "Ongaku Paradise",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Force Load Busou Shinki Module",
@@ -1407,7 +1465,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Busou Shinki module.",
         .type = OptionType::Bool,
         .game_name = "Busou Shinki: Armored Princess Battle Conductor",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // LoadCCJModule
@@ -1416,7 +1474,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Chase Chase Jokers module.",
         .type = OptionType::Bool,
         .game_name = "Chase Chase Jokers",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // LoadQKSModule
@@ -1425,7 +1483,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable QuizKnock STADIUM module.",
         .type = OptionType::Bool,
         .game_name = "QuizKnock STADIUM",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // LoadMFGModule
@@ -1434,7 +1492,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Mahjong Fight Girl module.",
         .type = OptionType::Bool,
         .game_name = "Mahjong Fight Girl",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // LoadPCModule
@@ -1443,7 +1501,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Polaris Chord module.",
         .type = OptionType::Bool,
         .game_name = "Polaris Chord",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // LoadMusecaModule
@@ -1452,7 +1510,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Manually enable Museca module.",
         .type = OptionType::Bool,
         .game_name = "Museca",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "Modules Folder Override",
@@ -1560,14 +1618,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "api",
         .desc = "Port the API should be listening on.",
         .type = OptionType::Integer,
-        .category = "SpiceCompanion and API",
+        .category = "Companion & API",
     },
     {
         .title = "API Password",
         .name = "apipass",
         .desc = "Set the custom user password needed to use the API.",
         .type = OptionType::Text,
-        .category = "SpiceCompanion and API",
+        .category = "Companion & API",
         .sensitive = true,
     },
     {
@@ -1575,35 +1633,35 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "apilogging",
         .desc = "Verbose logging of API activity.",
         .type = OptionType::Bool,
-        .category = "API (Dev)",
+        .category = "API Dev",
     },
     {
         .title = "API Serial Port",
         .name = "apiserial",
         .desc = "Serial port the API should be listening on.",
         .type = OptionType::Text,
-        .category = "API (Serial)",
+        .category = "Serial API",
     },
     {
         .title = "API Serial Baud",
         .name = "apiserialbaud",
         .desc = "Baud rate for the serial port.",
         .type = OptionType::Integer,
-        .category = "API (Serial)",
+        .category = "Serial API",
     },
     {
         .title = "API Pretty",
         .name = "apipretty",
         .desc = "Slower, but pretty API output.",
         .type = OptionType::Bool,
-        .category = "API (Dev)",
+        .category = "API Dev",
     },
     {
         .title = "API Debug Mode",
         .name = "apidebug",
         .desc = "Enables API debugging mode.",
         .type = OptionType::Bool,
-        .category = "API (Dev)",
+        .category = "API Dev",
     },
     {
         // APIScreenMirrorQuality
@@ -1613,7 +1671,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Value must be between 0 (poor quality) and 100 (best quality), inclusive. Default: 70.",
         .type = OptionType::Integer,
         .setting_name = "(0-100)",
-        .category = "SpiceCompanion and API",
+        .category = "Companion & API",
     },
     {
         // APIScreenMirrorDivide
@@ -1625,7 +1683,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Value must be 1 or greater. Default: 1.",
         .type = OptionType::Integer,
         .setting_name = "1",
-        .category = "SpiceCompanion and API",
+        .category = "Companion & API",
     },
     {
         .title = "Enable All IO Modules",
@@ -1894,7 +1952,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Broken feature that was not implemented correctly.",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Graphics (Common)",
+        .category = "Graphics",
     },
     {
         // spice2x_NvapiProfile
@@ -1909,7 +1967,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "G-SYNC may fail to disable properly; try enabling full-screen optimizations (FSO) for spice(64).exe.\n\n"
                 "May not work as expected for some games; namely G-SYNC and SDVX.",
         .type = OptionType::Bool,
-        .category = "Graphics (Common)",
+        .category = "Graphics",
+        .quick_setting_category = "Display",
     },
     {
         // DisableAudioHooks
@@ -1920,7 +1979,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "you use a different backend instead of exclusive WASAPI).\n\n"
             "Check this to allow games to natively access your audio device.",
         .type = OptionType::Bool,
-        .category = "Audio (Hacks)",
+        .category = "Audio Hacks",
     },
     {
         // spice2x_DisableVolumeHook
@@ -1932,7 +1991,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Default: off (prevent games from changing audio volume by hooking IAudioEndpointVolume).\n\n"
             "Check this to allow games to freely change your volume.",
         .type = OptionType::Bool,
-        .category = "Audio (Hacks)",
+        .category = "Audio Hacks",
     },
     {
         // AudioShared
@@ -1944,6 +2003,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "you do not need to manually set the sample rate of your audio device before launching the game.",
         .type = OptionType::Bool,
         .category = "Audio",
+        .quick_setting_category = "Audio",
     },
     {
         // spice2x_LowLatencySharedAudio
@@ -1957,6 +2017,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Requires Windows 10 and above.",
         .type = OptionType::Bool,
         .category = "Audio",
+        .quick_setting_category = "Audio",
     },
     {
         // AudioBackend
@@ -1966,7 +2027,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Does nothing for games that do not output to exclusive WASAPI.",
         .type = OptionType::Enum,
         .hidden = true,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .elements = {
             {"asio", "ASIO"},
             {"waveout", "broken, do not use"}
@@ -1979,7 +2040,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Selects the ASIO driver id to use when Spice Audio Backend is set to ASIO.",
         .type = OptionType::Integer,
         .hidden = true,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
     },
     {
         // AsioDriverName
@@ -1990,7 +2051,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "This should only be used as last resort if your audio device does not support WASAPI Exclusive.\n\n"
             "Does nothing for games that do not output to exclusive WASAPI.",
         .type = OptionType::Text,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .picker = OptionPickerType::AsioDriver,
     },
     {
@@ -2000,7 +2061,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "This is automatically enabled when required and not normally needed.",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Audio (Hacks)",
+        .category = "Audio Hacks",
     },
     {
         // DownmixAudioToStereo
@@ -2015,7 +2076,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "rear: rear channels only.\n\n"
             "side: side channels only.",
         .type = OptionType::Enum,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .elements = {
             {"ac4", "AC-4 downmix"},
             {"normalize", "All channels"},
@@ -2044,6 +2105,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"25", "+25 dB"},
             {"30", "+30 dB"},
         },
+        .quick_setting_category = "Audio",
     },
     {
         // AudioResample
@@ -2055,7 +2117,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Select the TARGET sample rate (one that your audio card supports).\n\n"
             "Will result in couple milliseconds of latency and increased CPU usage when active.",
         .type = OptionType::Enum,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .elements = {
             {"44100", "44.1 kHz"},
             {"48000", "48 kHz"},
@@ -2074,7 +2136,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "(at the cost of slightly increased latency).",
         .type = OptionType::Integer,
         .setting_name = "16",
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
     },
     {
         // AsioDownmixToStereo
@@ -2088,7 +2150,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "rear: channels 4/5 (rear left/right).\n\n"
             "side: channels 6/7 (side left/right).",
         .type = OptionType::Enum,
-        .category = "Audio (Conversion)",
+        .category = "Audio Conversion",
         .elements = {
             {"front", "Front (ch 0/1)"},
             {"center", "Center (ch 2)"},
@@ -2130,7 +2192,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "-graphics-force-refresh flag to fix.",
         .type = OptionType::Bool,
         .hidden = true, // superseded by sp2x-autoorientation
-        .category = "Graphics (Common)",
+        .category = "Graphics",
     },
     {
         // spice2x_AutoOrientation
@@ -2148,6 +2210,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"2", "Landscape"},
             {"3", "Landscape, Flipped"}
         },
+        .quick_setting_category = "Display",
     },
     {
         // ChangeResolution
@@ -2171,21 +2234,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "automap",
         .desc = "Enable automap in patch configuration.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
+        .category = "Network Dev",
     },
     {
         .title = "EA Netdump",
         .name = "netdump",
         .desc = "Enable automap in network dumping configuration.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
-    },
-    {
-        .title = "Discord RPC AppID Override",
-        .name = "discordappid",
-        .desc = "Set the discord RPC AppID override.",
-        .type = OptionType::Text,
-        .category = "Development",
+        .category = "Network Dev",
     },
     {
         .title = "Blocking Logger",
@@ -2295,7 +2351,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "",
         .game_name = "QuizKnock STADIUM",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "CCJ Arguments Override",
@@ -2305,7 +2361,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "",
         .game_name = "Chase Chase Jokers",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "CCJ Mouse Trackball",
@@ -2315,6 +2371,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Chase Chase Jokers",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         .title = "CCJ Mouse Trackball Toggle",
@@ -2340,7 +2397,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "",
         .game_name = "Mahjong Fight Girl",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         .title = "MFG Cabinet Type",
@@ -2364,7 +2421,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .setting_name = "",
         .game_name = "Mahjong Fight Girl",
-        .category = "Game Options (Advanced)"
+        .category = "Advanced Game Options"
     },
     {
         // PCArgs
@@ -2374,7 +2431,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "",
         .game_name = "Polaris Chord",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // PCNoIO
@@ -2384,7 +2441,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .setting_name = "",
         .game_name = "Polaris Chord",
-        .category = "Game Options (Advanced)"
+        .category = "Advanced Game Options"
     },
     {
         // PCKnobMode
@@ -2417,7 +2474,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Does not work for all games; can possibly make the game crash! "
             "Can also be changed in Screen Resize window (default F11).",
         .type = OptionType::Enum,
-        .category = "Graphics (Windowed)",
+        .category = "Windowed Settings",
         // match cfg::WindowDecorationMode
         .elements = {
             {"0", "default"},
@@ -2435,7 +2492,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Can also be changed in Screen Resize window (default F11).",
         .type = OptionType::Text,
         .setting_name = "1280,720",
-        .category = "Graphics (Windowed)",
+        .category = "Windowed Settings",
     },
     {
         // spice2x_WindowPosition
@@ -2447,7 +2504,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Can also be changed in Screen Resize window (default F11).",
         .type = OptionType::Text,
         .setting_name = "120,240",
-        .category = "Graphics (Windowed)",
+        .category = "Windowed Settings",
     },
     {
         // spice2x_WindowAlwaysOnTop
@@ -2458,7 +2515,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For windowed mode: make window to be always on top of other windows. "
             "Can also be changed in Screen Resize window (default F11).",
         .type = OptionType::Bool,
-        .category = "Graphics (Windowed)",
+        .category = "Windowed Settings",
     },
     {
         // WindowForceScaling
@@ -2467,7 +2524,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For windowed mode: forcibly set DX9 back buffer dimensions to match window size. "
             "Reduces pixelated scaling artifacts. Works great for some games, but can COMPLETELY BREAK other games - YMMV!",
         .type = OptionType::Bool,
-        .category = "Graphics (Windowed)",
+        .category = "Windowed Settings",
     },
     {
         // WindowDisableRoundedCorners
@@ -2475,7 +2532,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "windownoroundcorners",
         .desc = "Windows 11 and above only: Disables rounded corners on the game window(s).",
         .type = OptionType::Bool,
-        .category = "Graphics (Windowed)",
+        .category = "Windowed Settings",
     },
     {
         // GitaDoraWindowedMainMonitor
@@ -2486,7 +2543,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY1",
         .game_name = "GitaDora",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2498,7 +2555,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY2",
         .game_name = "GitaDora",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2510,7 +2567,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "GitaDora",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2522,7 +2579,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY4",
         .game_name = "GitaDora",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2533,7 +2590,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "1280,720",
         .game_name = "Beatmania IIDX",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
     },
     {
         // spice2x_IIDXWindowedSubscreenPosition
@@ -2543,7 +2600,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "0,0",
         .game_name = "Beatmania IIDX",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
     },
     {
         // IIDXWindowedSubscreenBorderless
@@ -2552,7 +2609,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Remove window decoration from windowed subscreen.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
     },
     {
         // IIDXWindowedSubscreenAlwaysOnTop
@@ -2561,7 +2618,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Keep windowed subscreen on top.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
     },
     {
         // spice2x_JubeatLegacyTouch
@@ -2590,6 +2647,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"improved", ""},
             {"accurate", ""},
         },
+        .quick_setting_category = "Game",
     },
     {
         // spice2x_RBTouchScale
@@ -2637,7 +2695,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For certain buggy ASIO drivers, force unload of ASIO driver when audio stream stops. "
             "Used for working around ASIO drivers that lock up after force quitting games.",
         .type = OptionType::Bool,
-        .category = "Audio (Hacks)",
+        .category = "Audio Hacks",
     },
     {
         // spice2x_IIDXNoESpec
@@ -2649,7 +2707,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .hidden = true,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // spice2x_IIDXWindowedTDJ
@@ -2695,7 +2753,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Note: this is NOT for the motion camera - you still need a real RealSense camera for that!",
         .type = OptionType::Bool,
         .game_name = "DANCERUSH",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // spice2x_IIDXNativeTouch
@@ -2709,7 +2767,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
                 "Enable this when you get duplicate touch inputs from an actual touch screen.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // spice2x_IIDXNoSub
@@ -2721,6 +2779,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // IIDXSubMonitorOverride
@@ -2730,7 +2789,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "\\\\.\\DISPLAY3",
         .game_name = "Beatmania IIDX",
-        .category = "Graphics (Full Screen)",
+        .category = "Full Screen Settings",
         .picker = OptionPickerType::Monitor,
     },
     {
@@ -2744,7 +2803,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "00 is mapped to erase button, and Decimal shows/hides the keypad.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // spice2x_AutoCard
@@ -2764,6 +2823,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"p2", ""},
             {"both", ""},
         },
+        .quick_setting_category = "Network",
     },
     {
         // spice2x_TapeLedAlgorithm
@@ -2793,7 +2853,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "results to the game (e.g., wrong values from NvDisplayConfig for SDVX). You may need to apply additional "
             "hex edits to boot the game correctly.",
         .type = OptionType::Bool,
-        .category = "Graphics (Common)",
+        .category = "Graphics",
     },
     {
         // spice2x_NoD3D9DeviceHook
@@ -2806,7 +2866,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "screenshots, screen resize, touch emulation, streaming to Companion, etc.",
         .type = OptionType::Bool,
         .hidden = true,
-        .category = "Graphics (Common)",
+        .category = "Graphics",
     },
     {
         // spice2x_SDVXNoSub
@@ -2818,6 +2878,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // SDVXFullscreenLandscape
@@ -2864,7 +2925,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Two options: specify a single number (20) to set CQ Level, or specify comma-separated numbers (23,25,20) to set P, B, I levels.",
         .type = OptionType::Text,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // IIDXRecDisable
@@ -2873,7 +2934,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "When enabled, this prevents the play record feature from being used.",
         .type = OptionType::Bool,
         .game_name = "Beatmania IIDX",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
     },
     {
         // MidiAlgoVer
@@ -2922,7 +2983,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Only has an effect when emulating P4IO (arkmdxp4.dll).",
         .type = OptionType::Enum,
         .game_name = "Dance Dance Revolution",
-        .category = "Game Options (Advanced)",
+        .category = "Advanced Game Options",
         .elements = {
             {"auto", ""},
             {"thread", ""},
@@ -2965,7 +3026,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "vsyncbuffer",
         .desc = "Using triple buffering may improve cases of micro-stuttering but increases input latency.",
         .type = OptionType::Enum,
-        .category = "Graphics (Common)",
+        .category = "Graphics",
         .elements = {
             {"2", "double buffer"},
             {"3", "triple buffer"},
@@ -2979,7 +3040,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "1920,1080",
         .game_name = "Sound Voltex",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenPosition
@@ -2989,7 +3050,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "0,0",
         .game_name = "Sound Voltex",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenBorderless
@@ -2998,7 +3059,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Remove window decoration from windowed subscreen.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
     },
     {
         // SDVXWindowedSubscreenAlwaysOnTop
@@ -3007,7 +3068,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Keep windowed subscreen on top.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
-        .category = "Graphics (Windowed)",
+        .category = "Game Windowed Settings",
     },
     {
         // LovePlusCamEnable
@@ -3016,7 +3077,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Allow game to access camera; camera must be compatible with game.",
         .type = OptionType::Bool,
         .game_name = "LovePlus",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // LovePlusPrinterOutputPath
@@ -3025,7 +3086,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Path to folder where images will be stored.",
         .type = OptionType::Text,
         .game_name = "LovePlus",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
         .picker = OptionPickerType::DirectoryPath,
     },
     {
@@ -3034,7 +3095,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Clean up saved images in the output directory on startup.",
         .type = OptionType::Bool,
         .game_name = "LovePlus",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         .title = "LovePlus Printer Output Overwrite",
@@ -3042,7 +3103,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Always overwrite the same file in output directory.",
         .type = OptionType::Bool,
         .game_name = "LovePlus",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // LovePlusPrinterOutputFormat
@@ -3052,7 +3113,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Text,
         .setting_name = "(png/bmp/tga/jpg)",
         .game_name = "LovePlus",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         .title = "LovePlus Printer JPG Quality",
@@ -3061,7 +3122,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Integer,
         .setting_name = "(0-100)",
         .game_name = "LovePlus",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
     },
     {
         // OptionConflictResolution
@@ -3082,7 +3143,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "option to bypass camera error during boot, allowing you to try out the game.",
         .type = OptionType::Bool,
         .game_name = "Otoca D'or",
-        .category = "Game Options (Peripherals)",
+        .category = "Cab Peripherals",
+        .quick_setting_category = "Game",
     },
     {
         // DisableHighResTimer
@@ -3092,7 +3154,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Recommended that you leave this OFF for optimal input latency, "
             "unless you're on a resource-constrained system (e.g., old cabinet PC)",
         .type = OptionType::Bool,
-        .category = "Development"
+        .category = "Performance"
     },
     {
         // EnableICMPHook
@@ -3101,7 +3163,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Emulate keepalive ping replies in user mode, so the game does not need to "
             "open privileged raw ICMP sockets.",
         .type = OptionType::Bool,
-        .category = "Network (Development)",
+        .category = "Network Dev",
     },
     {
         // AutoElevate
@@ -3134,8 +3196,16 @@ const std::vector<std::string> &launcher::get_categories(Options::OptionsCategor
     switch (category) {
         case Options::OptionsCategory::API:
             return CATEGORY_ORDER_API;
-        case Options::OptionsCategory::Basic:
-            return CATEGORY_ORDER_BASIC;
+        case Options::OptionsCategory::GameOptions:
+            return CATEGORY_ORDER_GAME_OPTIONS;
+        case Options::OptionsCategory::Display:
+            return CATEGORY_ORDER_DISPLAY;
+        case Options::OptionsCategory::Audio:
+            return CATEGORY_ORDER_AUDIO;
+        case Options::OptionsCategory::Network:
+            return CATEGORY_ORDER_NETWORK;
+        case Options::OptionsCategory::Overlay:
+            return CATEGORY_ORDER_OVERLAY;
         case Options::OptionsCategory::Advanced:
             return CATEGORY_ORDER_ADVANCED;
         case Options::OptionsCategory::Dev:
@@ -3146,11 +3216,53 @@ const std::vector<std::string> &launcher::get_categories(Options::OptionsCategor
     }
 }
 
+const std::vector<std::string> &launcher::get_quick_setting_categories() {
+    return CATEGORY_ORDER_QUICK;
+}
+
 const std::vector<OptionDefinition> &launcher::get_option_definitions() {
     return OPTION_DEFINITIONS;
 }
 
+void launcher::validate_option_categories() {
+    // every category the grouped Options nav can display, gathered straight from
+    // get_categories() so this stays in sync with the actual nav. the Everything
+    // group maps to CATEGORY_ORDER_NONE ("") and is intentionally excluded.
+    static const Options::OptionsCategory groups[] = {
+        Options::OptionsCategory::GameOptions,
+        Options::OptionsCategory::Display,
+        Options::OptionsCategory::Audio,
+        Options::OptionsCategory::Network,
+        Options::OptionsCategory::Overlay,
+        Options::OptionsCategory::Advanced,
+        Options::OptionsCategory::Dev,
+        Options::OptionsCategory::API,
+    };
+    std::set<std::string> valid;
+    for (auto group : groups) {
+        for (const auto &category : get_categories(group)) {
+            if (!category.empty()) {
+                valid.insert(category);
+            }
+        }
+    }
+
+    // any definition whose category is not in a group list is orphaned: it only
+    // shows up under Search, never in the grouped Options nav/content. treat this
+    // as fatal so it is caught immediately during development.
+    for (const auto &definition : get_option_definitions()) {
+        if (!valid.contains(definition.category)) {
+            log_fatal("options", "option -{} has orphaned category \"{}\"",
+                definition.name, definition.category);
+        }
+    }
+}
+
 std::unique_ptr<std::vector<Option>> launcher::parse_options(int argc, char *argv[]) {
+
+    // one-time sanity check that every option lands in a known nav category
+    static std::once_flag validate_once;
+    std::call_once(validate_once, validate_option_categories);
 
     // generate options
     auto &definitions = get_option_definitions();

@@ -40,6 +40,7 @@ namespace launcher {
             spice2x_Dx9On12,
             NoLegacy,
             RichPresence,
+            DiscordAppID,
             SmartEAmusement,
             EAmusementMaintenance,
             spice2x_EAmusementMaintenance,
@@ -218,7 +219,6 @@ namespace launcher {
             LogLevel,
             EAAutomap,
             EANetdump,
-            DiscordAppID,
             BlockingLogger,
             DebugCreateFile,
             VerboseGraphicsLogging,
@@ -309,7 +309,11 @@ namespace launcher {
 
         enum class OptionsCategory {
             Everything,
-            Basic,
+            GameOptions,
+            Display,
+            Audio,
+            Network,
+            Overlay,
             Advanced,
             Dev,
             API
@@ -319,7 +323,9 @@ namespace launcher {
     extern bool USE_CMD_OVERRIDE;
     
     const std::vector<std::string> &get_categories(Options::OptionsCategory category);
+    const std::vector<std::string> &get_quick_setting_categories();
     const std::vector<OptionDefinition> &get_option_definitions();
+    void validate_option_categories();
     std::unique_ptr<std::vector<Option>> parse_options(int argc, char *argv[]);
     std::vector<Option> merge_options(const std::vector<Option> &options, const std::vector<Option> &overrides);
 

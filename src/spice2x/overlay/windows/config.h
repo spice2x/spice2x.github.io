@@ -20,12 +20,8 @@ namespace overlay::windows {
         CONFIG_TAB_LIGHTS,
         CONFIG_TAB_CARDS,
         CONFIG_TAB_PATCHES,
-        CONFIG_TAB_API,
         CONFIG_TAB_OPTIONS,
-        CONFIG_TAB_ADVANCED,
-        CONFIG_TAB_DEV,
         CONFIG_TAB_PRESETS,
-        CONFIG_TAB_SEARCH,
     };
 
     struct MatchEntry {
@@ -134,6 +130,12 @@ namespace overlay::windows {
         std::string search_filter = "";
         std::string search_filter_in_lower_case = "";
 
+        // Options tab left-nav: selected group, currently highlighted category, and a pending scroll
+        std::string options_group_selected = "";
+        std::string options_category_selected = "";
+        bool options_scroll_pending = false;
+        bool options_scroll_top = false;
+
         std::filesystem::path file_picker_path;
         std::thread *file_picker_thread = nullptr;
         bool file_picker_done = false;
@@ -190,7 +192,9 @@ namespace overlay::windows {
         std::string build_option_value_picker_title(const OptionDefinition& option);
         void build_option_value_picker(Option& option);
         void build_options(
-            std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr);
+            std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr,
+            bool quick_only=false);
+        void build_options_tab(float page_offset);
         void build_about();
         void build_launcher();
         void build_keypad_warning();
