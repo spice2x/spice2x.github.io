@@ -327,9 +327,12 @@ namespace overlay::windows {
             }
 
             if (ImGui::IsItemClicked()) {
+                const bool group_changed = this->options_group_selected != label;
                 this->options_group_selected = label;
                 this->options_category_selected.clear();
-                this->options_scroll_top = true;
+                if (group_changed) {
+                    this->options_scroll_top = true;
+                }
             }
         };
 
@@ -338,9 +341,12 @@ namespace overlay::windows {
         auto nav_category = [this](const char *group_label, const std::string &category) {
             ImGui::Indent(INDENT * 0.5f);
             if (ImGui::Selectable(category.c_str(), this->options_category_selected == category)) {
+                const bool category_changed = this->options_category_selected != category;
                 this->options_group_selected = group_label;
                 this->options_category_selected = category;
-                this->options_scroll_pending = true;
+                if (category_changed) {
+                    this->options_scroll_pending = true;
+                }
             }
             ImGui::Unindent(INDENT * 0.5f);
         };
@@ -406,19 +412,18 @@ namespace overlay::windows {
 
         // content: only the options belonging to the selected group.
         ImGui::BeginChild("OptionsContent", ImVec2(0, content_height), false);
-        if (this->options_scroll_top) {
-            ImGui::SetScrollY(0.0f);
-            this->options_scroll_top = false;
-        }
+
+        const bool scroll_to_top = this->options_scroll_top;
+        this->options_scroll_top = false;
+        float scroll_to_category_y = -1.0f;
 
         // breathing room at the top of the content area
         ImGui::Dummy(ImVec2(0.0f, overlay::apply_scaling(4)));
 
-        // when a category was clicked in the nav, scroll the content to its section
-        auto scroll_anchor = [this](const std::string &category) {
+        // when a category was clicked in the nav, record its Y for deferred scroll
+        auto scroll_anchor = [this, &scroll_to_category_y](const std::string &category) {
             if (this->options_scroll_pending && this->options_category_selected == category) {
-                ImGui::Dummy(ImVec2(0.0f, 0.0f));
-                ImGui::SetScrollHereY(0.0f);
+                scroll_to_category_y = ImGui::GetCursorPosY();
                 this->options_scroll_pending = false;
             }
         };
@@ -471,6 +476,20 @@ namespace overlay::windows {
                     scroll_anchor(category);
                     this->build_options(options, category);
                 }
+            }
+        }
+
+        // apply scroll after content layout to avoid mid-layout jitter
+        if (scroll_to_top) {
+            if (ImGui::GetScrollY() > 0.0f) {
+                ImGui::SetScrollY(0.0f);
+            }
+        } else if (scroll_to_category_y >= 0.0f) {
+            const ImGuiWindow *window = ImGui::GetCurrentWindow();
+            const float desired_scroll = ImTrunc(
+                scroll_to_category_y - window->DecoOuterSizeY1 - window->DecoInnerSizeY1 + window->Scroll.y);
+            if (fabsf(ImGui::GetScrollY() - desired_scroll) > 0.5f) {
+                ImGui::SetScrollFromPosY(scroll_to_category_y, 0.0f);
             }
         }
 
