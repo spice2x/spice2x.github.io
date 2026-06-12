@@ -5,6 +5,7 @@
 
 #include "graphics.h"
 
+#include <chrono>
 #include <set>
 #include <vector>
 #include <mutex>
@@ -61,6 +62,19 @@ static std::mutex GRAPHICS_CAPTURE_SCREENS_M {};
 static CaptureData GRAPHICS_CAPTURE_BUFFER[GRAPHICS_CAPTURE_SCREEN_NO] {};
 static std::mutex GRAPHICS_CAPTURE_BUFFER_M[GRAPHICS_CAPTURE_SCREEN_NO] {};
 static std::condition_variable GRAPHICS_CAPTURE_CV[GRAPHICS_CAPTURE_SCREEN_NO] {};
+static bool GRAPHICS_CAPTURE_SKIP_SIGNAL[GRAPHICS_CAPTURE_SCREEN_NO] {};
+static constexpr std::chrono::milliseconds GRAPHICS_CAPTURE_RECEIVE_TIMEOUT {2000};
+
+static void graphics_capture_cancel_pending(int screen) {
+    std::lock_guard<std::mutex> lock(GRAPHICS_CAPTURE_SCREENS_M);
+
+    for (auto it = GRAPHICS_CAPTURE_SCREENS.rbegin(); it != GRAPHICS_CAPTURE_SCREENS.rend(); ++it) {
+        if (*it == screen) {
+            GRAPHICS_CAPTURE_SCREENS.erase(std::next(it).base());
+            return;
+        }
+    }
+}
 
 static std::optional<graphics_orientation> target_orientation_on_boot;
 static UINT target_refresh_rate_on_boot = 0;
@@ -1209,18 +1223,20 @@ void graphics_capture_trigger(int screen) {
 }
 
 bool graphics_capture_consume(int *screen) {
-    auto flag = !GRAPHICS_CAPTURE_SCREENS.empty();
-    if (flag) {
-        std::lock_guard<std::mutex> lock(GRAPHICS_CAPTURE_SCREENS_M);
+    std::lock_guard<std::mutex> lock(GRAPHICS_CAPTURE_SCREENS_M);
 
-        *screen = GRAPHICS_CAPTURE_SCREENS.back();
-        GRAPHICS_CAPTURE_SCREENS.pop_back();
+    if (GRAPHICS_CAPTURE_SCREENS.empty()) {
+        return false;
     }
-    return flag;
+
+    *screen = GRAPHICS_CAPTURE_SCREENS.back();
+    GRAPHICS_CAPTURE_SCREENS.pop_back();
+    return true;
 }
 
 void graphics_capture_enqueue(int screen, uint8_t *data, size_t width, size_t height) {
     GRAPHICS_CAPTURE_BUFFER_M[screen].lock();
+    GRAPHICS_CAPTURE_SKIP_SIGNAL[screen] = false;
     auto &capture = GRAPHICS_CAPTURE_BUFFER[screen];
     capture.data.reset(data);
     capture.width = width;
@@ -1231,6 +1247,14 @@ void graphics_capture_enqueue(int screen, uint8_t *data, size_t width, size_t he
 }
 
 void graphics_capture_skip(int screen) {
+    if (screen < 0 || screen >= static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)) {
+        return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(GRAPHICS_CAPTURE_BUFFER_M[screen]);
+        GRAPHICS_CAPTURE_SKIP_SIGNAL[screen] = true;
+    }
     GRAPHICS_CAPTURE_CV[screen].notify_one();
 }
 
@@ -1238,11 +1262,32 @@ bool graphics_capture_receive_jpeg(int screen, TooJpeg::WRITE_ONE_BYTE receiver,
         bool rgb, int quality, bool downsample, int divide, uint64_t *timestamp,
         int *width, int *height) {
 
-    // wait for capture event
+    if (screen < 0 || screen >= static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)) {
+        return false;
+    }
+
+    // wait for capture event (with timeout)
     std::unique_lock<std::mutex> lock(GRAPHICS_CAPTURE_BUFFER_M[screen]);
-    GRAPHICS_CAPTURE_CV[screen].wait(lock, [screen] {
-        return GRAPHICS_CAPTURE_BUFFER[screen].data != nullptr;
-    });
+    const bool ready = GRAPHICS_CAPTURE_CV[screen].wait_for(
+            lock,
+            GRAPHICS_CAPTURE_RECEIVE_TIMEOUT,
+            [screen] {
+                return GRAPHICS_CAPTURE_BUFFER[screen].data != nullptr
+                    || GRAPHICS_CAPTURE_SKIP_SIGNAL[screen];
+            });
+
+    if (!ready) {
+        lock.unlock();
+        graphics_capture_cancel_pending(screen);
+        return false;
+    }
+
+    if (GRAPHICS_CAPTURE_SKIP_SIGNAL[screen]) {
+        GRAPHICS_CAPTURE_SKIP_SIGNAL[screen] = false;
+        lock.unlock();
+        return false;
+    }
+
     auto &capture = GRAPHICS_CAPTURE_BUFFER[screen];
     auto capture_data = capture.data;
     auto capture_width = capture.width;

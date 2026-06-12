@@ -1535,6 +1535,9 @@ void graphics_d3d9_on_present(
             log_warning("graphics::d3d9",
                     "failed to get back buffer, hr={}",
                     FMT_HRESULT(hr));
+            if (capture) {
+                graphics_capture_skip(capture_screen);
+            }
             return;
         }
 
@@ -1545,6 +1548,9 @@ void graphics_d3d9_on_present(
                     "failed to acquire back buffer descriptor, hr={}",
                     FMT_HRESULT(hr));
             buffer->Release();
+            if (capture) {
+                graphics_capture_skip(capture_screen);
+            }
             return;
         }
 
@@ -1558,6 +1564,9 @@ void graphics_d3d9_on_present(
                     "failed to acquire temporary surface, hr={}",
                     FMT_HRESULT(hr));
             buffer->Release();
+            if (capture) {
+                graphics_capture_skip(capture_screen);
+            }
             return;
         }
 
@@ -1568,6 +1577,9 @@ void graphics_d3d9_on_present(
                     FMT_HRESULT(hr));
             temp_surface->Release();
             buffer->Release();
+            if (capture) {
+                graphics_capture_skip(capture_screen);
+            }
             return;
         }
 
