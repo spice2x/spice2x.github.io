@@ -203,10 +203,19 @@ namespace games::ccj {
     }
 
     static BOOL WINAPI RegisterRawInputDevices_hook(PCRAWINPUTDEVICE pRawInputDevices, UINT uiNumDevices, UINT cbSize) {
-        if (uiNumDevices == 2 && pRawInputDevices[1].usUsage == HID_USAGE_GENERIC_GAMEPAD)
-            uiNumDevices = 1;
 
-        return RegisterRawInputDevices_orig(pRawInputDevices, uiNumDevices, cbSize);
+        // if the caller is spice itself, then pass through.
+        if (pRawInputDevices &&
+            (uiNumDevices > 0) &&
+            (pRawInputDevices[0].hwndTarget == RI_MGR->input_hwnd)) {
+
+            return RegisterRawInputDevices_orig(pRawInputDevices, uiNumDevices, cbSize);
+        }
+
+        // otherwise, it must be the game; prevent the game from registering for raw input
+        // and hijacking WM_INPUT messages; we need that for rawinput to work.
+        // even if we drop this, trackball emulation and mouse-as-touch input still work
+        return TRUE;
     }
 
 

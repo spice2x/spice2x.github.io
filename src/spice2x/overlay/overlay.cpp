@@ -844,7 +844,10 @@ void overlay::SpiceOverlay::show_main_menu() {
         }
         return;
     }
-    if (ImGui::IsPopupOpen(0, ImGuiPopupFlags_AnyPopup)) {
+
+    // don't open on top of another genuinely-visible popup, but ONLY guard while
+    // the overlay is active
+    if (this->get_active() && ImGui::IsPopupOpen(0, ImGuiPopupFlags_AnyPopup)) {
         return;
     }
 
