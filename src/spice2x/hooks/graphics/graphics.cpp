@@ -1223,14 +1223,15 @@ void graphics_capture_trigger(int screen) {
 }
 
 bool graphics_capture_consume(int *screen) {
-    auto flag = !GRAPHICS_CAPTURE_SCREENS.empty();
-    if (flag) {
-        std::lock_guard<std::mutex> lock(GRAPHICS_CAPTURE_SCREENS_M);
+    std::lock_guard<std::mutex> lock(GRAPHICS_CAPTURE_SCREENS_M);
 
-        *screen = GRAPHICS_CAPTURE_SCREENS.back();
-        GRAPHICS_CAPTURE_SCREENS.pop_back();
+    if (GRAPHICS_CAPTURE_SCREENS.empty()) {
+        return false;
     }
-    return flag;
+
+    *screen = GRAPHICS_CAPTURE_SCREENS.back();
+    GRAPHICS_CAPTURE_SCREENS.pop_back();
+    return true;
 }
 
 void graphics_capture_enqueue(int screen, uint8_t *data, size_t width, size_t height) {
