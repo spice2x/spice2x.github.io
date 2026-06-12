@@ -58,6 +58,7 @@ namespace overlay::windows {
 
     // same width as dummy marker
     const float INDENT = 22.f;
+    const float ROW_INDENT = overlay::apply_scaling(8);
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
@@ -78,6 +79,16 @@ namespace overlay::windows {
 
     static const char *OPTIONS_TAB_SEARCH = "Search";
     static const char *OPTIONS_TAB_QUICK = "Quick Settings";
+
+    // sub-pages shown in the Controller tab left navigation, in display order
+    static const std::vector<std::pair<const char *, ControllerPage>> CONTROLLER_PAGE_GROUPS = {
+        { "Buttons", ControllerPage::CONTROLLER_PAGE_BUTTONS },
+        { "Keypads", ControllerPage::CONTROLLER_PAGE_KEYPADS },
+        { "Analogs", ControllerPage::CONTROLLER_PAGE_ANALOGS },
+        { "Overlay", ControllerPage::CONTROLLER_PAGE_OVERLAY },
+        { "Lights", ControllerPage::CONTROLLER_PAGE_LIGHTS },
+        { "Presets", ControllerPage::CONTROLLER_PAGE_PRESETS },
+    };
 
     std::optional<std::vector<hooks::audio::AsioDriverScanEntry>> asio_driver_list;
 
@@ -238,6 +249,41 @@ namespace overlay::windows {
         }
     }
 
+    // Renders an arrow-less, non-collapsible left-nav header row, highlighted when
+    // active. Returns true if the row was clicked this frame; callers apply their
+    // own selection side effects.
+    bool Config::build_nav_header(const char *label, bool active) {
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
+        if (active) {
+            flags |= ImGuiTreeNodeFlags_Selected;
+        }
+
+        // give the active header a clear, distinct highlight
+        int colors_pushed = 0;
+        if (active) {
+            const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
+            ImGui::PushStyleColor(ImGuiCol_Header, accent);
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, accent);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
+            colors_pushed = 3;
+        }
+
+        // taller frame padding so headers match the height of the category rows below
+        const ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+            ImVec2(frame_padding.x, frame_padding.y + overlay::apply_scaling(4)));
+
+        ImGui::CollapsingHeader(label, flags);
+
+        ImGui::PopStyleVar();
+
+        if (colors_pushed) {
+            ImGui::PopStyleColor(colors_pushed);
+        }
+
+        return ImGui::IsItemClicked();
+    }
+
     void Config::build_options_tab(float page_offset) {
         const float content_height = ImGui::GetWindowContentRegionMax().y - page_offset;
         const float nav_width = overlay::apply_scaling(130);
@@ -297,36 +343,7 @@ namespace overlay::windows {
 
         // arrow-less, non-collapsible nav header; selecting it clears any highlighted category
         auto nav_header = [this](const char *label) {
-            const bool active = this->options_group_selected == label;
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
-            if (active) {
-                flags |= ImGuiTreeNodeFlags_Selected;
-            }
-
-            // give the active header a clear, distinct highlight
-            int colors_pushed = 0;
-            if (active) {
-                const ImVec4 accent = ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive);
-                ImGui::PushStyleColor(ImGuiCol_Header, accent);
-                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, accent);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
-                colors_pushed = 3;
-            }
-
-            // taller frame padding so headers match the height of the category rows below
-            const ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
-                ImVec2(frame_padding.x, frame_padding.y + overlay::apply_scaling(4)));
-
-            ImGui::CollapsingHeader(label, flags);
-
-            ImGui::PopStyleVar();
-
-            if (colors_pushed) {
-                ImGui::PopStyleColor(colors_pushed);
-            }
-
-            if (ImGui::IsItemClicked()) {
+            if (this->build_nav_header(label, this->options_group_selected == label)) {
                 this->options_group_selected = label;
                 this->options_category_selected.clear();
                 this->options_scroll_top = true;
@@ -493,6 +510,146 @@ namespace overlay::windows {
         ImGui::EndChild();
     }
 
+    void Config::build_controller_tab(float page_offset, ControllerPage *page_selected_new) {
+        const float content_height = ImGui::GetWindowContentRegionMax().y - page_offset;
+        const float nav_width = overlay::apply_scaling(100);
+
+        // hide sub-pages that expose no controls for the selected game
+        auto analogs = games::get_analogs(this->games_selected_name);
+        const bool has_analogs = analogs && !analogs->empty();
+        auto lights = games::get_lights(this->games_selected_name);
+        const bool has_lights = lights && !lights->empty();
+        auto page_hidden = [has_analogs, has_lights](ControllerPage page) {
+            switch (page) {
+                case ControllerPage::CONTROLLER_PAGE_ANALOGS:
+                    return !has_analogs;
+                case ControllerPage::CONTROLLER_PAGE_LIGHTS:
+                    return !has_lights;
+                default:
+                    return false;
+            }
+        };
+
+        // default to the first page on first display
+        if (this->controller_page_label.empty()) {
+            this->controller_page_label = CONTROLLER_PAGE_GROUPS.front().first;
+        }
+
+        // if the selected page is no longer available, fall back to the first one
+        for (const auto &group : CONTROLLER_PAGE_GROUPS) {
+            if (this->controller_page_label == group.first && page_hidden(group.second)) {
+                this->controller_page_label = CONTROLLER_PAGE_GROUPS.front().first;
+                break;
+            }
+        }
+
+        // left navigation: one header per sub-page; clicking a header selects that page
+        ImGui::BeginChild("ControllerNav", ImVec2(nav_width, content_height), false);
+
+        // extra vertical padding between nav rows
+        const ImVec2 nav_item_spacing = ImGui::GetStyle().ItemSpacing;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+            ImVec2(nav_item_spacing.x, nav_item_spacing.y + overlay::apply_scaling(2)));
+
+        // arrow-less, non-collapsible nav header; selecting it switches the content pane
+        auto nav_header = [this](const char *label) {
+            if (this->build_nav_header(label, this->controller_page_label == label)) {
+                this->controller_page_label = label;
+            }
+        };
+
+        for (const auto &group : CONTROLLER_PAGE_GROUPS) {
+            if (page_hidden(group.second)) {
+                continue;
+            }
+            nav_header(group.first);
+        }
+
+        ImGui::PopStyleVar();
+
+        ImGui::EndChild(); // ControllerNav
+        ImGui::SameLine();
+
+        // content: only the selected sub-page
+        ImGui::BeginChild("ControllerContent", ImVec2(0, content_height), false);
+
+        // breathing room at the top of the content area
+        ImGui::Dummy(ImVec2(0.0f, overlay::apply_scaling(4)));
+
+        for (const auto &group : CONTROLLER_PAGE_GROUPS) {
+            if (this->controller_page_label != group.first || page_hidden(group.second)) {
+                continue;
+            }
+
+            // reflect the active sub-page so per-page side effects still fire
+            *page_selected_new = group.second;
+
+            switch (group.second) {
+                case ControllerPage::CONTROLLER_PAGE_BUTTONS: {
+
+                    // help text for binding buttons, if the game has one
+                    const auto help_text = games::get_buttons_help(this->games_selected_name);
+                    if (!help_text.empty()) {
+                        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Button Bindings");
+                        ImGui::Spacing();
+                        ImGui::TextWrapped("%s", help_text.c_str());
+                        ImGui::TextUnformatted("");
+                    }
+
+                    // game buttons
+                    this->build_buttons("Game", games::get_buttons(this->games_selected_name));
+                    break;
+                }
+                case ControllerPage::CONTROLLER_PAGE_KEYPADS: {
+
+                    // keypad buttons
+                    this->build_keypad_warning();
+
+                    auto keypad_buttons = games::get_buttons_keypads(this->games_selected_name);
+                    auto keypad_count = eamuse_get_game_keypads_name();
+                    if (keypad_count == 1) {
+                        this->build_buttons("Keypad", keypad_buttons,
+                                            0, games::KeypadButtons::Size - 1);
+                    } else if (keypad_count >= 2) {
+                        this->build_buttons("Keypad", keypad_buttons);
+                    }
+                    break;
+                }
+                case ControllerPage::CONTROLLER_PAGE_ANALOGS: {
+
+                    // help text for binding analog, if the game has one
+                    const auto help_text = games::get_analogs_help(this->games_selected_name);
+                    if (!help_text.empty()) {
+                        ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Analog Bindings");
+                        ImGui::Spacing();
+                        ImGui::TextWrapped("%s", help_text.c_str());
+                        ImGui::TextUnformatted("");
+                    }
+                    this->build_analogs("Game", analogs);
+                    break;
+                }
+                case ControllerPage::CONTROLLER_PAGE_OVERLAY: {
+
+                    // overlay buttons
+                    this->build_buttons("Overlay", games::get_buttons_overlay(this->games_selected_name));
+                    break;
+                }
+                case ControllerPage::CONTROLLER_PAGE_LIGHTS: {
+                    this->build_lights("Game", lights);
+                    break;
+                }
+                case ControllerPage::CONTROLLER_PAGE_PRESETS: {
+                    this->build_presets();
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
+        ImGui::EndChild(); // ControllerContent
+    }
+
     void Config::build_content() {
 
         // if standalone then fullscreen window
@@ -536,87 +693,15 @@ namespace overlay::windows {
                 previous_games_selected, this->games_selected);
         }
 
-        // tab selection
+        // tab + controller sub-page selection
         auto tab_selected_new = ConfigTab::CONFIG_TAB_INVALID;
+        auto controller_page_new = ControllerPage::CONTROLLER_PAGE_INVALID;
         if (ImGui::BeginTabBar("Config Tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
             const int page_offset2 = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 65 : 87);
 
-            if (ImGui::BeginTabItem("Buttons")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_BUTTONS;
-                ImGui::BeginChild("Buttons", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
-
-                // help text for binding buttons, if the game has one
-                const auto help_text = games::get_buttons_help(this->games_selected_name);
-                if (!help_text.empty()) {
-                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Button Bindings");
-                    ImGui::Spacing();
-                    ImGui::TextWrapped("%s", help_text.c_str());
-                    ImGui::TextUnformatted("");
-                }
-
-                // game buttons
-                this->build_buttons("Game", games::get_buttons(this->games_selected_name));
-
-                // keypad buttons
-                ImGui::TextUnformatted("");
-                this->build_keypad_warning();
-
-                auto keypad_buttons = games::get_buttons_keypads(this->games_selected_name);
-                auto keypad_count = eamuse_get_game_keypads_name();
-                if (keypad_count == 1) {
-                    this->build_buttons("Keypad", keypad_buttons,
-                                        0, games::KeypadButtons::Size - 1);
-                } else if (keypad_count >= 2) {
-                    this->build_buttons("Keypad", keypad_buttons);
-                }
-
-                ImGui::EndChild();
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Analogs")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_ANALOGS;
-
-                ImGui::BeginChild("Analogs", ImVec2(
-                    0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
-
-                // help text for binding analog, if the game has one
-                const auto help_text = games::get_analogs_help(this->games_selected_name);
-                if (!help_text.empty()) {
-                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Analog Bindings");
-                    ImGui::Spacing();
-                    ImGui::TextWrapped("%s", help_text.c_str());
-                    ImGui::TextUnformatted("");
-                }
-                this->build_analogs("Game", games::get_analogs(this->games_selected_name));
-                ImGui::EndChild();
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Overlay")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_OVERLAY;
-                ImGui::BeginChild("Overlay", ImVec2(
-                    0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
-
-                // overlay buttons
-                this->build_buttons("Overlay", games::get_buttons_overlay(this->games_selected_name));
-                ImGui::EndChild();
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Lights")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_LIGHTS;
-
-                ImGui::BeginChild("Lights", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
-                this->build_lights("Game", games::get_lights(this->games_selected_name));
-                ImGui::EndChild();
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Presets")) {
-                tab_selected_new = ConfigTab::CONFIG_TAB_PRESETS;
-                ImGui::BeginChild("Presets", ImVec2(
-                        0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
-                this->build_presets();
-                ImGui::EndChild();
+            if (ImGui::BeginTabItem("Controller")) {
+                tab_selected_new = ConfigTab::CONFIG_TAB_CONTROLLER;
+                this->build_controller_tab(page_offset2, &controller_page_new);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Cards")) {
@@ -677,17 +762,21 @@ namespace overlay::windows {
             ImGui::EndTabBar();
         }
 
-        // did tab selection change?
-        if (this->tab_selected != tab_selected_new) {
+        // did tab or controller sub-page selection change?
+        if (this->tab_selected != tab_selected_new ||
+            this->controller_page_selected != controller_page_new) {
             log_misc(
                 "config",
-                "tab selection changed from {} to {}",
+                "selection changed from tab {} page {} to tab {} page {}",
                 static_cast<uint32_t>(this->tab_selected),
-                static_cast<uint32_t>(tab_selected_new));
+                static_cast<uint32_t>(this->controller_page_selected),
+                static_cast<uint32_t>(tab_selected_new),
+                static_cast<uint32_t>(controller_page_new));
 
             stop_lights_test();
 
             this->tab_selected = tab_selected_new;
+            this->controller_page_selected = controller_page_new;
             buttons_many_active = false;
             buttons_many_index = -1;
 
@@ -728,7 +817,7 @@ namespace overlay::windows {
                 "WARNING: PikaPika Pop-Kun model will ignore keypad number input!");
         }
         ImGui::TextWrapped(
-            "Use Toggle Sub Screen button (Overlay tab) to show the overlay and use your mouse, "
+            "Use Toggle Sub Screen button (Controller -> Overlay) to show the overlay and use your mouse, "
             "connect using SpiceCompanion app, or connect a touch screen to enter "
             "the PIN.");
         ImGui::Unindent(INDENT);
@@ -803,8 +892,8 @@ namespace overlay::windows {
         ImGui::Separator();
 
         if (ImGui::BeginTable("ButtonsTable", 3, ImGuiTableFlags_Resizable)) {
-            // longest column is probably "Toggle Virtual Keypad P1" in Overlay tab
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(220));
+            // longest column is probably "Toggle Virtual Keypad P1" in the Overlay page
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(200));
             ImGui::TableSetupColumn("Binding", ImGuiTableColumnFlags_WidthStretch);
             ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(170));
 
@@ -812,9 +901,9 @@ namespace overlay::windows {
             if (!buttons || buttons->empty()) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::Indent(INDENT);
+                ImGui::Indent(ROW_INDENT);
                 ImGui::TextDisabled("-");
-                ImGui::Unindent(INDENT);
+                ImGui::Unindent(ROW_INDENT);
                 ImGui::TableNextColumn();
                 ImGui::TextDisabled("-");
                 ImGui::TableNextColumn();
@@ -882,7 +971,7 @@ namespace overlay::windows {
         const bool primary_button_state = GameAPI::Buttons::getState(RI_MGR, primary_button);
         const bool button_state = GameAPI::Buttons::getState(RI_MGR, *button, false);
 
-        ImGui::Indent(INDENT);
+        ImGui::Indent(ROW_INDENT);
         if (alt_index == 0) {
             // primary button
             ImGui::AlignTextToFramePadding();
@@ -909,7 +998,7 @@ namespace overlay::windows {
                 ImGui::PopStyleColor();
             }
         }
-        ImGui::Unindent(INDENT);
+        ImGui::Unindent(ROW_INDENT);
 
         // column for key binding display
         ImGui::TableNextColumn();
@@ -1013,8 +1102,8 @@ namespace overlay::windows {
                 "You just bound an analog axis to a digital button.\n"
                 "\n"
                 "If your controller supports analog input (turntable,\n"
-                "knob, slider) you should instead use the Analog tab and\n"
-                "bind as an analog axis.");
+                "knob, slider) you should instead use the Analogs page\n"
+                "and bind as an analog axis.");
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
@@ -1678,7 +1767,7 @@ namespace overlay::windows {
             ImGui::TextUnformatted("Press any button for:");
             ImGui::Text("    %s", button->getName().c_str());
             ImGui::TextUnformatted("");
-            const bool escape_cancels_bind = (this->tab_selected != ConfigTab::CONFIG_TAB_OVERLAY);
+            const bool escape_cancels_bind = (this->controller_page_selected != ControllerPage::CONTROLLER_PAGE_OVERLAY);
             if (escape_cancels_bind) {
                 ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Press ESC to cancel!");
                 ImGui::TextUnformatted("");
@@ -4857,8 +4946,7 @@ namespace overlay::windows {
                 // option name
                 ImGui::TableNextColumn();
                 ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0);
-                const float row_indent = overlay::apply_scaling(8);
-                ImGui::Indent(row_indent);
+                ImGui::Indent(ROW_INDENT);
 
                 if (option.is_active()) {
                     // active option
@@ -4900,7 +4988,7 @@ namespace overlay::windows {
                     clipboard::copy_text(param.c_str());
                 }
 
-                ImGui::Unindent(row_indent);
+                ImGui::Unindent(ROW_INDENT);
                 ImGui::PopStyleVar(); // ImGuiStyleVar_ItemSpacing
 
                 // option widgets
@@ -5620,9 +5708,9 @@ namespace overlay::windows {
 
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None, 3.f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None, 1.f);
-                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
-                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
-                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
+                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(50.f));
+                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(50.f));
+                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(50.f));
                 ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(140.f));
                 ImGui::TableHeadersRow();
 
@@ -5633,7 +5721,8 @@ namespace overlay::windows {
 
                     // name
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(t.name.c_str());
+                    ImGui::TextTruncated(
+                        t.name, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
 
                     // type
                     ImGui::TableNextColumn();
