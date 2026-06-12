@@ -706,10 +706,7 @@ namespace overlay::windows {
             }
             if (ImGui::BeginTabItem("Cards")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_CARDS;
-                ImGui::BeginChild("Cards", ImVec2(
-                    0, ImGui::GetWindowContentRegionMax().y - page_offset2), false);
-                this->build_cards();
-                ImGui::EndChild();
+                this->build_cards_tab(page_offset2);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Patches")) {
@@ -4124,15 +4121,70 @@ namespace overlay::windows {
         return detected_controller;
     }
 
-    void Config::build_cards() {
-
-        constexpr float TEXT_INPUT_WIDTH = 240.f;
+    void Config::build_cards_tab(float page_offset) {
+        const float content_height = ImGui::GetWindowContentRegionMax().y - page_offset;
+        const float nav_width = overlay::apply_scaling(100);
 
         // early quit
         if (this->games_selected < 0 || this->games_selected_name.empty()) {
             ImGui::Text("Please select a game first.");
             return;
         }
+
+        // sub-pages shown in the left navigation, in display order
+        static const std::vector<std::pair<const char *, void (Config::*)()>> pages = {
+            { "Virtual Cards", &Config::build_cards_virtual },
+            { "Card Reader", &Config::build_cards_reader },
+            { "Card Manager", &Config::build_cards_manager },
+        };
+
+        // default to the first page on first display
+        if (this->cards_page_label.empty()) {
+            this->cards_page_label = pages.front().first;
+        }
+
+        // left navigation: one header per sub-page; clicking a header selects that page
+        ImGui::BeginChild("CardsNav", ImVec2(nav_width, content_height), false);
+
+        // extra vertical padding between nav rows
+        const ImVec2 nav_item_spacing = ImGui::GetStyle().ItemSpacing;
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+            ImVec2(nav_item_spacing.x, nav_item_spacing.y + overlay::apply_scaling(2)));
+
+        // arrow-less, non-collapsible nav header; selecting it switches the content pane
+        auto nav_header = [this](const char *label) {
+            if (this->build_nav_header(label, this->cards_page_label == label)) {
+                this->cards_page_label = label;
+            }
+        };
+
+        for (const auto &page : pages) {
+            nav_header(page.first);
+        }
+
+        ImGui::PopStyleVar();
+
+        ImGui::EndChild(); // CardsNav
+        ImGui::SameLine();
+
+        // content: only the selected sub-page
+        ImGui::BeginChild("CardsContent", ImVec2(0, content_height), false);
+
+        // breathing room at the top of the content area
+        ImGui::Dummy(ImVec2(0.0f, overlay::apply_scaling(4)));
+
+        for (const auto &page : pages) {
+            if (this->cards_page_label == page.first) {
+                (this->*page.second)();
+                break;
+            }
+        }
+
+        ImGui::EndChild(); // CardsContent
+    }
+
+    void Config::build_cards_virtual() {
+        constexpr float TEXT_INPUT_WIDTH = 240.f;
 
         ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Card overrides");
         ImGui::Spacing();
@@ -4509,10 +4561,9 @@ namespace overlay::windows {
             eamuse_update_keypad_bindings();
             read_card();
         }
+    }
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
+    void Config::build_cards_reader() {
         ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "NFC / API card reader status");
         ImGui::Spacing();
         if (cfg::CONFIGURATOR_STANDALONE) {
@@ -4521,7 +4572,7 @@ namespace overlay::windows {
             ImGui::TextWrapped("Test NFC card readers and card insertions over API.");
             ImGui::SameLine();
             ImGui::HelpMarker(
-                "Enable card readers in Advanced tab, under Card Readers section, and restart. "
+                "Enable card readers in Options tab, under NFC Card Readers section, and restart. "
                 "Alternatively, launch spicecfg in command line and pass in the correct parameters. "
                 "BT5API readers currently do not show the card number in this UI.");
             ImGui::Spacing();
@@ -4572,20 +4623,12 @@ namespace overlay::windows {
             ImGui::TextDisabled("%s", "Only available in spicecfg.");
             ImGui::Spacing();
         }
+    }
 
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Card Manager");
-        ImGui::Spacing();
-        if (ImGui::Button("Open Card Manager")) {
-            if (this->overlay->window_cards != nullptr) {
-                this->overlay->window_cards->set_active(true);
-                this->overlay->window_cards->bring_to_front();
-            }
+    void Config::build_cards_manager() {
+        if (this->overlay->window_cards != nullptr) {
+            this->overlay->window_cards->build_content();
         }
-        ImGui::TextUnformatted("");
-        ImGui::TextUnformatted("");
     }
 
     bool Config::validate_ea_card(char card_number[16]) {
