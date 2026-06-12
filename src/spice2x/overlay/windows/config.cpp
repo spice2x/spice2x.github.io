@@ -58,6 +58,7 @@ namespace overlay::windows {
 
     // same width as dummy marker
     const float INDENT = 22.f;
+    const float ROW_INDENT = overlay::apply_scaling(8);
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
@@ -816,7 +817,7 @@ namespace overlay::windows {
                 "WARNING: PikaPika Pop-Kun model will ignore keypad number input!");
         }
         ImGui::TextWrapped(
-            "Use Toggle Sub Screen button (Controller \u2192 Overlay) to show the overlay and use your mouse, "
+            "Use Toggle Sub Screen button (Controller -> Overlay) to show the overlay and use your mouse, "
             "connect using SpiceCompanion app, or connect a touch screen to enter "
             "the PIN.");
         ImGui::Unindent(INDENT);
@@ -900,9 +901,9 @@ namespace overlay::windows {
             if (!buttons || buttons->empty()) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::Indent(INDENT);
+                ImGui::Indent(ROW_INDENT);
                 ImGui::TextDisabled("-");
-                ImGui::Unindent(INDENT);
+                ImGui::Unindent(ROW_INDENT);
                 ImGui::TableNextColumn();
                 ImGui::TextDisabled("-");
                 ImGui::TableNextColumn();
@@ -970,7 +971,7 @@ namespace overlay::windows {
         const bool primary_button_state = GameAPI::Buttons::getState(RI_MGR, primary_button);
         const bool button_state = GameAPI::Buttons::getState(RI_MGR, *button, false);
 
-        ImGui::Indent(INDENT);
+        ImGui::Indent(ROW_INDENT);
         if (alt_index == 0) {
             // primary button
             ImGui::AlignTextToFramePadding();
@@ -997,7 +998,7 @@ namespace overlay::windows {
                 ImGui::PopStyleColor();
             }
         }
-        ImGui::Unindent(INDENT);
+        ImGui::Unindent(ROW_INDENT);
 
         // column for key binding display
         ImGui::TableNextColumn();
@@ -4945,8 +4946,7 @@ namespace overlay::windows {
                 // option name
                 ImGui::TableNextColumn();
                 ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0);
-                const float row_indent = overlay::apply_scaling(8);
-                ImGui::Indent(row_indent);
+                ImGui::Indent(ROW_INDENT);
 
                 if (option.is_active()) {
                     // active option
@@ -4988,7 +4988,7 @@ namespace overlay::windows {
                     clipboard::copy_text(param.c_str());
                 }
 
-                ImGui::Unindent(row_indent);
+                ImGui::Unindent(ROW_INDENT);
                 ImGui::PopStyleVar(); // ImGuiStyleVar_ItemSpacing
 
                 // option widgets
