@@ -12,16 +12,24 @@
 
 namespace overlay::windows {
 
+    // top-level tabs in the configuration window
     enum class ConfigTab {
         CONFIG_TAB_INVALID,
-        CONFIG_TAB_BUTTONS,
-        CONFIG_TAB_ANALOGS,
-        CONFIG_TAB_OVERLAY,
-        CONFIG_TAB_LIGHTS,
+        CONFIG_TAB_CONTROLLER,
         CONFIG_TAB_CARDS,
         CONFIG_TAB_PATCHES,
         CONFIG_TAB_OPTIONS,
-        CONFIG_TAB_PRESETS,
+    };
+
+    // sub-pages shown in the Controller tab's left navigation
+    enum class ControllerPage {
+        CONTROLLER_PAGE_INVALID,
+        CONTROLLER_PAGE_BUTTONS,
+        CONTROLLER_PAGE_KEYPADS,
+        CONTROLLER_PAGE_ANALOGS,
+        CONTROLLER_PAGE_OVERLAY,
+        CONTROLLER_PAGE_LIGHTS,
+        CONTROLLER_PAGE_PRESETS,
     };
 
     struct MatchEntry {
@@ -41,8 +49,9 @@ namespace overlay::windows {
         std::vector<Game> games_list;
         std::vector<const char *> games_names;
 
-        // tabs ui
+        // currently selected top-level tab and Controller sub-page
         ConfigTab tab_selected = ConfigTab::CONFIG_TAB_INVALID;
+        ControllerPage controller_page_selected = ControllerPage::CONTROLLER_PAGE_INVALID;
 
         // buttons tab
         bool buttons_keyboard_state[0xFF];
@@ -136,6 +145,9 @@ namespace overlay::windows {
         bool options_scroll_pending = false;
         bool options_scroll_top = false;
 
+        // Controller tab left-nav: selected sub-page
+        std::string controller_page_label = "";
+
         std::filesystem::path file_picker_path;
         std::thread *file_picker_thread = nullptr;
         bool file_picker_done = false;
@@ -195,6 +207,8 @@ namespace overlay::windows {
             std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr,
             bool quick_only=false);
         void build_options_tab(float page_offset);
+        void build_controller_tab(float page_offset, ControllerPage *page_selected_new);
+        bool build_nav_header(const char *label, bool active);
         void build_about();
         void build_launcher();
         void build_keypad_warning();
