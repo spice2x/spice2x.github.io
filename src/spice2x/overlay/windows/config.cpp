@@ -5708,9 +5708,9 @@ namespace overlay::windows {
 
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None, 3.f);
                 ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_None, 1.f);
-                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
-                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
-                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(60.f));
+                ImGui::TableSetupColumn("Buttons", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(50.f));
+                ImGui::TableSetupColumn("Analogs", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(50.f));
+                ImGui::TableSetupColumn("Lights", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(50.f));
                 ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(140.f));
                 ImGui::TableHeadersRow();
 
@@ -5721,7 +5721,8 @@ namespace overlay::windows {
 
                     // name
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(t.name.c_str());
+                    ImGui::TextTruncated(
+                        t.name, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
 
                     // type
                     ImGui::TableNextColumn();
