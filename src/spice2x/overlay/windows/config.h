@@ -148,6 +148,9 @@ namespace overlay::windows {
         // Controller tab left-nav: selected sub-page
         std::string controller_page_label = "";
 
+        // Cards tab left-nav: selected sub-page
+        std::string cards_page_label = "";
+
         std::filesystem::path file_picker_path;
         std::thread *file_picker_thread = nullptr;
         bool file_picker_done = false;
@@ -200,7 +203,10 @@ namespace overlay::windows {
                                    const std::string &target_device);
         ControllerTemplate capture_current_bindings(const std::string &name);
 
-        void build_cards();
+        void build_cards_tab(float page_offset);
+        void build_cards_virtual();
+        void build_cards_reader();
+        void build_cards_manager();
         std::string build_option_value_picker_title(const OptionDefinition& option);
         void build_option_value_picker(Option& option);
         void build_options(

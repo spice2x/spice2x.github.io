@@ -385,10 +385,16 @@ namespace overlay::windows {
         ImGui::Spacing();
 
         // cards list
-        // use all available vertical space, minus height footer (a row of buttons and separator)
+        // use all available vertical space, minus the footer that follows in
+        // build_content(): a separator + spacing, then a row of buttons
+        const ImGuiStyle &style = ImGui::GetStyle();
+        const float footer_height =
+            style.ItemSpacing.y * 3.f     // spacing around the separator and before the footer
+            + 1.f                         // separator line
+            + ImGui::GetFrameHeightWithSpacing(); // footer button row
         if (ImGui::BeginChild(
                 "cards",
-                ImVec2(0, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeightWithSpacing() - 8.f))) {
+                ImVec2(0, ImGui::GetContentRegionAvail().y - footer_height))) {
 
             // -card0 / -card1 override
             for (size_t i = 0; i < 2; i++) {
