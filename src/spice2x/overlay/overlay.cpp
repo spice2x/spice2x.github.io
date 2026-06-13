@@ -308,15 +308,9 @@ void overlay::SpiceOverlay::init() {
     // configure IO
     auto &io = ImGui::GetIO();
     io.UserData = this;
-    io.ConfigFlags = ImGuiConfigFlags_NavEnableKeyboard
-                     | ImGuiConfigFlags_NavEnableGamepad
-                     | ImGuiConfigFlags_NavEnableSetMousePos;
-
+    io.ConfigFlags = ImGuiConfigFlags_None;
     if (!cfg::CONFIGURATOR_STANDALONE) {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    }
-    if (is_touch_available("SpiceOverlay::init")) {
-        io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
     }
 
     // temporarily turn this off as it can cause crashes during font load failures
