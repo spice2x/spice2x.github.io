@@ -312,9 +312,6 @@ void overlay::SpiceOverlay::init() {
     if (!cfg::CONFIGURATOR_STANDALONE) {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     }
-    if (is_touch_available("SpiceOverlay::init")) {
-        io.ConfigFlags |= ImGuiConfigFlags_IsTouchScreen;
-    }
 
     // temporarily turn this off as it can cause crashes during font load failures
     // turns back on in ImGui_ImplSpice_Init
