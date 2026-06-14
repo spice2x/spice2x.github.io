@@ -396,6 +396,11 @@ namespace overlay::windows {
                 "cards",
                 ImVec2(0, ImGui::GetContentRegionAvail().y - footer_height))) {
 
+            // extra vertical padding between card rows
+            const ImVec2 item_spacing = ImGui::GetStyle().ItemSpacing;
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+                    ImVec2(item_spacing.x, item_spacing.y + overlay::apply_scaling(2)));
+
             // -card0 / -card1 override
             for (size_t i = 0; i < 2; i++) {
                 if (card_cmd_overrides[i].has_value()) {
@@ -417,6 +422,8 @@ namespace overlay::windows {
 
                 build_card_selectable(card);
             }
+
+            ImGui::PopStyleVar(); // ImGuiStyleVar_ItemSpacing
         }
         ImGui::EndChild();
     }
