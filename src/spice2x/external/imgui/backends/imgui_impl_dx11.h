@@ -6,6 +6,7 @@
 //  [X] Renderer: Large meshes support (64k+ vertices) even with 16-bit indices (ImGuiBackendFlags_RendererHasVtxOffset).
 //  [X] Renderer: Texture updates support for dynamic font atlas (ImGuiBackendFlags_RendererHasTextures).
 //  [X] Renderer: Expose selected render state for draw callbacks to use. Access in '(ImGui_ImplXXXX_RenderState*)GetPlatformIO().Renderer_RenderState'.
+//  [X] Renderer: Multi-viewport support (multiple windows). Enable with 'io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable'.
 
 // You can use unmodified imgui_impl_* files in your project. See examples/ folder for examples of using this.
 // Prefer including the entire imgui/ repository into your project (either as a copy or as a submodule), and only build the backends you need.
@@ -44,9 +45,9 @@ struct ImGui_ImplDX11_RenderState
 {
     ID3D11Device*           Device;
     ID3D11DeviceContext*    DeviceContext;
-    ID3D11SamplerState*     SamplerLinear;
-    ID3D11SamplerState*     SamplerNearest;
     ID3D11Buffer*           VertexConstantBuffer;
+    //ID3D11SamplerState*   SamplerLinear;          // Use ImDrawList::AddCallback(ImGui::GetPlatform().DrawCallback_SetSamplerLinear)
+    //ID3D11SamplerState*   SamplerNearest;         // Use ImDrawList::AddCallback(ImGui::GetPlatform().DrawCallback_SetSamplerNearest)
 };
 
 #endif // #ifndef IMGUI_DISABLE
