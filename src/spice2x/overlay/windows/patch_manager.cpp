@@ -647,6 +647,8 @@ namespace overlay::windows {
             }
         } else {
             // draw patches
+            ImGui::PushStyleVarY(ImGuiStyleVar_CellPadding,
+                    ImGui::GetStyle().CellPadding.y + overlay::apply_scaling(2));
             if (ImGui::BeginTable("PatchesTable", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
                 ImGui::TableSetupColumn("##NameColumn", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("##OptionsColumn", ImGuiTableColumnFlags_WidthFixed, 240);
@@ -875,6 +877,7 @@ namespace overlay::windows {
 
                 ImGui::EndTable();
             }
+            ImGui::PopStyleVar(); // ImGuiStyleVar_CellPadding
         }
     }
 

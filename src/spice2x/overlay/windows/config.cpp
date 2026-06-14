@@ -59,6 +59,7 @@ namespace overlay::windows {
     // same width as dummy marker
     const float INDENT = 22.f;
     const float ROW_INDENT = overlay::apply_scaling(8);
+    const float ROW_CELL_PADDING_EXTRA = overlay::apply_scaling(2);
     const auto PROJECT_URL = "https://spice2x.github.io";
 
     constexpr ImVec4 TEXT_COLOR_GREEN(0.f, 1.f, 0.f, 1.f);
@@ -888,6 +889,8 @@ namespace overlay::windows {
 
         ImGui::Separator();
 
+        ImGui::PushStyleVarY(ImGuiStyleVar_CellPadding,
+                ImGui::GetStyle().CellPadding.y + ROW_CELL_PADDING_EXTRA);
         if (ImGui::BeginTable("ButtonsTable", 3, ImGuiTableFlags_Resizable)) {
             // longest column is probably "Toggle Virtual Keypad P1" in the Overlay page
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(200));
@@ -936,6 +939,7 @@ namespace overlay::windows {
 
             ImGui::EndTable();
         }
+        ImGui::PopStyleVar(); // ImGuiStyleVar_CellPadding
     }
 
     void Config::build_button(
@@ -2407,6 +2411,8 @@ namespace overlay::windows {
         }
 
         ImGui::Separator();
+        ImGui::PushStyleVarY(ImGuiStyleVar_CellPadding,
+                ImGui::GetStyle().CellPadding.y + ROW_CELL_PADDING_EXTRA);
         if (ImGui::BeginTable("AnalogsTable", 3, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
 
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, overlay::apply_scaling(240));
@@ -2514,6 +2520,7 @@ namespace overlay::windows {
 
             ImGui::EndTable();
         }
+        ImGui::PopStyleVar(); // ImGuiStyleVar_CellPadding
     }
 
     void Config::edit_analog_popup(Analog &analog, std::string title) {
@@ -3097,6 +3104,9 @@ namespace overlay::windows {
         }
         ImGui::Spacing();
 
+        ImGui::PushStyleVarY(ImGuiStyleVar_CellPadding,
+                ImGui::GetStyle().CellPadding.y + ROW_CELL_PADDING_EXTRA);
+
         auto begin_lights_table = [&]() -> bool {
             if (ImGui::BeginTable("LightsTable", 3, ImGuiTableFlags_Resizable)) {
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
@@ -3122,6 +3132,7 @@ namespace overlay::windows {
                 ImGui::TextDisabled("-");
                 ImGui::EndTable();
             }
+            ImGui::PopStyleVar(); // ImGuiStyleVar_CellPadding
             return;
         }
 
@@ -3173,6 +3184,7 @@ namespace overlay::windows {
         if (table_begin) {
             ImGui::EndTable();
         }
+        ImGui::PopStyleVar(); // ImGuiStyleVar_CellPadding
     }
 
     void Config::build_light(
@@ -5746,6 +5758,8 @@ namespace overlay::windows {
 
         // preset list table
         if (!templates_cache.empty()) {
+            ImGui::PushStyleVarY(ImGuiStyleVar_CellPadding,
+                    ImGui::GetStyle().CellPadding.y + ROW_CELL_PADDING_EXTRA);
             if (ImGui::BeginTable("TemplateList", 6,
                     ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 
@@ -5814,6 +5828,7 @@ namespace overlay::windows {
 
                 ImGui::EndTable();
             }
+            ImGui::PopStyleVar(); // ImGuiStyleVar_CellPadding
             ImGui::Spacing();
         } else {
             ImGui::TextDisabled("No presets available for this game.");
