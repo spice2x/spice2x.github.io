@@ -111,7 +111,70 @@ struct render_state_t {
 };
 
 // Functions
-static void ImGui_ImplDX9_SetupRenderState(ImDrawData* draw_data, struct render_state_t *render_state)
+
+// spice ldj
+// Save the host game's render targets / depth-stencil and redirect rendering to the
+// device back buffer. Must be called exactly once per RenderDrawData (paired with the
+// restore block at the end of RenderDrawData), NOT from SetupRenderState which can be
+// re-invoked via ImDrawCallback_ResetRenderState.
+static void ImGui_ImplDX9_RedirectToBackBuffer(LPDIRECT3DDEVICE9 device, struct render_state_t *render_state)
+{
+    if (FAILED(device->GetDeviceCaps(&render_state->caps))) {
+        render_state->caps.NumSimultaneousRTs = 0UL;
+    }
+
+    // save all previous render target state
+    for (size_t target = 0; target < std::min(8UL, render_state->caps.NumSimultaneousRTs); target++) {
+        if (FAILED(device->GetRenderTarget(target, &render_state->render_targets[target]))) {
+            render_state->render_targets[target] = nullptr;
+        }
+    }
+
+    // get the previous depth stencil
+    if (FAILED(device->GetDepthStencilSurface(&render_state->depth_stencil))) {
+        render_state->depth_stencil = nullptr;
+    }
+
+    // set the back buffer as the current render target
+    if (SUCCEEDED(device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &render_state->back_buffer))) {
+        device->SetRenderTarget(0, render_state->back_buffer);
+        device->SetDepthStencilSurface(nullptr);
+
+        for (size_t target = 1; target < std::min(8UL, render_state->caps.NumSimultaneousRTs); target++) {
+            device->SetRenderTarget(target, nullptr);
+        }
+    } else {
+        render_state->back_buffer = nullptr;
+    }
+}
+
+// spice ldj
+// Restore the host game's render targets / depth-stencil saved by
+// ImGui_ImplDX9_RedirectToBackBuffer and release all references taken there.
+static void ImGui_ImplDX9_RestoreRenderTargets(LPDIRECT3DDEVICE9 device, struct render_state_t *render_state)
+{
+    if (render_state->back_buffer) {
+        render_state->back_buffer->Release();
+        render_state->back_buffer = nullptr;
+    }
+    // restore previous depth stencil
+    if (render_state->depth_stencil) {
+        device->SetDepthStencilSurface(render_state->depth_stencil);
+        render_state->depth_stencil->Release();
+        render_state->depth_stencil = nullptr;
+    }
+    // restore all render target state
+    for (size_t target = 0; target < std::min(8UL, render_state->caps.NumSimultaneousRTs); target++) {
+        auto render_target = render_state->render_targets[target];
+
+        if (render_target) {
+            device->SetRenderTarget(target, render_target);
+            render_target->Release();
+        }
+    }
+}
+
+static void ImGui_ImplDX9_SetupRenderState(ImDrawData* draw_data)
 {
     ImGui_ImplDX9_Data* bd = ImGui_ImplDX9_GetBackendData();
 
@@ -125,37 +188,6 @@ static void ImGui_ImplDX9_SetupRenderState(ImDrawData* draw_data, struct render_
 
     LPDIRECT3DDEVICE9 device = bd->pd3dDevice;
     device->SetViewport(&vp);
-
-    // spice ldj
-    {
-        if (FAILED(device->GetDeviceCaps(&render_state->caps))) {
-            render_state->caps.NumSimultaneousRTs = 0UL;
-        }
-
-        // save all previous render target state
-        for (size_t target = 0; target < std::min(8UL, render_state->caps.NumSimultaneousRTs); target++) {
-            if (FAILED(device->GetRenderTarget(target, &render_state->render_targets[target]))) {
-                render_state->render_targets[target] = nullptr;
-            }
-        }
-
-        // get the previous depth stencil
-        if (FAILED(device->GetDepthStencilSurface(&render_state->depth_stencil))) {
-            render_state->depth_stencil = nullptr;
-        }
-
-        // set the back buffer as the current render target
-        if (SUCCEEDED(device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &render_state->back_buffer))) {
-            device->SetRenderTarget(0, render_state->back_buffer);
-            device->SetDepthStencilSurface(nullptr);
-
-            for (size_t target = 1; target < std::min(8UL, render_state->caps.NumSimultaneousRTs); target++) {
-                device->SetRenderTarget(target, nullptr);
-            }
-        } else {
-            render_state->back_buffer = nullptr;
-        }
-    }
 
     // Setup render state: fixed-pipeline, alpha-blending, no face culling, no depth testing, shade mode (for gradient), bilinear sampling.
     device->SetPixelShader(nullptr);
@@ -311,9 +343,16 @@ void ImGui_ImplDX9_RenderDrawData(ImDrawData* draw_data)
     device->SetIndices(bd->pIB);
     device->SetFVF(D3DFVF_CUSTOMVERTEX);
 
-    // Setup desired DX state
+
+    // spice ldj: redirect to back buffer once (before SetupRenderState so its
+    // viewport isn't clobbered by SetRenderTarget); paired with
+    // ImGui_ImplDX9_RestoreRenderTargets after the render loop.
     struct render_state_t render_state = {};
-    ImGui_ImplDX9_SetupRenderState(draw_data, &render_state);
+    ImGui_ImplDX9_RedirectToBackBuffer(device, &render_state);
+
+
+    // Setup desired DX state
+    ImGui_ImplDX9_SetupRenderState(draw_data);
 
     // Render command lists
     // (Because we merged all buffers into a single one, we maintain our own offset into them)
@@ -328,9 +367,8 @@ void ImGui_ImplDX9_RenderDrawData(ImDrawData* draw_data)
             if (pcmd->UserCallback != nullptr)
             {
                 // User callback, registered via ImDrawList::AddCallback()
-                // (ImGui_ImplDX9_DrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
                 if (pcmd->UserCallback == ImGui_ImplDX9_DrawCallback_ResetRenderState)
-                    ImGui_ImplDX9_SetupRenderState(draw_data, &render_state);
+                    ImGui_ImplDX9_SetupRenderState(draw_data);
                 else
                     pcmd->UserCallback(draw_list, pcmd);
             }
@@ -362,27 +400,7 @@ void ImGui_ImplDX9_RenderDrawData(ImDrawData* draw_data)
         bd->pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 0, 0, 0);
 
     // spice ldj
-    {
-        if (render_state.back_buffer) {
-            render_state.back_buffer->Release();
-            render_state.back_buffer = nullptr;
-        }
-        // restore previous depth stencil
-        if (render_state.depth_stencil) {
-            device->SetDepthStencilSurface(render_state.depth_stencil);
-            render_state.depth_stencil->Release();
-            render_state.depth_stencil = nullptr;
-        }
-        // restore all render target state
-        for (size_t target = 0; target < std::min(8UL, render_state.caps.NumSimultaneousRTs); target++) {
-            auto render_target = render_state.render_targets[target];
-
-            if (render_target) {
-                device->SetRenderTarget(target, render_target);
-                render_target->Release();
-            }
-        }
-    }
+    ImGui_ImplDX9_RestoreRenderTargets(device, &render_state);
 
     // Restore the DX9 transform
     device->SetTransform(D3DTS_WORLD, &last_world);
@@ -519,6 +537,34 @@ void ImGui_ImplDX9_InvalidateDeviceObjects()
     ImGui_ImplDX9_InvalidateDeviceObjectsForPlatformWindows();
 }
 
+// spice ldj
+// Derive io.DisplaySize from the device's swap chain back buffer dimensions, so the
+// overlay sizes itself correctly without relying on a platform backend to feed it.
+static void ImGui_ImplDX9_UpdateDisplaySize(ImGui_ImplDX9_Data* bd)
+{
+    IDirect3DSwapChain9 *swap_chain = nullptr;
+    if (SUCCEEDED(bd->pd3dDevice->GetSwapChain(0, &swap_chain))) {
+        auto &io = ImGui::GetIO();
+
+        D3DPRESENT_PARAMETERS present_params {};
+
+        if (SUCCEEDED(swap_chain->GetPresentParameters(&present_params))) {
+            if (present_params.BackBufferWidth != 0 && present_params.BackBufferHeight != 0) {
+                io.DisplaySize.x = static_cast<float>(present_params.BackBufferWidth);
+                io.DisplaySize.y = static_cast<float>(present_params.BackBufferHeight);
+            } else {
+                RECT rect {};
+                GetClientRect(present_params.hDeviceWindow, &rect);
+
+                io.DisplaySize.x = static_cast<float>(rect.right - rect.left);
+                io.DisplaySize.y = static_cast<float>(rect.bottom - rect.top);
+            }
+        }
+
+        swap_chain->Release();
+    }
+}
+
 void ImGui_ImplDX9_NewFrame()
 {
     ImGui_ImplDX9_Data* bd = ImGui_ImplDX9_GetBackendData();
@@ -526,29 +572,7 @@ void ImGui_ImplDX9_NewFrame()
     // IM_UNUSED(bd);
 
     // spice ldj
-    {
-        IDirect3DSwapChain9 *swap_chain = nullptr;
-        if (SUCCEEDED(bd->pd3dDevice->GetSwapChain(0, &swap_chain))) {
-            auto &io = ImGui::GetIO();
-
-            D3DPRESENT_PARAMETERS present_params {};
-
-            if (SUCCEEDED(swap_chain->GetPresentParameters(&present_params))) {
-                if (present_params.BackBufferWidth != 0 && present_params.BackBufferHeight != 0) {
-                    io.DisplaySize.x = static_cast<float>(present_params.BackBufferWidth);
-                    io.DisplaySize.y = static_cast<float>(present_params.BackBufferHeight);
-                } else {
-                    RECT rect {};
-                    GetClientRect(present_params.hDeviceWindow, &rect);
-
-                    io.DisplaySize.x = static_cast<float>(rect.right - rect.left);
-                    io.DisplaySize.y = static_cast<float>(rect.bottom - rect.top);
-                }
-            }
-
-            swap_chain->Release();
-        }
-    }
+    ImGui_ImplDX9_UpdateDisplaySize(bd);
 }
 
 bool ImGui_ImplDX9_Init(IDirect3DDevice9* device)
