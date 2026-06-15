@@ -536,7 +536,7 @@ namespace overlay::windows {
     }
 
     void CardManager::config_save() {
-        log_info("cardmanager", "saving config");
+        log_misc("cardmanager", "saving config...");
 
         // create document
         Document doc;
