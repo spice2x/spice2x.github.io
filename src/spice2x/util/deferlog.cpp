@@ -82,7 +82,7 @@ namespace deferredlogs {
                 msg += "    * share this entire log file with someone for troubleshooting (log.txt)\n";
                 msg += "    * spice will also attempt to create a minidump (minidump.dmp)\n";
                 msg += "        minidump should only be shared with people you trust as it may contain\n";
-                msg += "        sensitive data (PCBID, card ID, etc)\n";
+                msg += "        sensitive data (PCBID, card ID, IP address, user name, etc)\n";
                 msg += "\n";
             }
 
