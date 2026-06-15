@@ -21,6 +21,10 @@ void print_format(AUDCLNT_SHAREMODE share_mode, DWORD stream_flags, REFERENCE_TI
 // IAudioClient::IsFormatSupported).
 void print_format(AUDCLNT_SHAREMODE share_mode, const WAVEFORMATEX *device_format);
 
+// scale every sample of an interleaved device buffer by `gain`, clamped to the format's range.
+// supports 16/24/32-bit PCM and 32-bit float; other formats are left untouched.
+void apply_gain(BYTE *buffer, UINT32 frames, const WAVEFORMATEXTENSIBLE &fmt, float gain);
+
 // detect IEEE float samples: WAVE_FORMAT_IEEE_FLOAT, or WAVE_FORMAT_EXTENSIBLE whose SubFormat is
 // KSDATAFORMAT_SUBTYPE_IEEE_FLOAT (Data1 == 3; _PCM has Data1 == 1)
 inline bool is_ieee_float(const WAVEFORMATEX *fmt) {

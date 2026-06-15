@@ -12,60 +12,6 @@
 
 const char CLASS_NAME[] = "WrappedIAudioRenderClient";
 
-// scale every sample of an interleaved device buffer by `gain`, clamped to the format's range.
-// supports 16/24/32-bit PCM and 32-bit float; other formats are left untouched.
-static void apply_gain(BYTE *buffer, UINT32 frames, const WAVEFORMATEXTENSIBLE &fmt, float gain) {
-    const WAVEFORMATEX &f = fmt.Format;
-    const size_t samples = (size_t) frames * f.nChannels;
-
-    bool is_float = is_ieee_float(&f);
-
-    if (is_float && f.wBitsPerSample == 32) {
-        auto p = reinterpret_cast<float *>(buffer);
-        for (size_t i = 0; i < samples; i++) {
-            p[i] = std::clamp(p[i] * gain, -1.0f, 1.0f);
-        }
-        return;
-    }
-
-    switch (f.wBitsPerSample) {
-        case 16: {
-            auto p = reinterpret_cast<int16_t *>(buffer);
-            for (size_t i = 0; i < samples; i++) {
-                p[i] = (int16_t) std::clamp((int) std::lround(p[i] * gain), -32768, 32767);
-            }
-            break;
-        }
-        case 24: {
-            // packed 24-bit little-endian
-            for (size_t i = 0; i < samples; i++) {
-                BYTE *s = buffer + i * 3;
-                int32_t v = s[0] | (s[1] << 8) | (s[2] << 16);
-                if (v & 0x800000) {
-                    v |= ~0xFFFFFF; // sign extend
-                }
-                int64_t scaled = std::clamp<int64_t>(
-                    std::llround((double) v * gain), -8388608, 8388607);
-                s[0] = scaled & 0xFF;
-                s[1] = (scaled >> 8) & 0xFF;
-                s[2] = (scaled >> 16) & 0xFF;
-            }
-            break;
-        }
-        case 32: {
-            auto p = reinterpret_cast<int32_t *>(buffer);
-            for (size_t i = 0; i < samples; i++) {
-                p[i] = (int32_t) std::clamp(
-                    std::llround((double) p[i] * gain),
-                    (long long) INT32_MIN, (long long) INT32_MAX);
-            }
-            break;
-        }
-        default:
-            break;
-    }
-}
-
 HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::QueryInterface(REFIID riid, void **ppvObj) {
     if (ppvObj == nullptr) {
         return E_POINTER;
@@ -129,6 +75,14 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::GetBuffer(UINT32 NumFramesR
     // device buffer is acquired in ReleaseBuffer once the converted frame count is known.
     } else if (this->client->resample.enabled) {
         CHECK_RESULT(this->client->resample.get_buffer(NumFramesRequested, ppData));
+
+    // shared-mode redirect bridge: point the game at the FIFO tail it can always fill, decoupling
+    // its per-event writes from the shared engine's clock. the real device buffer is acquired in
+    // ReleaseBuffer and filled only as fast as the device frees space (see SharedRedirect::drain).
+    } else if (this->client->shared.bridge_enabled()) {
+        *ppData = this->client->shared.begin_write(NumFramesRequested);
+
+        return S_OK;
     }
 
     // call original
@@ -180,6 +134,19 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioRenderClient::ReleaseBuffer(UINT32 NumFra
                 this->client->pReal,
                 NumFramesWritten,
                 dwFlags,
+                hooks::audio::VOLUME_BOOST);
+    }
+
+    // shared-mode redirect bridge: queue the game's write and drain it to the device at the
+    // device's own pace, so a full-buffer write never overflows the shared buffer.
+    if (this->client->shared.bridge_enabled()) {
+        this->client->shared.commit_write(
+                NumFramesWritten, (dwFlags & AUDCLNT_BUFFERFLAGS_SILENT) != 0);
+
+        return this->client->shared.drain(
+                pReal,
+                this->client->pReal,
+                this->client->device_format,
                 hooks::audio::VOLUME_BOOST);
     }
 
