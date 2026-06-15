@@ -46,6 +46,11 @@ using namespace rapidjson;
 
 namespace overlay::windows {
 
+    // user-assigned IDs for the patches table columns, used by the sort logic
+    enum PatchColumnId {
+        PATCH_COLUMN_NAME = 0,
+        PATCH_COLUMN_STATUS = 1,
+    };
 
     robin_hood::unordered_map<std::string, std::unique_ptr<std::vector<uint8_t>>> DLL_MAP;
     robin_hood::unordered_map<std::string, std::unique_ptr<std::vector<uint8_t>>> DLL_MAP_ORG;
@@ -218,6 +223,7 @@ namespace overlay::windows {
     // patches
     std::vector<PatchData> PatchManager::patches;
     bool PatchManager::local_patches_initialized = false;
+    std::vector<size_t> PatchManager::patches_sorted;
 
     // loader notifications
     bool ldr_registered = false;
@@ -649,13 +655,27 @@ namespace overlay::windows {
             // draw patches
             ImGui::PushStyleVarY(ImGuiStyleVar_CellPadding,
                     ImGui::GetStyle().CellPadding.y + overlay::apply_scaling(2));
-            if (ImGui::BeginTable("PatchesTable", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg)) {
-                ImGui::TableSetupColumn("##NameColumn", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("##OptionsColumn", ImGuiTableColumnFlags_WidthFixed, 240);
+            if (ImGui::BeginTable("PatchesTable", 2,
+                    ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg
+                    | ImGuiTableFlags_Sortable | ImGuiTableFlags_SortTristate)) {
+                ImGui::TableSetupColumn(
+                    "Patch",
+                    ImGuiTableColumnFlags_WidthStretch,
+                    0.f, PATCH_COLUMN_NAME);
+                ImGui::TableSetupColumn(
+                    "Status",
+                    ImGuiTableColumnFlags_WidthFixed,
+                    240, PATCH_COLUMN_STATUS);
+                ImGui::TableHeadersRow();
+
+                // maintain a sorted view of patches so the underlying vector
+                // order (used by config save and hashing) is left untouched
+                update_sorted_patches();
 
                 const auto search_str_in_lower = strtolower(patch_name_filter);
                 size_t patches_shown = 0;
-                for (auto &patch : patches) {
+                for (auto patch_index : patches_sorted) {
+                    auto &patch = patches[patch_index];
 
                     // get patch status
                     PatchStatus patch_status = is_patch_active(patch);
@@ -878,6 +898,55 @@ namespace overlay::windows {
                 ImGui::EndTable();
             }
             ImGui::PopStyleVar(); // ImGuiStyleVar_CellPadding
+        }
+    }
+
+    void PatchManager::update_sorted_patches() {
+        // Rebuild/re-sort only when the sort order changes (SpecsDirty) or when
+        // the patch list count changed - not every frame. reload_local_patches()
+        // clears the cache to avoid dangling pointers when `patches` is rebuilt.
+        auto *sort_specs = ImGui::TableGetSortSpecs();
+        const bool patches_changed = patches_sorted.size() != patches.size();
+        if (!patches_changed && !(sort_specs && sort_specs->SpecsDirty)) {
+            return;
+        }
+
+        // rebuild the view in the underlying vector order (this is also the
+        // default order shown when the sort is cleared / tristate "unsorted")
+        patches_sorted.clear();
+        patches_sorted.reserve(patches.size());
+        for (size_t i = 0; i < patches.size(); i++) {
+            patches_sorted.push_back(i);
+        }
+
+        // SpecsCount == 0 means no active sort: keep the default order
+        if (sort_specs && sort_specs->SpecsCount > 0) {
+            const auto &spec = sort_specs->Specs[0];
+            const bool ascending = spec.SortDirection != ImGuiSortDirection_Descending;
+            std::stable_sort(patches_sorted.begin(), patches_sorted.end(),
+                [&](size_t ia, size_t ib) {
+                    const PatchData *a = &patches[ia];
+                    const PatchData *b = &patches[ib];
+                    int cmp;
+                    if (spec.ColumnUserID == PATCH_COLUMN_STATUS) {
+                        // sort by displayed status (matches the checkbox), then
+                        // by name as a tiebreaker
+                        const bool a_on = a->last_status == PatchStatus::Enabled;
+                        const bool b_on = b->last_status == PatchStatus::Enabled;
+                        if (a_on != b_on) {
+                            cmp = a_on ? -1 : 1;
+                        } else {
+                            cmp = a->name_in_lower_case.compare(b->name_in_lower_case);
+                        }
+                    } else {
+                        cmp = a->name_in_lower_case.compare(b->name_in_lower_case);
+                    }
+                    return ascending ? (cmp < 0) : (cmp > 0);
+                });
+        }
+
+        if (sort_specs) {
+            sort_specs->SpecsDirty = false;
         }
     }
 
@@ -1753,6 +1822,9 @@ namespace overlay::windows {
 
         // clear old patches
         patches.clear();
+        // drop the cached sorted view so the table rebuilds it (in default order)
+        // on the next frame
+        patches_sorted.clear();
         if (cfg::CONFIGURATOR_STANDALONE) {
             DLL_MAP.clear();
             DLL_MAP_ORG.clear();
@@ -1807,6 +1879,7 @@ namespace overlay::windows {
         bool imported = false;
         // clear old patches
         patches.clear();
+        patches_sorted.clear();
         url_fetch_errors.clear();
 
         // load patches for main dll
