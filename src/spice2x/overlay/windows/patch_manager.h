@@ -133,8 +133,17 @@ namespace overlay::windows {
         static std::vector<PatchData> patches;
         static bool local_patches_initialized;
 
+        // cached sorted view of `patches` for the table, stored as indices so a
+        // stale entry can never dangle if `patches` is rebuilt; rebuilt only when
+        // the sort order changes or the patch list is reloaded (not every frame)
+        static std::vector<size_t> patches_sorted;
+
         void config_load();
         void config_save();
+
+        // rebuild the cached sorted view of `patches` from the active table's
+        // sort specs; no-op unless the sort changed or the patch list changed
+        void update_sorted_patches();
 
         void append_patches(
             std::string &patches_json,
