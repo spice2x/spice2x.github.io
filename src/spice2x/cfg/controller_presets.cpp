@@ -359,13 +359,12 @@ namespace overlay::windows {
             return false;
         }
 
-        std::error_code ec;
-        std::filesystem::rename(path_tmp, path, ec);
-        if (ec) {
-            log_warning("templates", "failed to rename templates file: {}", ec.message());
+        if (MoveFileExW(path_tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0) {
+            log_warning("templates", "failed to rename templates file: 0x{:08x}", GetLastError());
             return false;
         }
 
+        log_info("templates", "templates file saved successfully");
         return true;
     }
 
@@ -397,8 +396,7 @@ namespace overlay::windows {
             auto path_tmp = path;
             path_tmp.replace_extension(L"tmp");
             if (doc.SaveFile(path_tmp.c_str()) == tinyxml2::XML_SUCCESS) {
-                std::error_code ec;
-                std::filesystem::rename(path_tmp, path, ec);
+                MoveFileExW(path_tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
             }
         }
 
@@ -434,8 +432,7 @@ namespace overlay::windows {
             auto path_tmp = path;
             path_tmp.replace_extension(L"tmp");
             if (doc.SaveFile(path_tmp.c_str()) == tinyxml2::XML_SUCCESS) {
-                std::error_code ec;
-                std::filesystem::rename(path_tmp, path, ec);
+                MoveFileExW(path_tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
             }
         }
 
