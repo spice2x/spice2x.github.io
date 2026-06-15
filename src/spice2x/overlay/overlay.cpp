@@ -274,6 +274,7 @@ void overlay::SpiceOverlay::init() {
 
     // Interactables (The High-Intensity Red)
     colors[ImGuiCol_CheckMark] = ImVec4(0.85f, 0.15f, 0.15f, 1.00f); // Sharp Red
+    colors[ImGuiCol_CheckboxSelectedBg] = colors[ImGuiCol_FrameBg];
     colors[ImGuiCol_SliderGrab] = ImVec4(0.60f, 0.12f, 0.12f, 1.00f);
     colors[ImGuiCol_SliderGrabActive] = ImVec4(0.85f, 0.15f, 0.15f, 1.00f);
     colors[ImGuiCol_Button] = ImVec4(0.30f, 0.12f, 0.12f, 1.00f);
