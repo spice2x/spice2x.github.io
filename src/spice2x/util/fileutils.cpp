@@ -298,5 +298,19 @@ bool fileutils::write_config_file(const std::string_view &module, const std::fil
 
     // save file
     log_info(module, "saving config file: {}", censored_display);
-    return fileutils::text_write(path, text);
+
+    // write to a .tmp file first, then atomically replace the real config — this way
+    // a crash or disk-full mid-write can't corrupt the existing config file.
+    auto path_tmp = path;
+    path_tmp += L".tmp";
+    if (!fileutils::text_write(path_tmp, text)) {
+        log_warning(module, "failed to write temp config file: {}", censored_display);
+        return false;
+    }
+    if (MoveFileExW(path_tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0) {
+        log_warning(module, "MoveFileExW failed: 0x{:08x}", GetLastError());
+        return false;
+    }
+
+    return true;
 }

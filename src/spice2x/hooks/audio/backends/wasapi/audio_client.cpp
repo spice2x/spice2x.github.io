@@ -295,6 +295,13 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     copy_wave_format(&hooks::audio::FORMAT, device_format);
     copy_wave_format(&this->device_format, device_format);
 
+    // arm the shared-mode buffer bridge so the redirected game's full-buffer writes are paced to
+    // the device instead of overflowing the shared buffer (AUDCLNT_E_BUFFER_TOO_LARGE).
+    if (this->shared.redirected_from_exclusive) {
+        this->shared.enable_bridge(
+                device_format->nChannels * (device_format->wBitsPerSample / 8));
+    }
+
     return ret;
 }
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSize(UINT32 *pNumBufferFrames) {
@@ -377,6 +384,12 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetCurrentPadding(UINT32 *pNumPad
     // game's free-space calculation stays paced correctly.
     if (SUCCEEDED(ret) && this->resample.enabled && pNumPaddingFrames) {
         *pNumPaddingFrames = this->resample.padding_device_to_game(*pNumPaddingFrames);
+    }
+
+    // shared-mode bridge: the game writes into a FIFO, not the device buffer, so report the FIFO's
+    // fill level rather than the device's padding (which is in a different buffer space).
+    if (SUCCEEDED(ret) && this->shared.bridge_enabled() && pNumPaddingFrames) {
+        *pNumPaddingFrames = this->shared.virtual_padding();
     }
 
     CHECK_RESULT(ret);

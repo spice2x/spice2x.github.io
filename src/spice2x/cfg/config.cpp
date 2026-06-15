@@ -1331,17 +1331,32 @@ bool Config::firstFillConfigFile() {
 }
 
 void Config::saveConfigFile() {
-    // create a .tmp file and write to it...
+    // write the new config to a .tmp file first...
     const auto xml_result = this->configFile.SaveFile(this->configLocationTemp.c_str(), false);
     if (xml_result != tinyxml2::XMLError::XML_SUCCESS) {
         log_info("cfg", "failed to write file: {}", this->configLocationTemp);
         return;
     }
-    // copy the .tmp file to the main file...
-    if (CopyFileW(this->configLocationTemp.c_str(), this->configLocation.c_str(), false) == 0) {
-        log_warning("cfg", "CopyFileA failed: 0x{:08x}", GetLastError());
+
+    // ...flush the .tmp file to disk so a crash/power loss can't leave it half-written...
+    HANDLE tmp_handle = CreateFileW(
+        this->configLocationTemp.c_str(),
+        GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (tmp_handle != INVALID_HANDLE_VALUE) {
+        FlushFileBuffers(tmp_handle);
+        CloseHandle(tmp_handle);
+    }
+
+    // ...then atomically replace the real config with the .tmp file.
+    // Unlike CopyFile (which truncates and rewrites the destination in place),
+    // an NTFS rename is atomic: the existing config is never left half-overwritten,
+    // so an interrupted save can't corrupt it. MoveFileEx also removes the .tmp on success.
+    if (MoveFileExW(
+            this->configLocationTemp.c_str(),
+            this->configLocation.c_str(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) == 0) {
+        log_warning("cfg", "MoveFileExW failed: 0x{:08x}", GetLastError());
         return;
     }
-    // delete the .tmp file (not critical if this fails)
-    DeleteFileW(this->configLocationTemp.c_str());
 }

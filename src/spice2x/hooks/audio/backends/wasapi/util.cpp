@@ -8,6 +8,58 @@
 
 #include "defs.h"
 
+void apply_gain(BYTE *buffer, UINT32 frames, const WAVEFORMATEXTENSIBLE &fmt, float gain) {
+    const WAVEFORMATEX &f = fmt.Format;
+    const size_t samples = (size_t) frames * f.nChannels;
+
+    bool is_float = is_ieee_float(&f);
+
+    if (is_float && f.wBitsPerSample == 32) {
+        auto p = reinterpret_cast<float *>(buffer);
+        for (size_t i = 0; i < samples; i++) {
+            p[i] = std::clamp(p[i] * gain, -1.0f, 1.0f);
+        }
+        return;
+    }
+
+    switch (f.wBitsPerSample) {
+        case 16: {
+            auto p = reinterpret_cast<int16_t *>(buffer);
+            for (size_t i = 0; i < samples; i++) {
+                p[i] = (int16_t) std::clamp((int) std::lround(p[i] * gain), -32768, 32767);
+            }
+            break;
+        }
+        case 24: {
+            // packed 24-bit little-endian
+            for (size_t i = 0; i < samples; i++) {
+                BYTE *s = buffer + i * 3;
+                int32_t v = s[0] | (s[1] << 8) | (s[2] << 16);
+                if (v & 0x800000) {
+                    v |= ~0xFFFFFF; // sign extend
+                }
+                int64_t scaled = std::clamp<int64_t>(
+                    std::llround((double) v * gain), -8388608, 8388607);
+                s[0] = scaled & 0xFF;
+                s[1] = (scaled >> 8) & 0xFF;
+                s[2] = (scaled >> 16) & 0xFF;
+            }
+            break;
+        }
+        case 32: {
+            auto p = reinterpret_cast<int32_t *>(buffer);
+            for (size_t i = 0; i < samples; i++) {
+                p[i] = (int32_t) std::clamp(
+                    std::llround((double) p[i] * gain),
+                    (long long) INT32_MIN, (long long) INT32_MAX);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 std::string stream_flags_str(DWORD flags) {
     FLAGS_START(flags);
     FLAG(flags, AUDCLNT_STREAMFLAGS_CROSSPROCESS);
