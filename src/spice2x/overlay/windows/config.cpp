@@ -513,7 +513,7 @@ namespace overlay::windows {
 
     void Config::build_controller_tab(float page_offset, ControllerPage *page_selected_new) {
         const float content_height = ImGui::GetWindowContentRegionMax().y - page_offset;
-        const float nav_width = overlay::apply_scaling(100);
+        const float nav_width = overlay::apply_scaling(99);
 
         // hide sub-pages that expose no controls for the selected game
         auto analogs = games::get_analogs(this->games_selected_name);
@@ -697,20 +697,29 @@ namespace overlay::windows {
         // tab + controller sub-page selection
         auto tab_selected_new = ConfigTab::CONFIG_TAB_INVALID;
         auto controller_page_new = ControllerPage::CONTROLLER_PAGE_INVALID;
-        if (ImGui::BeginTabBar("Config Tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
-            const int page_offset2 = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 65 : 87);
 
-            if (ImGui::BeginTabItem("Controller")) {
+        if (ImGui::BeginPaddedTabBar(
+                "Config Tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
+
+            // the padded tab bar is taller than a stock tab bar by twice the extra
+            // FramePadding.y added in PaddedTabFramePadding() (top + bottom); include
+            // it so the tab content child height accounts for the larger bar and
+            // doesn't overflow the bottom of the window
+            const int page_offset2 =
+                overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 65 : 87)
+                + overlay::apply_scaling(2);
+
+            if (ImGui::BeginPaddedTabItem("Controller")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_CONTROLLER;
                 this->build_controller_tab(page_offset2, &controller_page_new);
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Cards")) {
+            if (ImGui::BeginPaddedTabItem("Cards")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_CARDS;
                 this->build_cards_tab(page_offset2);
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Patches")) {
+            if (ImGui::BeginPaddedTabItem("Patches")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_PATCHES;
 
                 // initialization
@@ -752,7 +761,7 @@ namespace overlay::windows {
                 ImGui::EndChild();
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Options")) {
+            if (ImGui::BeginPaddedTabItem("Options")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_OPTIONS;
                 this->build_options_tab(page_offset2);
                 ImGui::EndTabItem();
@@ -785,7 +794,7 @@ namespace overlay::windows {
         // note: distribution of modified version of this software without providing source is GPLv3 license violation.
         ImGui::TextColored(
                 ImVec4(1, 0.5f, 0.5f, 1.f),
-                "spice2x is free & open source; if you paid money for it, you got scammed.");
+                "spice2x is free & open source software; if you paid for it, you were scammed.");
         if (cfg::CONFIGURATOR_STANDALONE) {
             ImGui::SameLine();
             if (ImGui::TextLink(PROJECT_URL)) {
@@ -4135,7 +4144,7 @@ namespace overlay::windows {
 
     void Config::build_cards_tab(float page_offset) {
         const float content_height = ImGui::GetWindowContentRegionMax().y - page_offset;
-        const float nav_width = overlay::apply_scaling(100);
+        const float nav_width = overlay::apply_scaling(99);
 
         // early quit
         if (this->games_selected < 0 || this->games_selected_name.empty()) {

@@ -21,4 +21,9 @@ namespace ImGui {
     bool DeleteButton(const std::string& tooltip);
     bool ClearButton(const std::string& tooltip);
     void InvisibleTableRowSelectable();
+
+    // Config tab bar with extra label padding and uniform, centered tab widths.
+    // Wrap items in BeginPaddedTabItem between BeginPaddedTabBar/EndTabBar.
+    bool BeginPaddedTabBar(const char* str_id, ImGuiTabBarFlags flags = 0);
+    bool BeginPaddedTabItem(const char* label);
 }

@@ -2,12 +2,22 @@
 #include <cmath>
 
 #include "external/imgui/imgui.h"
+#include "overlay/overlay.h"
 
 
 namespace ImGui {
 
     const auto fg = ImVec4(0.910f, 0.914f, 0.922f, 1.0f);
     const auto bg = ImVec4(0.192f, 0.212f, 0.220f, 1.0f);
+
+    // FramePadding shared by the config tab bar and its items so the bar height
+    // matches the padded tabs; gives the labels a bit more breathing room.
+    static ImVec2 PaddedTabFramePadding() {
+        const ImVec2 base = ImGui::GetStyle().FramePadding;
+        return ImVec2(
+                base.x + overlay::apply_scaling(10.0f),
+                base.y + overlay::apply_scaling(1.0f));
+    }
 
     void HelpTooltip(const char* desc) {
         ImGui::PushStyleColor(ImGuiCol_Border, bg);
@@ -164,6 +174,39 @@ namespace ImGui {
         }
         ImGui::PopID();
         return clicked;
+    }
+
+    bool BeginPaddedTabItem(const char* label) {
+        // fixed uniform label width (scaled for DPI) so all tabs are equally sized;
+        // wide enough to fit the longest label ("Controller")
+        const float uniform_width = overlay::apply_scaling(70.0f);
+
+        // ImGui renders tab labels left-aligned, so a forced width would leave short
+        // labels hugging the left edge. Instead we pad the label with equal leading/
+        // trailing spaces to reach a uniform width, which both keeps all tabs the same
+        // size and centers the text. A stable "##" id suffix keeps each tab's identity
+        // independent of the padding.
+        const float space_w = ImGui::CalcTextSize(" ").x;
+        const float label_w = ImGui::CalcTextSize(label).x;
+        const int pad = (space_w > 0.0f)
+                ? (int) ((uniform_width - label_w) * 0.5f / space_w)
+                : 0;
+        const std::string padded = (pad > 0)
+                ? std::string(pad, ' ') + label + std::string(pad, ' ') + "##" + label
+                : std::string(label);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, PaddedTabFramePadding());
+        const bool open = ImGui::BeginTabItem(padded.c_str());
+        ImGui::PopStyleVar();
+        return open;
+    }
+
+    bool BeginPaddedTabBar(const char* str_id, ImGuiTabBarFlags flags) {
+        // push the same padding used by the tab items so the bar height matches
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, PaddedTabFramePadding());
+        const bool open = ImGui::BeginTabBar(str_id, flags);
+        ImGui::PopStyleVar();
+        return open;
     }
 
     void InvisibleTableRowSelectable() {
