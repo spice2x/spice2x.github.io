@@ -4,6 +4,15 @@
 
 #include "utils.h"
 
+#if !SPICE_XP
+#include <dwmapi.h>
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+// older numbering used by Win10 1809..1909
+#define DWMWA_USE_IMMERSIVE_DARK_MODE_OLD 19
+#endif
+
 const char *inet_ntop(short af, const void *src, char *dst, DWORD size) {
 
     // prepare storage
@@ -123,4 +132,38 @@ void generate_ea_card(char card[17]) {
 
     // terminate and flush
     card[16] = 0;
+}
+
+void set_window_dark_titlebar(HWND hWnd, bool force_dark) {
+#if !SPICE_XP
+    if (hWnd == nullptr) {
+        return;
+    }
+
+    // AppsUseLightTheme == 0 means the dark app theme is selected
+    DWORD light = 1;
+    if (!force_dark) {
+        DWORD size = sizeof(light);
+        HKEY key;
+        if (RegOpenKeyExW(HKEY_CURRENT_USER,
+                L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
+            RegQueryValueExW(key, L"AppsUseLightTheme", nullptr, nullptr,
+                reinterpret_cast<LPBYTE>(&light), &size);
+            RegCloseKey(key);
+        }
+    }
+
+    BOOL dark = (force_dark || light == 0) ? TRUE : FALSE;
+
+    // fall back to the older attribute numbering on Win10 1809..1909
+    if (FAILED(DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
+            &dark, sizeof(dark)))) {
+        DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE_OLD,
+            &dark, sizeof(dark));
+    }
+#else
+    (void) hWnd;
+    (void) force_dark;
+#endif
 }

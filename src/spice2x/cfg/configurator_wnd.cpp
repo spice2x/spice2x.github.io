@@ -12,6 +12,7 @@
 #include "overlay/overlay.h"
 #include "util/logging.h"
 #include "util/precise_timer.h"
+#include "util/utils.h"
 #include "cfg/configurator.h"
 
 #include "icon.h"
@@ -214,6 +215,8 @@ cfg::ConfiguratorWindow::ConfiguratorWindow() {
 
     if (this->hWnd) {
         overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT = true;
+        // force dark title bar
+        set_window_dark_titlebar(this->hWnd, true);
     }
 }
 

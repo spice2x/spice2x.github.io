@@ -28,6 +28,10 @@ static const char HEX_LOOKUP_UPPERCASE[16] = {
 
 const char *inet_ntop(short af, const void *src, char *dst, DWORD size);
 
+// make a window's native title bar follow the Windows dark/light app theme.
+// pass force_dark=true to always use the dark caption regardless of the system theme.
+void set_window_dark_titlebar(HWND hWnd, bool force_dark = false);
+
 static inline bool string_begins_with(const std::string &s, const std::string &prefix) {
     return s.compare(0, prefix.size(), prefix) == 0;
 }
