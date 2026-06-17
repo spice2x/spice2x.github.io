@@ -215,7 +215,8 @@ cfg::ConfiguratorWindow::ConfiguratorWindow() {
 
     if (this->hWnd) {
         overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT = true;
-        set_window_dark_titlebar(this->hWnd);
+        // force dark title bar
+        set_window_dark_titlebar(this->hWnd, true);
     }
 }
 
@@ -294,16 +295,6 @@ LRESULT CALLBACK cfg::ConfiguratorWindow::window_proc(HWND hWnd, UINT uMsg, WPAR
             // set user data of window to class pointer
             auto create_struct = reinterpret_cast<LPCREATESTRUCT>(lParam);
             SetWindowLongPtrW(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(create_struct->lpCreateParams));
-
-            break;
-        }
-        case WM_SETTINGCHANGE: {
-
-            // re-apply the dark/light caption when the app theme changes. This is
-            // an ANSI window, so lParam is an ANSI string - compare with lstrcmpiA.
-            if (lParam && lstrcmpiA(reinterpret_cast<LPCSTR>(lParam), "ImmersiveColorSet") == 0) {
-                set_window_dark_titlebar(hWnd);
-            }
 
             break;
         }

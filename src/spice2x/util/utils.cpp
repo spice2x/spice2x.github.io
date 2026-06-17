@@ -134,7 +134,7 @@ void generate_ea_card(char card[17]) {
     card[16] = 0;
 }
 
-void set_window_dark_titlebar(HWND hWnd) {
+void set_window_dark_titlebar(HWND hWnd, bool force_dark) {
 #if !SPICE_XP
     if (hWnd == nullptr) {
         return;
@@ -142,17 +142,19 @@ void set_window_dark_titlebar(HWND hWnd) {
 
     // AppsUseLightTheme == 0 means the dark app theme is selected
     DWORD light = 1;
-    DWORD size = sizeof(light);
-    HKEY key;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER,
-            L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-            0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
-        RegQueryValueExW(key, L"AppsUseLightTheme", nullptr, nullptr,
-            reinterpret_cast<LPBYTE>(&light), &size);
-        RegCloseKey(key);
+    if (!force_dark) {
+        DWORD size = sizeof(light);
+        HKEY key;
+        if (RegOpenKeyExW(HKEY_CURRENT_USER,
+                L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
+            RegQueryValueExW(key, L"AppsUseLightTheme", nullptr, nullptr,
+                reinterpret_cast<LPBYTE>(&light), &size);
+            RegCloseKey(key);
+        }
     }
 
-    BOOL dark = (light == 0) ? TRUE : FALSE;
+    BOOL dark = (force_dark || light == 0) ? TRUE : FALSE;
 
     // fall back to the older attribute numbering on Win10 1809..1909
     if (FAILED(DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
@@ -162,5 +164,6 @@ void set_window_dark_titlebar(HWND hWnd) {
     }
 #else
     (void) hWnd;
+    (void) force_dark;
 #endif
 }
