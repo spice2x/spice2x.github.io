@@ -700,7 +700,14 @@ namespace overlay::windows {
 
         if (ImGui::BeginPaddedTabBar(
                 "Config Tabs", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
-            const int page_offset2 = overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 65 : 87);
+
+            // the padded tab bar is taller than a stock tab bar by twice the extra
+            // FramePadding.y added in PaddedTabFramePadding() (top + bottom); include
+            // it so the tab content child height accounts for the larger bar and
+            // doesn't overflow the bottom of the window
+            const int page_offset2 =
+                overlay::apply_scaling(cfg::CONFIGURATOR_STANDALONE ? 65 : 87)
+                + overlay::apply_scaling(2);
 
             if (ImGui::BeginPaddedTabItem("Controller")) {
                 tab_selected_new = ConfigTab::CONFIG_TAB_CONTROLLER;
@@ -787,7 +794,7 @@ namespace overlay::windows {
         // note: distribution of modified version of this software without providing source is GPLv3 license violation.
         ImGui::TextColored(
                 ImVec4(1, 0.5f, 0.5f, 1.f),
-                "spice2x is free & open source; if you paid money for it, you got scammed.");
+                "spice2x is free & open source software; if you paid for it, you were scammed.");
         if (cfg::CONFIGURATOR_STANDALONE) {
             ImGui::SameLine();
             if (ImGui::TextLink(PROJECT_URL)) {
