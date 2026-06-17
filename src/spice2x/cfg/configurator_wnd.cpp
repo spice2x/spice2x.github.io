@@ -12,18 +12,10 @@
 #include "overlay/overlay.h"
 #include "util/logging.h"
 #include "util/precise_timer.h"
+#include "util/utils.h"
 #include "cfg/configurator.h"
 
 #include "icon.h"
-
-#if !SPICE_XP
-#include <dwmapi.h>
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
-#endif
-// older numbering used by Win10 1809..1909
-#define DWMWA_USE_IMMERSIVE_DARK_MODE_OLD 19
-#endif
 
 static const char *CLASS_NAME = "ConfiguratorWindow";
 static std::string WINDOW_TITLE;
@@ -32,35 +24,6 @@ static int WINDOW_SIZE_Y = 600;
 static HICON WINDOW_ICON = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(MAINICON));
 
 static const UINT_PTR RENDER_TIMER_ID = 1;
-
-// make the native title bar follow the Windows dark/light app theme
-static void apply_dark_titlebar(HWND hWnd) {
-#if !SPICE_XP
-
-    // AppsUseLightTheme == 0 means the dark app theme is selected
-    DWORD light = 1;
-    DWORD size = sizeof(light);
-    HKEY key;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER,
-            L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-            0, KEY_QUERY_VALUE, &key) == ERROR_SUCCESS) {
-        RegQueryValueExW(key, L"AppsUseLightTheme", nullptr, nullptr,
-            reinterpret_cast<LPBYTE>(&light), &size);
-        RegCloseKey(key);
-    }
-
-    BOOL dark = (light == 0) ? TRUE : FALSE;
-
-    // fall back to the older attribute numbering on Win10 1809..1909
-    if (FAILED(DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
-            &dark, sizeof(dark)))) {
-        DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE_OLD,
-            &dark, sizeof(dark));
-    }
-#else
-    (void) hWnd;
-#endif
-}
 
 // Map a virtual key code to the matching ImGuiKey. Mirrors the table used by
 // the in-game ImGui spice backend so navigation keys behave identically when
@@ -252,7 +215,7 @@ cfg::ConfiguratorWindow::ConfiguratorWindow() {
 
     if (this->hWnd) {
         overlay::USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT = true;
-        apply_dark_titlebar(this->hWnd);
+        set_window_dark_titlebar(this->hWnd);
     }
 }
 
@@ -339,7 +302,7 @@ LRESULT CALLBACK cfg::ConfiguratorWindow::window_proc(HWND hWnd, UINT uMsg, WPAR
             // re-apply the dark/light caption when the app theme changes. This is
             // an ANSI window, so lParam is an ANSI string - compare with lstrcmpiA.
             if (lParam && lstrcmpiA(reinterpret_cast<LPCSTR>(lParam), "ImmersiveColorSet") == 0) {
-                apply_dark_titlebar(hWnd);
+                set_window_dark_titlebar(hWnd);
             }
 
             break;

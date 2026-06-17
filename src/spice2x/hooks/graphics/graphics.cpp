@@ -585,6 +585,9 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             hWndParent, hMenu, hInstance, lpParam);
     GRAPHICS_WINDOWS.push_back(result);
 
+    // theme the native title bar (dark/light)
+    set_window_dark_titlebar(result);
+
     if (is_tdj_sub_window) {
         // TDJ windowed mode: remember the subscreen window handle for later
         TDJ_SUBSCREEN_WINDOW = result;
@@ -705,6 +708,9 @@ static HWND WINAPI CreateWindowExW_hook(DWORD dwExStyle, LPCWSTR lpClassName, LP
             dwExStyle, lpClassName, lpWindowName, dwStyle, x, y, nWidth, nHeight,
             hWndParent, hMenu, hInstance, lpParam);
     GRAPHICS_WINDOWS.push_back(result);
+
+    // theme the native title bar (dark/light)
+    set_window_dark_titlebar(result);
 
     log_misc(
         "graphics",

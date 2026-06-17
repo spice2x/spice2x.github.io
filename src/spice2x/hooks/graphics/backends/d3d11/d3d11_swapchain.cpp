@@ -27,6 +27,7 @@
 #include "hooks/graphics/graphics.h"
 #include "launcher/launcher.h"
 #include "misc/eamuse.h"
+#include "util/utils.h"
 
 // --------------------------------------------------------------------------
 // overlay render bridge
@@ -122,6 +123,10 @@ void try_create_overlay(IDXGISwapChain *swapchain) {
     if (main && desc.OutputWindow != main) {
         return;
     }
+
+    // theme the native title bar; first present is the only reliable point for
+    // windows whose swapchain bypasses our factory hooks (e.g. UnityPlayer.dll)
+    set_window_dark_titlebar(desc.OutputWindow);
 
     ID3D11Device *device = nullptr;
     if (FAILED(swapchain->GetDevice(IID_PPV_ARGS(&device))) || !device) {
