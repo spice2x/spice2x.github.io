@@ -352,6 +352,52 @@ static void ImGui_ImplSpice_UpdateMousePos() {
     }
 }
 
+// Decide whether ImGui should draw its software cursor this frame. Kept out of
+// ImGui_ImplSpice_NewFrame so the visibility rules live in one place.
+//
+// Only matters when ImGui owns cursor drawing (g_MouseCursorAutoHide, i.e. the
+// game hid the OS cursor); otherwise the OS draws the cursor and
+// io.MouseDrawCursor stays false throughout. In that mode:
+//   - overlay hidden -> never draw the cursor (input belongs to the game)
+//   - overlay shown  -> visible immediately, auto-hide after 2s idle, reappear
+//                       on any mouse movement / wheel / button
+static void ImGui_ImplSpice_UpdateCursorVisibility(
+        bool overlay_visible,
+        const ImVec2 &old_mouse_pos,
+        const ImVec2 &new_mouse_pos,
+        long wheel_diff)
+{
+    if (!g_MouseCursorAutoHide) {
+        return;
+    }
+
+    auto &io = ImGui::GetIO();
+    static bool overlay_visible_old = false;
+
+    const bool mouse_activity =
+        old_mouse_pos.x != new_mouse_pos.x ||
+        old_mouse_pos.y != new_mouse_pos.y ||
+        wheel_diff != 0 ||
+        g_MouseDown[ImGuiMouseButton_Left] ||
+        g_MouseDown[ImGuiMouseButton_Right] ||
+        g_MouseDown[ImGuiMouseButton_Middle];
+
+    if (!overlay_visible) {
+        // overlay hidden: the game owns the cursor, don't draw ImGui's
+        io.MouseDrawCursor = false;
+    } else if (!overlay_visible_old || mouse_activity) {
+        // overlay just opened, or the mouse moved: show the cursor and
+        // (re)start the idle timer
+        g_LastMouseMovement = get_performance_milliseconds();
+        io.MouseDrawCursor = true;
+    } else if ((get_performance_milliseconds() - g_LastMouseMovement) > 2000) {
+        // mouse idle for more than 2 seconds while the overlay is open: hide it
+        io.MouseDrawCursor = false;
+    }
+
+    overlay_visible_old = overlay_visible;
+}
+
 void ImGui_ImplSpice_NewFrame() {
 
     // check if font is built
@@ -527,22 +573,8 @@ void ImGui_ImplSpice_NewFrame() {
         }
     }
 
-    // automatically hide cursor
-    if (g_MouseCursorAutoHide) {
-        if (old_mouse_pos.x != new_mouse_pos.x ||
-            old_mouse_pos.y != new_mouse_pos.y ||
-            wheel_diff != 0 ||
-            g_MouseDown[ImGuiMouseButton_Left] || g_MouseDown[ImGuiMouseButton_Right] || g_MouseDown[ImGuiMouseButton_Middle]) {
-
-            // mouse moved, update time and show the cursor
-            g_LastMouseMovement = get_performance_milliseconds();
-            io.MouseDrawCursor = true;
-
-        } else if ((get_performance_milliseconds() -  g_LastMouseMovement) > 2000) {
-            // mouse idle for more than 2 seconds, hide the cursor
-            io.MouseDrawCursor = false;
-        }
-    }
+    // mouse cursor: visibility (overlay visibility + auto-hide)
+    ImGui_ImplSpice_UpdateCursorVisibility(overlay_visible, old_mouse_pos, new_mouse_pos, wheel_diff);
 
     if (cfg::CONFIGURATOR_STANDALONE) {
         // if cursor is inside the client area, always set the OS cursor to what ImGui wants
