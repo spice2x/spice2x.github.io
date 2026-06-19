@@ -2,6 +2,7 @@
 #include <cmath>
 
 #include "external/imgui/imgui.h"
+#include "external/imgui/imgui_internal.h"
 #include "overlay/overlay.h"
 
 
@@ -209,17 +210,17 @@ namespace ImGui {
         return open;
     }
 
-    void InvisibleTableRowSelectable() {
-        ImGui::TableSetColumnIndex(0);
-        ImGui::PushStyleColor(ImGuiCol_Header, 0);
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0);
-        ImGui::PushStyleColor(ImGuiCol_HeaderActive, 0);
-        ImGui::PushTabStop(false); // prevent tab navigation
-        ImGui::Selectable("##row", false,
-            ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap);
-        ImGui::PopTabStop();
-        ImGui::PopStyleColor(3);
-        if (ImGui::IsItemHovered()) {
+    void HighlightTableRowOnHover() {
+        // hit-test the row rect directly so the row layout and height are untouched
+        ImGuiTable *table = ImGui::GetCurrentTable();
+        if (table == nullptr) {
+            return;
+        }
+        if (ImGui::IsWindowHovered() &&
+            ImGui::IsMouseHoveringRect(
+                ImVec2(table->WorkRect.Min.x, table->RowPosY1),
+                ImVec2(table->WorkRect.Max.x, table->RowPosY2),
+                false)) {
             ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, IM_COL32(200, 200, 200, 24));
         }
     }
