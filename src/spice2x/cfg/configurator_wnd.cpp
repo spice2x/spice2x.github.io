@@ -87,6 +87,23 @@ static cfg::ConfiguratorWindow *get_state(HWND hWnd) {
         GetWindowLongPtrW(hWnd, GWLP_USERDATA));
 }
 
+// computes the top-left position that centers a window of the given size on
+// the primary monitor's work area (the desktop minus the taskbar); falls back
+// to (0, 0) if the monitor info can't be queried.
+static POINT center_on_primary_monitor(int width, int height) {
+    POINT pos = { 0, 0 };
+    HMONITOR mon = MonitorFromPoint(pos, MONITOR_DEFAULTTOPRIMARY);
+    MONITORINFO mi {};
+    mi.cbSize = sizeof(mi);
+    if (GetMonitorInfo(mon, &mi)) {
+        const int work_w = mi.rcWork.right - mi.rcWork.left;
+        const int work_h = mi.rcWork.bottom - mi.rcWork.top;
+        pos.x = mi.rcWork.left + (work_w - width) / 2;
+        pos.y = mi.rcWork.top + (work_h - height) / 2;
+    }
+    return pos;
+}
+
 // Returns the refresh rate (Hz) of the monitor the window currently lives on,
 // clamped to a sane range. Falls back to 60 if detection fails or the value
 // looks invalid (DEVMODE may report 0 or 1 to mean "use hardware default").
@@ -245,8 +262,10 @@ cfg::ConfiguratorWindow::~ConfiguratorWindow() {
 
 void cfg::ConfiguratorWindow::run() {
 
+    const POINT pos = center_on_primary_monitor(WINDOW_SIZE_X, WINDOW_SIZE_Y);
+    SetWindowPos(this->hWnd, HWND_TOP, pos.x, pos.y, WINDOW_SIZE_X, WINDOW_SIZE_Y, 0);
+
     // show window
-    SetWindowPos(this->hWnd, HWND_TOP, 0, 0, WINDOW_SIZE_X, WINDOW_SIZE_Y, 0);
     ShowWindow(this->hWnd, SW_SHOWNORMAL);
     UpdateWindow(this->hWnd);
 
