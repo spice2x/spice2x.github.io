@@ -928,18 +928,14 @@ namespace overlay::windows {
 
                     // primary
                     build_button(name, primary_button, &primary_button, button_it, button_it_max, 0);
-                    ImGui::PushID(&primary_button);
-                    ImGui::InvisibleTableRowSelectable();
-                    ImGui::PopID();
+                    ImGui::HighlightTableRowOnHover();
 
                     // alternatives
                     int alt_index = 1; // 0 is primary
                     for (auto &alt : primary_button.getAlternatives()) {
                         if (alt.isValid()) {
                             build_button(name, primary_button, &alt, button_it, button_it_max, alt_index);
-                            ImGui::PushID(&alt);
-                            ImGui::InvisibleTableRowSelectable();
-                            ImGui::PopID();
+                            ImGui::HighlightTableRowOnHover();
                         }
                         alt_index++;
                     }
@@ -2519,8 +2515,7 @@ namespace overlay::windows {
 
                     edit_analog_popup(analog, title);
 
-                    // row hover detection (invisible selectable that spans entire row)
-                    ImGui::InvisibleTableRowSelectable();
+                    ImGui::HighlightTableRowOnHover();
 
                     // clean up
                     ImGui::PopID();
@@ -3174,16 +3169,12 @@ namespace overlay::windows {
             }
 
             build_light(light, &light, i, 0);
-            ImGui::PushID(&light);
-            ImGui::InvisibleTableRowSelectable();
-            ImGui::PopID();
+            ImGui::HighlightTableRowOnHover();
             int alt_index = 1;
             for (auto &alt : light.getAlternatives()) {
                 if (alt.isValid()) {
                     build_light(light, &alt, i, alt_index);
-                    ImGui::PushID(&alt);
-                    ImGui::InvisibleTableRowSelectable();
-                    ImGui::PopID();
+                    ImGui::HighlightTableRowOnHover();
                 }
                 alt_index++;
             }
@@ -5296,8 +5287,7 @@ namespace overlay::windows {
                     }
                 }
 
-                // row hover detection (invisible selectable that spans entire row)
-                ImGui::InvisibleTableRowSelectable();
+                ImGui::HighlightTableRowOnHover();
 
                 // next item
                 ImGui::PopID();
@@ -5790,23 +5780,28 @@ namespace overlay::windows {
 
                     // name
                     ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
                     ImGui::TextTruncated(
                         t.name, ImGui::GetContentRegionAvail().x - overlay::apply_scaling(20));
 
                     // type
                     ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
                     ImGui::TextUnformatted(t.is_builtin ? "Built-in" : "User");
 
                     // buttons
                     ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
                     ImGui::Text("%d", (int)t.buttons.size());
 
                     // analogs
                     ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
                     ImGui::Text("%d", (int)t.analogs.size());
 
                     // lights
                     ImGui::TableNextColumn();
+                    ImGui::AlignTextToFramePadding();
                     ImGui::Text("%d", (int)t.lights.size());
 
                     // actions
@@ -5834,7 +5829,7 @@ namespace overlay::windows {
                         }
                     }
 
-                    ImGui::InvisibleTableRowSelectable();
+                    ImGui::HighlightTableRowOnHover();
                     ImGui::PopID();
                 }
 

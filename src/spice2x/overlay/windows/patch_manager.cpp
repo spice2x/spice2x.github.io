@@ -876,8 +876,7 @@ namespace overlay::windows {
                         ImGui::EndDisabled();
                     }
 
-                    // row hover detection (invisible selectable that spans entire row)
-                    ImGui::InvisibleTableRowSelectable();
+                    ImGui::HighlightTableRowOnHover();
 
                     ImGui::PopID();
                 }

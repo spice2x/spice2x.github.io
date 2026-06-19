@@ -20,7 +20,7 @@ namespace ImGui {
     void TextTruncated(const std::string& p_text, float p_truncated_width);
     bool DeleteButton(const std::string& tooltip);
     bool ClearButton(const std::string& tooltip);
-    void InvisibleTableRowSelectable();
+    void HighlightTableRowOnHover();
 
     // Config tab bar with extra label padding and uniform, centered tab widths.
     // Wrap items in BeginPaddedTabItem between BeginPaddedTabBar/EndTabBar.
