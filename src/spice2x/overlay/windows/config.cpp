@@ -4209,8 +4209,8 @@ namespace overlay::windows {
 
         ImGui::TextColored(ImVec4(1, 0.7f, 0, 1), "Card overrides");
         ImGui::Spacing();
-        ImGui::TextUnformatted(
-            "Specify hardcoded card numbers here. This will always take priority when Insert Card is pressed.");
+        ImGui::TextUnformatted("Specify hardcoded card numbers here.");
+        ImGui::TextUnformatted("Overrides will always take priority when Insert Card is pressed.");
         ImGui::Spacing();
 
         // read in values from options
