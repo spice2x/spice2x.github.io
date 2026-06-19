@@ -21,8 +21,8 @@ static const char *CLASS_NAME = "ConfiguratorWindow";
 static std::string WINDOW_TITLE;
 static int WINDOW_SIZE_X = 800;
 static int WINDOW_SIZE_Y = 600;
-static const int WINDOW_MIN_SIZE_X = 640;
-static const int WINDOW_MIN_SIZE_Y = 480;
+static const int WINDOW_MIN_SIZE_X = 540;
+static const int WINDOW_MIN_SIZE_Y = 300;
 static HICON WINDOW_ICON = LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(MAINICON));
 
 static const UINT_PTR RENDER_TIMER_ID = 1;
@@ -301,8 +301,7 @@ LRESULT CALLBACK cfg::ConfiguratorWindow::window_proc(HWND hWnd, UINT uMsg, WPAR
             RECT rc = { 0, 0, WINDOW_MIN_SIZE_X, WINDOW_MIN_SIZE_Y };
             DWORD style = static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_STYLE));
             DWORD ex_style = static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_EXSTYLE));
-            BOOL has_menu = GetMenu(hWnd) != nullptr;
-            if (AdjustWindowRectEx(&rc, style, has_menu, ex_style)) {
+            if (AdjustWindowRectEx(&rc, style, FALSE, ex_style)) {
                 auto *mmi = reinterpret_cast<MINMAXINFO *>(lParam);
                 mmi->ptMinTrackSize.x = rc.right - rc.left;
                 mmi->ptMinTrackSize.y = rc.bottom - rc.top;
