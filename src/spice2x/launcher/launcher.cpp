@@ -1549,8 +1549,19 @@ int main_implementation(int argc, char *argv[]) {
 
     // print out conflicts
     size_t conflicts = 0;
-    for (const auto &option : options) {
-        if (option.conflicting && option.get_definition().type != OptionType::Bool) {
+    for (size_t i = 0; i < options.size(); i++) {
+        // InjectHook / EarlyInjectHook accept multiple values, so command line and
+        // spicecfg entries are merged rather than conflicting; don't warn about them
+        if (i == (size_t) launcher::Options::InjectHook ||
+            i == (size_t) launcher::Options::EarlyInjectHook) {
+            continue;
+        }
+        const auto &option = options[i];
+        // ignore Boolean values
+        if (option.get_definition().type == OptionType::Bool) {
+            continue;
+        }
+        if (option.conflicting) {
             conflicts += 1;
             const auto& value = option.get_definition().sensitive ? "*****" : option.value;
             if (launcher::USE_CMD_OVERRIDE) {
