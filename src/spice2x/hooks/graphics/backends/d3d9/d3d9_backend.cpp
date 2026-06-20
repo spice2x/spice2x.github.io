@@ -1273,9 +1273,11 @@ static void graphics_d3d9_ldj_on_present(IDirect3DDevice9 *wrapped_device) {
         wintouchemu::update();
 
         // newer versions of exceed gear needs SUBSCREEN_FORCE_REDRAW
-        // (when enabled on older versions of EG, you end up with graphical glitches on the subscreen
-        // early versions of popn HC needs this as well, otherwise the subscreen doesn't update at all
-        if (GRAPHICS_WINDOWED || SUBSCREEN_FORCE_REDRAW || games::popn::is_pikapika_model()) {
+        // (when enabled on older versions of EG, you end up with graphical glitches on the subscreen)
+        //
+        // early versions of popn HC needs this as well, but not on by default as it can cause
+        // graphical glitches on some GPUs 
+        if (GRAPHICS_WINDOWED || SUBSCREEN_FORCE_REDRAW) {
             SUB_SWAP_CHAIN->Present(nullptr, nullptr, nullptr, nullptr, 0);
         }
     }

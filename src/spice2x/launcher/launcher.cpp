@@ -643,6 +643,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::PopnNativeTouch].value_bool()) {
         games::popn::NATIVE_TOUCH = true;
     }
+    if (options[launcher::Options::PopnSubRedraw].value_bool()) {
+        SUBSCREEN_FORCE_REDRAW = true;
+    }
     if (options[launcher::Options::LoadMetalGearArcadeModule].value_bool()) {
         attach_mga = true;
     }

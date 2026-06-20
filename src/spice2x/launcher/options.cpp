@@ -1139,6 +1139,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Advanced Game Options",
     },
     {
+        // PopnSubRedraw
+        .title = "Pop'n Music PikaPika Subscreen Force Redraw",
+        .name = "popnsubredraw",
+        .desc = "Check if submonitor in fullscreen mode appears stuck; "
+            "this option forces subscreen to redraw every frame.",
+        .type = OptionType::Bool,
+        .game_name = "Pop'n Music",
+        .category = "Advanced Game Options",
+        .quick_setting_category = "Game",
+    },
+    {
         .title = "Force Load HELLO! Pop'n Music Module",
         .name = "hpm",
         .desc = "Manually enable HELLO! Pop'n Music module.",
