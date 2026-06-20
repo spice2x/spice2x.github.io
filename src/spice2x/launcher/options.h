@@ -108,6 +108,7 @@ namespace launcher {
             PopnNoSub,
             PopnSubMonitorOverride,
             PopnNativeTouch,
+            PopnSubRedraw,
             LoadHelloPopnMusicModule,
             LoadGitaDoraModule,
             GitaDoraTwoChannelAudio,
