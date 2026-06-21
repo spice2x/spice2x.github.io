@@ -77,6 +77,7 @@ namespace overlay {
         Window *window_camera = nullptr;
         Window *window_sub = nullptr;
         Window *window_log = nullptr;
+        Window *window_obs = nullptr;
 
         // not part of `windows`: drawn/updated on the persistent layer (like
         // notifications), independent of the overlay's active state and input gates.

@@ -605,9 +605,14 @@ set(SOURCE_FILES ${SOURCE_FILES}
         overlay/windows/keypad.cpp
         overlay/windows/log.cpp
         overlay/windows/midi.cpp
+        overlay/windows/obs.cpp
+        overlay/windows/obs_websocket.cpp
         overlay/windows/patch_manager.cpp
         overlay/windows/popn_sub.cpp
         overlay/windows/wnd_manager.cpp
+
+        # external
+        external/easywsclient/easywsclient.cpp
 
         # rawinput
         rawinput/rawinput.cpp

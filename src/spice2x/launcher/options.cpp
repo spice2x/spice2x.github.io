@@ -19,6 +19,7 @@ static const std::vector<std::string> CATEGORY_ORDER_API = {
     "Serial API",
     "API Dev",
     "BT5 API",
+    "OBS WebSocket",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_GAME_OPTIONS = {
@@ -3200,6 +3201,51 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "the configurator.",
         .type = OptionType::Bool,
         .category = "Development",
+    },
+    {
+        // OBSWebSocketEnabled
+        .title = "OBS WebSocket Enable",
+        .name = "obsenable",
+        .desc = "Enables the in-game OBS Control overlay and its connection to the OBS Studio "
+            "obs-websocket (v5) server.",
+        .type = OptionType::Bool,
+        .category = "OBS WebSocket",
+    },
+    {
+        // OBSWebSocketHost
+        .title = "OBS WebSocket Host",
+        .name = "obshost",
+        .desc = "Host name or IP address of the OBS Studio obs-websocket (v5) server used by "
+            "the in-game OBS Control overlay. Defaults to 127.0.0.1 when left empty.",
+        .type = OptionType::Text,
+        .category = "OBS WebSocket",
+    },
+    {
+        // OBSWebSocketPort
+        .title = "OBS WebSocket Port",
+        .name = "obsport",
+        .desc = "Port of the OBS Studio obs-websocket (v5) server. Defaults to 4455 when left empty.",
+        .type = OptionType::Integer,
+        .category = "OBS WebSocket",
+    },
+    {
+        // OBSWebSocketPassword
+        .title = "OBS WebSocket Password",
+        .name = "obspass",
+        .desc = "Password for the OBS Studio obs-websocket (v5) server. Leave empty if "
+            "authentication is disabled in OBS.",
+        .type = OptionType::Text,
+        .category = "OBS WebSocket",
+        .sensitive = true,
+    },
+    {
+        // OBSWebSocketDebug
+        .title = "OBS WebSocket Debug",
+        .name = "obsdebug",
+        .desc = "Writes the OBS WebSocket client's internal connection diagnostics to the log. "
+            "Only enable this when troubleshooting connection problems.",
+        .type = OptionType::Bool,
+        .category = "OBS WebSocket",
     },
 };
 

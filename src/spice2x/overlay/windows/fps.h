@@ -9,6 +9,9 @@ namespace overlay::windows {
     private:
         std::chrono::system_clock::time_point start_time;
 
+        // anchored top-left position for a window of the given size, per FPS_LOCATION
+        ImVec2 anchored_pos(const ImVec2 &size) const;
+
     public:
 
         FPS(SpiceOverlay *overlay);

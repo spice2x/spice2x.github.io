@@ -305,7 +305,12 @@ namespace launcher {
             DisableHighResTimer,
             EnableICMPHook,
             AutoElevate,
-            CfgForceSoftwareRender
+            CfgForceSoftwareRender,
+            OBSWebSocketEnabled,
+            OBSWebSocketHost,
+            OBSWebSocketPort,
+            OBSWebSocketPassword,
+            OBSWebSocketDebug
         };
 
         enum class OptionsCategory {

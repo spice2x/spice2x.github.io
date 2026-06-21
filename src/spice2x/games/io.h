@@ -23,6 +23,7 @@ namespace games {
             ToggleScreenResize,
             ToggleFps,
             ToggleCameraControl,
+            ToggleOBSControl,
             TriggerPinMacroP1,
             TriggerPinMacroP2,
             ScreenResize,

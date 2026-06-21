@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "external/fmt/include/fmt/chrono.h"
 #include "fps.h"
+#include "obs.h"
 
 namespace overlay::windows {
 
@@ -14,6 +15,7 @@ namespace overlay::windows {
         this->title = "Stats";
         this->flags = ImGuiWindowFlags_NoTitleBar
                       | ImGuiWindowFlags_NoResize
+                      | ImGuiWindowFlags_AlwaysAutoResize
                       | ImGuiWindowFlags_NoCollapse
                       | ImGuiWindowFlags_NoFocusOnAppearing
                       | ImGuiWindowFlags_NoBringToFrontOnFocus
@@ -29,25 +31,7 @@ namespace overlay::windows {
             std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
     }
 
-    void FPS::calculate_initial_window() {
-        // size the window explicitly (no AlwaysAutoResize) so the corner anchoring
-        // below is exact; the footprint mirrors the fixed-fit table in build_content()
-        const float line_h = ImGui::GetTextLineHeight();
-        const int rows = 3;
-
-        // widest label and widest value drive the two fixed-fit columns
-        const float label_w = (std::max)(
-            ImGui::CalcTextSize("Time").x,
-            ImGui::CalcTextSize("Game").x);
-        const float value_w = ImGui::CalcTextSize("00:00:00").x;
-
-        const float win_w = label_w + value_w
-            + FPS_CELL_PADDING.x * 2
-            + FPS_WINDOW_PADDING.x * 2;
-        const float win_h = (line_h + FPS_CELL_PADDING.y * 2) * rows
-            + FPS_WINDOW_PADDING.y * 2;
-        this->init_size = ImVec2(win_w, win_h);
-
+    ImVec2 FPS::anchored_pos(const ImVec2 &size) const {
         // bottom-anchored windows use a larger edge margin (matching notification
         // toasts) since they overlap the same on-screen UI; other edges hug closer
         const float edge_margin = overlay::apply_scaling(4);
@@ -61,9 +45,27 @@ namespace overlay::windows {
             overlay::FPS_LOCATION == overlay::FpsLocation::BottomLeft ||
             overlay::FPS_LOCATION == overlay::FpsLocation::BottomRight;
 
-        const float pos_x = right ? display.x - win_w - edge_margin : edge_margin;
-        const float pos_y = bottom ? display.y - win_h - bottom_margin : edge_margin;
-        this->init_pos = ImVec2(pos_x, pos_y);
+        const float pos_x = right ? display.x - size.x - edge_margin : edge_margin;
+        const float pos_y = bottom ? display.y - size.y - bottom_margin : edge_margin;
+        return ImVec2(pos_x, pos_y);
+    }
+
+    void FPS::calculate_initial_window() {
+        // first-frame size estimate for the base 3 rows; AlwaysAutoResize handles
+        // the exact size (incl. any OBS rows) and build_content re-anchors each frame
+        const float line_h = ImGui::GetTextLineHeight();
+        const float label_w = (std::max)(
+            ImGui::CalcTextSize("Time").x,
+            ImGui::CalcTextSize("Game").x);
+        const float value_w = ImGui::CalcTextSize("00:00:00").x;
+
+        const float win_w = label_w + value_w
+            + FPS_CELL_PADDING.x * 2
+            + FPS_WINDOW_PADDING.x * 2;
+        const float win_h = (line_h + FPS_CELL_PADDING.y * 2) * 3
+            + FPS_WINDOW_PADDING.y * 2;
+        this->init_size = ImVec2(win_w, win_h);
+        this->init_pos = this->anchored_pos(this->init_size);
     }
 
     void FPS::build_content() {
@@ -78,6 +80,21 @@ namespace overlay::windows {
         localtime_s(&local_tm, &tt);
 
         const auto uptime = now_s - this->start_time;
+
+        // OBS status (only adds rows while streaming live or recording/paused)
+        OBSStatus obs_status;
+        bool show_stream = false;
+        bool show_record = false;
+        if (auto *obs = static_cast<OBSControl *>(this->overlay->window_obs)) {
+            obs_status = obs->get_status();
+            show_stream = obs_status.streaming;
+            show_record = obs_status.recording;
+        }
+
+        // AlwaysAutoResize sizes the window to its content, so adding/removing OBS
+        // rows never clips; just re-anchor it to the configured corner each frame
+        // using the actual (auto-sized) dimensions
+        ImGui::SetWindowPos(this->anchored_pos(ImGui::GetWindowSize()), ImGuiCond_Always);
 
         // right-align a label within the current cell so the label column reads
         // flush against the value column instead of looking ragged. the label is
@@ -116,6 +133,31 @@ namespace overlay::windows {
             ImGui::TextUnformatted(
                 fmt::format("{:%H:%M:%S}",
                     std::chrono::floor<std::chrono::seconds>(uptime)).c_str());
+
+            // OBS rows - only present while live or recording
+            const ImVec4 col_red(0.90f, 0.30f, 0.30f, 1.0f);
+            const ImVec4 col_yellow(0.95f, 0.80f, 0.30f, 1.0f);
+            if (show_stream) {
+                const int64_t ms = OBSControl::live_duration_ms(
+                    obs_status.stream_duration_ms, obs_status.stream_duration_base_tick, true);
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                label("Live");
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextColored(col_red, "%s",
+                    fmt::format("{:%H:%M:%S}", std::chrono::seconds(ms / 1000)).c_str());
+            }
+            if (show_record) {
+                const int64_t ms = OBSControl::live_duration_ms(
+                    obs_status.record_duration_ms, obs_status.record_duration_base_tick,
+                    !obs_status.record_paused);
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                label("Rec");
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextColored(obs_status.record_paused ? col_yellow : col_red, "%s",
+                    fmt::format("{:%H:%M:%S}", std::chrono::seconds(ms / 1000)).c_str());
+            }
 
             ImGui::EndTable();
         }

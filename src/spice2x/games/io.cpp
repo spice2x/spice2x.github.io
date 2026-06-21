@@ -474,6 +474,8 @@ namespace games {
         vkey_defaults.push_back(VK_F12);
         names.emplace_back("Toggle Camera Control");
         vkey_defaults.push_back(0xFF);
+        names.emplace_back("Toggle OBS Control");
+        vkey_defaults.push_back(0xFF);
         names.emplace_back("Player 1 PIN Macro");
         vkey_defaults.push_back(0xFF);
         names.emplace_back("Player 2 PIN Macro");
