@@ -52,6 +52,17 @@ namespace overlay::windows {
         int64_t record_duration_base_tick = 0;
     };
 
+    // in-flight user action used purely for UI feedback: when the user clicks a
+    // control we remember what we asked for so the button can show a transitional
+    // label and stay disabled until the observed OBS state matches the request
+    // (or a short deadline lapses). owned solely by the render thread.
+    enum class OBSAction {
+        None,
+        StreamStart, StreamStop,
+        RecordStart, RecordStop,
+        RecordPause, RecordResume,
+    };
+
     class OBSControl : public Window {
     public:
         OBSControl(SpiceOverlay *overlay);
@@ -100,5 +111,14 @@ namespace overlay::windows {
         // outgoing user commands (guarded by command_mutex)
         std::mutex command_mutex;
         std::deque<std::string> command_queue;
+
+        // transient action feedback, touched only by the render thread (no sync):
+        // remembers the last start/stop/pause request per output so the button can
+        // show a "Starting.../Stopping..." label and stay disabled until OBS reports
+        // the matching state, with *_deadline as a fallback if the update is missed
+        OBSAction stream_pending = OBSAction::None;
+        OBSAction record_pending = OBSAction::None;
+        int64_t stream_pending_deadline = 0;
+        int64_t record_pending_deadline = 0;
     };
 }

@@ -1,4 +1,5 @@
 #include "extensions.h"
+#include <algorithm>
 #include <cmath>
 
 #include "external/imgui/imgui.h"
@@ -158,6 +159,19 @@ namespace ImGui {
             ImGui::HelpTooltip(tooltip.c_str());
         }
         ImGui::PopID();
+        return clicked;
+    }
+
+    bool ColoredButton(const char* label, const ImVec4& base, const ImVec2& size) {
+        const auto brighten = [](const ImVec4& c, float d) {
+            return ImVec4((std::min)(c.x + d, 1.0f), (std::min)(c.y + d, 1.0f),
+                          (std::min)(c.z + d, 1.0f), c.w);
+        };
+        ImGui::PushStyleColor(ImGuiCol_Button, base);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brighten(base, 0.12f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, brighten(base, 0.22f));
+        const bool clicked = ImGui::Button(label, size);
+        ImGui::PopStyleColor(3);
         return clicked;
     }
 

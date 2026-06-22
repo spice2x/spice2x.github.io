@@ -23,6 +23,20 @@ namespace {
     const ImVec4 COL_YELLOW(0.95f, 0.80f, 0.30f, 1.0f);
     const ImVec4 COL_GREY(0.60f, 0.60f, 0.60f, 1.0f);
 
+    // muted action-button fills (start = green, stop = red, pause = yellow); the
+    // hovered/active shades are derived by brightening the base
+    const ImVec4 COL_BTN_GREEN(0.20f, 0.45f, 0.24f, 1.0f);
+    const ImVec4 COL_BTN_RED(0.52f, 0.20f, 0.20f, 1.0f);
+    const ImVec4 COL_BTN_YELLOW(0.52f, 0.42f, 0.16f, 1.0f);
+
+    // an in-flight request lingers for at most this long before the button frees
+    // itself, so a dropped state event can never wedge a control permanently
+    const int64_t PENDING_TIMEOUT_MS = 5000;
+
+    int64_t now_tick_ms() {
+        return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+    }
+
     std::string format_duration(int64_t ms) {
         if (ms < 0) {
             ms = 0;
@@ -112,63 +126,159 @@ namespace overlay::windows {
 
         status_line("OBS WebSocket:", COL_GREEN, "Connected");
 
+        // one fixed content width drives the whole panel so it never resizes as
+        // the scene name or button labels change; every row is sized to fit it
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+        const float row_w = overlay::apply_scaling(240);
+
         if (s.current_scene.empty()) {
             status_line("Scene:", COL_GREY, "(unknown)");
         } else {
             ImGui::Text("Scene:");
             ImGui::SameLine();
+            // truncate to the remaining row width so "Scene:" + value together
+            // never overflow and push the window wider
+            const float label_w = ImGui::CalcTextSize("Scene:").x;
             ImGui::PushStyleColor(ImGuiCol_Text, COL_GREY);
-            ImGui::TextTruncated(s.current_scene, overlay::apply_scaling(220));
+            ImGui::TextTruncated(s.current_scene, row_w - label_w - spacing);
             ImGui::PopStyleColor();
         }
 
         ImGui::Separator();
 
+        const int64_t now = now_tick_ms();
+        // every button shares one fixed size; two side-by-side fill the row width,
+        // single buttons keep that same size rather than stretching to fill
+        const ImVec2 btn((row_w - spacing) * 0.5f, 0);
+
+        // has OBS reached the state a pending action was waiting for?
+        const auto reached = [&](OBSAction a) {
+            switch (a) {
+                case OBSAction::StreamStart: return s.streaming;
+                case OBSAction::StreamStop: return !s.streaming;
+                case OBSAction::RecordStart: return s.recording;
+                case OBSAction::RecordStop: return !s.recording;
+                case OBSAction::RecordPause: return s.record_paused;
+                case OBSAction::RecordResume: return !s.record_paused;
+                default: return true;
+            }
+        };
+
+        // drop a pending action once OBS confirms the new state, or once the
+        // safety deadline lapses (so a dropped event can't wedge the button)
+        const auto settle = [&](OBSAction &slot, int64_t deadline) {
+            if (slot != OBSAction::None && (reached(slot) || now >= deadline)) {
+                slot = OBSAction::None;
+            }
+        };
+        settle(this->stream_pending, this->stream_pending_deadline);
+        settle(this->record_pending, this->record_pending_deadline);
+
+        // a colored button that fires a request and marks the output busy on click
+        const auto action_button =
+            [&](const char *label,
+                const ImVec4 &color,
+                const char *request,
+                OBSAction &slot,
+                int64_t &deadline,
+                OBSAction action) {
+
+            if (ImGui::ColoredButton(label, color, btn)) {
+                enqueue_request(request);
+                slot = action;
+                deadline = now + PENDING_TIMEOUT_MS;
+            }
+        };
+
         // streaming
-        if (s.streaming) {
-            const int64_t ms = live_duration_ms(
-                s.stream_duration_ms, s.stream_duration_base_tick, true);
-            status_line("Streaming:", COL_RED, ("LIVE  " + format_duration(ms)).c_str());
-            if (ImGui::Button("Stop Streaming")) {
-                enqueue_request("StopStream");
+        {
+            const bool pending = this->stream_pending != OBSAction::None;
+
+            if (s.streaming) {
+                const int64_t ms = live_duration_ms(
+                    s.stream_duration_ms, s.stream_duration_base_tick, true);
+                status_line("Streaming:", COL_RED, ("LIVE " + format_duration(ms)).c_str());
+            } else {
+                status_line("Streaming:", COL_GREY, pending ? "Starting..." : "Idle");
             }
-        } else {
-            status_line("Streaming:", COL_GREY, "Idle");
-            if (ImGui::Button("Start Streaming")) {
-                enqueue_request("StartStream");
+
+            ImGui::BeginDisabled(pending);
+            if (s.streaming) {
+                action_button(
+                    pending ? "Stopping...##stream" : "Stop Streaming##stream",
+                    COL_BTN_RED,
+                    "StopStream",
+                    this->stream_pending,
+                    this->stream_pending_deadline,
+                    OBSAction::StreamStop);
+            } else {
+                action_button(
+                    pending ? "Starting...##stream" : "Start Streaming##stream",
+                    COL_BTN_GREEN,
+                    "StartStream",
+                    this->stream_pending,
+                    this->stream_pending_deadline,
+                    OBSAction::StreamStart);
             }
+            ImGui::EndDisabled();
         }
 
         ImGui::Separator();
 
         // recording
-        if (!s.recording) {
-            status_line("Recording:", COL_GREY, "Idle");
-            if (ImGui::Button("Start Recording")) {
-                enqueue_request("StartRecord");
-            }
-            return;
-        }
+        {
+            const bool pending = this->record_pending != OBSAction::None;
 
-        const int64_t ms = live_duration_ms(
-            s.record_duration_ms, s.record_duration_base_tick, !s.record_paused);
-        if (s.record_paused) {
-            status_line("Recording:", COL_YELLOW, ("PAUSED  " + format_duration(ms)).c_str());
-        } else {
-            status_line("Recording:", COL_RED, ("REC  " + format_duration(ms)).c_str());
-        }
-        if (ImGui::Button("Stop Recording")) {
-            enqueue_request("StopRecord");
-        }
-        ImGui::SameLine();
-        if (s.record_paused) {
-            if (ImGui::Button("Resume")) {
-                enqueue_request("ResumeRecord");
+            if (!s.recording) {
+                status_line("Recording:", COL_GREY, pending ? "Starting..." : "Idle");
+                ImGui::BeginDisabled(pending);
+                action_button(
+                    pending ? "Starting...##record" : "Start Recording##record",
+                    COL_BTN_GREEN,
+                    "StartRecord",
+                    this->record_pending,
+                    this->record_pending_deadline,
+                    OBSAction::RecordStart);
+                ImGui::EndDisabled();
+                return;
             }
-        } else {
-            if (ImGui::Button("Pause")) {
-                enqueue_request("PauseRecord");
+
+            const int64_t ms = live_duration_ms(
+                s.record_duration_ms, s.record_duration_base_tick, !s.record_paused);
+            if (s.record_paused) {
+                status_line("Recording:", COL_YELLOW, ("PAUSED " + format_duration(ms)).c_str());
+            } else {
+                status_line("Recording:", COL_RED, ("REC " + format_duration(ms)).c_str());
             }
+
+            ImGui::BeginDisabled(pending);
+            action_button(
+                this->record_pending == OBSAction::RecordStop ? "Stopping...##record" : "Stop Recording##record",
+                COL_BTN_RED,
+                "StopRecord",
+                this->record_pending,
+                this->record_pending_deadline, OBSAction::RecordStop);
+
+            ImGui::SameLine();
+            if (s.record_paused) {
+                action_button(
+                    this->record_pending == OBSAction::RecordResume ? "Resuming...##record_toggle" : "Resume##record_toggle",
+                    COL_BTN_GREEN,
+                    "ResumeRecord",
+                    this->record_pending,
+                    this->record_pending_deadline,
+                    OBSAction::RecordResume);
+
+            } else {
+                action_button(
+                    this->record_pending == OBSAction::RecordPause ? "Pausing...##record_toggle" : "Pause##record_toggle",
+                    COL_BTN_YELLOW,
+                    "PauseRecord",
+                    this->record_pending,
+                    this->record_pending_deadline,
+                    OBSAction::RecordPause);
+            }
+            ImGui::EndDisabled();
         }
     }
 }
