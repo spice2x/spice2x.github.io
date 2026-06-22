@@ -97,9 +97,9 @@ namespace overlay::windows {
                 return;
             }
             if (s.identifying) {
-                ImGui::TextColored(COL_YELLOW, "%s", "Connecting to OBS WebSocket...");
+                status_line("OBS WebSocket:", COL_YELLOW, "Connecting...");
             } else {
-                ImGui::TextColored(COL_GREY, "%s", "Not connected");
+                status_line("OBS WebSocket:", COL_GREY, "Not connected");
             }
             const std::string url =
                 "ws://" + OBS_CONTROL_HOST + ":" + std::to_string(OBS_CONTROL_PORT);

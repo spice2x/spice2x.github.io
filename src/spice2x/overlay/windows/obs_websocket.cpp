@@ -368,9 +368,9 @@ namespace overlay::windows {
                 {
                     std::lock_guard<std::mutex> lock(this->status_mutex);
                     this->status.identifying = false;
-                    this->status.connection_error = "Unable to connect to " + url;
+                    this->status.connection_error = "Unable to connect";
                 }
-                interruptible_sleep(3000);
+                interruptible_sleep(5000);
                 continue;
             }
 
@@ -404,7 +404,7 @@ namespace overlay::windows {
             }
 
             // wait before reconnecting (interruptible)
-            interruptible_sleep(2000);
+            interruptible_sleep(5000);
         }
 
         WSACleanup();
