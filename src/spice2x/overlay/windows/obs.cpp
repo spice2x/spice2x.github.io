@@ -1,5 +1,6 @@
 #include "obs.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 
@@ -54,6 +55,11 @@ namespace overlay::windows {
     OBSControl::~OBSControl() {
         this->worker_running.store(false);
         if (this->worker_thread.joinable()) {
+            // note: if the worker is mid-connect, WebSocket::from_url performs a
+            // blocking getaddrinfo/connect that does not observe worker_running,
+            // so this join can stall for the OS connect timeout. the default
+            // 127.0.0.1 host fails fast (connection refused); only a misconfigured
+            // unreachable remote OBS_CONTROL_HOST would delay shutdown here.
             this->worker_thread.join();
         }
     }
@@ -65,11 +71,13 @@ namespace overlay::windows {
 
     int64_t OBSControl::live_duration_ms(int64_t base_ms, int64_t base_tick, bool ticking) {
         if (!ticking) {
-            return base_ms;
+            return (std::max<int64_t>)(base_ms, 0);
         }
         const int64_t now =
             duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-        return base_ms + (now - base_tick);
+        // clamp so a stale base tick / clock hiccup can never yield a negative
+        // duration; callers (FPS rows, build_content) format this directly
+        return (std::max<int64_t>)(base_ms + (now - base_tick), 0);
     }
 
     void OBSControl::build_content() {

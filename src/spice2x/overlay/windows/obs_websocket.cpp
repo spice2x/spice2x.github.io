@@ -277,7 +277,9 @@ namespace overlay::windows {
         // one iteration of a live connection: pump socket I/O, dispatch any
         // inbound messages, flush queued user commands, then refresh status
         bool identified = false;
-        auto last_status_poll = steady_clock::now() - seconds(10);
+        // handle_identified() issues the first GetStreamStatus/GetRecordStatus on
+        // identify, so the periodic poll below just maintains the ~1s cadence
+        auto last_status_poll = steady_clock::now();
 
         // send a request with the next sequential id
         const auto request = [&](const char *request_type) {
@@ -337,6 +339,10 @@ namespace overlay::windows {
         // opt easywsclient's internal diagnostics in/out per the debug option
         EASYWSCLIENT_LOGGING_ENABLED = OBS_CONTROL_DEBUG;
 
+        // winsock is reference-counted: the app performs its own WSAStartup at
+        // launch (which outlives this worker), so this paired Startup/Cleanup only
+        // bumps the refcount and the WSACleanup below never tears down winsock for
+        // the rest of the process
         WSADATA wsa_data;
         WSAStartup(MAKEWORD(2, 2), &wsa_data);
         log_info("obs", "enabled, connecting to {}", url);

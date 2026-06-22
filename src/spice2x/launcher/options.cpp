@@ -19,7 +19,6 @@ static const std::vector<std::string> CATEGORY_ORDER_API = {
     "Serial API",
     "API Dev",
     "BT5 API",
-    "OBS WebSocket",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_GAME_OPTIONS = {
@@ -53,6 +52,7 @@ static const std::vector<std::string> CATEGORY_ORDER_NETWORK = {
 static const std::vector<std::string> CATEGORY_ORDER_OVERLAY = {
     "General Overlay",
     "Game Overlay",
+    "OBS Control",
 };
 
 static const std::vector<std::string> CATEGORY_ORDER_ADVANCED = {
@@ -3209,7 +3209,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Enables the in-game OBS Control overlay and its connection to the OBS Studio "
             "obs-websocket (v5) server.",
         .type = OptionType::Bool,
-        .category = "OBS WebSocket",
+        .category = "OBS Control",
     },
     {
         // OBSWebSocketHost
@@ -3218,7 +3218,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Host name or IP address of the OBS Studio obs-websocket (v5) server used by "
             "the in-game OBS Control overlay. Defaults to 127.0.0.1 when left empty.",
         .type = OptionType::Text,
-        .category = "OBS WebSocket",
+        .category = "OBS Control",
     },
     {
         // OBSWebSocketPort
@@ -3226,7 +3226,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "obsport",
         .desc = "Port of the OBS Studio obs-websocket (v5) server. Defaults to 4455 when left empty.",
         .type = OptionType::Integer,
-        .category = "OBS WebSocket",
+        .category = "OBS Control",
     },
     {
         // OBSWebSocketPassword
@@ -3235,7 +3235,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Password for the OBS Studio obs-websocket (v5) server. Leave empty if "
             "authentication is disabled in OBS.",
         .type = OptionType::Text,
-        .category = "OBS WebSocket",
+        .category = "OBS Control",
         .sensitive = true,
     },
     {
@@ -3245,7 +3245,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Writes the OBS WebSocket client's internal connection diagnostics to the log. "
             "Only enable this when troubleshooting connection problems.",
         .type = OptionType::Bool,
-        .category = "OBS WebSocket",
+        .category = "OBS Control",
     },
 };
 
