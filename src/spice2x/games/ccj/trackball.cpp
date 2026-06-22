@@ -33,13 +33,14 @@ namespace games::ccj {
     static UINT WINAPI GetRawInputDeviceList_hook(PRAWINPUTDEVICELIST pRawInputDeviceList, PUINT puiNumDevices,
                                                   UINT cbSize) {
         auto result = GetRawInputDeviceList_orig(pRawInputDeviceList, puiNumDevices, cbSize);
-        if (result == 0xFFFFFFFF)
+        if (result == 0xFFFFFFFF) {
             return result;
+        }
 
         if (pRawInputDeviceList == NULL) {
             (*puiNumDevices)++;
         } else if (result < *puiNumDevices) {
-            pRawInputDeviceList[result] = {fakeHandle, 0};
+            pRawInputDeviceList[result] = { fakeHandle, 0 };
             result++;
         }
 
@@ -47,8 +48,9 @@ namespace games::ccj {
     }
 
     static UINT WINAPI GetRawInputDeviceInfoW_hook(HANDLE hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize) {
-        if (hDevice != fakeHandle || uiCommand != RIDI_DEVICENAME)
+        if (hDevice != fakeHandle || uiCommand != RIDI_DEVICENAME) {
             return GetRawInputDeviceInfoW_orig(hDevice, uiCommand, pData, pcbSize);
+        }
 
         const auto requiredLen = (wcslen(fakeDeviceName) + 1) * sizeof(wchar_t);
 
@@ -68,23 +70,157 @@ namespace games::ccj {
 
     static LONG_PTR WINAPI SetWindowLongPtrW_hook(HWND _hWnd, int nIndex, LONG_PTR dwNewLong) {
         wchar_t buffer[256];
-        if (nIndex != GWLP_WNDPROC || GetWindowTextW(_hWnd, buffer, 256) == 0 || !wcswcs(buffer, windowName))
+        if (nIndex != GWLP_WNDPROC || GetWindowTextW(_hWnd, buffer, 256) == 0 || !wcswcs(buffer, windowName)) {
             return SetWindowLongPtrW_orig(_hWnd, nIndex, dwNewLong);
+        }
 
         hWnd = _hWnd;
         wndProc = (WNDPROC)dwNewLong;
         return SetWindowLongPtrW_orig(_hWnd, nIndex, dwNewLong);
     }
 
+    // compute the cursor wrap region in client coordinates. The cursor is confined to the
+    // monitor, so if the window's client area extends past a screen edge (window larger than /
+    // offset off the monitor) the cursor can never reach that far client edge. Clamp the region
+    // to the on-screen portion of the client area so the right/bottom edges wrap as reliably as
+    // the left/top edges.
+    static RECT trackball_wrap_bounds(HWND wnd, const RECT &client) {
+        RECT bounds = client;
+
+        POINT origin = { 0, 0 };
+        ClientToScreen(wnd, &origin);
+        RECT clientScreen = {
+            origin.x,
+            origin.y,
+            origin.x + client.right,
+            origin.y + client.bottom
+        };
+
+        MONITORINFO mi = {};
+        mi.cbSize = sizeof(mi);
+        RECT usable;
+        if (GetMonitorInfo(MonitorFromWindow(wnd, MONITOR_DEFAULTTONEAREST), &mi)
+            && IntersectRect(&usable, &clientScreen, &mi.rcMonitor)) {
+            bounds.left = usable.left - origin.x;
+            bounds.top = usable.top - origin.y;
+            bounds.right = usable.right - origin.x;
+            bounds.bottom = usable.bottom - origin.y;
+        }
+
+        return bounds;
+    }
+
+    // drive the trackball from the physical mouse cursor, wrapping it at the window edges so it
+    // can spin indefinitely. gated by the secondary-mouse button (hold or debounced toggle).
+    static void trackball_mouse_input(RAWMOUSE &rawMouse) {
+        static bool active = false;
+        static bool lastState = false;
+        static std::chrono::steady_clock::time_point lastModified = std::chrono::steady_clock::now();
+        static const std::chrono::milliseconds debounceDuration(100);
+
+        const auto currentTime = std::chrono::steady_clock::now();
+        const bool pressed = get_async_secondary_mouse();
+        const bool focused = GetForegroundWindow() == hWnd;
+
+        if (focused && MOUSE_TRACKBALL_USE_TOGGLE && pressed && (currentTime - lastModified > debounceDuration)) {
+            active = !active;
+            lastModified = currentTime;
+        }
+
+        const bool engaged = focused
+            && ((MOUSE_TRACKBALL_USE_TOGGLE && active) || (!MOUSE_TRACKBALL_USE_TOGGLE && pressed));
+        if (!engaged) {
+            if (lastState && !active) {
+                lastState = false;
+            }
+            return;
+        }
+
+        POINT cursor;
+        RECT client;
+        GetClientRect(hWnd, &client);
+        GetCursorPos(&cursor);
+        ScreenToClient(hWnd, &cursor);
+
+        const RECT bounds = trackball_wrap_bounds(hWnd, client);
+
+        static int lastX = cursor.x;
+        static int lastY = cursor.y;
+        if (!lastState) {
+            lastX = cursor.x;
+            lastY = cursor.y;
+            lastState = true;
+        }
+
+        rawMouse.usFlags = MOUSE_MOVE_RELATIVE;
+        rawMouse.lLastX = (int)((float)(cursor.x - lastX) * (float)TRACKBALL_SENSITIVITY / 20.0f);
+        rawMouse.lLastY = (int)((float)(lastY - cursor.y) * (float)TRACKBALL_SENSITIVITY / 20.0f);
+
+        // wrap the cursor to the opposite edge once it reaches a boundary, so the trackball
+        // can keep spinning past the screen edge.
+        bool updateCursor = false;
+        auto wrap = [&updateCursor](LONG value, LONG lo, LONG hi) -> LONG {
+            if (value <= lo) {
+                updateCursor = true;
+                return hi - 5;
+            }
+            if (value >= hi - 1) {
+                updateCursor = true;
+                return lo + 5;
+            }
+            return value;
+        };
+
+        cursor.x = wrap(cursor.x, bounds.left, bounds.right);
+        cursor.y = wrap(cursor.y, bounds.top, bounds.bottom);
+
+        lastX = cursor.x;
+        lastY = cursor.y;
+
+        if (updateCursor) {
+            ClientToScreen(hWnd, &cursor);
+            SetCursorPos(cursor.x, cursor.y);
+        }
+    }
+
+    // drive the trackball from the configured analog axes / direction buttons.
+    static void trackball_mapped_input(RAWMOUSE &rawMouse) {
+        rawMouse.usFlags = MOUSE_MOVE_RELATIVE;
+
+        auto &analogs = get_analogs();
+        if (analogs[Analogs::Trackball_DX].isSet() || analogs[Analogs::Trackball_DY].isSet()) {
+            float x = GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::Trackball_DX]) * 2.0f - 1.0f;
+            float y = GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::Trackball_DY]) * 2.0f - 1.0f;
+            rawMouse.lLastX = (long) (x * (float) TRACKBALL_SENSITIVITY);
+            rawMouse.lLastY = (long) (-y * (float) TRACKBALL_SENSITIVITY);
+        }
+
+        auto &buttons = get_buttons();
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Trackball_Up])) {
+            rawMouse.lLastY = TRACKBALL_SENSITIVITY;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Trackball_Down])) {
+            rawMouse.lLastY = -TRACKBALL_SENSITIVITY;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Trackball_Left])) {
+            rawMouse.lLastX = -TRACKBALL_SENSITIVITY;
+        }
+        if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Trackball_Right])) {
+            rawMouse.lLastX = TRACKBALL_SENSITIVITY;
+        }
+    }
+
     static UINT WINAPI GetRawInputData_hook(HRAWINPUT hRawInput, UINT uiCommand, LPVOID pData, PUINT pcbSize, UINT cbSizeHeader) {
-        if (hRawInput != fakeHandle)
+        if (hRawInput != fakeHandle) {
             return GetRawInputData_orig(hRawInput, uiCommand, pData, pcbSize, cbSizeHeader);
+        }
 
         if (pData == NULL) {
-            if (uiCommand == RID_HEADER)
+            if (uiCommand == RID_HEADER) {
                 *pcbSize = sizeof(RAWINPUTHEADER);
-            else
+            } else {
                 *pcbSize = sizeof(RAWINPUT);
+            }
             return 0;
         }
 
@@ -107,92 +243,9 @@ namespace games::ccj {
             RAWMOUSE rawMouse {};
 
             if (MOUSE_TRACKBALL) {
-                static bool active = false;
-                static bool lastState = false;
-
-                static std::chrono::time_point<std::chrono::steady_clock> lastModified = std::chrono::steady_clock::now();
-                static std::chrono::milliseconds debounceDuration(100);
-                auto currentTime = std::chrono::steady_clock::now();
-                bool pressed = get_async_secondary_mouse();
-                bool focused = GetForegroundWindow() == hWnd;
-
-                if (focused && MOUSE_TRACKBALL_USE_TOGGLE && pressed && (currentTime - lastModified > debounceDuration)) {
-                    active = !active;
-                    lastModified = currentTime;
-                }
-
-                if (focused && ((MOUSE_TRACKBALL_USE_TOGGLE && active) || (!MOUSE_TRACKBALL_USE_TOGGLE && pressed))) {
-                    POINT cursor;
-                    RECT client;
-
-                    GetClientRect(hWnd, &client);
-                    int sx = client.right - client.left;
-                    int sy = client.bottom - client.top;
-
-                    GetCursorPos(&cursor);
-                    ScreenToClient(hWnd, &cursor);
-
-                    static int lastX = cursor.x;
-                    static int lastY = cursor.y;
-
-                    if (!lastState) {
-                        lastX = cursor.x;
-                        lastY = cursor.y;
-                        lastState = true;
-                    }
-
-                    rawMouse.usFlags = MOUSE_MOVE_RELATIVE;
-                    rawMouse.lLastX = (int)((float)(cursor.x - lastX) * (float)TRACKBALL_SENSITIVITY / 20.0f);
-                    rawMouse.lLastY = (int)((float)(lastY - cursor.y) * (float)TRACKBALL_SENSITIVITY / 20.0f);
-
-                    bool updateCursor = false;
-
-                    if (cursor.x <= 0) {
-                        updateCursor = true;
-                        cursor.x = sx - 5;
-                    } else if (cursor.x >= sx - 1) {
-                        updateCursor = true;
-                        cursor.x = 5;
-                    }
-
-                    if (cursor.y <= 0) {
-                        updateCursor = true;
-                        cursor.y = sy - 5;
-                    } else if (cursor.y >= sy - 1) {
-                        updateCursor = true;
-                        cursor.y = 5;
-                    }
-
-                    lastX = cursor.x;
-                    lastY = cursor.y;
-
-                    if (updateCursor) {
-                        ClientToScreen(hWnd, &cursor);
-                        SetCursorPos(cursor.x, cursor.y);
-                    }
-                } else if (lastState && !active) {
-                    lastState = false;
-                }
+                trackball_mouse_input(rawMouse);
             } else {
-                rawMouse.usFlags = MOUSE_MOVE_RELATIVE;
-
-                auto &analogs = get_analogs();
-                if (analogs[Analogs::Trackball_DX].isSet() || analogs[Analogs::Trackball_DY].isSet()) {
-                    float x = GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::Trackball_DX]) * 2.0f - 1.0f;
-                    float y = GameAPI::Analogs::getState(RI_MGR, analogs[Analogs::Trackball_DY]) * 2.0f - 1.0f;
-                    rawMouse.lLastX = (long) (x * (float) TRACKBALL_SENSITIVITY);
-                    rawMouse.lLastY = (long) (-y * (float) TRACKBALL_SENSITIVITY);
-                }
-
-                auto &buttons = get_buttons();
-                if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Trackball_Up]))
-                    rawMouse.lLastY = TRACKBALL_SENSITIVITY;
-                if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Trackball_Down]))
-                    rawMouse.lLastY = -TRACKBALL_SENSITIVITY;
-                if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Trackball_Left]))
-                    rawMouse.lLastX = -TRACKBALL_SENSITIVITY;
-                if (GameAPI::Buttons::getState(RI_MGR, buttons[Buttons::Trackball_Right]))
-                    rawMouse.lLastX = TRACKBALL_SENSITIVITY;
+                trackball_mapped_input(rawMouse);
             }
 
             *((RAWINPUT*)pData) = { header, { rawMouse } };
@@ -224,9 +277,8 @@ namespace games::ccj {
         static bool initialized = false;
         if (initialized) {
             return;
-        } else {
-            initialized = true;
         }
+        initialized = true;
 
         // announce
         log_info("trackball", "init");
@@ -246,8 +298,6 @@ namespace games::ccj {
     }
 
     void trackball_thread_start() {
-        using namespace std::chrono_literals;
-
         tbThreadRunning = true;
 
         log_info("trackball", "thread start, use mouse: {}, toggle: {}", MOUSE_TRACKBALL, MOUSE_TRACKBALL_USE_TOGGLE);
@@ -259,8 +309,9 @@ namespace games::ccj {
                     wndProc(hWnd, WM_INPUT, RIM_INPUT, (LPARAM)fakeHandle);
                 }
 
-                if (!tbThreadRunning)
+                if (!tbThreadRunning) {
                     break;
+                }
 
                 timer.sleep(10);
             }
@@ -269,8 +320,9 @@ namespace games::ccj {
 
     void trackball_thread_stop() {
         tbThreadRunning = false;
-        if (tbThread)
+        if (tbThread) {
             tbThread->join();
+        }
 
         log_info("trackball", "thread stop");
 
