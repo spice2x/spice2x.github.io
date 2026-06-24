@@ -22,6 +22,11 @@ namespace ImGui {
     bool ClearButton(const std::string& tooltip);
     void HighlightTableRowOnHover();
 
+    // a Button with the given base fill color; the hovered/active shades are
+    // derived by brightening the base. size defaults to auto (fit the label).
+    bool ColoredButton(const char* label, const ImVec4& base,
+            const ImVec2& size = ImVec2(0, 0));
+
     // Config tab bar with extra label padding and uniform, centered tab widths.
     // Wrap items in BeginPaddedTabItem between BeginPaddedTabBar/EndTabBar.
     bool BeginPaddedTabBar(const char* str_id, ImGuiTabBarFlags flags = 0);

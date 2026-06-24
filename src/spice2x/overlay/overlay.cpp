@@ -50,6 +50,7 @@
 #include "windows/sdvx_sub.h"
 #include "windows/keypad.h"
 #include "windows/log.h"
+#include "windows/obs.h"
 #include "windows/patch_manager.h"
 #include "windows/exitprompt.cpp"
 
@@ -415,6 +416,12 @@ void overlay::SpiceOverlay::init() {
         this->window_add(window_resize = new overlay::windows::ScreenResize(this));
     }
     this->window_add(new overlay::windows::PatchManager(this));
+
+    // OBS control spawns a background WebSocket worker; skip it in the standalone
+    // configurator, where there is no running game to stream/record
+    if (!cfg::CONFIGURATOR_STANDALONE) {
+        this->window_add(window_obs = new overlay::windows::OBSControl(this));
+    }
 
     {
         window_keypad1 = new overlay::windows::Keypad(this, 0);

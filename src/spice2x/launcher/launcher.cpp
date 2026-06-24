@@ -102,6 +102,7 @@
 #include "overlay/notifications.h"
 #include "overlay/windows/patch_manager.h"
 #include "overlay/windows/iidx_seg.h"
+#include "overlay/windows/obs.h"
 #include "rawinput/rawinput.h"
 #include "rawinput/touch.h"
 #include "reader/reader.h"
@@ -1435,6 +1436,26 @@ int main_implementation(int argc, char *argv[]) {
 
     if (options[launcher::Options::CfgForceSoftwareRender].value_bool()) {
         cfg::CONFIGURATOR_FORCE_SOFTWARE_RENDER = true;
+    }
+
+    // OBS WebSocket overlay settings
+    if (options[launcher::Options::OBSWebSocketEnabled].value_bool()) {
+        overlay::windows::OBS_CONTROL_ENABLED = true;
+    }
+    if (options[launcher::Options::OBSWebSocketHost].is_active()) {
+        overlay::windows::OBS_CONTROL_HOST = options[launcher::Options::OBSWebSocketHost].value_text();
+    }
+    if (options[launcher::Options::OBSWebSocketPort].is_active()) {
+        const auto obs_port = options[launcher::Options::OBSWebSocketPort].value_uint32();
+        if (obs_port > 0 && obs_port <= 65535) {
+            overlay::windows::OBS_CONTROL_PORT = static_cast<uint16_t>(obs_port);
+        }
+    }
+    if (options[launcher::Options::OBSWebSocketPassword].is_active()) {
+        overlay::windows::OBS_CONTROL_PASSWORD = options[launcher::Options::OBSWebSocketPassword].value_text();
+    }
+    if (options[launcher::Options::OBSWebSocketDebug].value_bool()) {
+        overlay::windows::OBS_CONTROL_DEBUG = true;
     }
 
     // API debugging
