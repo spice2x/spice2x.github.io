@@ -67,7 +67,13 @@ namespace overlay::windows {
     }
 
     OBSControl::~OBSControl() {
-        this->worker_running.store(false);
+        // signal stop and wake any in-progress interruptible_sleep at once; the
+        // lock around the store pairs with the wait predicate to avoid a lost wakeup
+        {
+            std::lock_guard<std::mutex> lock(this->worker_mutex);
+            this->worker_running.store(false);
+        }
+        this->worker_cv.notify_all();
         if (this->worker_thread.joinable()) {
             // note: if the worker is mid-connect, WebSocket::from_url performs a
             // blocking getaddrinfo/connect that does not observe worker_running,

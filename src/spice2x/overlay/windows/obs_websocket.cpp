@@ -162,9 +162,9 @@ namespace overlay::windows {
     }
 
     void OBSControl::interruptible_sleep(int total_ms) {
-        for (int elapsed = 0; elapsed < total_ms && this->worker_running.load(); elapsed += 100) {
-            std::this_thread::sleep_for(milliseconds(100));
-        }
+        std::unique_lock<std::mutex> lock(this->worker_mutex);
+        this->worker_cv.wait_for(lock, milliseconds(total_ms),
+            [this] { return !this->worker_running.load(); });
     }
 
     void OBSControl::handle_message(WebSocket *ws, const std::string &message,
@@ -272,7 +272,7 @@ namespace overlay::windows {
         }
     }
 
-    void OBSControl::run_session(WebSocket *ws, const std::string &password, uint64_t &request_id) {
+    bool OBSControl::run_session(WebSocket *ws, const std::string &password, uint64_t &request_id) {
 
         // one iteration of a live connection: pump socket I/O, dispatch any
         // inbound messages, flush queued user commands, then refresh status
@@ -320,6 +320,8 @@ namespace overlay::windows {
                 request("GetRecordStatus");
             }
         }
+
+        return identified;
     }
 
     void OBSControl::worker_main() {
@@ -349,6 +351,11 @@ namespace overlay::windows {
 
         uint64_t request_id = 0;
 
+        // the reconnect loop retries every 5s; latch the auth-failure warning so a
+        // wrong password logs once, not on every retry. reset after any identified
+        // session so a later genuine failure is reported again
+        bool auth_warning_logged = false;
+
         // reconnect loop: keep a session alive while enabled, retrying on drop
         while (this->worker_running.load()) {
 
@@ -374,13 +381,26 @@ namespace overlay::windows {
                 continue;
             }
 
-            // blocks here pumping the connection until it closes or we stop
-            this->run_session(ws, password, request_id);
+            // blocks here pumping the connection until it closes or we stop.
+            // a session that never reaches "Identified" was rejected by OBS,
+            // overwhelmingly because the password is wrong or missing
+            const bool identified = this->run_session(ws, password, request_id);
 
             // session ended: close the socket cleanly and free it
             ws->close();
             ws->poll();
             delete ws;
+
+            if (!identified && this->worker_running.load()) {
+                if (!auth_warning_logged) {
+                    log_warning("obs", "connection closed before identify; "
+                        "OBS likely rejected authentication (check the password)");
+                    auth_warning_logged = true;
+                }
+            } else if (identified) {
+                // a good session resets the latch so a future failure logs again
+                auth_warning_logged = false;
+            }
 
             // connection dropped: clear live state so the UI doesn't show stale
             // scene/stream/record info while disconnected
@@ -389,7 +409,8 @@ namespace overlay::windows {
                 this->status.connected = false;
                 this->status.identifying = false;
                 if (this->status.connection_error.empty()) {
-                    this->status.connection_error = "Disconnected";
+                    this->status.connection_error =
+                        identified ? "Disconnected" : "Auth failed (check password)";
                 }
                 this->status.streaming = false;
                 this->status.recording = false;

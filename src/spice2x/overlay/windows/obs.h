@@ -80,8 +80,10 @@ namespace overlay::windows {
         // worker thread entry + helpers (implementation owns the WebSocket)
         void worker_main();
 
-        // run one connected session loop until the socket closes or we stop
-        void run_session(easywsclient::WebSocket *ws, const std::string &password,
+        // run one connected session loop until the socket closes or we stop;
+        // returns true if the obs-websocket handshake reached "Identified", false
+        // if the socket closed first (e.g. OBS rejected our auth)
+        bool run_session(easywsclient::WebSocket *ws, const std::string &password,
                          uint64_t &request_id);
 
         // handle a single inbound obs-websocket message (parses + dispatches)
@@ -103,6 +105,11 @@ namespace overlay::windows {
         // worker thread
         std::thread worker_thread;
         std::atomic<bool> worker_running { false };
+
+        // wakes interruptible_sleep immediately when worker_running is cleared,
+        // so shutdown (and the reconnect backoff) never waits out a fixed delay
+        std::mutex worker_mutex;
+        std::condition_variable worker_cv;
 
         // shared status (guarded by status_mutex)
         std::mutex status_mutex;
