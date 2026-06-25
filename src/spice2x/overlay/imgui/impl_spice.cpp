@@ -210,7 +210,15 @@ bool ImGui_ImplSpice_UpdateMouseCursor() {
 
     // update cursor
     ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
-    if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor) {
+
+    // in auto-hide mode imgui owns cursor drawing, so the OS cursor must stay
+    // hidden. this function is also called from the game window's WM_SETCURSOR
+    // handler, which fires on every mouse move; without forcing it hidden here,
+    // the else branch below would set IDC_ARROW on the next mouse move once the
+    // overlay is closed. that arrow is conspicuous on games whose window class
+    // has hCursor==NULL (e.g. DDR), since those normally show no client-area
+    // cursor at all.
+    if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor || g_MouseCursorAutoHide) {
 
         // hide OS mouse cursor if imgui is drawing it or if it wants no cursor
         ::SetCursor(nullptr);
@@ -592,8 +600,12 @@ void ImGui_ImplSpice_NewFrame() {
             }
         }
     } else {
-        // update OS mouse cursor with the cursor requested by imgui
-        ImGuiMouseCursor mouse_cursor = io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor();
+        // in auto-hide mode imgui owns the cursor, so keep the OS cursor hidden
+        // even when the overlay is closed (io.MouseDrawCursor is false then).
+        ImGuiMouseCursor mouse_cursor =
+            (io.MouseDrawCursor || g_MouseCursorAutoHide)
+                ? ImGuiMouseCursor_None
+                : ImGui::GetMouseCursor();
         if (g_LastMouseCursor != mouse_cursor) {
             g_LastMouseCursor = mouse_cursor;
             ImGui_ImplSpice_UpdateMouseCursor();
