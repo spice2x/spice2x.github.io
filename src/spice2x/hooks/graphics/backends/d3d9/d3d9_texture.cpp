@@ -69,8 +69,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetDevice(IDirect3DDevice9 *
 
     // by default behave exactly like stock D3D9 and hand back the real device.
     // only when the SDVX Live2D skip is enabled do we return the wrapped device,
-    // so that engines which fetch their device via texture->GetDevice() (Live2D
-    // Cubism) route their draw calls back through our hooks. this keeps the
+    // so that engines which fetch their device via texture->GetDevice()
+    // (Live2D) route their draw calls back through our hooks. this keeps the
     // default path byte-for-byte stock for every other game / user.
     // only the Live2D-capable SDVX versions are 64-bit, so this is compiled out
     // of 32-bit builds.

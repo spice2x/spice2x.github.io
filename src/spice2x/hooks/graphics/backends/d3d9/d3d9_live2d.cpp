@@ -11,7 +11,7 @@
 
 // how the Live2D draw filtering works
 // ------------------------------------
-// SDVX draws its Live2D (Cubism) characters with a small, fixed set of pixel and
+// SDVX draws its Live2D characters with a small, fixed set of pixel and
 // vertex shaders. to skip those draws (and save GPU) we have to recognise them at
 // the exact moment the game issues a draw call. the d3d9 device hooks feed three
 // kinds of events into this module:
@@ -78,7 +78,7 @@ uint64_t bytecode_hash(const DWORD *func) {
     return h;
 }
 
-// known SDVX Live2D (Cubism) shader bytecode hashes (4 pixel + 3 vertex). stable
+// known SDVX Live2D shader bytecode hashes (4 pixel + 3 vertex). stable
 // across runs because the game ships fixed shaders. the two sets are disjoint so
 // a single shader can be classified by its own hash alone.
 // see /memories/repo/sdvx-live2d-disable.md.

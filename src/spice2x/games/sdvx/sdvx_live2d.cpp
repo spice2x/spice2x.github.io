@@ -16,7 +16,7 @@ namespace games::sdvx {
     //
     // the game logs scene transitions as "I:Attach: in <SCENE>" / "I:Detach: in
     // <SCENE>". several scenes correspond to in-song gameplay (with the heavy
-    // Live2D Cubism rendering); we watch those log lines and keep the shared flag
+    // Live2D rendering); we watch those log lines and keep the shared flag
     // the d3d9 backend reads up to date. the hook never alters the log output
     // (always returns false).
     static bool live2d_scene_log_hook(

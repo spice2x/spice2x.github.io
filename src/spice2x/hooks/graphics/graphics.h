@@ -28,7 +28,7 @@ enum graphics_dx9on12_state {
     DX9ON12_FORCE_ON,
 };
 
-// SDVX Live2D (Cubism) suppression policy. the mode comes from the launcher
+// SDVX Live2D suppression policy. the mode comes from the launcher
 // option; the in-gameplay flag is maintained by the SDVX scene-detection hook in
 // games/sdvx (which does not require the SDVX game module to be enabled). the
 // d3d9 backend reads graphics_sdvx_live2d_should_skip() on every draw.

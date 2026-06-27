@@ -1030,7 +1030,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // SDVXDisableLive2D
         .title = "SDVX Disable Live2D (EXPERIMENTAL)",
         .name = "sdvxnolive2d",
-        .desc = "Skip rendering the SDVX Live2D (Cubism) graphics to save GPU.\n\n"
+        .desc = "Skip rendering the SDVX Live2D graphics to save GPU.\n\n"
                 "Off: leave Live2D as-is.\n"
                 "Always: never render Live2D (also removes the menu navigator).\n"
                 "During songs: only skip Live2D during a song; keeps the menu navigator. Scene detection relies on game logging.",

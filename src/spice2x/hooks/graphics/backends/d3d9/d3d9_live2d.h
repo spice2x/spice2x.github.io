@@ -3,10 +3,10 @@
 #include <windows.h>
 #include <d3d9.h>
 
-// SDVX Live2D (Cubism) draw-skip support for the D3D9 backend.
+// SDVX Live2D draw-skip support for the D3D9 backend.
 //
 // SDVX renders its Live2D navigator / in-song character through a fixed set of
-// Cubism shaders. when the skip is active (see graphics_sdvx_live2d_should_skip)
+// shaders. when the skip is active (see graphics_sdvx_live2d_should_skip)
 // the matching draw calls are dropped to save GPU. shaders are identified by a
 // stable hash of their D3D9 bytecode (object pointers vary per run, the bytecode
 // does not). the hashes were captured with the draw-call fingerprinting tool;
