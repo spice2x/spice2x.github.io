@@ -886,6 +886,22 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Advanced Game Options",
     },
     {
+        .title = "SDVX Disable Live2D (EXPERIMENTAL)",
+        .name = "sdvxnolive2d",
+        .desc = "Skip rendering the SDVX Live2D (Cubism) graphics to save GPU.\n\n"
+                "Off: leave Live2D as-is.\n"
+                "Always: never render Live2D (also removes the menu navigator).\n"
+                "During songs: only skip Live2D during a song; keeps the menu navigator. Scene detection relies on game logging.",
+        .type = OptionType::Enum,
+        .game_name = "Sound Voltex",
+        .category = "Advanced Game Options",
+        .elements = {
+            {"off", "Show Live2D"},
+            {"always", "Never show Live2D"},
+            {"ingame", "Show navigators only"},
+        },
+    },
+    {
         .title = "SDVX Printer Emulation",
         .name = "printer",
         .desc = "Enable Sound Voltex printer emulation.",

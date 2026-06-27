@@ -1,7 +1,11 @@
 #include "d3d9_device.h"
 
+#include <algorithm>
 #include <cassert>
+#include <climits>
 #include <mutex>
+#include <unordered_map>
+#include <vector>
 
 #include "avs/game.h"
 #include "games/gitadora/gitadora.h"
@@ -12,6 +16,7 @@
 #include "cfg/screen_resize.h"
 
 #include "d3d9_backend.h"
+#include "d3d9_live2d.h"
 #include "d3d9_texture.h"
 
 #ifndef SPICE64
@@ -1301,6 +1306,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawPrimitive(
         UINT PrimitiveCount)
 {
     WRAP_DEBUG;
+    if (d3d9_live2d::should_skip_draw()) [[unlikely]] {
+        return D3D_OK;
+    }
     CHECK_RESULT(pReal->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount));
 }
 
@@ -1313,6 +1321,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawIndexedPrimitive(
         UINT PrimitiveCount)
 {
     WRAP_DEBUG;
+    if (d3d9_live2d::should_skip_draw()) [[unlikely]] {
+        return D3D_OK;
+    }
     CHECK_RESULT(pReal->DrawIndexedPrimitive(
             PrimitiveType, BaseVertexIndex,
             MinVertexIndex, NumVertices,
@@ -1328,6 +1339,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawPrimitiveUP(
     WRAP_DEBUG_FMT("DrawPrimitiveUP({}, {}, {}, {})",
             PrimitiveType, PrimitiveCount,
             fmt::ptr(pVertexStreamZeroData), VertexStreamZeroStride);
+    if (d3d9_live2d::should_skip_draw()) [[unlikely]] {
+        return D3D_OK;
+    }
     CHECK_RESULT(pReal->DrawPrimitiveUP(
             PrimitiveType, PrimitiveCount,
             pVertexStreamZeroData, VertexStreamZeroStride));
@@ -1344,6 +1358,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::DrawIndexedPrimitiveUP(
         UINT VertexStreamZeroStride)
 {
     WRAP_DEBUG;
+    if (d3d9_live2d::should_skip_draw()) [[unlikely]] {
+        return D3D_OK;
+    }
     CHECK_RESULT(pReal->DrawIndexedPrimitiveUP(
             PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData,
             IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride));
@@ -1403,13 +1420,22 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateVertexShader(
         IDirect3DVertexShader9 **ppShader)
 {
     WRAP_VERBOSE_FMT("CreateVertexShader({})", fmt::ptr(pFunction));
-    CHECK_RESULT(pReal->CreateVertexShader(pFunction, ppShader));
+    HRESULT ret = pReal->CreateVertexShader(pFunction, ppShader);
+    if (SUCCEEDED(ret) && ppShader != nullptr) {
+        d3d9_live2d::on_create_vertex_shader(*ppShader, pFunction);
+    }
+    if (GRAPHICS_LOG_HRESULT && FAILED(ret)) [[unlikely]] {
+        log_warning("graphics::d3d9", "{} failed, hr={}", __FUNCTION__, FMT_HRESULT(ret));
+    }
+    return ret;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetVertexShader(
         IDirect3DVertexShader9 *pShader)
 {
     WRAP_DEBUG_FMT("SetVertexShader({})", fmt::ptr(pShader));
+
+    d3d9_live2d::on_set_vertex_shader(pShader);
 
 #ifndef SPICE64
 
@@ -1557,13 +1583,21 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreatePixelShader(
         IDirect3DPixelShader9 **ppShader)
 {
     WRAP_VERBOSE_FMT("CreatePixelShader({})", fmt::ptr(pFunction));
-    CHECK_RESULT(pReal->CreatePixelShader(pFunction, ppShader));
+    HRESULT ret = pReal->CreatePixelShader(pFunction, ppShader);
+    if (SUCCEEDED(ret) && ppShader != nullptr) {
+        d3d9_live2d::on_create_pixel_shader(*ppShader, pFunction);
+    }
+    if (GRAPHICS_LOG_HRESULT && FAILED(ret)) [[unlikely]] {
+        log_warning("graphics::d3d9", "{} failed, hr={}", __FUNCTION__, FMT_HRESULT(ret));
+    }
+    return ret;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetPixelShader(
         IDirect3DPixelShader9 *pShader)
 {
     WRAP_DEBUG_FMT("SetPixelShader({})", fmt::ptr(pShader));
+    d3d9_live2d::on_set_pixel_shader(pShader);
     CHECK_RESULT(pReal->SetPixelShader(pShader));
 }
 

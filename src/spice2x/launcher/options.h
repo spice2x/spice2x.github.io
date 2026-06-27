@@ -84,6 +84,7 @@ namespace launcher {
             IIDXLEDBorderless,
             LoadSoundVoltexModule,
             SDVXForce720p,
+            SDVXDisableLive2D,
             SDVXPrinterEmulation,
             SDVXPrinterOutputPath,
             SDVXPrinterOutputClear,

@@ -408,6 +408,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/iidx/mf_wrappers.cpp
         games/sdvx/bi2x_hook.cpp
         games/sdvx/sdvx.cpp
+        games/sdvx/sdvx_live2d.cpp
         games/sdvx/io.cpp
         games/sdvx/camera.cpp
         games/jb/jb.cpp
@@ -529,6 +530,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/graphics/nvenc_hook.cpp
         hooks/graphics/backends/d3d9/d3d9_backend.cpp
         hooks/graphics/backends/d3d9/d3d9_device.cpp
+        hooks/graphics/backends/d3d9/d3d9_live2d.cpp
         hooks/graphics/backends/d3d9/d3d9_fake_swapchain.cpp
         hooks/graphics/backends/d3d9/d3d9_swapchain.cpp
         hooks/graphics/backends/d3d9/d3d9_texture.cpp
