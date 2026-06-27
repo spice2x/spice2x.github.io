@@ -1027,6 +1027,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .quick_setting_category = "Game",
     },
     {
+        // SDVXDisableLive2D
+        .title = "SDVX Disable Live2D (EXPERIMENTAL)",
+        .name = "sdvxnolive2d",
+        .desc = "Skip rendering the SDVX Live2D graphics to save GPU.\n\n"
+                "Off: leave Live2D as-is.\n"
+                "Always: never render Live2D (also removes the menu navigator).\n"
+                "During songs: only skip Live2D during a song; keeps the menu navigator. Scene detection relies on game logging.",
+        .type = OptionType::Enum,
+        .game_name = "Sound Voltex",
+        .category = "Advanced Game Options",
+        .elements = {
+            {"off", "Show Live2D"},
+            {"always", "Never show Live2D"},
+            {"ingame", "Show navigators only"},
+        },
+        .quick_setting_category = "Game",
+    },
+    {
         // spice2x_SDVXSubPos
         .title = "SDVX Subscreen Overlay Position",
         .name = "sp2x-sdvxsubpos",

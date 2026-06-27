@@ -97,6 +97,7 @@ namespace launcher {
             SDVXDigitalKnobSocd,
             spice2x_SDVXAsioDriver,
             SDVXAsioTwoChannel,
+            SDVXDisableLive2D,
             spice2x_SDVXSubPos,
             SDVXSubMonitorOverride,
             LoadDDRModule,

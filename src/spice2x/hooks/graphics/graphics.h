@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <string>
 #include <vector>
 #include <optional>
@@ -26,6 +27,33 @@ enum graphics_dx9on12_state {
     DX9ON12_FORCE_OFF,
     DX9ON12_FORCE_ON,
 };
+
+// SDVX Live2D suppression policy. the mode comes from the launcher
+// option; the in-gameplay flag is maintained by the SDVX scene-detection hook in
+// games/sdvx (which does not require the SDVX game module to be enabled). the
+// d3d9 backend reads graphics_sdvx_live2d_should_skip() on every draw.
+// only the Live2D-capable SDVX versions are 64-bit, so the whole feature is
+// compiled out of 32-bit builds.
+#ifdef SPICE64
+enum class SdvxLive2dMode {
+    Off,    // leave Live2D untouched (default)
+    Always, // always skip Live2D draws (also removes the menu navigator)
+    InGame, // skip Live2D draws only during a song
+};
+extern SdvxLive2dMode GRAPHICS_SDVX_LIVE2D_MODE;
+extern std::atomic<bool> GRAPHICS_SDVX_LIVE2D_IN_GAMEPLAY;
+
+inline bool graphics_sdvx_live2d_should_skip() {
+    switch (GRAPHICS_SDVX_LIVE2D_MODE) {
+        case SdvxLive2dMode::Always:
+            return true;
+        case SdvxLive2dMode::InGame:
+            return GRAPHICS_SDVX_LIVE2D_IN_GAMEPLAY.load(std::memory_order_relaxed);
+        default:
+            return false;
+    }
+}
+#endif // SPICE64
 
 // flag settings
 extern bool GRAPHICS_CAPTURE_CURSOR;

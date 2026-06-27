@@ -53,6 +53,7 @@
 #include "games/sc/sc.h"
 #include "games/scotto/scotto.h"
 #include "games/sdvx/sdvx.h"
+#include "games/sdvx/sdvx_live2d.h"
 #include "games/shared/printer.h"
 #include "games/silentscope/silentscope.h"
 #include "games/mfc/mfc.h"
@@ -1046,6 +1047,20 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::SDVXForce720p].value_bool()) {
         GRAPHICS_SDVX_FORCE_720 = true;
     }
+#ifdef SPICE64
+    // only the Live2D-capable SDVX versions are 64-bit, so this whole feature is
+    // gated out of 32-bit builds and only armed for SDVX (model KFC).
+    if (avs::game::is_model("KFC")) {
+        auto live2d = options[launcher::Options::SDVXDisableLive2D].value_text();
+        if (live2d == "always") {
+            GRAPHICS_SDVX_LIVE2D_MODE = SdvxLive2dMode::Always;
+        } else if (live2d == "ingame") {
+            GRAPHICS_SDVX_LIVE2D_MODE = SdvxLive2dMode::InGame;
+            // scene detection runs independently of the SDVX game module
+            games::sdvx::live2d_scene_detection_init();
+        }
+    }
+#endif // SPICE64
     if (options[launcher::Options::InvertTouchCoordinates].value_bool()) {
         rawinput::touch::INVERTED = true;
     }

@@ -86,6 +86,10 @@ static bool monitor_layout_needs_reset = false;
 bool GRAPHICS_CAPTURE_CURSOR = false;
 bool GRAPHICS_LOG_HRESULT = false;
 bool GRAPHICS_SDVX_FORCE_720 = false;
+#ifdef SPICE64
+SdvxLive2dMode GRAPHICS_SDVX_LIVE2D_MODE = SdvxLive2dMode::Off;
+std::atomic<bool> GRAPHICS_SDVX_LIVE2D_IN_GAMEPLAY = false;
+#endif // SPICE64
 bool GRAPHICS_SHOW_CURSOR = false;
 bool GRAPHICS_WINDOWED = false;
 std::vector<HWND> GRAPHICS_WINDOWS;
