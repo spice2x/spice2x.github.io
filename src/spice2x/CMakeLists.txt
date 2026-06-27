@@ -678,6 +678,33 @@ set(SOURCE_FILES ${SOURCE_FILES}
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} PREFIX "Source Files" FILES ${SOURCE_FILES})
 
+# guard against statically importing DLLs that must always be loaded dynamically:
+#   * DLLs users override via the modules directory (e.g. DXVK's d3d9.dll) - a
+#     static import loads the system copy at startup and preempts the override
+#     (issue #779).
+#   * Media Foundation DLLs (mf/mfplat/mfreadwrite) - a static import breaks
+#     Unity games.
+# the check runs objdump on each produced binary and fails the build if any
+# forbidden DLL is imported.
+set(SPICE_FORBIDDEN_STATIC_IMPORTS
+        d3d8.dll d3d9.dll d3d10core.dll d3d11.dll dxgi.dll opengl32.dll
+        mf.dll mfplat.dll mfreadwrite.dll)
+
+function(spice_guard_dll_imports target)
+    if(MSVC)
+        # objdump-based parsing assumes a GNU/LLVM toolchain
+        return()
+    endif()
+    add_custom_command(TARGET ${target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                -DOBJDUMP=${CMAKE_OBJDUMP}
+                -DTARGET_FILE=$<TARGET_FILE:${target}>
+                "-DFORBIDDEN=${SPICE_FORBIDDEN_STATIC_IMPORTS}"
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_no_static_dll_imports.cmake
+            VERBATIM
+            COMMENT "Checking ${target} for forbidden static DLL imports")
+endfunction()
+
 # spice.exe / spice_laa.exe shared objects
 ###########################################
 # spice.exe and spice_laa.exe are compiled identically; the only difference is
@@ -962,3 +989,16 @@ set_target_properties(spicetools_spice64 spicetools_spice64_linux spicetools_stu
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/archive64"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/64"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/spicetools/64")
+
+# forbidden static DLL import guard
+###################################
+# apply the check to every executable and DLL produced by this project.
+get_property(spice_all_targets DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY BUILDSYSTEM_TARGETS)
+foreach(spice_target IN LISTS spice_all_targets)
+    get_target_property(spice_target_type ${spice_target} TYPE)
+    if(spice_target_type STREQUAL "EXECUTABLE"
+            OR spice_target_type STREQUAL "SHARED_LIBRARY"
+            OR spice_target_type STREQUAL "MODULE_LIBRARY")
+        spice_guard_dll_imports(${spice_target})
+    endif()
+endforeach()
