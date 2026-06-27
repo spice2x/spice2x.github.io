@@ -38,7 +38,6 @@
 // everything is gated on the feature being enabled (mode != Off); when it's Off
 // every entry point is a single predicted-not-taken branch. d3d9 rendering for a
 // device is single-threaded, so none of this state needs locking.
-// see /memories/repo/sdvx-live2d-disable.md for how the hashes were captured.
 
 namespace {
 
@@ -81,7 +80,6 @@ uint64_t bytecode_hash(const DWORD *func) {
 // known SDVX Live2D shader bytecode hashes (4 pixel + 3 vertex). stable
 // across runs because the game ships fixed shaders. the two sets are disjoint so
 // a single shader can be classified by its own hash alone.
-// see /memories/repo/sdvx-live2d-disable.md.
 bool hash_is_live2d(uint64_t hash) {
     switch (hash) {
     case 0x75c89951817421a4ULL: // pixel: dominant model draw (~4.9M prims/120f in-song)

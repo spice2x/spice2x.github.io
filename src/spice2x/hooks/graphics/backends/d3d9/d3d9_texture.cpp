@@ -63,25 +63,6 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DTexture9::Release(void) {
 
 // IDirect3DResource9 methods
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::GetDevice(IDirect3DDevice9 **ppDevice) {
-    if (ppDevice == nullptr) {
-        return D3DERR_INVALIDCALL;
-    }
-
-    // by default behave exactly like stock D3D9 and hand back the real device.
-    // only when the SDVX Live2D skip is enabled do we return the wrapped device,
-    // so that engines which fetch their device via texture->GetDevice()
-    // (Live2D) route their draw calls back through our hooks. this keeps the
-    // default path byte-for-byte stock for every other game / user.
-    // only the Live2D-capable SDVX versions are 64-bit, so this is compiled out
-    // of 32-bit builds.
-#ifdef SPICE64
-    if (GRAPHICS_SDVX_LIVE2D_MODE != SdvxLive2dMode::Off) {
-        pDev->AddRef();
-        *ppDevice = pDev;
-        return D3D_OK;
-    }
-#endif // SPICE64
-
     CHECK_RESULT(pReal->GetDevice(ppDevice));
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DTexture9::SetPrivateData(REFGUID refguid, const void *pData, DWORD SizeOfData,

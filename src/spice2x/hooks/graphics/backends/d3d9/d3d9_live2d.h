@@ -9,8 +9,7 @@
 // shaders. when the skip is active (see graphics_sdvx_live2d_should_skip)
 // the matching draw calls are dropped to save GPU. shaders are identified by a
 // stable hash of their D3D9 bytecode (object pointers vary per run, the bytecode
-// does not). the hashes were captured with the draw-call fingerprinting tool;
-// see /memories/repo/sdvx-live2d-disable.md.
+// does not). the hashes were captured with the draw-call fingerprinting tool.
 //
 // every entry point is a no-op unless the feature is enabled (mode != Off), and
 // d3d9 rendering for a device is single-threaded, so none of this needs locking.
