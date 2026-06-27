@@ -3,6 +3,7 @@
 #include <d3d9.h>
 
 #include "overlay/overlay.h"
+#include "util/libutils.h"
 #include "util/logging.h"
 
 namespace cfg {
@@ -35,7 +36,26 @@ namespace cfg {
             return false;
         }
 
-        IDirect3D9 *d3d = Direct3DCreate9(D3D_SDK_VERSION);
+        // load d3d9.dll dynamically rather than linking against it statically.
+        // a static import would force the system d3d9.dll to load at process
+        // startup for the main spice executable too (this file is shared with
+        // spice.exe), which loads system32\d3d9.dll before the modules directory
+        // is added to the DLL search path - preventing a user-supplied DXVK
+        // d3d9.dll in modules from ever loading for the game.
+        typedef IDirect3D9 *(WINAPI *Direct3DCreate9_t)(UINT);
+        HMODULE d3d9_module = libutils::try_library("d3d9.dll");
+        if (d3d9_module == nullptr) {
+            log_warning("configurator", "could not load d3d9.dll, falling back to software renderer");
+            return false;
+        }
+        auto Direct3DCreate9_fn =
+                reinterpret_cast<Direct3DCreate9_t>(libutils::try_proc(d3d9_module, "Direct3DCreate9"));
+        if (Direct3DCreate9_fn == nullptr) {
+            log_warning("configurator", "could not find Direct3DCreate9, falling back to software renderer");
+            return false;
+        }
+
+        IDirect3D9 *d3d = Direct3DCreate9_fn(D3D_SDK_VERSION);
         if (d3d == nullptr) {
             log_warning("configurator", "Direct3DCreate9 returned NULL, falling back to software renderer");
             return false;
