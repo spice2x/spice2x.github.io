@@ -68,11 +68,8 @@ static HRESULT STDAPICALLTYPE CoCreateInstance_hook(
 
     HRESULT ret;
 
-    // ASIO: if we already hold a persistent real driver instance for this CLSID, satisfy
-    // the host's repeated CoCreate with a fresh wrapper over it instead of instantiating
-    // the real driver again. some hardware drivers (e.g. Neva Uno) crash when their COM
-    // object is destroyed and recreated within a process, which the host triggers by
-    // leaking and re-creating the driver during startup probing (see asio_proxy.cpp)
+    // ASIO: if we already hold a cached instance for this CLSID, hand back a fresh
+    // wrapper over it instead of re-creating the real driver (see asio_proxy.cpp)
     if (ppv != nullptr && hooks::audio::asio::is_asio_creation(rclsid, riid)) {
         if (IUnknown *reused = hooks::audio::asio::wrap_existing(rclsid)) {
             *ppv = reused;
@@ -142,5 +139,9 @@ namespace hooks::audio {
             CLIENT = nullptr;
         }
         stop_low_latency();
+
+        // release the ASIO drivers we kept pinned for the process lifetime now that we are
+        // at a controlled shutdown point (see asio_proxy.cpp)
+        hooks::audio::asio::release_all_wrappers();
     }
 }
