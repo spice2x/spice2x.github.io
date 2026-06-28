@@ -18,8 +18,15 @@ namespace hooks::audio::asio {
     bool is_asio_creation(REFCLSID rclsid, REFIID riid);
 
     // wrap a real ASIO driver instance, taking ownership of the supplied reference, and
-    // return a proxy that forwards every call to it
+    // return a proxy that forwards every call to it. also records it as the persistent
+    // instance for its CLSID so later CoCreate calls can reuse it (see wrap_existing)
     IUnknown *wrap(REFCLSID clsid, void *real);
+
+    // if a persistent wrapper already exists for this CLSID, return it (with an added
+    // reference); otherwise nullptr to signal the caller to create the real driver and
+    // wrap it. lets the host's repeated CoCreate calls share one driver instance instead
+    // of destroying and re-instantiating it, which crashes some hardware drivers
+    IUnknown *wrap_existing(REFCLSID clsid);
 }
 
 // transparent proxy around a real ASIO driver; a single place to intercept ASIO traffic
@@ -169,6 +176,13 @@ private:
     // registry name of the driver (not get_driver_name), used in our logs as a single
     // unambiguous name; constant for our lifetime
     std::string driver_name;
+
+    // the real driver is initialized exactly once. the host re-calls init() on each
+    // CoCreate during startup probing, but it gets the same persistent wrapper back, and
+    // re-initializing a live driver is undefined (and crashes some hardware drivers), so
+    // repeats with the same window handle are treated as a no-op success
+    bool initialized = false;
+    void *init_handle = nullptr;
 
     // our own reference count; we hold one reference on pReal and release it when this
     // drops to zero
