@@ -68,6 +68,15 @@ static HRESULT STDAPICALLTYPE CoCreateInstance_hook(
 
     HRESULT ret;
 
+    // ASIO: if we already hold a cached instance for this CLSID, hand back a fresh
+    // wrapper over it instead of re-creating the real driver (see asio_proxy.cpp)
+    if (ppv != nullptr && hooks::audio::asio::is_asio_creation(rclsid, riid)) {
+        if (IUnknown *reused = hooks::audio::asio::wrap_existing(rclsid)) {
+            *ppv = reused;
+            return S_OK;
+        }
+    }
+
     // call original
     ret = CoCreateInstance_orig(rclsid, pUnkOuter, dwClsContext, riid, ppv);
     if (FAILED(ret)) {
@@ -130,5 +139,9 @@ namespace hooks::audio {
             CLIENT = nullptr;
         }
         stop_low_latency();
+
+        // release the ASIO drivers we kept pinned for the process lifetime now that we are
+        // at a controlled shutdown point (see asio_proxy.cpp)
+        hooks::audio::asio::release_all_wrappers();
     }
 }

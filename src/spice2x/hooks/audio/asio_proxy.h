@@ -18,8 +18,20 @@ namespace hooks::audio::asio {
     bool is_asio_creation(REFCLSID rclsid, REFIID riid);
 
     // wrap a real ASIO driver instance, taking ownership of the supplied reference, and
-    // return a proxy that forwards every call to it
+    // return a proxy that forwards every call to it. also records it as the cached
+    // instance for its CLSID so later CoCreate calls can reuse it (see wrap_existing)
     IUnknown *wrap(REFCLSID clsid, void *real);
+
+    // if a cached wrapper already exists for this CLSID, return it (with an added
+    // reference); otherwise nullptr to signal the caller to create the real driver and
+    // wrap it. lets the host reuse one driver instance instead of re-instantiating it
+    IUnknown *wrap_existing(REFCLSID clsid);
+
+    // drop the process-lifetime references taken by wrap() so cached drivers can be released
+    // at shutdown. only relinquishes our pin, so a real driver is torn down once the host
+    // has released its own references too. call from a controlled shutdown point, never from
+    // a static destructor (the driver DLL may already be unloaded)
+    void release_all_wrappers();
 }
 
 // transparent proxy around a real ASIO driver; a single place to intercept ASIO traffic
@@ -103,6 +115,10 @@ struct WrappedAsio final : IAsio {
     AsioError __thiscall output_ready() override;
 #pragma endregion
 
+    // quiesces any leftover stream/buffer state before the cached wrapper is handed back
+    // for reuse, without destroying the real driver (see wrap_existing)
+    void quiesce_for_reuse();
+
 private:
     // create_buffers implementation used when a stereo extraction is active: forwards only
     // the channels the real device has and hands the game throwaway buffers for the rest
@@ -169,6 +185,14 @@ private:
     // registry name of the driver (not get_driver_name), used in our logs as a single
     // unambiguous name; constant for our lifetime
     std::string driver_name;
+
+    // the real driver is initialized exactly once; repeat init() calls are a no-op success
+    bool initialized = false;
+
+    // whether the real driver currently has a buffer set / running stream. used to quiesce
+    // leftover state when the cached wrapper is reused (see quiesce_for_reuse)
+    bool buffers_created = false;
+    bool started = false;
 
     // our own reference count; we hold one reference on pReal and release it when this
     // drops to zero

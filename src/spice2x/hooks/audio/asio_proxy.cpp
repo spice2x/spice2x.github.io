@@ -154,36 +154,30 @@ namespace {
         }
     }
 
-    // live wrappers by CLSID. ASIO drivers are single-instance, so a host that creates a
-    // new instance without releasing the old one has leaked it; we track this to tear the
-    // stale one down
+    // one wrapper per CLSID, kept alive for the process lifetime. ASIO drivers are
+    // single-instance, and some hardware drivers (e.g. Neva Uno) crash if their COM object
+    // is destroyed and re-created within a process - which the host triggers by leaking and
+    // re-instantiating the driver during startup probing. so we build the real driver and
+    // its wrapper once, hold a reference so it survives the host's Release calls, and hand
+    // the same wrapper back for every later CoCreate. as a result the real driver is created
+    // and initialized exactly once
     std::mutex g_wrappers_mutex;
     std::vector<std::pair<CLSID, WrappedAsio *>> g_wrappers;
 
-    // register a wrapper as the live instance for its CLSID, returning any stale wrapper it
-    // replaces so the caller can tear it down outside the lock
-    WrappedAsio *register_wrapper(REFCLSID clsid, WrappedAsio *wrapper) {
+    WrappedAsio *find_wrapper(REFCLSID clsid) {
         std::lock_guard lock(g_wrappers_mutex);
         for (auto &entry : g_wrappers) {
             if (IsEqualCLSID(entry.first, clsid)) {
-                WrappedAsio *stale = entry.second;
-                entry.second = wrapper;
-                return stale;
+                return entry.second;
             }
         }
 
-        g_wrappers.emplace_back(clsid, wrapper);
         return nullptr;
     }
 
-    void unregister_wrapper(WrappedAsio *wrapper) {
+    void store_wrapper(REFCLSID clsid, WrappedAsio *wrapper) {
         std::lock_guard lock(g_wrappers_mutex);
-        for (auto it = g_wrappers.begin(); it != g_wrappers.end(); ++it) {
-            if (it->second == wrapper) {
-                g_wrappers.erase(it);
-                return;
-            }
-        }
+        g_wrappers.emplace_back(clsid, wrapper);
     }
 
     // ASIO drivers registered on this system (CLSID + registry name), scanned once
@@ -256,12 +250,11 @@ WrappedAsio::StereoDownmix WrappedAsio::name_to_stereo_downmix(const char *name)
 }
 
 WrappedAsio::~WrappedAsio() {
-    unregister_wrapper(this);
-
     this->detach_post_process();
 
-    // our refcount is decoupled from the host's (see AddRef/Release), so pReal's count is
-    // exactly one here and this releases/unloads it deterministically
+    // never runs mid-run: wrap() pins the wrapper so the refcount stays above zero until
+    // release_all_wrappers() drops the pin at shutdown - the only point this can fire, and
+    // only once the host has released its own references. tears down the real driver
     this->pReal->Release();
 
     log_info("audio::wrappedasio", "destroying wrapped ASIO driver, clsid={}", guid2s(this->clsid));
@@ -315,8 +308,17 @@ ULONG STDMETHODCALLTYPE WrappedAsio::Release() {
 
 #pragma region IAsio
 AsioBool __thiscall WrappedAsio::init(void *sys_handle) {
+    // the real driver is single-instance and kept alive; initialize it exactly once. the
+    // host re-calls init() on each CoCreate during probing, but re-initializing a live
+    // driver crashes some hardware drivers, so once we have a live driver we report success
+    if (this->initialized) {
+        log_misc("audio::wrappedasio", "init skipped, '{}' already initialized", this->driver_name);
+        return AsioTrue;
+    }
+
     const AsioBool result = this->pReal->init(sys_handle);
     if (result == AsioTrue) {
+        this->initialized = true;
         log_info(
             "audio::wrappedasio",
             "init succeeded for '{}' (driver version {})",
@@ -346,6 +348,7 @@ void __thiscall WrappedAsio::get_error_message(char *string) {
 AsioError __thiscall WrappedAsio::start() {
     const AsioError result = this->pReal->start();
     if (result == ASE_OK) {
+        this->started = true;
         log_info(
             "audio::wrappedasio",
             "start succeeded, ASIO stream is now running on '{}'",
@@ -360,6 +363,7 @@ AsioError __thiscall WrappedAsio::start() {
 AsioError __thiscall WrappedAsio::stop() {
     const AsioError result = this->pReal->stop();
     if (result == ASE_OK) {
+        this->started = false;
         log_info("audio::wrappedasio", "stop succeeded, ASIO stream on '{}' halted", this->driver_name);
     } else {
         log_warning("audio::wrappedasio", "stop failed, err={}", static_cast<long>(result));
@@ -740,6 +744,27 @@ void WrappedAsio::detach_post_process() {
     WrappedAsio::active_instance.compare_exchange_strong(expected, nullptr);
 }
 
+void WrappedAsio::quiesce_for_reuse() {
+    // a previous abandoned probing cycle may have left a running stream and live buffers on
+    // the real driver without calling stop/dispose; tear that down now (without destroying
+    // the driver) so the host's next create_buffers starts clean. stop() guarantees no
+    // further buffer_switch, and dispose_buffers detaches our trampolines
+    if (this->started) {
+        log_info(
+            "audio::wrappedasio",
+            "reuse: stopping leftover stream on '{}' before handing the driver back",
+            this->driver_name);
+        this->stop();
+    }
+    if (this->buffers_created) {
+        log_info(
+            "audio::wrappedasio",
+            "reuse: disposing leftover buffers on '{}' before handing the driver back",
+            this->driver_name);
+        this->dispose_buffers();
+    }
+}
+
 void WrappedAsio::apply_output_volume(long double_buffer_index) {
     if (double_buffer_index != 0 && double_buffer_index != 1) {
         return;
@@ -838,6 +863,7 @@ AsioError __thiscall WrappedAsio::create_buffers(
             }
         }
         this->publish_post_process(buffer_size);
+        this->buffers_created = true;
     } else {
         log_warning(
             "audio::wrappedasio",
@@ -940,6 +966,7 @@ AsioError WrappedAsio::create_buffers_front_pair(
     // device's 2.0 output. then publish ourselves to the realtime thread
     this->record_downmix_channels(buffer_infos, num_channels, buffer_size);
     this->publish_post_process(buffer_size);
+    this->buffers_created = true;
 
     log_info(
         "audio::wrappedasio",
@@ -962,6 +989,7 @@ AsioError __thiscall WrappedAsio::dispose_buffers() {
     this->volume_channels.clear();
     this->volume_active = false;
     this->downmix_active = false;
+    this->buffers_created = false;
     return result;
 }
 
@@ -986,29 +1014,54 @@ namespace hooks::audio::asio {
         auto *wrapper = new WrappedAsio(
             reinterpret_cast<IAsio *>(real), clsid, registered_asio_name(clsid));
 
-        // if the host already had a live wrapper for this CLSID it leaked the previous
-        // instance (ASIO is single-instance); tear it down now so the real driver is
-        // released before the reinit. works around games (iidx32+) that ref twice but
-        // deref once before re-initializing.
-        //
-        // FlexASIO 1.9 and many DAC ASIO drivers can't handle this; FlexASIO 1.10 and
-        // Xonar AE can
-        if (WrappedAsio *stale = register_wrapper(clsid, wrapper)) {
-            log_info(
-                "audio::wrappedasio",
-                "host did not release previous instance for clsid={}, forcing teardown",
-                guid2s(clsid));
-
-            // the stale instance may still have a running stream on the driver's realtime
-            // thread. stop and dispose it before deleting so no in-flight buffer switch
-            // (e.g. our volume trampoline) touches buffers we are about to free. ASIO
-            // guarantees no further buffer_switch once stop() returns, and dispose_buffers
-            // detaches our trampolines, fully quiescing the realtime path before delete
-            stale->stop();
-            stale->dispose_buffers();
-            delete stale;
-        }
+        // pin the wrapper (and the real driver it owns) for the process lifetime; later
+        // CoCreate calls reuse this same instance via wrap_existing
+        wrapper->AddRef();
+        store_wrapper(clsid, wrapper);
 
         return static_cast<IAsio *>(wrapper);
     }
+
+    IUnknown *wrap_existing(REFCLSID clsid) {
+        WrappedAsio *wrapper = find_wrapper(clsid);
+        if (wrapper == nullptr) {
+            return nullptr;
+        }
+
+        log_misc(
+            "audio::wrappedasio",
+            "reusing cached ASIO driver instance, clsid={}",
+            guid2s(clsid));
+
+        wrapper->quiesce_for_reuse();
+
+        // hand the host another reference to the one instance we keep alive
+        wrapper->AddRef();
+        return static_cast<IAsio *>(wrapper);
+    }
+
+    void release_all_wrappers() {
+        // collect the pinned wrappers under the lock, then drop our references outside it so
+        // a final Release (which can run the driver's own teardown) never happens while the
+        // lock is held
+        std::vector<std::pair<CLSID, WrappedAsio *>> wrappers;
+        {
+            std::lock_guard lock(g_wrappers_mutex);
+            wrappers = g_wrappers;
+            g_wrappers.clear();
+        }
+
+        for (auto &entry : wrappers) {
+            // drop only the pin wrap() took. if the host has already released its own
+            // references (the normal case at shutdown) this destroys the wrapper and releases
+            // the real driver; if the host is still using it, the refcount stays above zero
+            // and we leave its live stream/buffers untouched
+            log_misc(
+                "audio::wrappedasio",
+                "releasing cached ASIO driver instance, clsid={}",
+                guid2s(entry.first));
+            entry.second->Release();
+        }
+    }
 }
+
