@@ -1,0 +1,49 @@
+name: Draft Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Build and Draft Release
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./src/spice2x
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Clean leftover build artifacts
+        run: |
+          rm -rf .ccache dist bin cmake-build-*
+      - name: Compile
+        run: ./build_docker.sh
+      - name: Determine release name from dist filename
+        run: |
+          dist=$(basename "$(ls dist/spice2x-*.zip | grep -v -- '-full.zip')")
+          # strip the ".zip" to get the base name, e.g. spice2x-26-06-28
+          name="${dist%.zip}"
+          # the tag is the date portion, e.g. 26-06-28
+          tag="${name#spice2x-}"
+          echo "RELEASE_NAME=$name" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: true
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          target_commitish: main
+          generate_release_notes: true
+          files: |
+            src/spice2x/dist/spice2x-*.zip
