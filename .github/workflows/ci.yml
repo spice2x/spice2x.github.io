@@ -12,12 +12,12 @@ jobs:
       run:
         working-directory: ./src/spice2x
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set ccache environment variables
         run: |
           echo "CCACHE_DIR=${{ github.workspace }}/src/spice2x/.ccache" >> $GITHUB_ENV
       - name: Install ccache
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: hendrikmuhs/ccache-action@v1.2.23
       - name: Calculate commit SHA
         id: vars
         run: |
@@ -25,7 +25,7 @@ jobs:
           echo "COMMIT_SHORT_SHA=$calculatedSha" >> $GITHUB_ENV
       - name: Compile
         run: ./build_docker.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: spice2x-ci-${{ env.COMMIT_SHORT_SHA }}
           path: src/spice2x/bin
