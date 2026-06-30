@@ -11,13 +11,16 @@ To contribute, fork the repo (just the main branch), make changes in your fork, 
 * For a new game that was never supported (not a new version of a game, but rather a new series): please wait 1 year after official AC release in Japan.
 * For new version of an already supported game: proceed with caution and use generally-accepted community guidelines.
 
-### Forbidden "features" that will never be accepted
+### Pull requests that will not be accepted
 
-* Performing decryption of encrypted files
-* Including (bundling), distributing, or linking to game data, or making it easier to find/download game data
+* Performing decryption of encrypted files.
+* Including (bundling), distributing, or linking to game data, or making it easier to find/download game data.
 * Any features that [phone home](https://en.wikipedia.org/wiki/Phoning_home)
   * This includes automatic updaters.
   * Exception: we have allowed the "patch import from URL" feature, but this has only been done under very careful considerations and plenty of warnings to the user.
+* Built-in EA server that saves data. They should live in a separate project.
+* Any additions to built-in patches (modifications / removals are OK if we have a good reason).
+* Changes to the software license terms.
 
 ### Avoiding regressions
 
