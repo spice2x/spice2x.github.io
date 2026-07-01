@@ -21,6 +21,7 @@ To contribute, fork the repo (just the main branch), make changes in your fork, 
 * Built-in EA server that saves data. They should live in a separate project.
 * Any additions to built-in patches (modifications / removals are OK if we have a good reason).
 * Changes to the software license terms.
+* Localization / translation for UI text. It becomes too difficult to manage by the maintainers.
 
 ### Avoiding regressions
 
