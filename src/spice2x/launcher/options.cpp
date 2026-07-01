@@ -434,18 +434,23 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Advanced Network",
     },
     {
-        .title = "Preferred NetAdapter IP",
+        .title = "Preferred Network Adapter's IP",
         .name = "network",
-        .desc = "This is NOT the EA service URL; use -url for that. "
-            "Force the use of an adapter with the specified network. Must also provide -subnet.",
+        .display_name = "netadapterip",
+        .aliases = "netadapterip",
+        .desc = "Instead of using the default network adapter, force the usage of another network adapter "
+            "with the specified IP address. You must also set -netadaptersubnet.",
         .type = OptionType::Text,
         .category = "Advanced Network",
         .sensitive = true,
     },
     {
-        .title = "Preferred NetAdapter Subnet",
+        .title = "Preferred Network Adapter's Subnet",
         .name = "subnet",
-        .desc = "Force the use of an adapter with the specified subnet. Must also provide -network.",
+        .display_name = "netadaptersubnet",
+        .aliases = "netadaptersubnet",
+        .desc = "Instead of using the default network adapter, force the usage of another network adapter "
+            "with the specified subnet. You must also set -netadapterip.",
         .type = OptionType::Text,
         .category = "Advanced Network",
     },
