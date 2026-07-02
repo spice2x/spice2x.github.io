@@ -37,11 +37,15 @@
     const octokit = new Octokit();
     const owner = "spice2x";
     const repo = "spice2x.github.io";
+    const sumDownloads = (assets) =>
+        (assets || []).reduce((total, asset) => total + (asset.download_count || 0), 0);
     const latest = await octokit.request(
         "GET /repos/{owner}/{repo}/releases/latest",
         { owner, repo });
     if (latest && latest.data && latest.data.name) {
-        document.getElementById("octo_latest_release").textContent = " (" + latest.data.name + ")";
+        const downloads = sumDownloads(latest.data.assets).toLocaleString();
+        document.getElementById("octo_latest_release").textContent =
+            " (" + latest.data.name + ", " + downloads + " downloads)";
     }
     const releases = await octokit.request(
         "GET /repos/{owner}/{repo}/releases",
