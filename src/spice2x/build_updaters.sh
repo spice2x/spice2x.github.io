@@ -19,6 +19,8 @@ SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PS_BODY="${SRC_DIR}/update_spice.ps1"
 OUT_DIR="$1"
 
+[ -f "$PS_BODY" ] || { echo "error: $PS_BODY not found" >&2; exit 1; }
+
 MARKER='#___PS___'
 
 gen() {
