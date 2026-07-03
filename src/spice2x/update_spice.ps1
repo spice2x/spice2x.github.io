@@ -27,11 +27,17 @@ try {
     Write-Host "Latest release: $($rel.tag_name)$(if ($rel.prerelease) { ' [pre-release]' })  (asset: $($asset.name))"
 
     # --- download the zip into memory ---------------------------------------
+    # note: on Windows PowerShell 5.1 .Content is a String (empty for binary
+    # responses), so read the raw byte stream instead
     Write-Host 'Downloading...'
-    $bytes = (Invoke-WebRequest -Headers $headers -Uri $asset.browser_download_url -UseBasicParsing).Content
+    $bytes = (Invoke-WebRequest -Headers $headers -Uri $asset.browser_download_url -UseBasicParsing).RawContentStream.ToArray()
 
     # --- extract just the three executables straight into this folder -------
-    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    # PS 5.1 needs these assemblies loaded; PS 7 already has the types (and the
+    # FileSystem assembly name no longer resolves there), so only load if missing
+    if (-not ('System.IO.Compression.ZipFile' -as [type])) {
+        Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    }
     $zip = [IO.Compression.ZipArchive]::new([IO.MemoryStream]::new([byte[]]$bytes))
     try {
         $updated = 0
@@ -48,7 +54,7 @@ try {
     } finally { $zip.Dispose() }
 
     Write-Host "`nDone. $updated of $($targets.Count) executables updated to $($rel.tag_name)."
-    Write-Host "Only the .exe file are updated; if you copied any DLL stubs, they were not changed."
+    Write-Host "Only the .exe files are updated; if you copied any DLL stubs, they were not changed."
     if ($updated -ne $targets.Count) { $rc = 1 }
 } catch {
     Write-Host ''; Write-Error $_.Exception.Message; $rc = 1

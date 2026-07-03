@@ -46,7 +46,7 @@ endlocal & exit /b %RC%
 ${MARKER}
 HEADER
 		cat "$PS_BODY"
-	} > "${OUT_DIR}/${out}"
+	} | sed -e 's/\r$//' -e 's/$/\r/' > "${OUT_DIR}/${out}"
 	echo "  generated ${OUT_DIR}/${out}"
 }
 
