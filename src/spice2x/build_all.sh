@@ -354,6 +354,10 @@ mkdir ${OUTDIR_EXTRAS}/api
 find ./api/resources/python -name "__pycache__" -exec rm -rf {} +
 cp -r ./api/resources/* ${OUTDIR_EXTRAS}/api
 
+# generate the standalone updater scripts from the shared template and drop them
+# straight into the output folder (included in both the regular and full archives)
+bash ./build_updaters.sh ${OUTDIR}
+
 # build distribution archive
 if ((DIST_ENABLE > 0))
 then
