@@ -32,18 +32,28 @@ namespace hooks::audio {
              RegEnumKeyA(hkEnum, index, key_name, sizeof(key_name)) == ERROR_SUCCESS;
              index++) {
 
-            // read description (display name), fall back to the key name
+            // read description (display name), fall back to the key name.
+            // RegOpenKeyExA + RegQueryValueExA is used instead of RegGetValueA
+            // because the latter is unavailable on Windows XP.
             char desc[256] = { 0 };
             DWORD size = sizeof(desc);
             std::string name = key_name;
-            if (RegGetValueA(hkEnum,
-                             key_name,
-                             ASIO_REG_DESC,
-                             RRF_RT_REG_SZ | wow64_flag,
-                             nullptr,
-                             desc,
-                             &size) == ERROR_SUCCESS && desc[0]) {
-                name = desc;
+            HKEY hkDriver = nullptr;
+            if (RegOpenKeyExA(hkEnum, key_name, 0,
+                    KEY_QUERY_VALUE | wow64_flag, &hkDriver) == ERROR_SUCCESS) {
+                DWORD type = 0;
+                if (RegQueryValueExA(hkDriver,
+                                     ASIO_REG_DESC,
+                                     nullptr,
+                                     &type,
+                                     reinterpret_cast<LPBYTE>(desc),
+                                     &size) == ERROR_SUCCESS
+                        && type == REG_SZ && desc[0]) {
+                    // ensure null termination
+                    desc[sizeof(desc) - 1] = '\0';
+                    name = desc;
+                }
+                RegCloseKey(hkDriver);
             }
 
             // merge with an existing entry from the other view (match by name)
