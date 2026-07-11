@@ -66,15 +66,12 @@ namespace rawinput {
     class RawInputManager {
     private:
 
-        // must be null until constructed: input_hwnd_create() starts the message
-        // pump before the constructor assigns this, and a WM_DEVICECHANGE arriving
-        // in that window would otherwise deref an uninitialized pointer
         HotplugManager *hotplug = nullptr;
 
-        // note: std::list (not std::vector) so that adding/removing a device never
-        // invalidates pointers/references to the other elements. device pointers handed
-        // out by devices_get() escape the lock and are dereferenced later by pollers, so
-        // a concurrent scan mutating the list must not relocate the existing devices
+        // std::list (not std::vector) so adding/removing a device never invalidates
+        // pointers to other elements. devices_get() hands out pointers that escape the
+        // lock and are dereferenced later by pollers, so a concurrent scan must not
+        // relocate existing devices
         std::list<Device> devices;
         std::recursive_mutex devices_mutex;
 

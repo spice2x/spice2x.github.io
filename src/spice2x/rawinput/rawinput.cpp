@@ -877,12 +877,11 @@ void rawinput::RawInputManager::devices_scan_midi() {
     log_misc("rawinput", "scan MIDI devices...");
 
     // note: the WinMM MIDI calls below (midiInGetNumDevs / midiInGetDevCaps /
-    // midiInOpen / midiInStart) can block for many seconds while the Windows MIDI
-    // subsystem starts up. they must NOT run under devices_mutex, otherwise other
-    // threads (input, config) would stall for the same duration. only the list
-    // mutation at the end of each iteration is guarded.
+    // midiInOpen / midiInStart) can block for seconds while the Windows MIDI
+    // subsystem starts up, so they must NOT run under devices_mutex. only the
+    // list mutation at the end of each iteration is guarded.
 
-    // identifiers of every MIDI device present in this scan; used afterwards to
+    // identifiers of every MIDI device seen in this scan; used below to
     // tombstone devices that have since been unplugged
     std::vector<std::string> present_identifiers;
 
@@ -913,10 +912,9 @@ void rawinput::RawInputManager::devices_scan_midi() {
         // record that this device is currently present
         present_identifiers.push_back(midi_identifier);
 
-        // if this device is already open, leave it alone. hotplug fires many device
-        // change events, and re-opening on every rescan would needlessly close and
-        // reopen the WinMM handle (dropping MIDI state and input). only (re)open when
-        // the device is missing or a previously destroyed tombstone
+        // if already open, leave it alone: hotplug fires many change events, and
+        // reopening on every rescan would drop the WinMM handle (and its input).
+        // only (re)open when the device is missing or a destroyed tombstone
         {
             std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
             bool already_open = false;
@@ -1029,8 +1027,8 @@ void rawinput::RawInputManager::devices_scan_midi() {
     }
 
     // tombstone MIDI devices that were open but are no longer present (unplugged).
-    // without this, a replugged device matches the stale live entry in the skip
-    // check above and never gets reopened, so its input is silently lost
+    // otherwise a replugged device matches the stale live entry in the skip check
+    // above and never gets reopened, silently losing its input
     {
         std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
         for (auto &device : this->devices) {
@@ -1291,10 +1289,9 @@ void rawinput::RawInputManager::output_start() {
                 do {
                     output_thread_ready = false;
 
-                    // snapshot device pointers under devices_mutex so a concurrent scan
-                    // can't mutate the list mid-iteration. the std::list keeps addresses
-                    // stable, so the (potentially blocking) writes below run without
-                    // holding devices_mutex
+                    // snapshot device pointers under devices_mutex, then write without
+                    // it. the std::list keeps addresses stable, so the (potentially
+                    // blocking) writes below don't hold devices_mutex against input
                     std::vector<Device *> snapshot;
                     {
                         std::lock_guard<std::recursive_mutex> devices_lock(this->devices_mutex);
@@ -1769,7 +1766,7 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
             // find device
             HANDLE device_handle = data->header.hDevice;
-            // lock the device list so a concurrent scan can't reallocate it while we iterate
+            // lock the device list so a concurrent scan can't mutate it while we iterate
             std::lock_guard<std::recursive_mutex> devices_lock(ref->devices_mutex);
             for (auto &device : ref->devices_get()) {
 
@@ -2181,7 +2178,7 @@ void CALLBACK rawinput::RawInputManager::input_midi_proc(HMIDIIN hMidiIn, UINT w
         case MIM_MOREDATA:
         case MIM_DATA: {
 
-            // lock the device list so a concurrent scan can't reallocate it while we iterate
+            // lock the device list so a concurrent scan can't mutate it while we iterate
             std::lock_guard<std::recursive_mutex> devices_lock(ri_mgr->devices_mutex);
 
             // param mapping
@@ -2835,10 +2832,9 @@ void rawinput::RawInputManager::devices_flush_output(bool optimized) {
     }
 
     // blocking routine
-    // snapshot device pointers under the lock so a concurrent scan can't mutate the
-    // list while we iterate. the std::list keeps element addresses stable, so the
-    // pointers remain valid after the lock is released and the (potentially blocking)
-    // output writes below do not run under devices_mutex
+    // snapshot device pointers under the lock, then write without it. the std::list
+    // keeps addresses stable, so the (potentially blocking) writes below don't hold
+    // devices_mutex against input
     std::vector<Device *> snapshot;
     {
         std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
