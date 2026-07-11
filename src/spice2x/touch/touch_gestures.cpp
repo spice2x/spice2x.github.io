@@ -2,6 +2,8 @@
 // set version to Windows 8 to enable Windows 8 touch functions
 #define _WIN32_WINNT 0x0602
 
+#include <propsys.h>
+
 #include "touch_gestures.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -22,9 +24,20 @@
 
 static const char TABLET_ATOM_NAME[] = "MicrosoftTabletPenServiceProperty";
 
+// PKEY_EdgeGesture_DisableTouchWhenFullscreen format GUID
+// (not defined in the mingw headers); defined inline to avoid an initguid.h
+// symbol clash with touch/win8.cpp which declares the same name
+// {32CE38B2-2C9A-41B1-9BC5-B3784394AA44}
+static const GUID EDGEGESTURE_DISABLE_FMT =
+    { 0x32CE38B2, 0x2C9A, 0x41B1, { 0x9B, 0xC5, 0xB3, 0x78, 0x43, 0x94, 0xAA, 0x44 } };
+
 static HINSTANCE USER32_INSTANCE = nullptr;
 typedef BOOL (WINAPI *SetWindowFeedbackSetting_t)(HWND, FEEDBACK_TYPE, DWORD, UINT32, const VOID *);
 static SetWindowFeedbackSetting_t pSetWindowFeedbackSetting = nullptr;
+
+static HINSTANCE SHELL32_INSTANCE = nullptr;
+typedef HRESULT (WINAPI *SHGetPropertyStoreForWindow_t)(HWND, REFIID, void **);
+static SHGetPropertyStoreForWindow_t pSHGetPropertyStoreForWindow = nullptr;
 
 static void disable_feedback_visuals(HWND hwnd) {
 
@@ -87,6 +100,46 @@ static void disable_gesture_behaviors(HWND hwnd) {
     }
 }
 
+static void disable_edge_gestures(HWND hwnd) {
+
+    // suppress the touch edge swipes (charms/back/app bar) for the window while
+    // it is fullscreen. this is normally done by the touch handler's
+    // window_register(), but that is not called for every handler (e.g. the
+    // rawinput handler is a no-op), so apply it here as well.
+    if (SHELL32_INSTANCE == nullptr) {
+        SHELL32_INSTANCE = libutils::try_library("shell32.dll");
+    }
+    if (SHELL32_INSTANCE == nullptr) {
+        return;
+    }
+
+    if (pSHGetPropertyStoreForWindow == nullptr) {
+        pSHGetPropertyStoreForWindow = libutils::try_proc<SHGetPropertyStoreForWindow_t>(
+            SHELL32_INSTANCE, "SHGetPropertyStoreForWindow");
+    }
+    if (pSHGetPropertyStoreForWindow == nullptr) {
+        return;
+    }
+
+    IPropertyStore *ps = nullptr;
+    HRESULT hr = pSHGetPropertyStoreForWindow(hwnd, IID_IPropertyStore, (void **) &ps);
+    if (SUCCEEDED(hr) && ps != nullptr) {
+        PROPERTYKEY key = { EDGEGESTURE_DISABLE_FMT, 2 };
+
+        PROPVARIANT var {};
+        var.vt = VT_BOOL;
+        var.boolVal = VARIANT_TRUE;
+
+        hr = ps->SetValue(key, var);
+        ps->Release();
+
+        if (FAILED(hr)) {
+            log_warning("touch_gestures",
+                "failed to disable edge gestures on HWND={}", fmt::ptr(hwnd));
+        }
+    }
+}
+
 void disable_touch_gestures(HWND hwnd) {
 
     if (USER32_INSTANCE == nullptr) {
@@ -104,4 +157,7 @@ void disable_touch_gestures(HWND hwnd) {
 
     // disable the actual gesture behaviors (press-and-hold, flicks, etc.)
     disable_gesture_behaviors(hwnd);
+
+    // disable the fullscreen touch edge swipes
+    disable_edge_gestures(hwnd);
 }
