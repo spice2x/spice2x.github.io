@@ -4,6 +4,8 @@
 
 #include <propsys.h>
 
+#include <mutex>
+
 #include "touch_gestures.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -39,12 +41,28 @@ static HINSTANCE SHELL32_INSTANCE = nullptr;
 typedef HRESULT (WINAPI *SHGetPropertyStoreForWindow_t)(HWND, REFIID, void **);
 static SHGetPropertyStoreForWindow_t pSHGetPropertyStoreForWindow = nullptr;
 
+static std::once_flag INIT_FLAG;
+
+// resolve the libraries and entry points once; disable_touch_gestures may be
+// called concurrently from the CreateWindowEx hooks and the touch thread
+static void init_procs() {
+    std::call_once(INIT_FLAG, []() {
+        USER32_INSTANCE = libutils::load_library("user32.dll");
+        if (USER32_INSTANCE != nullptr) {
+            pSetWindowFeedbackSetting = libutils::try_proc<SetWindowFeedbackSetting_t>(
+                USER32_INSTANCE, "SetWindowFeedbackSetting");
+        }
+
+        SHELL32_INSTANCE = libutils::try_library("shell32.dll");
+        if (SHELL32_INSTANCE != nullptr) {
+            pSHGetPropertyStoreForWindow = libutils::try_proc<SHGetPropertyStoreForWindow_t>(
+                SHELL32_INSTANCE, "SHGetPropertyStoreForWindow");
+        }
+    });
+}
+
 static void disable_feedback_visuals(HWND hwnd) {
 
-    if (pSetWindowFeedbackSetting == nullptr) {
-        pSetWindowFeedbackSetting = libutils::try_proc<SetWindowFeedbackSetting_t>(
-            USER32_INSTANCE, "SetWindowFeedbackSetting");
-    }
     if (pSetWindowFeedbackSetting == nullptr) {
         return;
     }
@@ -106,17 +124,6 @@ static void disable_edge_gestures(HWND hwnd) {
     // it is fullscreen. this is normally done by the touch handler's
     // window_register(), but that is not called for every handler (e.g. the
     // rawinput handler is a no-op), so apply it here as well.
-    if (SHELL32_INSTANCE == nullptr) {
-        SHELL32_INSTANCE = libutils::try_library("shell32.dll");
-    }
-    if (SHELL32_INSTANCE == nullptr) {
-        return;
-    }
-
-    if (pSHGetPropertyStoreForWindow == nullptr) {
-        pSHGetPropertyStoreForWindow = libutils::try_proc<SHGetPropertyStoreForWindow_t>(
-            SHELL32_INSTANCE, "SHGetPropertyStoreForWindow");
-    }
     if (pSHGetPropertyStoreForWindow == nullptr) {
         return;
     }
@@ -142,14 +149,12 @@ static void disable_edge_gestures(HWND hwnd) {
 
 void disable_touch_gestures(HWND hwnd) {
 
-    if (USER32_INSTANCE == nullptr) {
-        USER32_INSTANCE = libutils::load_library("user32.dll");
-    }
+    init_procs();
     if (USER32_INSTANCE == nullptr) {
         return;
     }
 
-    log_info("touch_gestures",
+    log_misc("touch_gestures",
         "disable visual feedback and gestures for touch events for HWND={}", fmt::ptr(hwnd));
 
     // disable the visual feedback (contact circles, tap/double-tap stars, etc.)
