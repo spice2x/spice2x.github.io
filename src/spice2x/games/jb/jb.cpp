@@ -7,6 +7,7 @@
 #include "cfg/configurator.h"
 #include "hooks/graphics/graphics.h"
 #include "touch/touch.h"
+#include "rawinput/touch.h"
 #include "util/logging.h"
 #include "util/utils.h"
 #include "util/detour.h"
@@ -56,6 +57,9 @@ namespace games::jb {
             // attach touch hook
             log_info("jubeat", "using window handle for touch: {}", fmt::ptr(wnd));
             touch_create_wnd(wnd, true);
+
+            // request automatic aspect ratio fixes
+            ::rawinput::touch::ASPECT_COMPENSATION_GAME = true;
 
             // show cursor
             if (GRAPHICS_SHOW_CURSOR) {

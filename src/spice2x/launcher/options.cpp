@@ -1802,6 +1802,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Touch Parameters",
     },
     {
+        // RawInputTouchAspectRatio
+        .title = "Raw Input Touch Fix Aspect Ratio",
+        .name = "rawtouchaspect",
+        .desc = "Compensate for letterboxing/pillarboxing when the game runs at a display mode with a "
+                "different aspect ratio than the touch panel's native resolution. Only affects the default "
+                "raw input touch handler.\n\n"
+                "auto: enable on a per-game basis (jubeat, reflec).\n"
+                "on: forced on\n"
+                "off: forced off",
+        .type = OptionType::Enum,
+        .category = "Touch Parameters",
+        .elements = {
+            {"auto", ""},
+            {"on", ""},
+            {"off", ""},
+        },
+    },
+    {
         // DisableTouchCardInsert
         .title = "Disable Touch Card Insert (DEPRECATED - use -touchcard instead)",
         .name = "touchnocard",

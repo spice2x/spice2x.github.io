@@ -4,6 +4,7 @@
 
 #include "avs/game.h"
 #include "hooks/graphics/graphics.h"
+#include "rawinput/touch.h"
 #include "touch/touch.h"
 #include "util/logging.h"
 #include "util/time.h"
@@ -80,6 +81,10 @@ bool games::rb::ReflecBeatTouchDeviceHandle::open(LPCWSTR lpFileName) {
             // show game window because it lost focus
             ShowWindow(wnd, SW_SHOW);
         }
+
+        // request automatic aspect ratio fixes
+        ::rawinput::touch::ASPECT_COMPENSATION_GAME = true;
+
     } else {
 
         // fallback to dx hook
