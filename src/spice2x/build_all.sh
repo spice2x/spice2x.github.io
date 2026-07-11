@@ -214,6 +214,19 @@ time (
 	echo "==========================="
 )
 
+echo ""
+echo "Checking Win7 compatibility..."
+echo "============================="
+if ! command -v windows_dll_compat_checker &> /dev/null; then
+	echo "WARNING: windows_dll_compat_checker not found, skipping Win7 compatibility check"
+else
+	windows_dll_compat_checker -s PREMADE/konami_win7_museca_x86_64.ini \
+		${BUILDDIR_64}/spicetools/64/spice64.exe
+	windows_dll_compat_checker -s PREMADE/konami_win7_museca_x86_64_32bit_dlls.ini \
+		${BUILDDIR_32}/spicetools/spicecfg.exe \
+		${BUILDDIR_32}/spicetools/32/spice.exe
+fi
+
 if ((BUILD_XP_32 > 0)) || ((BUILD_XP_64 > 0))
 then
 	echo ""
@@ -229,7 +242,7 @@ then
 		fi
 		if ((BUILD_XP_32 > 0))
 		then
-			windows_dll_compat_checker -s PREMADE/winxp_x86_64_32bit_dlls.ini \
+			windows_dll_compat_checker -s PREMADE/konami_winxp_jubeat_i686.ini \
 				${BUILDDIR_WINXP_32}/spicetools/spicecfg.exe \
 				${BUILDDIR_WINXP_32}/spicetools/32/spice.exe
 		fi
