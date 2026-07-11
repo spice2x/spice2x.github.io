@@ -2,7 +2,9 @@
 
 #include <functional>
 #include <thread>
+#include <atomic>
 #include <condition_variable>
+#include <mutex>
 #include <vector>
 
 #include <windows.h>
@@ -63,10 +65,18 @@ namespace rawinput {
     class RawInputManager {
     private:
 
-        HotplugManager *hotplug;
+        // must be null until constructed: input_hwnd_create() starts the message
+        // pump before the constructor assigns this, and a WM_DEVICECHANGE arriving
+        // in that window would otherwise deref an uninitialized pointer
+        HotplugManager *hotplug = nullptr;
+
         std::vector<Device> devices;
+        std::recursive_mutex devices_mutex;
+
         WNDCLASSEX input_hwnd_class {};
         std::thread *input_thread = nullptr;
+        std::thread *midi_thread = nullptr;
+        std::atomic<bool> midi_scan_active { false };
         std::thread *flush_thread = nullptr;
         bool flush_thread_running = false;
         std::mutex flush_thread_m;
@@ -83,6 +93,7 @@ namespace rawinput {
         void input_hwnd_create();
         void input_hwnd_destroy();
         void devices_reload();
+        void midi_scan_join();
         void devices_scan_rawinput(RAWINPUTDEVICELIST *device, bool log = true);
         void devices_scan_piuio();
         void devices_scan_smxstage();
@@ -118,6 +129,7 @@ namespace rawinput {
 
         void devices_scan_rawinput(const std::string &device_name = "");
         void devices_scan_midi();
+        void midi_scan_start();
         void devices_scan_xinput();
         void devices_remove(const std::string &name);
 

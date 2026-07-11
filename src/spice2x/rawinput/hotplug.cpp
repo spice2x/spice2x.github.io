@@ -54,7 +54,7 @@ namespace rawinput {
                     switch (hdr->dbch_devicetype) {
                         case DBT_DEVTYP_DEVICEINTERFACE: {
                             auto dev = (const DEV_BROADCAST_DEVICEINTERFACE *) hdr;
-                            this->ri_mgr->devices_scan_midi();
+                            this->ri_mgr->midi_scan_start();
 
                             // check if class is not HID
                             if (memcmp(&dev->dbcc_classguid, &GUID_HID, sizeof(GUID_HID)) != 0)
@@ -120,8 +120,10 @@ namespace rawinput {
                     return TRUE;
                 }
                 case DBT_DEVNODES_CHANGED: {
-                    // TODO: this can be a little noisy as it gets called on every device
-                    this->ri_mgr->devices_scan_midi();
+                    // catch-all device-tree change: MIDI and XInput have no targeted
+                    // arrival/removal notification, so this is our only hook to detect them
+                    // can be a little noisy as it gets called on every device
+                    this->ri_mgr->midi_scan_start();
                     this->ri_mgr->devices_scan_xinput();
                     break;
                 }

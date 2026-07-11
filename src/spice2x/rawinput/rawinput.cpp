@@ -100,6 +100,9 @@ void rawinput::RawInputManager::stop() {
         this->hotplug = nullptr;
     }
 
+    // wait for any in-flight async MIDI scan before tearing down devices
+    this->midi_scan_join();
+
     // unregister device messages
     this->devices_unregister();
 
@@ -182,12 +185,18 @@ void rawinput::RawInputManager::input_hwnd_destroy() {
 }
 
 void rawinput::RawInputManager::devices_reload() {
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
     this->devices_destruct();
     log_info("rawinput", "reloading devices...");
 
     // scan for devices
     this->devices_scan_rawinput();
-    this->devices_scan_midi();
+
+    // MIDI enumeration can block for ~10s while the Windows MIDI subsystem starts
+    // up, so run it off the init path instead of gating startup on it. it locks
+    // devices_mutex only for the vector mutation, so it is safe to run concurrently
+    this->midi_scan_start();
+
     this->devices_scan_piuio();
 
     if (ENABLE_SMX_STAGE) {
@@ -207,7 +216,39 @@ void rawinput::RawInputManager::devices_reload() {
     this->devices_register();
 }
 
+void rawinput::RawInputManager::midi_scan_start() {
+
+    // single-flight: if a scan is already running, skip. the Windows MIDI
+    // enumeration can take several seconds and repeated hotplug events would
+    // otherwise queue up redundant scans on the input thread
+    bool expected = false;
+    if (!this->midi_scan_active.compare_exchange_strong(expected, true)) {
+        return;
+    }
+
+    // clean up the previous (already finished) scan thread handle
+    this->midi_scan_join();
+
+    // run the (potentially slow) MIDI enumeration on its own thread so callers
+    // are not blocked while the Windows MIDI subsystem starts up
+    this->midi_thread = new std::thread([this]() {
+        this->devices_scan_midi();
+        this->midi_scan_active.store(false);
+    });
+}
+
+void rawinput::RawInputManager::midi_scan_join() {
+    if (this->midi_thread) {
+        if (this->midi_thread->joinable()) {
+            this->midi_thread->join();
+        }
+        delete this->midi_thread;
+        this->midi_thread = nullptr;
+    }
+}
+
 void rawinput::RawInputManager::devices_scan_rawinput(const std::string &device_name) {
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
     log_misc("rawinput", "scan rawinput devices...");
 
     // get number of devices
@@ -239,6 +280,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(const std::string &device_
 }
 
 void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device, bool log) {
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
     // get device name
     std::string device_name = rawinput_get_device_name(device->hDevice);
@@ -832,6 +874,12 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
 void rawinput::RawInputManager::devices_scan_midi() {
     log_misc("rawinput", "scan MIDI devices...");
 
+    // note: the WinMM MIDI calls below (midiInGetNumDevs / midiInGetDevCaps /
+    // midiInOpen / midiInStart) can block for many seconds while the Windows MIDI
+    // subsystem starts up. they must NOT run under devices_mutex, otherwise other
+    // threads (input, config) would stall for the same duration. only the vector
+    // mutation at the end of each iteration is guarded.
+
     // add midi devices
     auto midi_device_count = midiInGetNumDevs();
     for (size_t midi_device_id = 0; midi_device_id < midi_device_count; midi_device_id++) {
@@ -903,7 +951,6 @@ void rawinput::RawInputManager::devices_scan_midi() {
 
         // build device
         Device midi_device {};
-        midi_device.id = devices.size() + 1;
         midi_device.type = MIDI;
         midi_device.handle = midi_device_handle;
         midi_device.name = midi_identifier.str();
@@ -912,6 +959,11 @@ void rawinput::RawInputManager::devices_scan_midi() {
         midi_device.mutex = new std::mutex();
         midi_device.mutex_out = new std::mutex();
         midi_device.midiInfo = midi_device_midi_info;
+
+        // mutate the shared device list under lock (the slow WinMM calls above
+        // ran without it so other threads were not blocked)
+        std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+        midi_device.id = devices.size() + 1;
 
         // check for duplicate handle
         for (auto &device : this->devices) {
@@ -941,10 +993,14 @@ void rawinput::RawInputManager::devices_scan_midi() {
             cb.f(cb.data, &device);
         }
     }
+
+    log_misc("rawinput", "scan MIDI devices done ({} enumerated)", (unsigned) midi_device_count);
 }
 
 void rawinput::RawInputManager::devices_scan_piuio() {
     log_misc("rawinput", "scan PIUIO devices...");
+
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
     // add device to vector first so pointer is valid
     auto *new_piuio_device = new Device();
@@ -978,6 +1034,8 @@ void rawinput::RawInputManager::devices_scan_piuio() {
 void rawinput::RawInputManager::devices_scan_smxstage() {
     log_misc("rawinput", "scan SMX Stage devices...");
 
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+
     auto *new_smxstage_device = new Device();
     new_smxstage_device->id = this->devices.size() + 1;
     new_smxstage_device->type = SMX_STAGE;
@@ -1005,6 +1063,8 @@ void rawinput::RawInputManager::devices_scan_smxstage() {
 void rawinput::RawInputManager::devices_scan_smxdedicab() {
     log_misc("rawinput", "scan SMX Dedicated Cabinet devices...");
 
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+
     auto *new_smxdedicab_device = new Device();
     new_smxdedicab_device->id = this->devices.size() + 1;
     new_smxdedicab_device->type = SMX_DEDICAB;
@@ -1031,6 +1091,8 @@ void rawinput::RawInputManager::devices_scan_smxdedicab() {
 
 void rawinput::RawInputManager::devices_scan_xinput() {
     log_misc("rawinput", "scan XInput devices...");
+
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
     const auto connected_players = XINPUT_MGR->get_available_players();
 
@@ -1336,6 +1398,8 @@ void rawinput::RawInputManager::sextet_register(const std::string &port_name, co
 
     log_misc("rawinput", "checking for sextet-stream device on {}...", port_name);
 
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+
     // check for any sextet-stream devices
     Device device {};
     device.type = SEXTET_OUTPUT;
@@ -1361,6 +1425,7 @@ void rawinput::RawInputManager::sextet_register(const std::string &port_name, co
 }
 
 void rawinput::RawInputManager::devices_remove(const std::string &name) {
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
     // iterate devices
     for (auto &device : this->devices) {
@@ -1509,6 +1574,7 @@ void rawinput::RawInputManager::devices_unregister() {
 }
 
 void rawinput::RawInputManager::devices_destruct() {
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
     // check if there's something to destruct
     if (this->devices.empty()) {
@@ -1635,6 +1701,8 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
             // find device
             HANDLE device_handle = data->header.hDevice;
+            // lock the device list so a concurrent scan can't reallocate it while we iterate
+            std::lock_guard<std::recursive_mutex> devices_lock(ref->devices_mutex);
             for (auto &device : ref->devices_get()) {
 
                 // skip if this is the wrong device
@@ -2044,6 +2112,9 @@ void CALLBACK rawinput::RawInputManager::input_midi_proc(HMIDIIN hMidiIn, UINT w
             break;
         case MIM_MOREDATA:
         case MIM_DATA: {
+
+            // lock the device list so a concurrent scan can't reallocate it while we iterate
+            std::lock_guard<std::recursive_mutex> devices_lock(ri_mgr->devices_mutex);
 
             // param mapping
             auto dwMidiMessage = dwParam1;
