@@ -114,10 +114,16 @@ bool Win8Handler::is_available() {
 bool Win8Handler::window_register(HWND hWnd) {
 
     // atom settings
+    // keep this in sync with touch/touch_gestures.cpp so registering a touch
+    // window does not downgrade the flag set applied there
     DWORD dwHwndTabletProperty = TABLET_DISABLE_PRESSANDHOLD |
                                  TABLET_DISABLE_PENTAPFEEDBACK |
                                  TABLET_DISABLE_PENBARRELFEEDBACK |
-                                 TABLET_DISABLE_FLICKS;
+                                 TABLET_DISABLE_FLICKS |
+                                 TABLET_DISABLE_TOUCHUIFORCEOFF |
+                                 TABLET_DISABLE_TOUCHSWITCH |
+                                 TABLET_DISABLE_SMOOTHSCROLLING |
+                                 TABLET_DISABLE_FLICKFALLBACKKEYS;
 
     // get atom ID
     ATOM atomID = GlobalAddAtom(ATOM_NAME);

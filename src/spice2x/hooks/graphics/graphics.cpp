@@ -23,7 +23,7 @@
 #include "launcher/shutdown.h"
 #include "overlay/overlay.h"
 #include "touch/touch.h"
-#include "touch/touch_indicators.h"
+#include "touch/touch_gestures.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/fileutils.h"
@@ -627,7 +627,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         }
     }
 
-    disable_touch_indicators(result);
+    disable_touch_gestures(result);
     log_misc(
         "graphics",
         "CreateWindowExA returned {}, {}",
@@ -722,7 +722,7 @@ static HWND WINAPI CreateWindowExW_hook(DWORD dwExStyle, LPCWSTR lpClassName, LP
         fmt::ptr(result),
         lpWindowName ? ws2s(lpWindowName) : "(null)");
 
-    disable_touch_indicators(result);
+    disable_touch_gestures(result);
     return result;
 }
 

@@ -22,6 +22,7 @@
 #include "util/utils.h"
 
 #include "handler.h"
+#include "touch_gestures.h"
 #include "win7.h"
 #include "win8.h"
 
@@ -750,6 +751,9 @@ void touch_create_wnd(HWND hWnd, bool overlay) {
         // window settings
         ShowWindow(touch_window, SW_SHOWNOACTIVATE);
         UpdateWindow(touch_window);
+
+        // disable the OS touch contact visualization for our own touch window
+        disable_touch_gestures(touch_window);
 
         // register
         touch_register_window(touch_window);
