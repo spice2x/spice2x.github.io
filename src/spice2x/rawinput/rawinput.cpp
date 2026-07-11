@@ -194,7 +194,7 @@ void rawinput::RawInputManager::devices_reload() {
 
     // MIDI enumeration can block for ~10s while the Windows MIDI subsystem starts
     // up, so run it off the init path instead of gating startup on it. it locks
-    // devices_mutex only for the vector mutation, so it is safe to run concurrently
+    // devices_mutex only for the list mutation, so it is safe to run concurrently
     this->midi_scan_start();
 
     this->devices_scan_piuio();
@@ -304,11 +304,13 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
 
     // check for duplicate handle
     size_t unique_id = devices.size() + 1;
-    for (size_t i = 0; i < this->devices.size(); i++) {
-        if (this->devices[i].name == device_name) {
+    size_t i = 0;
+    for (const auto &existing : this->devices) {
+        if (existing.name == device_name) {
             unique_id = i;
             break;
         }
+        i++;
     }
 
     // build device
@@ -877,8 +879,12 @@ void rawinput::RawInputManager::devices_scan_midi() {
     // note: the WinMM MIDI calls below (midiInGetNumDevs / midiInGetDevCaps /
     // midiInOpen / midiInStart) can block for many seconds while the Windows MIDI
     // subsystem starts up. they must NOT run under devices_mutex, otherwise other
-    // threads (input, config) would stall for the same duration. only the vector
+    // threads (input, config) would stall for the same duration. only the list
     // mutation at the end of each iteration is guarded.
+
+    // identifiers of every MIDI device present in this scan; used afterwards to
+    // tombstone devices that have since been unplugged
+    std::vector<std::string> present_identifiers;
 
     // add midi devices
     auto midi_device_count = midiInGetNumDevs();
@@ -892,6 +898,38 @@ void rawinput::RawInputManager::devices_scan_midi() {
 
         log_misc("rawinput", "found MIDI device: id {}, name {}, mid {}, pid {}",
             midi_device_id, midi_device_caps.szPname, midi_device_caps.wMid, midi_device_caps.wPid);
+
+        // build identifier for MIDI
+        // ;MIDI; format is now set in stone (in other parts of the code base and in the config xml file)
+        // so it should never be changed
+        std::ostringstream midi_identifier_stream;
+        midi_identifier_stream << ";" << "MIDI";
+        midi_identifier_stream << ";" << midi_device_id;
+        midi_identifier_stream << ";" << midi_device_caps.szPname;
+        midi_identifier_stream << ";" << midi_device_caps.wMid;
+        midi_identifier_stream << ";" << midi_device_caps.wPid;
+        const auto midi_identifier = midi_identifier_stream.str();
+
+        // record that this device is currently present
+        present_identifiers.push_back(midi_identifier);
+
+        // if this device is already open, leave it alone. hotplug fires many device
+        // change events, and re-opening on every rescan would needlessly close and
+        // reopen the WinMM handle (dropping MIDI state and input). only (re)open when
+        // the device is missing or a previously destroyed tombstone
+        {
+            std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+            bool already_open = false;
+            for (auto &device : this->devices) {
+                if (device.type == MIDI && device.name == midi_identifier) {
+                    already_open = true;
+                    break;
+                }
+            }
+            if (already_open) {
+                continue;
+            }
+        }
 
         // open device
         HMIDIIN midi_device_handle;
@@ -939,21 +977,11 @@ void rawinput::RawInputManager::devices_scan_midi() {
         midi_device_midi_info->pitch_bend = std::vector<int16_t>(16 * 6);
         midi_device_midi_info->pitch_bend_set = std::vector<bool>(16 * 6);
 
-        // build identifier for MIDI
-        // ;MIDI; format is now set in stone (in other parts of the code base and in the config xml file)
-        // so it should never be changed
-        std::ostringstream midi_identifier;
-        midi_identifier << ";" << "MIDI";
-        midi_identifier << ";" << midi_device_id;
-        midi_identifier << ";" << midi_device_caps.szPname;
-        midi_identifier << ";" << midi_device_caps.wMid;
-        midi_identifier << ";" << midi_device_caps.wPid;
-
         // build device
         Device midi_device {};
         midi_device.type = MIDI;
         midi_device.handle = midi_device_handle;
-        midi_device.name = midi_identifier.str();
+        midi_device.name = midi_identifier;
         midi_device.desc = to_string(midi_device_caps.szPname);
         midi_device.info = midi_device_info;
         midi_device.mutex = new std::mutex();
@@ -965,9 +993,11 @@ void rawinput::RawInputManager::devices_scan_midi() {
         std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
         midi_device.id = devices.size() + 1;
 
-        // check for duplicate handle
+        // reuse a previously destroyed tombstone with the same identifier, if any.
+        // (a live device with this identifier was already skipped above)
+        bool replaced = false;
         for (auto &device : this->devices) {
-            if (device.name == midi_identifier.str()) {
+            if (device.name == midi_identifier) {
 
                 // carry over ID
                 midi_device.id = device.id;
@@ -981,8 +1011,12 @@ void rawinput::RawInputManager::devices_scan_midi() {
                     cb.f(cb.data, &device);
                 }
 
-                return;
+                replaced = true;
+                break;
             }
+        }
+        if (replaced) {
+            continue;
         }
 
         // add device to list
@@ -991,6 +1025,29 @@ void rawinput::RawInputManager::devices_scan_midi() {
         // notify add
         for (auto &cb : this->callback_add) {
             cb.f(cb.data, &device);
+        }
+    }
+
+    // tombstone MIDI devices that were open but are no longer present (unplugged).
+    // without this, a replugged device matches the stale live entry in the skip
+    // check above and never gets reopened, so its input is silently lost
+    {
+        std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+        for (auto &device : this->devices) {
+            if (device.type != MIDI) {
+                continue;
+            }
+            bool present = false;
+            for (const auto &identifier : present_identifiers) {
+                if (identifier == device.name) {
+                    present = true;
+                    break;
+                }
+            }
+            if (!present) {
+                log_info("rawinput", "MIDI device unplugged, releasing: {}", device.desc);
+                this->devices_destruct(&device);
+            }
         }
     }
 
@@ -1233,10 +1290,21 @@ void rawinput::RawInputManager::output_start() {
                 // iterate all devices
                 do {
                     output_thread_ready = false;
-                    for (auto &device : this->devices) {
 
-                        // write output
-                        device_write_output(&device, true);
+                    // snapshot device pointers under devices_mutex so a concurrent scan
+                    // can't mutate the list mid-iteration. the std::list keeps addresses
+                    // stable, so the (potentially blocking) writes below run without
+                    // holding devices_mutex
+                    std::vector<Device *> snapshot;
+                    {
+                        std::lock_guard<std::recursive_mutex> devices_lock(this->devices_mutex);
+                        snapshot.reserve(this->devices.size());
+                        for (auto &device : this->devices) {
+                            snapshot.push_back(&device);
+                        }
+                    }
+                    for (auto *device : snapshot) {
+                        device_write_output(device, true);
                     }
                 } while (output_thread_ready);
             }
@@ -2767,10 +2835,20 @@ void rawinput::RawInputManager::devices_flush_output(bool optimized) {
     }
 
     // blocking routine
-    for (auto &device : this->devices) {
-
-        // write output
-        device_write_output(&device, false);
+    // snapshot device pointers under the lock so a concurrent scan can't mutate the
+    // list while we iterate. the std::list keeps element addresses stable, so the
+    // pointers remain valid after the lock is released and the (potentially blocking)
+    // output writes below do not run under devices_mutex
+    std::vector<Device *> snapshot;
+    {
+        std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+        snapshot.reserve(this->devices.size());
+        for (auto &device : this->devices) {
+            snapshot.push_back(&device);
+        }
+    }
+    for (auto *device : snapshot) {
+        device_write_output(device, false);
     }
 }
 
@@ -2782,6 +2860,9 @@ void rawinput::RawInputManager::devices_print() {
     }
 
     bool touchscreen_found = false;
+
+    // lock the device list while iterating
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
     // iterate devices
     log_info("rawinput", "printing list of detected devices");
@@ -2975,6 +3056,10 @@ rawinput::Device *rawinput::RawInputManager::devices_get(const std::string &name
     if (name.empty()) {
         return nullptr;
     }
+
+    // lock the device list so a concurrent scan can't mutate it while we search.
+    // the returned pointer stays valid after unlock because devices is a std::list
+    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
     // check if caller wants only updated devices
     if (updated) {

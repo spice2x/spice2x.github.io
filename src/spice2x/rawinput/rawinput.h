@@ -4,6 +4,7 @@
 #include <thread>
 #include <atomic>
 #include <condition_variable>
+#include <list>
 #include <mutex>
 #include <vector>
 
@@ -70,7 +71,11 @@ namespace rawinput {
         // in that window would otherwise deref an uninitialized pointer
         HotplugManager *hotplug = nullptr;
 
-        std::vector<Device> devices;
+        // note: std::list (not std::vector) so that adding/removing a device never
+        // invalidates pointers/references to the other elements. device pointers handed
+        // out by devices_get() escape the lock and are dereferenced later by pollers, so
+        // a concurrent scan mutating the list must not relocate the existing devices
+        std::list<Device> devices;
         std::recursive_mutex devices_mutex;
 
         WNDCLASSEX input_hwnd_class {};
@@ -142,11 +147,12 @@ namespace rawinput {
         void __stdcall devices_print();
         Device *devices_get(const std::string &name, bool updated = false);
 
-        inline std::vector<Device> &devices_get() {
+        inline std::list<Device> &devices_get() {
             return devices;
         }
 
         inline std::vector<Device *> devices_get_updated() {
+            std::lock_guard<std::recursive_mutex> lock(devices_mutex);
             std::vector<Device *> updated;
             for (auto &device : devices_get()) {
                 device.mutex->lock();
@@ -162,6 +168,7 @@ namespace rawinput {
         }
 
         inline void devices_midi_freeze(bool freeze) {
+            std::lock_guard<std::recursive_mutex> lock(devices_mutex);
             for (auto &device : devices_get()) {
                 if (device.type == MIDI) {
                     device.midiInfo->freeze = freeze;
