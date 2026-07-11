@@ -79,6 +79,17 @@ namespace rawinput {
         std::thread *input_thread = nullptr;
         std::thread *midi_thread = nullptr;
         std::atomic<bool> midi_scan_active { false };
+
+        // set when a scan is requested while one is already running, so the worker
+        // rescans once instead of dropping the request (events that arrive during
+        // the slow initial scan would otherwise be lost)
+        std::atomic<bool> midi_scan_pending { false };
+
+        // MIDI handles pending close. devices_destruct() runs under devices_mutex but
+        // midiInReset/midiInClose must not (they block on the MIDI callback, which
+        // also takes devices_mutex), so handles are queued here and closed by
+        // midi_close_deferred_flush() once the lock is released
+        std::vector<HMIDIIN> midi_close_deferred;
         std::thread *flush_thread = nullptr;
         bool flush_thread_running = false;
         std::mutex flush_thread_m;
@@ -96,6 +107,7 @@ namespace rawinput {
         void input_hwnd_destroy();
         void devices_reload();
         void midi_scan_join();
+        void midi_close_deferred_flush();
         void devices_scan_rawinput(RAWINPUTDEVICELIST *device, bool log = true);
         void devices_scan_piuio();
         void devices_scan_smxstage();
@@ -106,6 +118,7 @@ namespace rawinput {
         void flush_stop();
         void output_start();
         void output_stop();
+        void devices_write_output_snapshot(bool only_updated);
 
         static std::string rawinput_get_device_name(HANDLE hDevice);
         static std::string rawinput_get_device_description(const DeviceInfo& info, const std::string &device_name);

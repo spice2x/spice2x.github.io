@@ -218,21 +218,26 @@ void rawinput::RawInputManager::devices_reload() {
 
 void rawinput::RawInputManager::midi_scan_start() {
 
-    // single-flight: if a scan is already running, skip. the Windows MIDI
-    // enumeration can take several seconds and repeated hotplug events would
-    // otherwise queue up redundant scans on the input thread
+    // single-flight: only one scan runs at a time. if one is already running, set
+    // the pending flag so it rescans once more when it finishes - MIDI hotplug
+    // events fire while the slow enumeration is still going and must not be lost
     bool expected = false;
     if (!this->midi_scan_active.compare_exchange_strong(expected, true)) {
+        this->midi_scan_pending.store(true);
         return;
     }
 
     // clean up the previous (already finished) scan thread handle
     this->midi_scan_join();
 
-    // run the (potentially slow) MIDI enumeration on its own thread so callers
-    // are not blocked while the Windows MIDI subsystem starts up
+    // run the (potentially slow) MIDI enumeration on its own thread so callers are
+    // not blocked while the Windows MIDI subsystem starts up. rescan if a request
+    // arrived while we were scanning
     this->midi_thread = new std::thread([this]() {
-        this->devices_scan_midi();
+        do {
+            this->midi_scan_pending.store(false);
+            this->devices_scan_midi();
+        } while (this->midi_scan_pending.exchange(false));
         this->midi_scan_active.store(false);
     });
 }
@@ -244,6 +249,23 @@ void rawinput::RawInputManager::midi_scan_join() {
         }
         delete this->midi_thread;
         this->midi_thread = nullptr;
+    }
+}
+
+void rawinput::RawInputManager::midi_close_deferred_flush() {
+
+    // take the queued handles under the lock, then close them without it. WinMM
+    // midiInReset/midiInClose block until in-flight input_midi_proc callbacks
+    // return, and those callbacks take devices_mutex, so closing under the lock
+    // would deadlock
+    std::vector<HMIDIIN> handles;
+    {
+        std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+        handles.swap(this->midi_close_deferred);
+    }
+    for (auto handle : handles) {
+        midiInReset(handle);
+        midiInClose(handle);
     }
 }
 
@@ -942,6 +964,9 @@ void rawinput::RawInputManager::devices_scan_midi() {
 
         // start input
         if (midiInStart(midi_device_handle) != MMSYSERR_NOERROR) {
+
+            // close the handle we just opened so it does not leak on repeated rescans
+            midiInClose(midi_device_handle);
             continue;
         }
 
@@ -1048,6 +1073,9 @@ void rawinput::RawInputManager::devices_scan_midi() {
             }
         }
     }
+
+    // close the MIDI handles detached above, now that devices_mutex is released
+    this->midi_close_deferred_flush();
 
     log_misc("rawinput", "scan MIDI devices done ({} enumerated)", (unsigned) midi_device_count);
 }
@@ -1288,21 +1316,7 @@ void rawinput::RawInputManager::output_start() {
                 // iterate all devices
                 do {
                     output_thread_ready = false;
-
-                    // snapshot device pointers under devices_mutex, then write without
-                    // it. the std::list keeps addresses stable, so the (potentially
-                    // blocking) writes below don't hold devices_mutex against input
-                    std::vector<Device *> snapshot;
-                    {
-                        std::lock_guard<std::recursive_mutex> devices_lock(this->devices_mutex);
-                        snapshot.reserve(this->devices.size());
-                        for (auto &device : this->devices) {
-                            snapshot.push_back(&device);
-                        }
-                    }
-                    for (auto *device : snapshot) {
-                        device_write_output(device, true);
-                    }
+                    this->devices_write_output_snapshot(true);
                 } while (output_thread_ready);
             }
         });
@@ -1639,22 +1653,24 @@ void rawinput::RawInputManager::devices_unregister() {
 }
 
 void rawinput::RawInputManager::devices_destruct() {
-    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+    {
+        std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
-    // check if there's something to destruct
-    if (this->devices.empty()) {
-        return;
+        // dispose devices (if there is anything to dispose)
+        if (!this->devices.empty()) {
+            log_info("rawinput", "disposing devices");
+            for (auto &device : this->devices) {
+                this->devices_destruct(&device, false);
+                delete device.mutex;
+            }
+
+            // empty array
+            this->devices.clear();
+        }
     }
 
-    // dispose devices
-    log_info("rawinput", "disposing devices");
-    for (auto &device : this->devices) {
-        this->devices_destruct(&device, false);
-        delete device.mutex;
-    }
-
-    // empty array
-    this->devices.clear();
+    // close any MIDI handles detached above, now that devices_mutex is released
+    this->midi_close_deferred_flush();
 }
 
 void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
@@ -1668,6 +1684,12 @@ void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
     if (log) {
         log_info("rawinput", "destroying device: {} / {}", device->desc, device->name);
     }
+
+    // hold the output mutex for the whole teardown, taken before we flip the type
+    // or free anything. device_write_output() locks mutex_out while dereferencing
+    // type-specific state (hidInfo/sextetInfo/...) on a snapshot taken outside
+    // devices_mutex, so mutex_out is what actually serializes it against us
+    std::lock_guard<std::mutex> lock_out(*device->mutex_out);
 
     // mark as destroyed
     auto device_type = device->type;
@@ -1695,8 +1717,14 @@ void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
             }
             break;
         case MIDI:
-            midiInReset((HMIDIIN) device->handle);
-            midiInClose((HMIDIIN) device->handle);
+            // never call midiInReset/midiInClose here: this runs under devices_mutex
+            // and those WinMM calls block until in-flight input_midi_proc callbacks
+            // return, callbacks that also take devices_mutex. detach the handle and
+            // let midi_close_deferred_flush() close it once the lock is released
+            if (device->handle != (HANDLE) INVALID_HANDLE_VALUE) {
+                this->midi_close_deferred.push_back((HMIDIIN) device->handle);
+                device->handle = (HANDLE) INVALID_HANDLE_VALUE;
+            }
             break;
         case SEXTET_OUTPUT:
             device->sextetInfo->disconnect();
@@ -2832,9 +2860,14 @@ void rawinput::RawInputManager::devices_flush_output(bool optimized) {
     }
 
     // blocking routine
-    // snapshot device pointers under the lock, then write without it. the std::list
-    // keeps addresses stable, so the (potentially blocking) writes below don't hold
-    // devices_mutex against input
+    this->devices_write_output_snapshot(false);
+}
+
+void rawinput::RawInputManager::devices_write_output_snapshot(bool only_updated) {
+
+    // snapshot device pointers under devices_mutex, then write without holding it.
+    // the std::list keeps addresses stable, so the (potentially blocking) writes
+    // below don't hold devices_mutex against input
     std::vector<Device *> snapshot;
     {
         std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
@@ -2844,7 +2877,7 @@ void rawinput::RawInputManager::devices_flush_output(bool optimized) {
         }
     }
     for (auto *device : snapshot) {
-        device_write_output(device, false);
+        device_write_output(device, only_updated);
     }
 }
 
