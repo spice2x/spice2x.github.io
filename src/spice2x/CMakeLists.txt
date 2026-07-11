@@ -645,7 +645,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
 
         # touch
         touch/touch.cpp
-        touch/touch_indicators.cpp
+        touch/touch_gestures.cpp
         touch/win7.cpp
         touch/win8.cpp
 
