@@ -179,11 +179,27 @@ XInputSetState(
 
     XInputManager::XInputManager() {
         log_info("xinput", "initialize...");
-        this->xinput_lib = LoadLibraryA("xinput1_3.dll");
+
+        // many systems ship only a newer XInput runtime, so try the known
+        // DLL names in order of preference until one loads
+        static const char *xinput_dll_names[] = {
+            "xinput1_4.dll",
+            "xinput1_3.dll",
+            "xinput9_1_0.dll",
+        };
+        const char *loaded_name = nullptr;
+        for (const char *name : xinput_dll_names) {
+            this->xinput_lib = LoadLibraryA(name);
+            if (this->xinput_lib) {
+                loaded_name = name;
+                break;
+            }
+        }
         if (!this->xinput_lib) {
-            log_warning("xinput", "failed to load xinput1_3.dll");
+            log_warning("xinput", "failed to load any XInput DLL");
             return;
         }
+        log_info("xinput", "loaded {}", loaded_name);
         XInputGetState_addr = reinterpret_cast<decltype(XInputGetState) *>(
             GetProcAddress(this->xinput_lib, "XInputGetState"));
         if (!XInputGetState_addr) {
