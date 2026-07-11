@@ -24,12 +24,115 @@ namespace rawinput::touch {
     // settings
     bool DISABLED = false;
     bool INVERTED = false;
+    AspectMode ASPECT_COMPENSATION_MODE = AspectMode::Auto;
+    bool ASPECT_COMPENSATION_GAME = false;
 
     // state
     DWORD DISPLAY_ORIENTATION = DMDO_DEFAULT;
     long DISPLAY_SIZE_X = 1920L;
     long DISPLAY_SIZE_Y = 1080L;
+    long DISPLAY_NATIVE_X = 0L;
+    long DISPLAY_NATIVE_Y = 0L;
     bool DISPLAY_INITIALIZED = false;
+
+    bool aspect_compensation_enabled() {
+        switch (ASPECT_COMPENSATION_MODE) {
+            case AspectMode::On:
+                return true;
+            case AspectMode::Off:
+                return false;
+            default:
+                return ASPECT_COMPENSATION_GAME;
+        }
+    }
+
+    // compute the centered letterbox inset (fraction cropped from each side) that results
+    // from showing the current display mode on a panel with a different native aspect
+    // ratio. only one of inset_x / inset_y is ever non-zero.
+    static void compute_letterbox_inset(double &inset_x, double &inset_y) {
+        inset_x = 0.0;
+        inset_y = 0.0;
+
+        // native resolution in the current display orientation
+        long native_x = DISPLAY_NATIVE_X;
+        long native_y = DISPLAY_NATIVE_Y;
+        if ((DISPLAY_SIZE_Y >= DISPLAY_SIZE_X) != (native_y >= native_x)) {
+            long tmp = native_x;
+            native_x = native_y;
+            native_y = tmp;
+        }
+
+        // compare the displayed aspect ratio against the panel's native one; ignore
+        // tiny mismatches (e.g. 1366x768 vs true 16:9) that would only add a sub-pixel
+        // inset, so near-matched panels stay an exact no-op
+        double current_aspect = (double) DISPLAY_SIZE_X / (double) DISPLAY_SIZE_Y;
+        double native_aspect = (double) native_x / (double) native_y;
+        constexpr double aspect_epsilon = 0.01;
+        if (current_aspect < native_aspect - aspect_epsilon) {
+
+            // image is narrower than the panel -> bars on left/right
+            inset_x = (1.0 - current_aspect / native_aspect) / 2.0;
+        } else if (current_aspect > native_aspect + aspect_epsilon) {
+
+            // image is wider than the panel -> bars on top/bottom
+            inset_y = (1.0 - native_aspect / current_aspect) / 2.0;
+        }
+    }
+
+    // undo letterboxing: remap the normalized (0.0 - 1.0) digitizer coordinates, which span
+    // the whole physical panel, into the displayed image region. returns false when the
+    // touch lands in the black bars (outside the image) and should be ignored.
+    static bool remap_aspect_compensation(double &norm_x, double &norm_y) {
+        if (DISPLAY_NATIVE_X <= 0 || DISPLAY_NATIVE_Y <= 0) {
+            return true;
+        }
+
+        double inset_x, inset_y;
+        compute_letterbox_inset(inset_x, inset_y);
+
+        // log once the first time the compensation actually engages (non-zero inset)
+        static bool logged_active = false;
+        if (!logged_active && (inset_x > 0.0 || inset_y > 0.0)) {
+            logged_active = true;
+            log_info("rawinput", "aspect compensation active: display {}x{}, native {}x{}, inset x={:.4f} y={:.4f}",
+                     (int) DISPLAY_SIZE_X, (int) DISPLAY_SIZE_Y,
+                     (int) DISPLAY_NATIVE_X, (int) DISPLAY_NATIVE_Y,
+                     inset_x, inset_y);
+        }
+
+        // ignore touches inside the black bars (outside the displayed image)
+        if ((inset_x > 0.0 && (norm_x < inset_x || norm_x > 1.0 - inset_x)) ||
+            (inset_y > 0.0 && (norm_y < inset_y || norm_y > 1.0 - inset_y))) {
+            return false;
+        }
+
+        // remap the displayed image region back to the full 0.0 - 1.0 range
+        if (inset_x > 0.0) {
+            norm_x = (norm_x - inset_x) / (1.0 - 2.0 * inset_x);
+        }
+        if (inset_y > 0.0) {
+            norm_y = (norm_y - inset_y) / (1.0 - 2.0 * inset_y);
+        }
+        return true;
+    }
+
+    // determine the native (maximum) resolution advertised by the primary display device.
+    // used to detect and undo letterboxing when a non-native display mode is in use.
+    // falls back to the current display size if enumeration yields nothing larger.
+    static void detect_native_resolution() {
+        DISPLAY_NATIVE_X = DISPLAY_SIZE_X;
+        DISPLAY_NATIVE_Y = DISPLAY_SIZE_Y;
+
+        DEVMODE native_mode{};
+        native_mode.dmSize = sizeof(native_mode);
+        for (int i = 0; EnumDisplaySettings(nullptr, i, &native_mode); i++) {
+            if ((long) native_mode.dmPelsWidth * (long) native_mode.dmPelsHeight >
+                DISPLAY_NATIVE_X * DISPLAY_NATIVE_Y) {
+                DISPLAY_NATIVE_X = (long) native_mode.dmPelsWidth;
+                DISPLAY_NATIVE_Y = (long) native_mode.dmPelsHeight;
+            }
+        }
+    }
 
     bool is_touchscreen(Device *device) {
 
@@ -322,6 +425,18 @@ namespace rawinput::touch {
         std::vector<DWORD> touch_removes;
         std::vector<TouchPoint> touch_writes;
         std::vector<DWORD> touch_modifications;
+
+        // drop every touch point with the given id (marking it as released)
+        auto remove_touch_point = [&] (DWORD id) {
+            touch_removes.push_back(id);
+            touch.touch_points.erase(std::remove_if(
+                    touch.touch_points.begin(),
+                    touch.touch_points.end(),
+                    [id] (const HIDTouchPoint &x) {
+                        return x.id == id;
+                    }), touch.touch_points.end());
+        };
+
         for (auto &hid_tp : touch_points) {
 
             // check if existing
@@ -353,23 +468,29 @@ namespace rawinput::touch {
 
                 // only remove if it exists
                 if (existing != touch.touch_points.end()) {
-
-                    // remove all touch points with this ID
-                    touch_removes.push_back(hid_tp.id);
-                    touch.touch_points.erase(std::remove_if(
-                            touch.touch_points.begin(),
-                            touch.touch_points.end(),
-                            [hid_tp] (const HIDTouchPoint &x) {
-                                return x.id == hid_tp.id;
-                            }), touch.touch_points.end());
+                    remove_touch_point(hid_tp.id);
                 }
             } else {
 
-                // write touch point
+                // start from the normalized (0.0 - 1.0) digitizer coordinates
+                double norm_x = hid_tp.x;
+                double norm_y = hid_tp.y;
+
+                // undo letterboxing so raw input touches line up with the displayed
+                // image; touches that land in the black bars are treated as released
+                if (aspect_compensation_enabled() && !remap_aspect_compensation(norm_x, norm_y)) {
+                    if (existing != touch.touch_points.end()) {
+                        remove_touch_point(hid_tp.id);
+                    }
+                    continue;
+                }
+
+                // scale the normalized coordinates to the monitor to obtain the
+                // physical screen position of the touch
                 TouchPoint tp {
                         .id = hid_tp.id,
-                        .x = (long) (hid_tp.x * DISPLAY_SIZE_X),
-                        .y = (long) (hid_tp.y * DISPLAY_SIZE_Y),
+                        .x = (long) (norm_x * DISPLAY_SIZE_X),
+                        .y = (long) (norm_y * DISPLAY_SIZE_Y),
                         .mouse = false,
                 };
                 touch_writes.push_back(tp);
@@ -513,7 +634,13 @@ namespace rawinput::touch {
         GetWindowRect(GetDesktopWindow(), &display_rect);
         DISPLAY_SIZE_X = display_rect.right - display_rect.left;
         DISPLAY_SIZE_Y = display_rect.bottom - display_rect.top;
-        log_info("rawinput", "display size: {}x{}", (int) DISPLAY_SIZE_X, (int) DISPLAY_SIZE_Y);
+        log_info("rawinput", "primary display size: {}x{}", (int) DISPLAY_SIZE_X, (int) DISPLAY_SIZE_Y);
+
+        // determine the native (maximum) resolution of the primary display; used to
+        // detect and undo letterboxing when a non-native display mode is in use
+        detect_native_resolution();
+        log_info("rawinput", "primary display native size: {}x{}",
+                 (int) DISPLAY_NATIVE_X, (int) DISPLAY_NATIVE_Y);
 
         // determine monitor orientation
         DEVMODE display_mode{};

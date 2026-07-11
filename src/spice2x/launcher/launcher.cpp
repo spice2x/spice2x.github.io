@@ -1064,6 +1064,15 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::InvertTouchCoordinates].value_bool()) {
         rawinput::touch::INVERTED = true;
     }
+    if (options[launcher::Options::RawInputTouchAspectRatio].is_active()) {
+        auto mode = options[launcher::Options::RawInputTouchAspectRatio].value_text();
+        if (mode == "on") {
+            rawinput::touch::ASPECT_COMPENSATION_MODE = rawinput::touch::AspectMode::On;
+        } else if (mode == "off") {
+            rawinput::touch::ASPECT_COMPENSATION_MODE = rawinput::touch::AspectMode::Off;
+        }
+        // "auto" leaves the default (per-game)
+    }
     // DisableTouchCardInsert is no longer honored in spice2x
     // if (options[launcher::Options::DisableTouchCardInsert].value_bool()) {
     //     SPICETOUCH_CARD_DISABLE = true;
