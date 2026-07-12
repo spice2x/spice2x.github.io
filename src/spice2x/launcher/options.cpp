@@ -1807,8 +1807,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "rawtouchaspect",
         .desc = "Compensate for letterboxing/pillarboxing when the game runs at a display mode with a "
                 "different aspect ratio than the touch panel's native resolution. Only affects the default "
-                "raw input touch handler.\n\n"
-                "auto: enable on a per-game basis (jubeat, reflec).\n"
+                "raw input touch handler. This is automatically enabled, only force on or off if you have trouble.\n\n"
+                "auto: automatically enable on a per-game basis (default).\n"
                 "on: forced on\n"
                 "off: forced off",
         .type = OptionType::Enum,
