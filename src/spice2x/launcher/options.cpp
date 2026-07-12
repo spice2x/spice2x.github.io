@@ -1808,7 +1808,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Compensate for letterboxing/pillarboxing when the game runs at a display mode with a "
                 "different aspect ratio than the touch panel's native resolution. Only affects the default "
                 "raw input touch handler. This is automatically enabled, only force on or off if you have trouble.\n\n"
-                "auto: automatically enable on a per-game basis (default).\n"
+                "auto (default): automatically enable on a per-game basis.\n"
                 "on: forced on\n"
                 "off: forced off",
         .type = OptionType::Enum,
@@ -1907,7 +1907,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "HID SmartCard Fix UID",
         .name = "scardfix",
         .desc = "Modify behavior of SmartCard UID logic.\n\n"
-            "legacy: Preserve buggy old behavior (Default)\n\n"
+            "legacy (default): Preserve buggy old behavior\n\n"
             "fix: Add E00401 to non-FeliCa cards, scan FeliCa cards as-is (Recommended for most users)\n\n"
             "all: Add E00401 to all cards, including FeliCa cards (For really old games only)\n\n"
             "The algorithm is simple; the prefix is applied, the scanned card number is appended up to 8 bytes, and remaining digits are discarded. "
