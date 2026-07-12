@@ -60,7 +60,7 @@ void games::rb::RBGame::attach() {
         log_info("rb", "force increasing touch poll rate by hooking SleepEx ({}Hz)", TOUCH_POLL_RATE);
         SleepEx_orig = detour::iat_try("SleepEx", SleepEx_hook, avs::game::DLL_INSTANCE);
     } else {
-        log_info("rb", "not changing touch poll rate (120Hz by default)");
+        log_info("rb", "not changing touch poll rate (~125Hz by default)");
     }
 }
 
