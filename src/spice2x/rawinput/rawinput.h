@@ -2,7 +2,6 @@
 
 #include <functional>
 #include <thread>
-#include <atomic>
 #include <condition_variable>
 #include <list>
 #include <mutex>
@@ -78,12 +77,20 @@ namespace rawinput {
         WNDCLASSEX input_hwnd_class {};
         std::thread *input_thread = nullptr;
         std::thread *midi_thread = nullptr;
-        std::atomic<bool> midi_scan_active { false };
+
+        // guards the MIDI scan scheduler flags below. only held around the flag
+        // checks, never across the (slow) enumeration, so it makes "is a scan
+        // running?" and the worker's "exit or rescan?" a single atomic decision -
+        // a request can never slip into the gap between the two
+        std::mutex midi_scan_m;
+
+        // true while a scan worker thread is running. only one runs at a time
+        bool midi_scan_active = false;
 
         // set when a scan is requested while one is already running, so the worker
         // rescans once instead of dropping the request (events that arrive during
         // the slow initial scan would otherwise be lost)
-        std::atomic<bool> midi_scan_pending { false };
+        bool midi_scan_pending = false;
 
         // MIDI handles pending close. devices_destruct() runs under devices_mutex but
         // midiInReset/midiInClose must not (they block on the MIDI callback, which

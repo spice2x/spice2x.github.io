@@ -238,11 +238,19 @@ void rawinput::RawInputManager::midi_scan_start() {
 
     // single-flight: only one scan runs at a time. if one is already running, set
     // the pending flag so it rescans once more when it finishes - MIDI hotplug
-    // events fire while the slow enumeration is still going and must not be lost
-    bool expected = false;
-    if (!this->midi_scan_active.compare_exchange_strong(expected, true)) {
-        this->midi_scan_pending.store(true);
-        return;
+    // events fire while the slow enumeration is still going and must not be lost.
+    // the scheduler mutex makes this check-and-set atomic with the worker's
+    // exit-or-rescan decision below, so a request set while a scan is running is
+    // never dropped
+    {
+        std::lock_guard<std::mutex> lock(this->midi_scan_m);
+        if (this->midi_scan_active) {
+            this->midi_scan_pending = true;
+            log_misc("rawinput", "MIDI scan already running, queued rescan");
+            return;
+        }
+        this->midi_scan_active = true;
+        this->midi_scan_pending = false;
     }
 
     // clean up the previous (already finished) scan thread handle
@@ -251,19 +259,38 @@ void rawinput::RawInputManager::midi_scan_start() {
     // run the (potentially slow) MIDI enumeration on its own thread so callers are
     // not blocked while the Windows MIDI subsystem starts up. rescan if a request
     // arrived while we were scanning
+    log_misc("rawinput", "starting async MIDI scan thread");
     this->midi_thread = new std::thread([this]() {
-        do {
-            this->midi_scan_pending.store(false);
+        for (;;) {
             this->devices_scan_midi();
-        } while (this->midi_scan_pending.exchange(false));
-        this->midi_scan_active.store(false);
+
+            // decide whether to exit under the scheduler lock, atomically with any
+            // concurrent midi_scan_start(): if a rescan was requested, consume it
+            // and loop; otherwise clear active and exit. because both sides take
+            // the same lock, a request set while active is true is never lost, so
+            // we never strand a hotplug event waiting for a future one
+            std::lock_guard<std::mutex> lock(this->midi_scan_m);
+            if (!this->midi_scan_pending) {
+                this->midi_scan_active = false;
+                log_misc("rawinput", "async MIDI scan thread finished");
+                return;
+            }
+            this->midi_scan_pending = false;
+            log_misc("rawinput", "async MIDI scan rescanning (event arrived during scan)");
+        }
     });
 }
 
 void rawinput::RawInputManager::midi_scan_join() {
     if (this->midi_thread) {
         if (this->midi_thread->joinable()) {
+
+            // this blocks until the scan worker returns. if it ever hangs here the
+            // worker is stuck - most likely in midi_close_deferred_flush() waiting
+            // on a WinMM close. a missing "joined" line pinpoints the hang
+            log_misc("rawinput", "joining MIDI scan thread...");
             this->midi_thread->join();
+            log_misc("rawinput", "MIDI scan thread joined");
         }
         delete this->midi_thread;
         this->midi_thread = nullptr;
@@ -281,10 +308,21 @@ void rawinput::RawInputManager::midi_close_deferred_flush() {
         std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
         handles.swap(this->midi_close_deferred);
     }
-    for (auto handle : handles) {
-        midiInReset(handle);
-        midiInClose(handle);
+    if (handles.empty()) {
+        return;
     }
+
+    // if a hang is ever reported here it is the classic WinMM deadlock: an
+    // in-flight input_midi_proc callback is blocked on devices_mutex while
+    // midiInReset/midiInClose waits for that callback to return. the per-handle
+    // log below pinpoints exactly which close did not come back
+    log_misc("rawinput", "closing {} deferred MIDI handle(s)", handles.size());
+    for (size_t i = 0; i < handles.size(); i++) {
+        log_misc("rawinput", "closing deferred MIDI handle {}/{}", i + 1, handles.size());
+        midiInReset(handles[i]);
+        midiInClose(handles[i]);
+    }
+    log_misc("rawinput", "deferred MIDI handles closed");
 }
 
 void rawinput::RawInputManager::devices_scan_rawinput(const std::string &device_name) {
@@ -1528,19 +1566,26 @@ void rawinput::RawInputManager::sextet_register(const std::string &port_name, co
 }
 
 void rawinput::RawInputManager::devices_remove(const std::string &name) {
-    std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
+    {
+        std::lock_guard<std::recursive_mutex> lock(this->devices_mutex);
 
-    // iterate devices
-    for (auto &device : this->devices) {
+        // iterate devices
+        for (auto &device : this->devices) {
 
-        // check if name matches
-        if (device.name == name) {
+            // check if name matches
+            if (device.name == name) {
 
-            // remove device
-            this->devices_destruct(&device);
-            return;
+                // remove device
+                this->devices_destruct(&device);
+                break;
+            }
         }
     }
+
+    // close any MIDI handle detached above, now that devices_mutex is released.
+    // removing a MIDI device queues its handle for deferred close; flush it here
+    // since we cannot rely on a later scan happening to do it
+    this->midi_close_deferred_flush();
 }
 
 void rawinput::RawInputManager::devices_register() {
@@ -1747,6 +1792,7 @@ void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
             // return, callbacks that also take devices_mutex. detach the handle and
             // let midi_close_deferred_flush() close it once the lock is released
             if (device->handle != (HANDLE) INVALID_HANDLE_VALUE) {
+                log_misc("rawinput", "deferring MIDI handle close for: {}", device->desc);
                 this->midi_close_deferred.push_back((HMIDIIN) device->handle);
                 device->handle = (HANDLE) INVALID_HANDLE_VALUE;
             }

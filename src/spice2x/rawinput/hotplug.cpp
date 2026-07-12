@@ -112,6 +112,7 @@ namespace rawinput {
                             std::string name(dev->dbcc_name);
 
                             // destruct device
+                            log_misc("hotplug", "device interface removal: {}", name);
                             this->ri_mgr->devices_remove(name);
                         }
                     }
@@ -123,6 +124,7 @@ namespace rawinput {
                     // catch-all device-tree change: MIDI and XInput have no targeted
                     // arrival/removal notification, so this is our only hook to detect them
                     // can be a little noisy as it gets called on every device
+                    log_misc("hotplug", "device tree changed, rescanning MIDI + XInput");
                     this->ri_mgr->midi_scan_start();
                     this->ri_mgr->devices_scan_xinput();
                     break;
