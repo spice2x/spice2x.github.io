@@ -46,6 +46,24 @@ namespace rawinput {
     bool OS_WINDOW_ACTIVE = false;
 }
 
+namespace {
+
+    // when replacing a device slot in place, keep the old slot's per-device mutexes
+    // instead of the freshly allocated pair on `replacement`. their addresses stay
+    // stable, so a thread still holding a snapshot pointer to the slot (e.g. the
+    // output thread blocked on mutex_out, which is taken without devices_mutex)
+    // never locks freed memory. the freshly allocated pair is freed here rather
+    // than leaking the old one. the slot must already be destructed so both
+    // mutexes are unlocked
+    void reuse_device_mutexes(rawinput::Device &replacement, const rawinput::Device &existing) {
+        delete replacement.mutex;
+        delete replacement.mutex_out;
+        replacement.mutex = existing.mutex;
+        replacement.mutex_out = existing.mutex_out;
+    }
+
+}
+
 rawinput::MidiNoteAlgorithm rawinput::get_midi_algorithm() {
     return rawinput::MIDI_NOTE_ALGORITHM;
 }
@@ -870,8 +888,9 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
             // carry over old device ID
             new_device.id = prev_device.id;
 
-            // destruct and replace
+            // destruct and replace, reusing the slot's existing mutexes
             this->devices_destruct(&prev_device);
+            reuse_device_mutexes(new_device, prev_device);
             prev_device = new_device;
 
             // notify change
@@ -1025,8 +1044,9 @@ void rawinput::RawInputManager::devices_scan_midi() {
                 // carry over ID
                 midi_device.id = device.id;
 
-                // destruct and replace
+                // destruct and replace, reusing the slot's existing mutexes
                 this->devices_destruct(&device);
+                reuse_device_mutexes(midi_device, device);
                 device = midi_device;
 
                 // notify change
@@ -1217,7 +1237,11 @@ void rawinput::RawInputManager::devices_scan_xinput() {
             if (prev_device.type == DESTROYED) {
                 log_info("rawinput", "overwriting previously destroyed XInput device: {}", prev_device.name);
                 const auto old_id = prev_device.id;
-                prev_device = create_device(player);
+
+                // replace in place, reusing the slot's existing mutexes
+                auto replacement = create_device(player);
+                reuse_device_mutexes(replacement, prev_device);
+                prev_device = replacement;
                 prev_device.id = old_id;
 
                 // notify change
@@ -1662,6 +1686,7 @@ void rawinput::RawInputManager::devices_destruct() {
             for (auto &device : this->devices) {
                 this->devices_destruct(&device, false);
                 delete device.mutex;
+                delete device.mutex_out;
             }
 
             // empty array
@@ -1748,7 +1773,10 @@ void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
     device->smxstageInfo = nullptr;
     delete device->smxdedicabInfo;
     device->smxdedicabInfo = nullptr;
-    // TODO: check if mutex can be deleted
+
+    // note: mutex and mutex_out are intentionally left alive here. other threads
+    // may still hold a snapshot pointer to this device and block on them, so they
+    // are only freed during full teardown; on reuse the slot keeps the same pair
 }
 
 LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
