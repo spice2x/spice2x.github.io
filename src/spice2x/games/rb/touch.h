@@ -12,6 +12,12 @@ namespace games::rb {
         int window_width = 1080;
         int window_height = 1920;
 
+        // game window resolved in open(); read() sizes against this instead of the
+        // foreground window so touch stays correctly scaled and keeps working when
+        // the game is not the foreground window (rawinput delivers touch regardless
+        // of focus)
+        HWND game_hwnd = nullptr;
+
         // logging
         bool log_fps = false;
         uint64_t log_time = 0;

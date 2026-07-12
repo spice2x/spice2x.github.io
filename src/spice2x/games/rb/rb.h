@@ -7,7 +7,6 @@
 namespace games::rb {
 
     extern uint16_t TOUCH_SCALING;
-    extern uint8_t TOUCH_SIZE;
     extern uint16_t TOUCH_POLL_RATE;
 
     class RBGame : public games::Game {

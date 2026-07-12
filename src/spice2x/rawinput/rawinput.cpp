@@ -1764,161 +1764,172 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                         // get HID data
                         auto &data_hid = data->data.hid;
 
-                        // parse reports
-                        for (const auto &pair : device.hidInfo->button_usage_pages) {
-                            const auto usage_page = pair.first.first;
-                            const auto link_collection = pair.first.second;
-                            const auto button_count = pair.second;
+                        // a single WM_INPUT may carry more than one HID report from the same
+                        // device: bRawData holds dwCount reports of dwSizeHid bytes each (the
+                        // buffer size is dwSizeHid * dwCount). parse every report instead of
+                        // only the first one.
+                        // https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-rawhid
+                        const DWORD hid_report_count = data_hid.dwCount > 0 ? data_hid.dwCount : 1;
+                        for (DWORD hid_report_index = 0; hid_report_index < hid_report_count; hid_report_index++) {
+                            auto *report_data = reinterpret_cast<BYTE *>(data_hid.bRawData)
+                                    + (size_t) hid_report_index * data_hid.dwSizeHid;
 
-                            ULONG usages_length = button_count;
-                            std::vector<USAGE> usages(static_cast<size_t>(usages_length));
-                            if (HidP_GetUsages(
-                                    HidP_Input,
-                                    usage_page,
-                                    link_collection,
-                                    usages.data(),
-                                    &usages_length,
-                                    reinterpret_cast<PHIDP_PREPARSED_DATA>(device.hidInfo->preparsed_data.get()),
-                                    reinterpret_cast<PCHAR>(data_hid.bRawData),
-                                    data_hid.dwSizeHid) != HIDP_STATUS_SUCCESS) {
+                            // parse reports
+                            for (const auto &pair : device.hidInfo->button_usage_pages) {
+                                const auto usage_page = pair.first.first;
+                                const auto link_collection = pair.first.second;
+                                const auto button_count = pair.second;
 
-                                // log_warning(
+                                ULONG usages_length = button_count;
+                                std::vector<USAGE> usages(static_cast<size_t>(usages_length));
+                                if (HidP_GetUsages(
+                                        HidP_Input,
+                                        usage_page,
+                                        link_collection,
+                                        usages.data(),
+                                        &usages_length,
+                                        reinterpret_cast<PHIDP_PREPARSED_DATA>(device.hidInfo->preparsed_data.get()),
+                                        reinterpret_cast<PCHAR>(report_data),
+                                        data_hid.dwSizeHid) != HIDP_STATUS_SUCCESS) {
+
+                                    // log_warning(
+                                    //     "rawinput",
+                                    //     "failed to get usages for device {}, usage page {:x} and link collection {:x}",
+                                    //     device.desc,
+                                    //     usage_page, link_collection);
+                                    continue;
+                                }
+
+                                // log_info(
                                 //     "rawinput",
-                                //     "failed to get usages for device {}, usage page {:x} and link collection {:x}",
+                                //     "processing HID input for device {}, usage page {:x} and link collection {:x} with {} buttons, got {} reports",
                                 //     device.desc,
-                                //     usage_page, link_collection);
-                                continue;
-                            }
+                                //     usage_page, link_collection, button_count, usages_length);
 
-                            // log_info(
-                            //     "rawinput",
-                            //     "processing HID input for device {}, usage page {:x} and link collection {:x} with {} buttons, got {} reports",
-                            //     device.desc,
-                            //     usage_page, link_collection, button_count, usages_length);
+                                // buttons
+                                for (size_t cap_num = 0; cap_num < device.hidInfo->button_caps_list.size(); cap_num++) {
+                                    auto &button_caps = device.hidInfo->button_caps_list[cap_num];
+                                    auto &button_states = device.hidInfo->button_states[cap_num];
+                                    auto &button_down = device.hidInfo->button_down[cap_num];
+                                    auto &button_up = device.hidInfo->button_up[cap_num];
 
-                            // buttons
-                            for (size_t cap_num = 0; cap_num < device.hidInfo->button_caps_list.size(); cap_num++) {
-                                auto &button_caps = device.hidInfo->button_caps_list[cap_num];
-                                auto &button_states = device.hidInfo->button_states[cap_num];
-                                auto &button_down = device.hidInfo->button_down[cap_num];
-                                auto &button_up = device.hidInfo->button_up[cap_num];
-
-                                // is this the right usage page and link collection?
-                                if (button_caps.UsagePage != usage_page || button_caps.LinkCollection != link_collection) {
-                                    continue;
-                                }
-
-                                // get button count
-                                int button_count = button_caps.Range.UsageMax - button_caps.Range.UsageMin + 1;
-                                if (button_count <= 0) {
-                                    continue;
-                                }
-
-                                // update buttons
-                                std::vector<bool> new_states(button_count);
-                                for (ULONG usage_num = 0; usage_num < usages_length; usage_num++) {
-                                    if (usages[usage_num] < button_caps.Range.UsageMin ||
-                                        usages[usage_num] > button_caps.Range.UsageMax) {
+                                    // is this the right usage page and link collection?
+                                    if (button_caps.UsagePage != usage_page || button_caps.LinkCollection != link_collection) {
                                         continue;
                                     }
 
-                                    USAGE usage = usages[usage_num] - button_caps.Range.UsageMin;
-
-                                    // guard against some buggy device sending an event for a usage below `UsageMin`
-                                    if (usage < button_count) {
-                                        new_states[usage] = true;
+                                    // get button count
+                                    int button_count = button_caps.Range.UsageMax - button_caps.Range.UsageMin + 1;
+                                    if (button_count <= 0) {
+                                        continue;
                                     }
-                                }
-                                for (int button_num = 0; button_num < button_count; button_num++) {
-                                    if (!new_states[button_num] && button_states[button_num]) {
-                                        device.updated = true;
-                                        button_states[button_num] = new_states[button_num];
-                                        button_down[button_num] = input_time;
-                                    } else if (new_states[button_num] && !button_states[button_num]) {
-                                        device.updated = true;
-                                        button_states[button_num] = new_states[button_num];
-                                        button_up[button_num] = input_time;
+
+                                    // update buttons
+                                    std::vector<bool> new_states(button_count);
+                                    for (ULONG usage_num = 0; usage_num < usages_length; usage_num++) {
+                                        if (usages[usage_num] < button_caps.Range.UsageMin ||
+                                            usages[usage_num] > button_caps.Range.UsageMax) {
+                                            continue;
+                                        }
+
+                                        USAGE usage = usages[usage_num] - button_caps.Range.UsageMin;
+
+                                        // guard against some buggy device sending an event for a usage below `UsageMin`
+                                        if (usage < button_count) {
+                                            new_states[usage] = true;
+                                        }
+                                    }
+                                    for (int button_num = 0; button_num < button_count; button_num++) {
+                                        if (!new_states[button_num] && button_states[button_num]) {
+                                            device.updated = true;
+                                            button_states[button_num] = new_states[button_num];
+                                            button_down[button_num] = input_time;
+                                        } else if (new_states[button_num] && !button_states[button_num]) {
+                                            device.updated = true;
+                                            button_states[button_num] = new_states[button_num];
+                                            button_up[button_num] = input_time;
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        // analogs
-                        for (auto cap_num = 0; cap_num < device.hidInfo->caps.NumberInputValueCaps; cap_num++) {
-                            auto &value_caps = device.hidInfo->value_caps_list[cap_num];
+                            // analogs
+                            for (auto cap_num = 0; cap_num < device.hidInfo->caps.NumberInputValueCaps; cap_num++) {
+                                auto &value_caps = device.hidInfo->value_caps_list[cap_num];
 
-                            // get value
-                            LONG value_raw = 0;
-                            if (HidP_GetUsageValue(
-                                    HidP_Input,
-                                    value_caps.UsagePage,
-                                    value_caps.LinkCollection,
-                                    value_caps.Range.UsageMin,
-                                    reinterpret_cast<ULONG *>(&value_raw),
-                                    reinterpret_cast<PHIDP_PREPARSED_DATA>(device.hidInfo->preparsed_data.get()),
-                                    reinterpret_cast<CHAR *>(data_hid.bRawData),
-                                    data_hid.dwSizeHid) != HIDP_STATUS_SUCCESS)
-                            {
-                                continue;
-                            }
+                                // get value
+                                LONG value_raw = 0;
+                                if (HidP_GetUsageValue(
+                                        HidP_Input,
+                                        value_caps.UsagePage,
+                                        value_caps.LinkCollection,
+                                        value_caps.Range.UsageMin,
+                                        reinterpret_cast<ULONG *>(&value_raw),
+                                        reinterpret_cast<PHIDP_PREPARSED_DATA>(device.hidInfo->preparsed_data.get()),
+                                        reinterpret_cast<CHAR *>(report_data),
+                                        data_hid.dwSizeHid) != HIDP_STATUS_SUCCESS)
+                                {
+                                    continue;
+                                }
 
-                            // get min and max
-                            LONG value_min = value_caps.LogicalMin;
-                            LONG value_max = value_caps.LogicalMax;
+                                // get min and max
+                                LONG value_min = value_caps.LogicalMin;
+                                LONG value_max = value_caps.LogicalMax;
 
-                            float value;
-                            // 0x1 == generic desktop, 0x39 == hat switch
-                            if (value_caps.UsagePage == 0x1 && value_caps.Range.UsageMin == 0x39) {
-                                if (value_min <= value_raw && value_raw <= value_max) {
-                                    // scale to float; minimum valid value is UP, and increases in clockwise order
-                                    value = (float) (value_raw - value_min) / (float) (value_max - value_min);
+                                float value;
+                                // 0x1 == generic desktop, 0x39 == hat switch
+                                if (value_caps.UsagePage == 0x1 && value_caps.Range.UsageMin == 0x39) {
+                                    if (value_min <= value_raw && value_raw <= value_max) {
+                                        // scale to float; minimum valid value is UP, and increases in clockwise order
+                                        value = (float) (value_raw - value_min) / (float) (value_max - value_min);
+                                    } else {
+                                        // hat switches report an out-of-bounds value to indicate a neutral position, so it
+                                        // needs special handling; here, we will use a negative value to indicate neutral
+                                        value = -1.f;
+                                    }
                                 } else {
-                                    // hat switches report an out-of-bounds value to indicate a neutral position, so it
-                                    // needs special handling; here, we will use a negative value to indicate neutral
-                                    value = -1.f;
-                                }
-                            } else {
 
-                                // fix sign bits for signed values
-                                if (value_caps.LogicalMin < 0 &&
-                                    0 < value_caps.BitSize && value_caps.BitSize < 32) {
+                                    // fix sign bits for signed values
+                                    if (value_caps.LogicalMin < 0 &&
+                                        0 < value_caps.BitSize && value_caps.BitSize < 32) {
 
-                                    ULONG raw = static_cast<ULONG>(value_raw) & ((1u << value_caps.BitSize) - 1u);
-                                    const ULONG sign_bit = 1u << (value_caps.BitSize - 1);
-                                    value_raw = static_cast<LONG>((raw ^ sign_bit) - sign_bit);
+                                        ULONG raw = static_cast<ULONG>(value_raw) & ((1u << value_caps.BitSize) - 1u);
+                                        const ULONG sign_bit = 1u << (value_caps.BitSize - 1);
+                                        value_raw = static_cast<LONG>((raw ^ sign_bit) - sign_bit);
+                                    }
+
+                                    // automatic calibration
+                                    if (value_raw < value_min) {
+                                        value_caps.LogicalMin = value_raw;
+                                        value_min = value_raw;
+                                    }
+                                    if (value_raw > value_max) {
+                                        value_caps.LogicalMax = value_raw;
+                                        value_max = value_raw;
+                                    }
+
+                                    // scale to float
+                                    value = (float) (value_raw - value_min) / (float) (value_max - value_min);
                                 }
 
-                                // automatic calibration
-                                if (value_raw < value_min) {
-                                    value_caps.LogicalMin = value_raw;
-                                    value_min = value_raw;
-                                }
-                                if (value_raw > value_max) {
-                                    value_caps.LogicalMax = value_raw;
-                                    value_max = value_raw;
+                                // store value
+                                auto &cur_state = device.hidInfo->value_states[cap_num];
+                                if (cur_state != value) {
+                                    device.updated = true;
+                                    cur_state = value;
                                 }
 
-                                // scale to float
-                                value = (float) (value_raw - value_min) / (float) (value_max - value_min);
+                                // store raw value
+                                auto &cur_raw_state = device.hidInfo->value_states_raw[cap_num];
+                                if (cur_raw_state != value_raw) {
+                                    device.updated = true;
+                                    cur_raw_state = value_raw;
+                                }
                             }
 
-                            // store value
-                            auto &cur_state = device.hidInfo->value_states[cap_num];
-                            if (cur_state != value) {
-                                device.updated = true;
-                                cur_state = value;
-                            }
-
-                            // store raw value
-                            auto &cur_raw_state = device.hidInfo->value_states_raw[cap_num];
-                            if (cur_raw_state != value_raw) {
-                                device.updated = true;
-                                cur_raw_state = value_raw;
-                            }
+                            // touch screen
+                            rawinput::touch::update_input(&device);
                         }
-
-                        // touch screen
-                        rawinput::touch::update_input(&device);
 
                         break;
                     }

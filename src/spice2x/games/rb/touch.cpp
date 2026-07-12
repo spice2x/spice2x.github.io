@@ -14,7 +14,6 @@ static std::string WINDOW_TITLE = "REFLEC BEAT";
 
 namespace games::rb {
     uint16_t TOUCH_SCALING = 1000;
-    uint8_t TOUCH_SIZE = 1;
 }
 
 games::rb::ReflecBeatTouchDeviceHandle::ReflecBeatTouchDeviceHandle(bool log_fps) {
@@ -49,6 +48,9 @@ bool games::rb::ReflecBeatTouchDeviceHandle::open(LPCWSTR lpFileName) {
     }
 
     if (wnd != nullptr) {
+
+        // cache the game window so read() can size against it regardless of focus
+        this->game_hwnd = wnd;
 
         // reset window process to make the game not crash
         SetWindowLongPtr(wnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(DefWindowProc));
@@ -106,8 +108,9 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
         return 0;
     }
 
-    // get window
-    HWND window = GetForegroundWindow();
+    // size against the game window cached in open() (not GetForegroundWindow), so
+    // touch stays correctly scaled and keeps working when the game loses focus
+    HWND window = this->game_hwnd;
     if (window == nullptr) {
         return 0;
     }
@@ -166,20 +169,20 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
         const auto point_x = (int) ((x - window_width / 2.0) * 48.0 / 54.0 + window_width / 2.0);
         const auto point_y = (int) (y - window_height / 76);
 
-        // center
-        grid_insert(data, point_x, point_y);
-
-        // surrounding points
-        if (games::rb::TOUCH_SIZE == 3) {
-            grid_insert(data, point_x - offset_x, point_y);            // west
-            grid_insert(data, point_x - offset_x, point_y - offset_y); // northwest
-            grid_insert(data, point_x - offset_x, point_y + offset_y); // southwest
-            grid_insert(data, point_x + offset_x, point_y);            // east
-            grid_insert(data, point_x + offset_x, point_y + offset_y); // southeast
-            grid_insert(data, point_x + offset_x, point_y - offset_y); // northeast
-            grid_insert(data, point_x, point_y - offset_y);            // north
-            grid_insert(data, point_x, point_y + offset_y);            // south
-        }
+        // model a finger as a 3x3 block of IR sensors around the touch point
+        // this gives better accuracy (than just 1x1) since the logic below
+        // can toggle anywhere from 1x1 to 2x2, and the game engine calculates
+        // the center point, which means by inserting up to 8 extra blocks
+        // we are emulating a sub-"pixel" resolution
+        grid_insert(data, point_x, point_y);                       // center
+        grid_insert(data, point_x - offset_x, point_y);            // west
+        grid_insert(data, point_x - offset_x, point_y - offset_y); // northwest
+        grid_insert(data, point_x - offset_x, point_y + offset_y); // southwest
+        grid_insert(data, point_x + offset_x, point_y);            // east
+        grid_insert(data, point_x + offset_x, point_y + offset_y); // southeast
+        grid_insert(data, point_x + offset_x, point_y - offset_y); // northeast
+        grid_insert(data, point_x, point_y - offset_y);            // north
+        grid_insert(data, point_x, point_y + offset_y);            // south
     }
 
     // copy data to buffer

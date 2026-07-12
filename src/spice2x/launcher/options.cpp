@@ -2716,14 +2716,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // RBTouchSize
-        .title = "RB Touch Emulation Size",
+        .title = "RB Touch Emulation Size (DEPRECATED - no longer has any effect)",
         .name = "rbtouchsize",
-        .desc = "Size of the touch area; how many IR sensors a single finger activates. Default: 1 (1x1).",
+        .desc = "This option is deprecated and no longer has any effect. "
+            "Reflec Beat touch emulation always uses the 3x3 sensor model.",
         .type = OptionType::Enum,
+        .hidden = true,
         .game_name = "Reflec Beat",
         .category = "Game Options",
         .elements = {
-            {"1", "1x1"},
             {"3", "3x3"},
         },
     },
@@ -2731,9 +2732,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // RBTouchPollRate
         .title = "RB Touch Emulation Poll Hz",
         .name = "rbtouchhz",
-        .desc = "By default, the game polls for touch at 120Hz. "
-            "This option overrides that rate; enter a number betwen 1 and 1000.\n\n"
-            "It should be noted that higher poll does not necessarily improve accuracy or performance.",
+        .desc = "By default, the game polls for touch at ~125Hz. "
+            "This option overrides that rate; enter a number between 1 and 1000.\n\n"
+            "Higher rates reduce input latency (the game sees a fresher touch position) "
+            "but do NOT improve spatial accuracy, and very high rates just waste CPU.",
         .type = OptionType::Integer,
         .setting_name = "250",
         .game_name = "Reflec Beat",
