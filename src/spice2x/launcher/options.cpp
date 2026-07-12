@@ -1777,11 +1777,11 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "I/O Modules",
     },
     {
-        .title = "Disable Raw Input Touch",
+        .title = "Touch Compatibility Mode (Disable Raw Input Touch)",
         .name = "wintouch",
         .desc = "For touch screen input, disable usage of Raw Input API and instead use "
-                "Win8 Pointer API or Win7 Touch API. Only enable this if you have trouble "
-                "using the default (raw input) touch input, as Raw Input performs better.",
+                "Win8 Pointer API or Win7 Touch API. Results in better compatibility with some "
+                "touch screens, but may result in worse performance and higher latency.",
         .type = OptionType::Bool,
         .category = "Touch Parameters",
     },
