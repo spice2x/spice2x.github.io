@@ -170,6 +170,10 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
         const auto point_y = (int) (y - window_height / 76);
 
         // model a finger as a 3x3 block of IR sensors around the touch point
+        // this gives better accuracy (than just 1x1) since the logic below
+        // can toggle anywhere from 1x1 to 2x2, and the game engine calculates
+        // the center point, which means by inserting up to 8 extra blocks
+        // we are emulating a sub-"pixel" resolution
         grid_insert(data, point_x, point_y);                       // center
         grid_insert(data, point_x - offset_x, point_y);            // west
         grid_insert(data, point_x - offset_x, point_y - offset_y); // northwest
