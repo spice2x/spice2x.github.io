@@ -37,7 +37,7 @@ jobs:
           echo "RELEASE_NAME=$name" >> $GITHUB_ENV
           echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
       - name: Create draft release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           prerelease: true
