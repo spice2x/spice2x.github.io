@@ -2703,6 +2703,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .quick_setting_category = "Game",
     },
     {
+        // JubeatDebugTouch
+        .title = "JB Show Touch Boundary Boxes",
+        .name = "jubeatdebugtouch",
+        .desc = "For touch screen players: draw the 4x4 touch boundary boxes on the "
+            "main display. The boxes reflect the regions used by the selected touch "
+            "algorithm; a box is grey normally and turns green while it registers a touch.",
+        .type = OptionType::Bool,
+        .game_name = "Jubeat",
+        .category = "Game Options",
+        .quick_setting_category = "Game",
+    },
+    {
         // spice2x_RBTouchScale
         .title = "RB Touch Emulation Scale",
         .name = "sp2x-rbscaletouch",

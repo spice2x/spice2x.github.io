@@ -11,6 +11,7 @@
 
 #include "avs/game.h"
 #include "external/imgui/imgui.h"
+#include "games/jb/jb.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/eamuse.h"
 #include "overlay/overlay.h"
@@ -379,70 +380,83 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     }
                 }
 
-                // draw card input
-                if (SPICETOUCH_CARD_ENABLED && (SPICETOUCH_FONT != nullptr)) {
+                // draw debug touch overlay and/or card input in a single paint pass
+                // (a second BeginPaint in the same WM_PAINT gets an empty region, so
+                //  the jubeat boxes and the card button must share one BeginPaint/EndPaint)
+                bool draw_jb_debug = games::jb::touch_debug_overlay_enabled();
+                bool draw_card = SPICETOUCH_CARD_ENABLED && (SPICETOUCH_FONT != nullptr);
+                if (draw_jb_debug || draw_card) {
 
                     // prepare paint
                     PAINTSTRUCT paint {};
                     HDC hdc = BeginPaint(hWnd, &paint);
                     SetBkMode(hdc, TRANSPARENT);
 
-                    // create brushes
-                    HBRUSH brushBorder = CreateSolidBrush(RGB(0, 196, 0));
-                    HBRUSH brushFill = CreateSolidBrush(RGB(255, 192, 203));
-
-                    // get window rect
-                    RECT windowRect {};
-                    GetWindowRect(hWnd, &windowRect);
-
-                    bool should_rotate = avs::game::is_model({ "J44", "K44" });
-
-                    // create box rect
-                    RECT boxRect {};
-                    if (should_rotate) {
-                        boxRect.left = windowRect.right - 75;
-                        boxRect.top = 20;
-                        boxRect.right = windowRect.right - 44;
-                        boxRect.bottom = 151;
-                    } else {
-                        boxRect.left = 20;
-                        boxRect.top = 44;
-                        boxRect.right = 141;
-                        boxRect.bottom = 75;
+                    // draw jubeat touch boundary boxes
+                    if (draw_jb_debug) {
+                        games::jb::touch_draw_debug_overlay(hdc);
                     }
 
-                    // save box rect for touch input
-                    SPICETOUCH_CARD_RECT = boxRect;
+                    // draw card input
+                    if (draw_card) {
 
-                    // draw borders
-                    FillRect(hdc, &boxRect, brushBorder);
+                        // create brushes
+                        HBRUSH brushBorder = CreateSolidBrush(RGB(0, 196, 0));
+                        HBRUSH brushFill = CreateSolidBrush(RGB(255, 192, 203));
 
-                    // modify box rect
-                    boxRect.left += 1;
-                    boxRect.top += 1;
-                    boxRect.right -= 1;
-                    boxRect.bottom -= 1;
+                        // get window rect
+                        RECT windowRect {};
+                        GetWindowRect(hWnd, &windowRect);
 
-                    // fill box
-                    FillRect(hdc, &boxRect, brushFill);
+                        bool should_rotate = avs::game::is_model({ "J44", "K44" });
 
-                    // modify box rect
-                    if (should_rotate) {
-                        boxRect.left += 5 + 20;
-                        boxRect.top += 5;
-                    } else {
-                        boxRect.left += 5;
-                        boxRect.top += 5;
+                        // create box rect
+                        RECT boxRect {};
+                        if (should_rotate) {
+                            boxRect.left = windowRect.right - 75;
+                            boxRect.top = 20;
+                            boxRect.right = windowRect.right - 44;
+                            boxRect.bottom = 151;
+                        } else {
+                            boxRect.left = 20;
+                            boxRect.top = 44;
+                            boxRect.right = 141;
+                            boxRect.bottom = 75;
+                        }
+
+                        // save box rect for touch input
+                        SPICETOUCH_CARD_RECT = boxRect;
+
+                        // draw borders
+                        FillRect(hdc, &boxRect, brushBorder);
+
+                        // modify box rect
+                        boxRect.left += 1;
+                        boxRect.top += 1;
+                        boxRect.right -= 1;
+                        boxRect.bottom -= 1;
+
+                        // fill box
+                        FillRect(hdc, &boxRect, brushFill);
+
+                        // modify box rect
+                        if (should_rotate) {
+                            boxRect.left += 5 + 20;
+                            boxRect.top += 5;
+                        } else {
+                            boxRect.left += 5;
+                            boxRect.top += 5;
+                        }
+
+                        // draw text
+                        SelectObject(hdc, SPICETOUCH_FONT);
+                        SetTextColor(hdc, RGB(0, 196, 0));
+                        DrawText(hdc, INSERT_CARD_TEXT, -1, &boxRect, DT_LEFT | DT_BOTTOM | DT_NOCLIP);
+
+                        // delete objects
+                        DeleteObject(brushFill);
+                        DeleteObject(brushBorder);
                     }
-
-                    // draw text
-                    SelectObject(hdc, SPICETOUCH_FONT);
-                    SetTextColor(hdc, RGB(0, 196, 0));
-                    DrawText(hdc, INSERT_CARD_TEXT, -1, &boxRect, DT_LEFT | DT_BOTTOM | DT_NOCLIP);
-
-                    // delete objects
-                    DeleteObject(brushFill);
-                    DeleteObject(brushBorder);
 
                     // end paint
                     EndPaint(hWnd, &paint);

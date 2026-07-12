@@ -6,6 +6,7 @@
 #include "avs/game.h"
 #include "cfg/configurator.h"
 #include "hooks/graphics/graphics.h"
+#include "launcher/launcher.h"
 #include "touch/touch.h"
 #include "rawinput/touch.h"
 #include "util/logging.h"
@@ -13,206 +14,264 @@
 #include "util/detour.h"
 #include "util/libutils.h"
 
+// touch layout: a 4x4 grid of 160px buttons separated by 37 / 38 / 37 px gaps
+// (752px across). the first button's top-left is at (8, 602) in portrait and
+// (6, 8) in landscape.
 #define JB_BUTTON_SIZE 160
-#define JB_BUTTON_GAP 37
-#define JB_BUTTON_HITBOX (JB_BUTTON_SIZE + JB_BUTTON_GAP)
+
+// improved mode snaps each touch to the nearest button within this reach; a touch
+// farther than this from every button registers nothing. must be >= the diagonal
+// half of the widest gap (~27px) so the grid centre still reaches a button.
+#define JB_TOUCH_RADIUS 30
 
 namespace games::jb {
 
-    // touch stuff
+    // touch state
     JubeatTouchAlgorithm TOUCH_ALGORITHM = Improved;
+    bool TOUCH_DEBUG_OVERLAY = false;
     static bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
     static bool IS_PORTRAIT = true;
     static std::vector<TouchPoint> TOUCH_POINTS;
     bool TOUCH_STATE[16];
 
+    // --- touch geometry ------------------------------------------------------
+    // gaps between the four buttons along one axis (the middle gap is 1px wider)
+    static const int JB_BUTTON_GAPS[3] = { 37, 38, 37 };
+
+    struct AxisGeometry {
+        int button[4]; // left/top edge of each button
+    };
+
+    // left/top edges of the four buttons along one axis, starting at `first`
+    static AxisGeometry axis_geometry(int first) {
+        AxisGeometry g {};
+        g.button[0] = first;
+        for (int i = 1; i < 4; i++) {
+            g.button[i] = g.button[i - 1] + JB_BUTTON_SIZE + JB_BUTTON_GAPS[i - 1];
+        }
+        return g;
+    }
+
+    // button edges for the current orientation
+    static void touch_geometry(AxisGeometry &gx, AxisGeometry &gy) {
+        if (IS_PORTRAIT) {
+            gx = axis_geometry(8);
+            gy = axis_geometry(602);
+        } else {
+            gx = axis_geometry(6);
+            gy = axis_geometry(8);
+        }
+    }
+
+    // distance from `p` to the range [lo, hi] (0 when inside)
+    static int axis_distance(int p, int lo, int hi) {
+        if (p < lo) return lo - p;
+        if (p > hi) return p - hi;
+        return 0;
+    }
+
+    // index (0..15) of the nearest button to (px, py) within `radius`, or -1 if none;
+    // shared by detection and the debug overlay so both agree which button a touch hits
+    static int nearest_button(int px, int py, const AxisGeometry &gx, const AxisGeometry &gy, int radius) {
+        int best_index = -1;
+        int best_dist = 0;
+        for (int r = 0; r < 4; r++) {
+            for (int c = 0; c < 4; c++) {
+                int dx = axis_distance(px, gx.button[c], gx.button[c] + JB_BUTTON_SIZE);
+                int dy = axis_distance(py, gy.button[r], gy.button[r] + JB_BUTTON_SIZE);
+                int dist = dx * dx + dy * dy;
+                if (dist <= radius * radius && (best_index < 0 || dist < best_dist)) {
+                    best_dist = dist;
+                    best_index = r * 4 + c;
+                }
+            }
+        }
+        return best_index;
+    }
+
     void touch_update() {
 
-        // check if touch enabled
         if (!TOUCH_ENABLE) {
             return;
         }
 
-        // attach touch module
+        // one-time touch window attach
         if (!TOUCH_ATTACHED) {
 
-            /*
-             * Find the game window.
-             * We check the foreground window first, then fall back to searching for the window title
-             * All game versions seem to have their model first in the window title
-             */
+            // find the game window: prefer the foreground window, else search by
+            // title (the model name prefixes the window title in every version)
             HWND wnd = GetForegroundWindow();
             if (!string_begins_with(GetActiveWindowTitle(), avs::game::MODEL)) {
                 wnd = FindWindowBeginsWith(avs::game::MODEL);
             }
-
-            // check if we have a window handle
             if (!wnd) {
                 log_warning("jubeat", "could not find window handle for touch");
                 TOUCH_ENABLE = false;
                 return;
             }
 
-            // attach touch hook
             log_info("jubeat", "using window handle for touch: {}", fmt::ptr(wnd));
             touch_create_wnd(wnd, true);
 
-            // request automatic aspect ratio fixes
+            // let the rawinput stack correct the aspect ratio
             ::rawinput::touch::ASPECT_COMPENSATION_GAME = true;
 
-            // show cursor
             if (GRAPHICS_SHOW_CURSOR) {
                 ShowCursor(TRUE);
             }
 
-            // earlier games use a different screen orientation
+            // only the L44 model runs in portrait
             if (!avs::game::is_model("L44")) {
                 IS_PORTRAIT = false;
             }
 
-            // set attached
             TOUCH_ATTACHED = true;
         }
 
-        // reset touch state
+        // reset state and read the current touch points (device.cpp already
+        // compensates for orientation)
         memset(TOUCH_STATE, 0, sizeof(TOUCH_STATE));
-
-        // check touch points
-        // note that the IO code in device.cpp will correctly compensate for orientation, depending on the model.
         TOUCH_POINTS.clear();
         touch_get_points(TOUCH_POINTS);
         if (TOUCH_ALGORITHM == Legacy) {
+
+            // legacy: evenly divide the play area into a 4x4 grid
             auto offset = IS_PORTRAIT ? 580 : 0;
             for (auto &tp : TOUCH_POINTS) {
-
-                // get grid coordinates
                 int x = tp.x * 4 / 768;
                 int y = (tp.y - offset) * 4 / (1360 - 580);
-
-                // set the corresponding state
                 int index = y * 4 + x;
                 if (index >= 0 && index < 16) {
                     TOUCH_STATE[index] = true;
                 }
             }
         } else {
+
+            // accurate registers only a touch inside a button; improved snaps each
+            // touch to the single nearest button within JB_TOUCH_RADIUS (so a gap or
+            // centre touch still triggers exactly one button, never two)
+            AxisGeometry gx, gy;
+            touch_geometry(gx, gy);
+            int radius = (TOUCH_ALGORITHM == AcAccurate) ? 0 : JB_TOUCH_RADIUS;
             for (auto &tp : TOUCH_POINTS) {
-                // check window out of bounds
-                if (IS_PORTRAIT) {
-                    if (tp.x > 768 || tp.y > 1360) {
-                        continue;
-                    }
-                } else {
-                    if (tp.x > 1360 || tp.y > 768) {
-                        continue;
-                    }
-                }
-
-                int x_relative = tp.x;
-                int y_relative = tp.y;
-
-                // x_relative and y_relative are relative to the top-left pixel of the first button
-                if (IS_PORTRAIT) {
-                    // which is at (8, 602) in portrait:
-                    //   X: [8...759] (752 pixels wide)
-                    //   Y: [602...1353] (752 pixels high)
-                    x_relative -= 8;
-                    y_relative -= 602;
-                } else {
-                    // and at (8, 8) in landscape
-                    x_relative -= 8;
-                    y_relative -= 8;
-                }
-
-                int x_index = -1;
-                int x_hitbox = 0;
-                int y_index = -1;
-                int y_hitbox = 0;
-
-                // x_hitbox and y_hitbox is relative to top-left pixel of each button
-                if (x_relative >= 0) {
-                    x_index = x_relative / JB_BUTTON_HITBOX;
-                    x_hitbox = x_relative % JB_BUTTON_HITBOX;
-                }
-                if (y_relative >= 0) {
-                    y_index = y_relative / JB_BUTTON_HITBOX;
-                    y_hitbox = y_relative % JB_BUTTON_HITBOX;
-                }
-
-                // log_info("jb", "raw={}, idx={}, hitbox={}", tp.x, x_index, x_hitbox);
-
-                if (TOUCH_ALGORITHM == Improved) {
-                    if (IS_PORTRAIT) {
-                        // extend to left border
-                        if (x_relative < 0) {
-                            x_index = 0;
-                        }
-                        // right and bottom borders are covered by the hit box
-                    } else {
-                        // extend to top border
-                        if (y_relative < 0) {
-                            y_index = 0;
-                        }
-                        // extend to left border
-                        if (x_relative < 0) {
-                            x_index = 0;
-                        }
-                        // bottom border is covered by the hit box
-                        // rightmost edge - ignore them entirely
-                        if (x_index == 3 && JB_BUTTON_SIZE < x_hitbox) {
-                            continue;
-                        }
-                    }
-                }
-
-                if (x_index < 0 || y_index < 0 || x_index > 3 || y_index > 3) {
-                    continue;
-                }
-
-                // check if the gap was touched
-                if (TOUCH_ALGORITHM == AcAccurate) {
-                    // in ac-accurate mode, touching the gap is ignored
-                    if (x_hitbox > JB_BUTTON_SIZE || y_hitbox > JB_BUTTON_SIZE) {
-                        continue;
-                    }
-
-                } else if (TOUCH_ALGORITHM == Improved) {
-                    // in improved mode, touching the gap triggers the closest button
-                    if (x_index <= 2 && (JB_BUTTON_SIZE + JB_BUTTON_GAP / 2) < x_hitbox) {
-                        x_index++;
-                    }
-                    if (y_index <= 2 && (JB_BUTTON_SIZE + JB_BUTTON_GAP / 2) < y_hitbox) {
-                        y_index++;
-                    }
-                }
-
-                // set the corresponding state
-                int index = y_index * 4 + x_index;
-                if (0 <= index && index < 16) {
+                int index = nearest_button(tp.x, tp.y, gx, gy, radius);
+                if (index >= 0) {
                     TOUCH_STATE[index] = true;
                 }
             }
         }
     }
 
-    /*
-     * to fix "IP ADDR CHANGE" errors on boot and in-game when using weird network setups such as a VPN
-     */
+    bool touch_debug_overlay_enabled() {
+        return TOUCH_DEBUG_OVERLAY;
+    }
+
+    void touch_draw_debug_overlay(HDC hdc) {
+
+        if (!TOUCH_ENABLE) {
+            return;
+        }
+
+        bool legacy = (TOUCH_ALGORITHM == Legacy);
+        AxisGeometry gx, gy;
+
+        // build the 16 cell rectangles for the active algorithm
+        RECT cells[16];
+
+        if (legacy) {
+
+            // legacy: even 4x4 division of the play area
+            int offset = IS_PORTRAIT ? 580 : 0;
+            int x_edges[5];
+            int y_edges[5];
+            for (int i = 0; i <= 4; i++) {
+                x_edges[i] = i * 768 / 4;
+                y_edges[i] = offset + i * (1360 - 580) / 4;
+            }
+            for (int r = 0; r < 4; r++) {
+                for (int c = 0; c < 4; c++) {
+                    RECT &cell = cells[r * 4 + c];
+                    cell.left = x_edges[c];
+                    cell.top = y_edges[r];
+                    cell.right = x_edges[c + 1];
+                    cell.bottom = y_edges[r + 1];
+                }
+            }
+        } else {
+
+            // both draw the raw button squares (improved's radius applies to the tap)
+            touch_geometry(gx, gy);
+            for (int r = 0; r < 4; r++) {
+                for (int c = 0; c < 4; c++) {
+                    RECT &cell = cells[r * 4 + c];
+                    cell.left = gx.button[c];
+                    cell.top = gy.button[r];
+                    cell.right = cell.left + JB_BUTTON_SIZE;
+                    cell.bottom = cell.top + JB_BUTTON_SIZE;
+                }
+            }
+        }
+
+        // hollow outlines so the game stays visible: grey when idle, thicker green
+        // when pressed (PS_INSIDEFRAME keeps the green fully inside the cell)
+        HPEN pen_idle = CreatePen(PS_SOLID, 1, RGB(160, 160, 160));
+        HPEN pen_active = CreatePen(PS_INSIDEFRAME, 2, RGB(0, 200, 0));
+        HGDIOBJ old_brush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+
+        for (int i = 0; i < 16; i++) {
+            HGDIOBJ old_pen = SelectObject(hdc, TOUCH_STATE[i] ? pen_active : pen_idle);
+            Rectangle(hdc, cells[i].left, cells[i].top, cells[i].right, cells[i].bottom);
+            SelectObject(hdc, old_pen);
+        }
+
+        // improved mode only: mark each touch point with a faint thin dotted finger-
+        // radius circle plus a line to the button it snapped to. the color key overlay
+        // can't do real alpha, but the dotted circle lets the game show through the gaps
+        if (TOUCH_ALGORITHM == Improved) {
+            HPEN pen_tap = CreatePen(PS_DOT, 1, RGB(0, 200, 255));
+            HPEN pen_link = CreatePen(PS_SOLID, 1, RGB(0, 200, 0));
+            HGDIOBJ old_tap_pen = SelectObject(hdc, pen_tap);
+            for (auto &tp : TOUCH_POINTS) {
+
+                // faint dotted circle at the touch point
+                SelectObject(hdc, pen_tap);
+                Ellipse(hdc, tp.x - JB_TOUCH_RADIUS, tp.y - JB_TOUCH_RADIUS,
+                             tp.x + JB_TOUCH_RADIUS, tp.y + JB_TOUCH_RADIUS);
+
+                // draw a line to the triggered button's centre so it's clear which
+                // one the touch snapped to (drawn whether it's inside a button or a gap)
+                int index = nearest_button(tp.x, tp.y, gx, gy, JB_TOUCH_RADIUS);
+                if (index >= 0) {
+                    int c = index % 4;
+                    int r = index / 4;
+                    SelectObject(hdc, pen_link);
+                    MoveToEx(hdc, tp.x, tp.y, nullptr);
+                    LineTo(hdc, gx.button[c] + JB_BUTTON_SIZE / 2,
+                                gy.button[r] + JB_BUTTON_SIZE / 2);
+                }
+            }
+            SelectObject(hdc, old_tap_pen);
+            DeleteObject(pen_tap);
+            DeleteObject(pen_link);
+        }
+
+        SelectObject(hdc, old_brush);
+        DeleteObject(pen_idle);
+        DeleteObject(pen_active);
+    }
+
+    // fixes "IP ADDR CHANGE" errors with unusual network setups (e.g. a VPN)
     static BOOL __stdcall network_addr_is_changed() {
         return 0;
     }
 
-    /*
-     * to fix lag spikes when game tries to ping "eamuse.konami.fun" every few minutes
-     */
+    // fixes lag spikes from the periodic ping to "eamuse.konami.fun"
     static BOOL __stdcall network_get_network_check_info() {
         return 0;
     }
 
-    /*
-     * to fix network error on non DHCP interfaces
-     */
+    // fixes network errors on non-DHCP interfaces
     static BOOL __cdecl network_get_dhcp_result() {
         return 1;
     }
@@ -266,7 +325,7 @@ namespace games::jb {
                 log_info("jubeat", "using 'ac accurate' touch targets");
                 break;
             default:
-                log_fatal("jubeat", "unknown touch algo detected in touch_update, this is a bug");
+                log_fatal("jubeat", "unknown touch algo, this is a bug");
                 break;
         }
 

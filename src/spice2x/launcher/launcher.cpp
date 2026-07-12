@@ -1318,6 +1318,9 @@ int main_implementation(int argc, char *argv[]) {
             games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Improved;
         }
     }
+    if (options[launcher::Options::JubeatDebugTouch].value_bool()) {
+        games::jb::TOUCH_DEBUG_OVERLAY = true;
+    }
 
     // reflec beat touch emulation
     if (options[launcher::Options::spice2x_RBTouchScale].is_active()) {

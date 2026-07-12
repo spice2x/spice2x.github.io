@@ -263,6 +263,7 @@ namespace launcher {
             IIDXWindowedSubscreenAlwaysOnTop,
             spice2x_JubeatLegacyTouch,
             JubeatTouchAlgo,
+            JubeatDebugTouch,
             spice2x_RBTouchScale,
             RBTouchSize,
             RBTouchPollRate,
