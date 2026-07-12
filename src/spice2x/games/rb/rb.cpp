@@ -41,7 +41,7 @@ void games::rb::RBGame::attach() {
     Game::attach();
 
     if (1000 < games::rb::TOUCH_POLL_RATE) {
-        log_fatal("rb", "-rbtouchsize is set too high; cannot exceed 1000");
+        log_fatal("rb", "-rbtouchhz is set too high; cannot exceed 1000");
     }
 
     // init stuff

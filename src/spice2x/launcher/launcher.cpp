@@ -1323,12 +1323,7 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_RBTouchScale].is_active()) {
         games::rb::TOUCH_SCALING = options[launcher::Options::spice2x_RBTouchScale].value_uint32();
     }
-    if (options[launcher::Options::RBTouchSize].is_active()) {
-        const auto text = options[launcher::Options::RBTouchSize].value_text();
-        if (text == "3") {
-            games::rb::TOUCH_SIZE = 3;
-        }
-    }
+    // -rbtouchsize is deprecated and ignored; touch emulation always uses the 3x3 model
     if (options[launcher::Options::RBTouchPollRate].is_active()) {
         games::rb::TOUCH_POLL_RATE = options[launcher::Options::RBTouchPollRate].value_uint32();
     }

@@ -2716,14 +2716,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // RBTouchSize
-        .title = "RB Touch Emulation Size",
+        .title = "RB Touch Emulation Size (DEPRECATED - no longer has any effect)",
         .name = "rbtouchsize",
-        .desc = "Size of the touch area; how many IR sensors a single finger activates. Default: 1 (1x1).",
+        .desc = "This option is deprecated and no longer has any effect. "
+            "Reflec Beat touch emulation always uses the 3x3 sensor model.",
         .type = OptionType::Enum,
+        .hidden = true,
         .game_name = "Reflec Beat",
         .category = "Game Options",
         .elements = {
-            {"1", "1x1"},
             {"3", "3x3"},
         },
     },
