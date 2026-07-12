@@ -411,6 +411,12 @@ GameAPI::Buttons::State GameAPI::Buttons::getState(rawinput::RawInputManager *ma
                         BUTTON_PRESSED : BUTTON_NOT_PRESSED;
                     break;
                 }
+                case rawinput::DESTROYED:
+                    // device was unplugged. release the button instead of leaving
+                    // state at getLastState(), which would latch a held button on
+                    // forever (e.g. a MIDI note held while the device is removed)
+                    state = BUTTON_NOT_PRESSED;
+                    break;
                 default:
                     break;
             }
