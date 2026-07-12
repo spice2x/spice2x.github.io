@@ -618,6 +618,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
 
         # rawinput
         rawinput/rawinput.cpp
+        rawinput/midi.cpp
         rawinput/sextet.cpp
         rawinput/piuio.cpp
         rawinput/touch.cpp

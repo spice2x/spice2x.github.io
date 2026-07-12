@@ -134,6 +134,11 @@ namespace rawinput {
         static void CALLBACK input_midi_proc(HMIDIIN, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
         static DeviceInfo get_device_info(const std::string &device_name);
 
+        // shared by the rawinput / xinput / midi device scans when replacing a slot
+        // in place; keeps the existing slot's mutex pair so snapshot pointers held by
+        // other threads stay valid (see the definition in rawinput.cpp)
+        static void reuse_device_mutexes(Device &replacement, const Device &existing);
+
     public:
 
         HWND input_hwnd = nullptr;
