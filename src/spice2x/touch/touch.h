@@ -7,6 +7,7 @@ struct TouchPoint {
     DWORD id;
     LONG x, y;
     bool mouse;
+    double down_ms = 0.0; // performance-counter milliseconds when the contact first landed
 };
 enum TouchEventType {
     TOUCH_DOWN,

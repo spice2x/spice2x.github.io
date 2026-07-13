@@ -2726,6 +2726,20 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .quick_setting_category = "Game",
     },
     {
+        // JubeatTouchDebounce
+        .title = "JB Touch Debounce",
+        .name = "jubeattouchdebounce",
+        .desc = "For touch screen players: ignore extremely quick touches by requiring a "
+            "touch to be held for at least this many milliseconds before it registers.\n\n"
+            "Useful for filtering phantom touches on a noisy touch screen. A higher value "
+            "adds input latency, so keep it small. Default: off (0).",
+        .type = OptionType::Integer,
+        .setting_name = "8",
+        .game_name = "Jubeat",
+        .category = "Game Options",
+        .quick_setting_category = "Game",
+    },
+    {
         // spice2x_RBTouchScale
         .title = "RB Touch Emulation Scale",
         .name = "sp2x-rbscaletouch",
