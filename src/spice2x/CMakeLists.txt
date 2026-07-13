@@ -412,6 +412,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/sdvx/io.cpp
         games/sdvx/camera.cpp
         games/jb/jb.cpp
+        games/jb/jb_touch.cpp
         games/jb/io.cpp
         games/nost/nost.cpp
         games/nost/io.cpp

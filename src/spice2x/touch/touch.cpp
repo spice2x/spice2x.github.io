@@ -340,42 +340,49 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                             SWP_NOZORDER | SWP_NOREDRAW | SWP_NOREPOSITION | SWP_NOACTIVATE);
                 }
 
-                // draw everything in a single BeginPaint/EndPaint: a WM_PAINT has one
-                // update region, so a second BeginPaint would get an empty region and
-                // clip its drawing away. layers are drawn back-to-front below
-                PAINTSTRUCT paint {};
-                HDC hdc = BeginPaint(hWnd, &paint);
-                SetBkMode(hdc, TRANSPARENT);
-
-                // draw the software overlay
+                // render the software overlay to a bitmap BEFORE BeginPaint: the imgui
+                // render is expensive, and running it between the background erase and the
+                // blit leaves the window transparent long enough to flicker
+                HBITMAP overlay_bitmap = nullptr;
+                int overlay_width = 0, overlay_height = 0;
                 if (overlay_enabled) {
                     overlay::OVERLAY->update();
                     overlay::OVERLAY->new_frame();
                     overlay::OVERLAY->render();
 
-                    int width, height;
-                    uint32_t *pixel_data = overlay::OVERLAY.get()->sw_get_pixel_data(&width, &height);
-                    if (width > 0 && height > 0) {
-
-                        /*
-                         * draw bitmap
-                         * - this currently sets the background to black because of SRCCOPY
-                         * - SRCPAINT will blend but colors are wrong
-                         * - once this is figured out we could also try hooking WM_PAINT and
-                         *   draw directly to the game window
-                         */
-                        HBITMAP bitmap = CreateBitmap(width, height, 1, 8 * sizeof(uint32_t), pixel_data);
-                        HDC hdcMem = CreateCompatibleDC(hdc);
-                        SelectObject(hdcMem, bitmap);
-                        BitBlt(hdc, 0, 0, width, height, hdcMem, 0, 0, SRCCOPY);
-                        DeleteObject(bitmap);
-                        DeleteDC(hdcMem);
+                    uint32_t *pixel_data = overlay::OVERLAY.get()->sw_get_pixel_data(&overlay_width, &overlay_height);
+                    if (overlay_width > 0 && overlay_height > 0) {
+                        overlay_bitmap = CreateBitmap(overlay_width, overlay_height, 1, 8 * sizeof(uint32_t), pixel_data);
                     }
+                }
+                bool overlay_active = overlay_enabled && overlay::OVERLAY->get_active();
+
+                // draw everything in a single BeginPaint/EndPaint (a WM_PAINT has one update
+                // region, so a second BeginPaint would get an empty region), keeping only
+                // fast blits between the background erase and EndPaint
+                PAINTSTRUCT paint {};
+                HDC hdc = BeginPaint(hWnd, &paint);
+                SetBkMode(hdc, TRANSPARENT);
+
+                // blit the overlay bitmap
+                if (overlay_bitmap) {
+
+                    /*
+                     * draw bitmap
+                     * - this currently sets the background to black because of SRCCOPY
+                     * - SRCPAINT will blend but colors are wrong
+                     * - once this is figured out we could also try hooking WM_PAINT and
+                     *   draw directly to the game window
+                     */
+                    HDC hdcMem = CreateCompatibleDC(hdc);
+                    SelectObject(hdcMem, overlay_bitmap);
+                    BitBlt(hdc, 0, 0, overlay_width, overlay_height, hdcMem, 0, 0, SRCCOPY);
+                    DeleteDC(hdcMem);
+                    DeleteObject(overlay_bitmap);
                 }
 
                 // draw the insert-card button below the jubeat debug overlay; it is
                 // hidden while the overlay is active
-                bool overlay_active = overlay_enabled && overlay::OVERLAY->get_active();
                 if (SPICETOUCH_CARD_ENABLED && SPICETOUCH_FONT != nullptr && !overlay_active) {
 
                     // create brushes
@@ -436,8 +443,8 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     DeleteObject(brushBorder);
                 }
 
-                // draw the jubeat touch boundary boxes on top
-                if (games::jb::touch_debug_overlay_enabled()) {
+                // draw the jubeat debug overlay on top (hidden while the overlay is active)
+                if (!overlay_active && games::jb::touch_debug_overlay_enabled()) {
                     games::jb::touch_draw_debug_overlay(hdc);
                 }
 
