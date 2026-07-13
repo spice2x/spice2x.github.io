@@ -1333,6 +1333,11 @@ int main_implementation(int argc, char *argv[]) {
         }
     }
 
+    if (options[launcher::Options::JubeatTouchDebounce].is_active()) {
+        games::jb::TOUCH_DEBOUNCE_MS =
+            options[launcher::Options::JubeatTouchDebounce].value_uint32();
+    }
+
     // reflec beat touch emulation
     if (options[launcher::Options::spice2x_RBTouchScale].is_active()) {
         games::rb::TOUCH_SCALING = options[launcher::Options::spice2x_RBTouchScale].value_uint32();

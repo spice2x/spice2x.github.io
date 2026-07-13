@@ -11,6 +11,7 @@
 
 #include "util/libutils.h"
 #include "util/logging.h"
+#include "util/time.h"
 #include "rawinput/touch.h"
 
 // mingw issue #2205 workaround
@@ -177,6 +178,7 @@ void Win7Handler::handle_message(msg_handler_result &result, HWND hWnd, UINT msg
                             .x = point.x,
                             .y = point.y,
                             .mouse = false,
+                            .down_ms = get_performance_milliseconds(),
                         };
                         TOUCH_POINTS.push_back(tp);
 

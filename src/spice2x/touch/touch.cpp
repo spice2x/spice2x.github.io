@@ -20,6 +20,7 @@
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
+#include "util/time.h"
 #include "util/utils.h"
 
 #include "handler.h"
@@ -538,6 +539,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                         .x = GET_X_LPARAM(lParam),
                         .y = GET_Y_LPARAM(lParam),
                         .mouse = true,
+                        .down_ms = get_performance_milliseconds(),
                     };
                     TOUCH_POINTS.push_back(tp);
 
@@ -850,6 +852,9 @@ void touch_write_points(std::vector<TouchPoint> *touch_points) {
 
         // create new touch point when not found
         if (!found) {
+
+            // stamp the landing time so debounce can measure the contact's age
+            tp.down_ms = get_performance_milliseconds();
 
             // add touch point
             TOUCH_POINTS.push_back(tp);

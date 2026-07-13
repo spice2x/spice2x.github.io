@@ -26,6 +26,10 @@ namespace games::jb {
     extern JubeatTouchAlgorithm TOUCH_ALGORITHM;
     extern JubeatTouchDebugMode TOUCH_DEBUG_OVERLAY;
 
+    // minimum contact age in milliseconds before a touch registers (0 = off);
+    // filters momentary phantom touches from noisy panels
+    extern uint32_t TOUCH_DEBOUNCE_MS;
+
     // atomically published panel state, read by the I/O layer
     std::bitset<16> touch_state();
 

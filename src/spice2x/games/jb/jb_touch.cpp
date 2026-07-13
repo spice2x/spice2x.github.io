@@ -12,6 +12,7 @@
 #include "touch/touch.h"
 #include "rawinput/touch.h"
 #include "util/logging.h"
+#include "util/time.h"
 #include "util/utils.h"
 
 // touch layout: a 4x4 grid of 160px buttons separated by 37 / 38 / 37 px gaps
@@ -36,6 +37,7 @@ namespace games::jb {
     // touch state
     JubeatTouchAlgorithm TOUCH_ALGORITHM = Improved;
     JubeatTouchDebugMode TOUCH_DEBUG_OVERLAY = JbTouchDebugAuto;
+    uint32_t TOUCH_DEBOUNCE_MS = 0;
     static std::atomic_bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
     static bool IS_PORTRAIT = true;
@@ -52,22 +54,31 @@ namespace games::jb {
 
     static void clear_touch_points() {
         for (auto &point : TOUCH_POINTS) {
-            point.store(JB_INVALID_TOUCH_POINT, std::memory_order_relaxed);
+            point.store(JB_INVALID_TOUCH_POINT, std::memory_order_release);
         }
     }
 
-    static void publish_touch_points(const std::vector<TouchPoint> &touch_points) {
+    // false when a contact is younger than the debounce window and should be ignored
+    static bool touch_matured(const TouchPoint &tp, double now_ms, double threshold_ms) {
+        return now_ms - tp.down_ms >= threshold_ms;
+    }
+
+    // snapshot for the debug overlay: each slot atomically holds one matured contact or
+    // the invalid sentinel. immature and absent contacts are published as invalid, so the
+    // overlay never shows a suppressed tap and a single atomic per slot cannot tear
+    static void publish_touch_points(const std::vector<TouchPoint> &touch_points,
+                                     double now_ms, double threshold_ms) {
         size_t count = touch_points.size();
         if (count > JB_MAX_TOUCH_POINTS) {
             count = JB_MAX_TOUCH_POINTS;
         }
 
-        for (size_t i = count; i < JB_MAX_TOUCH_POINTS; i++) {
-            TOUCH_POINTS[i].store(JB_INVALID_TOUCH_POINT, std::memory_order_relaxed);
-        }
-        for (size_t i = 0; i < count; i++) {
-            POINT point { touch_points[i].x, touch_points[i].y };
-            TOUCH_POINTS[i].store(point, std::memory_order_relaxed);
+        for (size_t i = 0; i < JB_MAX_TOUCH_POINTS; i++) {
+            POINT point = JB_INVALID_TOUCH_POINT;
+            if (i < count && touch_matured(touch_points[i], now_ms, threshold_ms)) {
+                point = { touch_points[i].x, touch_points[i].y };
+            }
+            TOUCH_POINTS[i].store(point, std::memory_order_release);
         }
     }
 
@@ -207,7 +218,19 @@ namespace games::jb {
         uint16_t next_state = 0;
         std::vector<TouchPoint> touch_points;
         touch_get_points(touch_points);
-        publish_touch_points(touch_points);
+
+        // debounce: the landing time is stamped by the touch layer, so this is
+        // independent of how often the game polls for input (0 = off)
+        double now_ms = get_performance_milliseconds();
+        double threshold_ms = TOUCH_DEBOUNCE_MS;
+
+        // publish every raw contact (with its maturity) for the debug overlay, then drop
+        // the ones still inside the debounce window so no algorithm sees them
+        publish_touch_points(touch_points, now_ms, threshold_ms);
+        std::erase_if(touch_points, [&](const TouchPoint &tp) {
+            return !touch_matured(tp, now_ms, threshold_ms);
+        });
+
         if (TOUCH_ALGORITHM == Legacy) {
 
             // legacy: evenly divide the play area into a 4x4 grid
@@ -355,18 +378,21 @@ namespace games::jb {
         int radius = touch_radius();
         int draw_radius = radius > 0 ? radius : JB_TOUCH_RADIUS;
 
+        // each slot holds a matured contact or the invalid sentinel; immature and absent
+        // contacts were already filtered out by publish_touch_points
         for (auto &touch_point : TOUCH_POINTS) {
-            POINT point = touch_point.load(std::memory_order_relaxed);
+            POINT point = touch_point.load(std::memory_order_acquire);
             if (point.x == JB_INVALID_TOUCH_COORD) {
                 continue;
             }
+
             bool pressed = touch_presses_button(point.x, point.y, gx, gy, legacy, radius);
 
             SelectObject(hdc, pressed ? pen_white : pen_gray);
             Ellipse(hdc, point.x - draw_radius, point.y - draw_radius,
                          point.x + draw_radius, point.y + draw_radius);
 
-            // the arc would point at a single snapped-to button; plus can trigger several at
+            // the arc points at a single snapped-to button; plus can trigger several at
             // once, so skip it there
             if (pressed || TOUCH_ALGORITHM == Plus) {
                 continue;
