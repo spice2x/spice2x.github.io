@@ -1314,8 +1314,22 @@ int main_implementation(int argc, char *argv[]) {
             games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::AcAccurate;
         } else if (options[launcher::Options::JubeatTouchAlgo].value_text() == "legacy") {
             games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Legacy;
+        } else if (options[launcher::Options::JubeatTouchAlgo].value_text() == "plus") {
+            games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Plus;
         } else {
             games::jb::TOUCH_ALGORITHM = games::jb::JubeatTouchAlgorithm::Improved;
+        }
+    }
+    if (options[launcher::Options::JubeatTouchDebug].is_active()) {
+        auto mode = options[launcher::Options::JubeatTouchDebug].value_text();
+        if (mode == "none") {
+            games::jb::TOUCH_DEBUG_OVERLAY = games::jb::JubeatTouchDebugMode::JbTouchDebugNone;
+        } else if (mode == "box") {
+            games::jb::TOUCH_DEBUG_OVERLAY = games::jb::JubeatTouchDebugMode::JbTouchDebugBox;
+        } else if (mode == "all") {
+            games::jb::TOUCH_DEBUG_OVERLAY = games::jb::JubeatTouchDebugMode::JbTouchDebugAll;
+        } else {
+            games::jb::TOUCH_DEBUG_OVERLAY = games::jb::JubeatTouchDebugMode::JbTouchDebugAuto;
         }
     }
 
