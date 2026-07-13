@@ -2691,7 +2691,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For touch screen players: choose the touch algorithm to use.\n\n"
             "legacy - evenly divide the grid into 16 squares; old spicetools behavior, slightly inaccurate in gaps\n\n"
             "improved (default) - squares register as-is, gaps will trigger the closest square\n\n"
-            "plus - like improved but with a larger reach; gaps can trigger multiple buttons (like the mobile game)\n\n"
+            "plus - like improved, but gaps can trigger multiple buttons (like the mobile game)\n\n"
             "accurate - only touches within squares will trigger; gaps do nothing (for AC size touch screens)",
         .type = OptionType::Enum,
         .game_name = "Jubeat",
@@ -2708,7 +2708,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // JubeatTouchDebug
         .title = "JB Touch Debug Overlay",
         .name = "jubeattouchdebug",
-        .desc = "For touch screen players: draw a debug overlay on the main display.\n\n"
+        .desc = "For touch screen players: draw a debug overlay on the main display. "
+            "Requires the Spice Overlay to be enabled.\n\n"
             "auto (default) - show boundary boxes when a touch screen is detected; otherwise, none\n\n"
             "none - draw nothing\n\n"
             "box - show the 4x4 touch boundary boxes\n\n"

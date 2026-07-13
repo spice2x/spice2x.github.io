@@ -444,7 +444,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 }
 
                 // draw the jubeat debug overlay on top (hidden while the overlay is active)
-                if (!overlay_active && games::jb::touch_debug_overlay_enabled()) {
+                if (overlay_enabled && !overlay_active && games::jb::touch_debug_overlay_enabled()) {
                     games::jb::touch_draw_debug_overlay(hdc);
                 }
 
