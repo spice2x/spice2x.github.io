@@ -2708,7 +2708,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "jubeatdebugtouch",
         .desc = "For touch screen players: draw the 4x4 touch boundary boxes on the "
             "main display. The boxes reflect the regions used by the selected touch "
-            "algorithm; a box is grey normally and turns green while it registers a touch.",
+            "algorithm.",
         .type = OptionType::Bool,
         .game_name = "Jubeat",
         .category = "Game Options",
