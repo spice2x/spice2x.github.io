@@ -1,6 +1,7 @@
 #include "jb_touch.h"
 
 #include <windows.h>
+#include <atomic>
 #include <cmath>
 #include <vector>
 
@@ -17,25 +18,44 @@
 // (6, 8) in landscape.
 #define JB_BUTTON_SIZE 160
 
-// improved mode snaps each touch to the nearest button within this reach; a touch
-// farther than this from every button registers nothing. must be >= the diagonal
-// half of the widest gap (~27px) so the grid centre still reaches a button.
+// improved and plus modes use this reach around each button. must be >= the
+// diagonal half of the widest gap (~27px) so the grid centre still reaches a button.
 #define JB_TOUCH_RADIUS 30
 
-// plus mode marks every button within this larger reach, so a finger pressed on an
-// edge or in a gap triggers all the buttons it overlaps (like the mobile game)
-#define JB_TOUCH_RADIUS_PLUS 40
-
 namespace games::jb {
+
+    static_assert(std::atomic_bool::is_always_lock_free);
+    static_assert(std::atomic_uint16_t::is_always_lock_free);
+    static_assert(std::atomic<POINT>::is_always_lock_free);
+    static_assert(std::atomic_size_t::is_always_lock_free);
 
     // touch state
     JubeatTouchAlgorithm TOUCH_ALGORITHM = Improved;
     JubeatTouchDebugMode TOUCH_DEBUG_OVERLAY = JbTouchDebugAuto;
-    static bool TOUCH_ENABLE = false;
+    static std::atomic_bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
     static bool IS_PORTRAIT = true;
-    static std::vector<TouchPoint> TOUCH_POINTS;
-    bool TOUCH_STATE[16];
+    static std::atomic_uint16_t TOUCH_STATE = 0;
+
+    // fixed-size contact view used by the debug overlay
+    static const size_t JB_MAX_TOUCH_POINTS = 16;
+    static std::atomic<POINT> TOUCH_POINTS[JB_MAX_TOUCH_POINTS] {};
+    static std::atomic_size_t TOUCH_POINT_COUNT = 0;
+
+    static void publish_touch_points(const std::vector<TouchPoint> &touch_points) {
+        TOUCH_POINT_COUNT.store(0, std::memory_order_release);
+
+        size_t count = touch_points.size();
+        if (count > JB_MAX_TOUCH_POINTS) {
+            count = JB_MAX_TOUCH_POINTS;
+        }
+        for (size_t i = 0; i < count; i++) {
+            POINT point { touch_points[i].x, touch_points[i].y };
+            TOUCH_POINTS[i].store(point, std::memory_order_relaxed);
+        }
+
+        TOUCH_POINT_COUNT.store(count, std::memory_order_release);
+    }
 
     // --- touch geometry ------------------------------------------------------
     // gaps between the four buttons along one axis (the middle gap is 1px wider)
@@ -94,24 +114,18 @@ namespace games::jb {
 
     // detection reach for the current algorithm (0 = register only inside a button)
     static int touch_radius() {
-        switch (TOUCH_ALGORITHM) {
-            case AcAccurate:
-                return 0;
-            case Plus:
-                return JB_TOUCH_RADIUS_PLUS;
-            default:
-                return JB_TOUCH_RADIUS;
-        }
+        return TOUCH_ALGORITHM == AcAccurate ? 0 : JB_TOUCH_RADIUS;
     }
 
     // mark the buttons a touch at (px, py) hits: only the nearest within `radius`, or
     // every button within `radius` when `multi` (edge/gap presses trigger several)
-    static void mark_buttons(int px, int py, const AxisGeometry &gx, const AxisGeometry &gy,
+    static void mark_buttons(uint16_t &state, int px, int py,
+                             const AxisGeometry &gx, const AxisGeometry &gy,
                              int radius, bool multi) {
         if (!multi) {
             int index = nearest_button(px, py, gx, gy, radius);
             if (index >= 0) {
-                TOUCH_STATE[index] = true;
+                state |= uint16_t(1) << index;
             }
             return;
         }
@@ -120,15 +134,19 @@ namespace games::jb {
                 int dx = axis_distance(px, gx.button[c], gx.button[c] + JB_BUTTON_SIZE);
                 int dy = axis_distance(py, gy.button[r], gy.button[r] + JB_BUTTON_SIZE);
                 if (dx * dx + dy * dy <= radius * radius) {
-                    TOUCH_STATE[r * 4 + c] = true;
+                    state |= uint16_t(1) << (r * 4 + c);
                 }
             }
         }
     }
 
+    std::bitset<16> touch_state() {
+        return std::bitset<16>(TOUCH_STATE.load(std::memory_order_acquire));
+    }
+
     void touch_update() {
 
-        if (!TOUCH_ENABLE) {
+        if (!TOUCH_ENABLE.load(std::memory_order_relaxed)) {
             return;
         }
 
@@ -144,8 +162,13 @@ namespace games::jb {
             if (!wnd) {
                 log_warning("jubeat", "could not find window handle for touch");
                 TOUCH_ENABLE = false;
+                TOUCH_STATE.store(0, std::memory_order_release);
                 return;
             }
+
+            // only the L44 model runs in portrait; set this before starting the
+            // touch-window thread so the renderer only observes the final value
+            IS_PORTRAIT = avs::game::is_model("L44");
 
             log_info("jubeat", "using window handle for touch: {}", fmt::ptr(wnd));
             touch_create_wnd(wnd, true);
@@ -157,45 +180,42 @@ namespace games::jb {
                 ShowCursor(TRUE);
             }
 
-            // only the L44 model runs in portrait
-            if (!avs::game::is_model("L44")) {
-                IS_PORTRAIT = false;
-            }
-
             TOUCH_ATTACHED = true;
         }
 
-        // reset state and read the current touch points (device.cpp already
-        // compensates for orientation)
-        memset(TOUCH_STATE, 0, sizeof(TOUCH_STATE));
-        TOUCH_POINTS.clear();
-        touch_get_points(TOUCH_POINTS);
+        // calculate the next state locally and publish it after processing every touch
+        uint16_t next_state = 0;
+        std::vector<TouchPoint> touch_points;
+        touch_get_points(touch_points);
+        publish_touch_points(touch_points);
         if (TOUCH_ALGORITHM == Legacy) {
 
             // legacy: evenly divide the play area into a 4x4 grid
             auto offset = IS_PORTRAIT ? 580 : 0;
-            for (auto &tp : TOUCH_POINTS) {
+            for (auto &tp : touch_points) {
                 int x = tp.x * 4 / 768;
                 int y = (tp.y - offset) * 4 / (1360 - 580);
                 int index = y * 4 + x;
                 if (index >= 0 && index < 16) {
-                    TOUCH_STATE[index] = true;
+                    next_state |= uint16_t(1) << index;
                 }
             }
         } else {
 
             // accurate registers only a touch inside a button; improved snaps each touch
             // to the single nearest button within reach (so a gap or centre touch still
-            // triggers exactly one button); plus marks every button within a larger reach,
+            // triggers exactly one button); plus marks every button within the same reach,
             // so an edge or gap touch can trigger several at once (like the mobile game)
             AxisGeometry gx, gy;
             touch_geometry(gx, gy);
             int radius = touch_radius();
             bool multi = (TOUCH_ALGORITHM == Plus);
-            for (auto &tp : TOUCH_POINTS) {
-                mark_buttons(tp.x, tp.y, gx, gy, radius, multi);
+            for (auto &tp : touch_points) {
+                mark_buttons(next_state, tp.x, tp.y, gx, gy, radius, multi);
             }
         }
+
+        TOUCH_STATE.store(next_state, std::memory_order_release);
     }
 
     // true when the rawinput stack sees at least one touchscreen (checked once)
@@ -259,8 +279,9 @@ namespace games::jb {
 
         HPEN pen_idle = CreatePen(PS_SOLID, 1, RGB(160, 160, 160));
         HPEN pen_active = CreatePen(PS_INSIDEFRAME, 4, RGB(0, 200, 0));
+        auto state = touch_state();
         for (int i = 0; i < 16; i++) {
-            HGDIOBJ old_pen = SelectObject(hdc, TOUCH_STATE[i] ? pen_active : pen_idle);
+            HGDIOBJ old_pen = SelectObject(hdc, state[i] ? pen_active : pen_idle);
             Rectangle(hdc, cells[i].left, cells[i].top, cells[i].right, cells[i].bottom);
             SelectObject(hdc, old_pen);
         }
@@ -311,22 +332,24 @@ namespace games::jb {
         int radius = touch_radius();
         int draw_radius = radius > 0 ? radius : JB_TOUCH_RADIUS;
 
-        for (auto &tp : TOUCH_POINTS) {
-            bool pressed = touch_presses_button(tp.x, tp.y, gx, gy, legacy, radius);
+        size_t touch_count = TOUCH_POINT_COUNT.load(std::memory_order_acquire);
+        for (size_t i = 0; i < touch_count; i++) {
+            POINT point = TOUCH_POINTS[i].load(std::memory_order_relaxed);
+            bool pressed = touch_presses_button(point.x, point.y, gx, gy, legacy, radius);
 
             SelectObject(hdc, pressed ? pen_white : pen_gray);
-            Ellipse(hdc, tp.x - draw_radius, tp.y - draw_radius,
-                         tp.x + draw_radius, tp.y + draw_radius);
+            Ellipse(hdc, point.x - draw_radius, point.y - draw_radius,
+                         point.x + draw_radius, point.y + draw_radius);
 
             // the arc would point at a single snapped-to button; plus can trigger several at
             // once, so skip it there
             if (pressed || TOUCH_ALGORITHM == Plus) {
                 continue;
             }
-            int index = nearest_button(tp.x, tp.y, gx, gy, radius);
+            int index = nearest_button(point.x, point.y, gx, gy, radius);
             if (index >= 0) {
                 SelectObject(hdc, pen_white);
-                draw_tap_arc(hdc, tp.x, tp.y, index, gx, gy, draw_radius - stroke / 2);
+                draw_tap_arc(hdc, point.x, point.y, index, gx, gy, draw_radius - stroke / 2);
             }
         }
 
@@ -366,7 +389,7 @@ namespace games::jb {
     }
 
     void touch_attach() {
-        TOUCH_ENABLE = true;
+        TOUCH_ENABLE.store(true, std::memory_order_relaxed);
 
         switch (TOUCH_ALGORITHM) {
             case Legacy:
@@ -388,6 +411,7 @@ namespace games::jb {
     }
 
     void touch_detach() {
-        TOUCH_ENABLE = false;
+        TOUCH_ENABLE.store(false, std::memory_order_relaxed);
+        TOUCH_STATE.store(0, std::memory_order_release);
     }
 }

@@ -366,6 +366,7 @@ static void __cdecl device_update() {
 
         // update touch
         games::jb::touch_update();
+        auto touched = games::jb::touch_state();
 
         // get buttons
         auto &buttons = games::jb::get_buttons();
@@ -382,52 +383,52 @@ static void __cdecl device_update() {
         if (Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::CoinMech))) {
             DEVICE_INPUT_STATE |= 1 << 29;
         }
-        if (games::jb::TOUCH_STATE[3] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button1))) {
+        if (touched[3] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button1))) {
             DEVICE_INPUT_STATE |= 1 << 13;
         }
-        if (games::jb::TOUCH_STATE[7] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button2))) {
+        if (touched[7] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button2))) {
             DEVICE_INPUT_STATE |= 1 << 9;
         }
-        if (games::jb::TOUCH_STATE[11] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button3))) {
+        if (touched[11] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button3))) {
             DEVICE_INPUT_STATE |= 1 << 21;
         }
-        if (games::jb::TOUCH_STATE[15] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button4))) {
+        if (touched[15] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button4))) {
             DEVICE_INPUT_STATE |= 1 << 17;
         }
-        if (games::jb::TOUCH_STATE[2] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button5))) {
+        if (touched[2] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button5))) {
             DEVICE_INPUT_STATE |= 1 << 14;
         }
-        if (games::jb::TOUCH_STATE[6] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button6))) {
+        if (touched[6] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button6))) {
             DEVICE_INPUT_STATE |= 1 << 10;
         }
-        if (games::jb::TOUCH_STATE[10] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button7))) {
+        if (touched[10] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button7))) {
             DEVICE_INPUT_STATE |= 1 << 22;
         }
-        if (games::jb::TOUCH_STATE[14] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button8))) {
+        if (touched[14] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button8))) {
             DEVICE_INPUT_STATE |= 1 << 18;
         }
-        if (games::jb::TOUCH_STATE[1] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button9))) {
+        if (touched[1] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button9))) {
             DEVICE_INPUT_STATE |= 1 << 15;
         }
-        if (games::jb::TOUCH_STATE[5] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button10))) {
+        if (touched[5] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button10))) {
             DEVICE_INPUT_STATE |= 1 << 11;
         }
-        if (games::jb::TOUCH_STATE[9] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button11))) {
+        if (touched[9] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button11))) {
             DEVICE_INPUT_STATE |= 1 << 23;
         }
-        if (games::jb::TOUCH_STATE[13] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button12))) {
+        if (touched[13] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button12))) {
             DEVICE_INPUT_STATE |= 1 << 19;
         }
-        if (games::jb::TOUCH_STATE[0] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button13))) {
+        if (touched[0] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button13))) {
             DEVICE_INPUT_STATE |= 1 << 24;
         }
-        if (games::jb::TOUCH_STATE[4] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button14))) {
+        if (touched[4] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button14))) {
             DEVICE_INPUT_STATE |= 1 << 12;
         }
-        if (games::jb::TOUCH_STATE[8] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button15))) {
+        if (touched[8] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button15))) {
             DEVICE_INPUT_STATE |= 1 << 26;
         }
-        if (games::jb::TOUCH_STATE[12] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button16))) {
+        if (touched[12] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button16))) {
             DEVICE_INPUT_STATE |= 1 << 20;
         }
 
@@ -439,6 +440,7 @@ static void __cdecl device_update() {
 
         // update touch
         games::jb::touch_update();
+        auto touched = games::jb::touch_state();
 
         // get buttons
         auto &buttons = games::jb::get_buttons();
@@ -455,52 +457,52 @@ static void __cdecl device_update() {
         if (Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::CoinMech))) {
             DEVICE_INPUT_STATE |= 1 << 24;
         }
-        if (games::jb::TOUCH_STATE[0] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button1))) {
+        if (touched[0] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button1))) {
             DEVICE_INPUT_STATE |= 1 << 5;
         }
-        if (games::jb::TOUCH_STATE[1] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button2))) {
+        if (touched[1] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button2))) {
             DEVICE_INPUT_STATE |= 1 << 1;
         }
-        if (games::jb::TOUCH_STATE[2] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button3))) {
+        if (touched[2] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button3))) {
             DEVICE_INPUT_STATE |= 1 << 13;
         }
-        if (games::jb::TOUCH_STATE[3] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button4))) {
+        if (touched[3] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button4))) {
             DEVICE_INPUT_STATE |= 1 << 9;
         }
-        if (games::jb::TOUCH_STATE[4] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button5))) {
+        if (touched[4] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button5))) {
             DEVICE_INPUT_STATE |= 1 << 6;
         }
-        if (games::jb::TOUCH_STATE[5] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button6))) {
+        if (touched[5] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button6))) {
             DEVICE_INPUT_STATE |= 1 << 2;
         }
-        if (games::jb::TOUCH_STATE[6] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button7))) {
+        if (touched[6] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button7))) {
             DEVICE_INPUT_STATE |= 1 << 14;
         }
-        if (games::jb::TOUCH_STATE[7] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button8))) {
+        if (touched[7] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button8))) {
             DEVICE_INPUT_STATE |= 1 << 10;
         }
-        if (games::jb::TOUCH_STATE[8] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button9))) {
+        if (touched[8] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button9))) {
             DEVICE_INPUT_STATE |= 1 << 7;
         }
-        if (games::jb::TOUCH_STATE[9] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button10))) {
+        if (touched[9] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button10))) {
             DEVICE_INPUT_STATE |= 1 << 3;
         }
-        if (games::jb::TOUCH_STATE[10] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button11))) {
+        if (touched[10] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button11))) {
             DEVICE_INPUT_STATE |= 1 << 15;
         }
-        if (games::jb::TOUCH_STATE[11] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button12))) {
+        if (touched[11] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button12))) {
             DEVICE_INPUT_STATE |= 1 << 11;
         }
-        if (games::jb::TOUCH_STATE[12] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button13))) {
+        if (touched[12] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button13))) {
             DEVICE_INPUT_STATE |= 1 << 16;
         }
-        if (games::jb::TOUCH_STATE[13] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button14))) {
+        if (touched[13] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button14))) {
             DEVICE_INPUT_STATE |= 1 << 4;
         }
-        if (games::jb::TOUCH_STATE[14] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button15))) {
+        if (touched[14] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button15))) {
             DEVICE_INPUT_STATE |= 1 << 20;
         }
-        if (games::jb::TOUCH_STATE[15] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button16))) {
+        if (touched[15] || Buttons::getState(RI_MGR, buttons.at(games::jb::Buttons::Button16))) {
             DEVICE_INPUT_STATE |= 1 << 12;
         }
     }

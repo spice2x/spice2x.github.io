@@ -1,5 +1,7 @@
 #pragma once
 
+#include <bitset>
+#include <cstdint>
 #include <windows.h>
 
 namespace games::jb {
@@ -24,10 +26,10 @@ namespace games::jb {
     extern JubeatTouchAlgorithm TOUCH_ALGORITHM;
     extern JubeatTouchDebugMode TOUCH_DEBUG_OVERLAY;
 
-    // per-button pressed state for the current frame, read by the I/O layer
-    extern bool TOUCH_STATE[16];
+    // atomically published panel state, read by the I/O layer
+    std::bitset<16> touch_state();
 
-    // read the current touch points and refresh TOUCH_STATE
+    // read the current touch points and refresh the panel state
     void touch_update();
 
     // enable/disable touch handling on game attach/detach
