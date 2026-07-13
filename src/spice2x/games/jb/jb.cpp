@@ -216,7 +216,7 @@ namespace games::jb {
         // hollow outlines so the game stays visible: grey when idle, thicker green
         // when pressed (PS_INSIDEFRAME keeps the green fully inside the cell)
         HPEN pen_idle = CreatePen(PS_SOLID, 1, RGB(160, 160, 160));
-        HPEN pen_active = CreatePen(PS_INSIDEFRAME, 2, RGB(0, 200, 0));
+        HPEN pen_active = CreatePen(PS_INSIDEFRAME, 4, RGB(0, 200, 0));
         HGDIOBJ old_brush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
 
         for (int i = 0; i < 16; i++) {
