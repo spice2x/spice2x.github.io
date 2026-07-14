@@ -511,6 +511,13 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "General Overlay",
     },
     {
+        .title = "Overlay Keyboard Navigation",
+        .name = "keyboardnav",
+        .desc = "Enables keyboard navigation in the in-game overlay.",
+        .type = OptionType::Bool,
+        .category = "General Overlay",
+    },
+    {
         // OverlayScaling
         .title = "Spice Overlay UI Scale %",
         .name = "overlayscale",

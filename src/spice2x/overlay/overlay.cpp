@@ -67,6 +67,7 @@ namespace overlay {
     bool AUTO_SHOW_IOPANEL = false;
     bool AUTO_SHOW_KEYPAD_P1 = false;
     bool AUTO_SHOW_KEYPAD_P2 = false;
+    bool ENABLE_KEYBOARD_NAVIGATION = false;
     bool USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT = false;
     FpsLocation FPS_LOCATION = FpsLocation::TopRight;
     std::optional<uint32_t> UI_SCALE_PERCENT;
@@ -312,6 +313,9 @@ void overlay::SpiceOverlay::init() {
     auto &io = ImGui::GetIO();
     io.UserData = this;
     io.ConfigFlags = ImGuiConfigFlags_None;
+    if (cfg::CONFIGURATOR_STANDALONE || ENABLE_KEYBOARD_NAVIGATION) {
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    }
     if (!cfg::CONFIGURATOR_STANDALONE) {
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     }
