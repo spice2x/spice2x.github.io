@@ -44,6 +44,10 @@ namespace games::rb {
         return ((sensor * 2 + 1) * extent) / (sensor_count * 2);
     }
 
+    static float sensor_span_position(int sensor, int sensor_count, int extent) {
+        return sensor * (extent - 1) / (float) (sensor_count - 1);
+    }
+
     bool touch_debug_overlay_enabled() {
         return TOUCH_DEBUG_OVERLAY && TOUCH_ACTIVE.load(std::memory_order_acquire);
     }
@@ -81,13 +85,13 @@ namespace games::rb {
                 IM_COL32(255, 255, 255, 255), 0.f, 0, 2.f);
         }
 
-        // spread the usable X sensor centers 2..45 across the full touch area
+        // spread the usable X sensors 2..45 from edge to edge
         for (int sensor = X_SENSOR_FIRST_ACTIVE; sensor <= X_SENSOR_LAST_ACTIVE; sensor++) {
             if (!packet_bit_active(state.packet, X_SENSOR_FIRST_BIT + sensor)) {
                 continue;
             }
 
-            int position = sensor_center(
+            float position = sensor_span_position(
                 sensor - X_SENSOR_FIRST_ACTIVE, X_SENSOR_ACTIVE_COUNT,
                 state.is_landscape ? height : width);
             if (state.is_landscape) {
