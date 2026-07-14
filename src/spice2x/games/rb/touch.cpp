@@ -148,7 +148,7 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
     data[0] = 0x55;
     data[2] = 0x4C;
    
-    const float scale_factor = games::rb::TOUCH_SCALING / 1000.f;
+    const float scale_factor = games::rb::TOUCH_SCALING / (float) games::rb::TOUCH_SCALE_DEFAULT;
 
     // iterate all touch points
     int offset_x = (int) (window_width / (double) X_SENSOR_COUNT / TOUCH_POINT_OFFSET_DIVISOR);

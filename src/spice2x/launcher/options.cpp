@@ -2743,8 +2743,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         // RBTouchDebug
         .title = "RB Touch Debug Overlay",
         .name = "rbtouchdebug",
-        .desc = "Draw red lines for IR sensor emulation. "
-            "Note: red lines will not visually align in test menu, but will be accurate in-game.",
+        .desc = "Draw lines to show IR sensor emulation state.\n\n"
+            "Note: lines will not perfectly align with touches; this is by design, it's showing the "
+            "IR sensor state, before the game applies its own touch detection algorithm.",
         .type = OptionType::Bool,
         .game_name = "Reflec Beat",
         .category = "Game Options",

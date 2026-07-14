@@ -16,13 +16,13 @@ namespace games::rb {
         bool is_landscape = false;
     };
 
-    bool TOUCH_DEBUG_OVERLAY = false;
+    std::atomic_bool TOUCH_DEBUG_OVERLAY = false;
     static std::atomic_bool TOUCH_ACTIVE = false;
     static std::mutex TOUCH_DEBUG_STATE_M;
     static TouchDebugState TOUCH_DEBUG_STATE;
 
     static float touch_scale_factor() {
-        return TOUCH_SCALING / 1000.f;
+        return TOUCH_SCALING / (float) TOUCH_SCALE_DEFAULT;
     }
 
     static void clear_touch_debug_state() {
@@ -81,7 +81,7 @@ namespace games::rb {
                 IM_COL32(255, 255, 255, 255), 0.f, 0, 2.f);
         }
 
-        // spread the usable X sensor centres 2..45 across the full touch area
+        // spread the usable X sensor centers 2..45 across the full touch area
         for (int sensor = X_SENSOR_FIRST_ACTIVE; sensor <= X_SENSOR_LAST_ACTIVE; sensor++) {
             if (!packet_bit_active(state.packet, X_SENSOR_FIRST_BIT + sensor)) {
                 continue;

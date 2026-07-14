@@ -1,7 +1,9 @@
 #pragma once
 
+#include <atomic>
+
 namespace games::rb {
-    extern bool TOUCH_DEBUG_OVERLAY;
+    extern std::atomic_bool TOUCH_DEBUG_OVERLAY;
 
     bool touch_debug_overlay_enabled();
     void touch_draw_debug_overlay();
