@@ -44,6 +44,7 @@ namespace overlay {
     extern bool AUTO_SHOW_IOPANEL;
     extern bool AUTO_SHOW_KEYPAD_P1;
     extern bool AUTO_SHOW_KEYPAD_P2;
+    extern bool ENABLE_KEYBOARD_NAVIGATION;
     extern bool USE_WM_CHAR_FOR_IMGUI_CHAR_INPUT;
     extern FpsLocation FPS_LOCATION;
     extern bool SHOW_DEBUG_LOG_WINDOW;
