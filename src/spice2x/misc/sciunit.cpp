@@ -20,6 +20,7 @@ static cardunit_card_cardnumber_t cardunit_card_cardnumber = nullptr;
 static HINSTANCE SCIUNIT_INSTANCE;
 static std::string SCIUNIT_INSTANCE_NAME = "sciunit.dll";
 static bool SCIUNIT_INITIALIZED = false;
+static int SCIUNIT_STATUS = 0;
 static bool CARD_IN = false;
 static bool CARD_PRESSED = false;
 static uint8_t CARD_UID[8];
@@ -150,11 +151,11 @@ static int __cdecl sciunit_finalize() {
 }
 
 static int __cdecl sciunit_get_errorunit() {
-    return 0;
+    return -1;
 }
 
 static int __cdecl sciunit_get_stat() {
-    return 0;
+    return SCIUNIT_STATUS;
 }
 
 static int __cdecl sciunit_get_version(int a1, int a2) {
@@ -163,6 +164,7 @@ static int __cdecl sciunit_get_version(int a1, int a2) {
 
 static int __cdecl sciunit_initialize() {
     SCIUNIT_INITIALIZED = true;
+    SCIUNIT_STATUS = 1;
     return 0;
 }
 
@@ -223,8 +225,12 @@ static int __cdecl sciunit_reset() {
 }
 
 static int __cdecl sciunit_update() {
-    if (SCIUNIT_INITIALIZED)
+    if (SCIUNIT_INITIALIZED) {
+        if (SCIUNIT_STATUS == 1) {
+            SCIUNIT_STATUS = 2;
+        }
         update_card();
+    }
     return 0;
 }
 
