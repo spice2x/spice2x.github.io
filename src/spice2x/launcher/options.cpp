@@ -1837,12 +1837,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // spice2x_TouchCardInsert
-        .title = "Show Insert Card button",
+        .title = "Show Insert Card button (DEPRECATED)",
         .name = "sp2x-touchcard",
         .display_name = "touchcard",
         .aliases= "touchcard",
-        .desc = "Show Insert Card touch button on main display.",
+        .desc = "Show Insert Card touch button on main display. "
+            "DEPRECATED - only works in very specific situations (jubeat + wintouch)",
         .type = OptionType::Bool,
+        .hidden = true,
         .category = "Touch Parameters",
     },
     {
