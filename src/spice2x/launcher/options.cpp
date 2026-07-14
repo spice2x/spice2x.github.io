@@ -2740,6 +2740,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .quick_setting_category = "Game",
     },
     {
+        // RBTouchDebug
+        .title = "RB Touch Debug Overlay",
+        .name = "rbtouchdebug",
+        .desc = "Draw lines to show IR sensor emulation state.\n\n"
+            "Note: lines will not perfectly align with touches; this is by design, it's showing the "
+            "IR sensor state, before the game applies its own touch detection algorithm.",
+        .type = OptionType::Bool,
+        .game_name = "Reflec Beat",
+        .category = "Game Options",
+        .quick_setting_category = "Game",
+    },
+    {
         // spice2x_RBTouchScale
         .title = "RB Touch Emulation Scale",
         .name = "sp2x-rbscaletouch",

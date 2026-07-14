@@ -6,6 +6,7 @@
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
 #include "games/popn/popn.h"
+#include "games/rb/touch_debug.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/eamuse.h"
 #include "touch/touch.h"
@@ -551,9 +552,13 @@ void overlay::SpiceOverlay::new_frame() {
     const bool draw_fps_persistent = this->renderer != OverlayRenderer::SOFTWARE
         && this->window_fps->get_active();
 
+    // draw RB touch diagnostics
+    const bool draw_rb_touch_debug = this->renderer != OverlayRenderer::SOFTWARE
+        && games::rb::touch_debug_overlay_enabled();
+
     // check if there is nothing to draw
     this->has_pending_frame = false;
-    if (!this->active && !draw_notifications && !draw_fps_persistent) {
+    if (!this->active && !draw_notifications && !draw_fps_persistent && !draw_rb_touch_debug) {
         return;
     }
 
@@ -578,6 +583,10 @@ void overlay::SpiceOverlay::new_frame() {
     ImGui::NewFrame();
     this->has_pending_frame = true;
 
+    if (draw_rb_touch_debug) {
+        games::rb::touch_draw_debug_overlay();
+    }
+
     // build windows only when the overlay itself is active
     if (this->active) {
         for (auto &window : this->windows) {
@@ -595,6 +604,7 @@ void overlay::SpiceOverlay::new_frame() {
     if (draw_fps_persistent) {
         this->window_fps->build();
     }
+
     // draw notifications last so they paint on top of any overlay windows
     if (draw_notifications) {
         overlay::notifications::draw();
