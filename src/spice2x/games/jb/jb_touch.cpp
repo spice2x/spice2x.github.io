@@ -285,7 +285,8 @@ namespace games::jb {
     }
 
     bool touch_debug_overlay_enabled() {
-        return debug_show_boxes() || debug_show_taps();
+        return TOUCH_ENABLE.load(std::memory_order_acquire) &&
+               (debug_show_boxes() || debug_show_taps());
     }
 
     // the 16 boundary rects: legacy divides the area evenly, others use button squares
