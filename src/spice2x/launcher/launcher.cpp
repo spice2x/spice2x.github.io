@@ -49,6 +49,7 @@
 #include "games/popn/popn.h"
 #include "games/qma/qma.h"
 #include "games/rb/rb.h"
+#include "games/rb/touch_debug.h"
 #include "games/rf3d/rf3d.h"
 #include "games/sc/sc.h"
 #include "games/scotto/scotto.h"
@@ -1339,6 +1340,7 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // reflec beat touch emulation
+    games::rb::TOUCH_DEBUG_OVERLAY = options[launcher::Options::RBTouchDebug].value_bool();
     if (options[launcher::Options::spice2x_RBTouchScale].is_active()) {
         games::rb::TOUCH_SCALING = options[launcher::Options::spice2x_RBTouchScale].value_uint32();
     }

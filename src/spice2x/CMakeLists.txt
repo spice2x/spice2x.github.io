@@ -432,6 +432,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/rb/rb.cpp
         games/rb/io.cpp
         games/rb/touch.cpp
+        games/rb/touch_debug.cpp
         games/bs/bs.cpp
         games/bs/io.cpp
         games/rf3d/rf3d.cpp

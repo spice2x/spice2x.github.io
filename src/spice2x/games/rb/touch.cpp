@@ -6,6 +6,8 @@
 #include "hooks/graphics/graphics.h"
 #include "rawinput/touch.h"
 #include "touch/touch.h"
+#include "touch_debug.h"
+#include "touch_defs.h"
 #include "util/logging.h"
 #include "util/time.h"
 #include "util/utils.h"
@@ -13,27 +15,38 @@
 static std::string WINDOW_TITLE = "REFLEC BEAT";
 
 namespace games::rb {
-    uint16_t TOUCH_SCALING = 1000;
+    static constexpr double TOUCH_POINT_OFFSET_DIVISOR = 3.0;
+    static constexpr double X_INPUT_COORDINATE_COUNT = 54.0;
+
+    uint16_t TOUCH_SCALING = TOUCH_SCALE_DEFAULT;
+
+    static void packet_set_bit(unsigned char *packet, int bit) {
+        packet[TOUCH_PACKET_DATA_OFFSET + bit / 8] |=
+            static_cast<unsigned char>(1u << (bit % 8));
+    }
 }
 
-games::rb::ReflecBeatTouchDeviceHandle::ReflecBeatTouchDeviceHandle(bool log_fps) {
-    this->log_fps = log_fps;
+games::rb::ReflecBeatTouchDeviceHandle::ReflecBeatTouchDeviceHandle(bool log_fps) : log_fps(log_fps) {
 }
 
 void games::rb::ReflecBeatTouchDeviceHandle::grid_insert(unsigned char *data, int cursor_x, int cursor_y) {
 
-    // scale to grid position - there are 48 columns and 76 rows of IR sensors.
-    // for whatever reason, the last y row (#75) results in weird input few rows above; just drop it
-    int grid_x = CLAMP((cursor_x * 48) / window_width, 0, 47);
-    int grid_y = CLAMP((cursor_y * 76) / window_height, 0, 74);
+    // read() contracts X uniformly so screen edges land within usable sensors 2..45
+    int grid_x = CLAMP(
+        (cursor_x * X_SENSOR_COUNT) / window_width,
+        0,
+        X_SENSOR_COUNT - 1);
+    int grid_y = CLAMP(
+        (cursor_y * Y_SENSOR_COUNT) / window_height,
+        0,
+        Y_SENSOR_COUNT - 1);
 
     // get bit positions
-    int bit_x = 88 + grid_x;
-    int bit_y = 74 - grid_y;
+    int bit_x = X_SENSOR_FIRST_BIT + grid_x;
+    int bit_y = Y_SENSOR_FIRST_BIT - grid_y;
 
-    // insert bits
-    data[3 + bit_x / 8] |= (char) 1 << (bit_x % 8);
-    data[3 + bit_y / 8] |= (char) 1 << (bit_y % 8);
+    packet_set_bit(data, bit_x);
+    packet_set_bit(data, bit_y);
 }
 
 bool games::rb::ReflecBeatTouchDeviceHandle::open(LPCWSTR lpFileName) {
@@ -71,16 +84,13 @@ bool games::rb::ReflecBeatTouchDeviceHandle::open(LPCWSTR lpFileName) {
             // update window
             SetWindowPos(wnd, nullptr, 0, 0, 0, 0,
                          SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
+        }
 
-            // create touch window
-            touch_create_wnd(wnd);
+        // create touch window
+        touch_create_wnd(wnd);
 
-        } else {
-
-            // create touch window
-            touch_create_wnd(wnd);
-
-            // show game window because it lost focus
+        // show fullscreen game window because it lost focus
+        if (!GRAPHICS_WINDOWED) {
             ShowWindow(wnd, SW_SHOW);
         }
 
@@ -98,13 +108,15 @@ bool games::rb::ReflecBeatTouchDeviceHandle::open(LPCWSTR lpFileName) {
         ShowCursor(TRUE);
     }
 
+    touch_debug_attach();
+
     return true;
 }
 
 int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberOfBytesToRead) {
 
     // check buffer size
-    if (nNumberOfBytesToRead < 20) {
+    if (nNumberOfBytesToRead < TOUCH_PACKET_SIZE) {
         return 0;
     }
 
@@ -130,17 +142,17 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
     }
 
     // create data
-    unsigned char data[20] {};
+    unsigned char data[TOUCH_PACKET_SIZE] {};
 
     // data header
     data[0] = 0x55;
     data[2] = 0x4C;
    
-    const auto SCALE_FACTOR = games::rb::TOUCH_SCALING / 1000.f;
+    const float scale_factor = games::rb::TOUCH_SCALING / 1000.f;
 
     // iterate all touch points
-    auto offset_x = (int) (window_width / 48.0 / 3.0);
-    auto offset_y = (int) (window_height / 76.0 / 3.0);
+    int offset_x = (int) (window_width / (double) X_SENSOR_COUNT / TOUCH_POINT_OFFSET_DIVISOR);
+    int offset_y = (int) (window_height / (double) Y_SENSOR_COUNT / TOUCH_POINT_OFFSET_DIVISOR);
     std::vector<TouchPoint> touch_points;
     touch_get_points(touch_points);
     for (auto &point : touch_points) {
@@ -156,18 +168,23 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
         }
 
         // apply scaling
-        x = x - (window_width * (1.f - SCALE_FACTOR) / 2);
-        x = x / SCALE_FACTOR;
-        y = y - (window_height * (1.f - SCALE_FACTOR) / 2);
-        y = y / SCALE_FACTOR;
+        x = x - (window_width * (1.f - scale_factor) / 2);
+        x = x / scale_factor;
+        y = y - (window_height * (1.f - scale_factor) / 2);
+        y = y / scale_factor;
 
         if (x < 0 || window_width <= x || y < 0 || window_height <= y) {
             continue;
         }
 
-        // point scaling
-        const auto point_x = (int) ((x - window_width / 2.0) * 48.0 / 54.0 + window_width / 2.0);
-        const auto point_y = (int) (y - window_height / 76);
+        // point coordinates
+        // keep the verified left edge fixed while adding up to one-third of a beam
+        // at the right edge, preventing the finger footprint from including sensor 44
+        const auto point_x = (int) (
+            (x - window_width / 2.0) * X_SENSOR_COUNT / X_INPUT_COORDINATE_COUNT +
+            window_width / 2.0 +
+            x / (X_SENSOR_COUNT * TOUCH_POINT_OFFSET_DIVISOR));
+        const auto point_y = (int) y;
 
         // model a finger as a 3x3 block of IR sensors around the touch point
         // this gives better accuracy (than just 1x1) since the logic below
@@ -185,8 +202,10 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
         grid_insert(data, point_x, point_y + offset_y);            // south
     }
 
+    touch_debug_publish(data, is_landscape);
+
     // copy data to buffer
-    memcpy(lpBuffer, data, 20);
+    memcpy(lpBuffer, data, TOUCH_PACKET_SIZE);
 
     // update frame logging
     if (log_fps) {
@@ -201,7 +220,7 @@ int games::rb::ReflecBeatTouchDeviceHandle::read(LPVOID lpBuffer, DWORD nNumberO
     }
 
     // return amount of bytes written
-    return 20;
+    return TOUCH_PACKET_SIZE;
 }
 
 int games::rb::ReflecBeatTouchDeviceHandle::write(LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite) {
@@ -214,6 +233,8 @@ int games::rb::ReflecBeatTouchDeviceHandle::device_io(DWORD dwIoControlCode, LPV
 }
 
 bool games::rb::ReflecBeatTouchDeviceHandle::close() {
+
+    touch_debug_detach();
 
     // detach touch module
     touch_detach();
