@@ -67,7 +67,7 @@ namespace games::rb {
         const float bottom = height - top;
 
         TouchDebugState state = get_touch_debug_state();
-        ImDrawList *draw_list = ImGui::GetForegroundDrawList();
+        ImDrawList *draw_list = ImGui::GetBackgroundDrawList();
         auto draw_line = [&](float x1, float y1, float x2, float y2) {
             draw_list->AddLine(
                 ImVec2(x1, y1), ImVec2(x2, y2),
