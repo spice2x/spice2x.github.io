@@ -23,6 +23,7 @@
 #include "util/time.h"
 #include "util/utils.h"
 
+#include "gdi_overlay.h"
 #include "handler.h"
 #include "touch_gestures.h"
 #include "win7.h"
@@ -37,6 +38,16 @@ const char *INSERT_CARD_TEXT = "Insert Card";
 static const int TOUCH_EVENT_BUFFER_SIZE = 1024 * 4;
 static const int TOUCH_EVENT_BUFFER_THRESHOLD1 = 1024 * 2;
 static const int TOUCH_EVENT_BUFFER_THRESHOLD2 = 1024 * 3;
+
+// timer id for the overlay repaint tick
+static const UINT_PTR SPICETOUCH_OVERLAY_TIMER_ID = 1;
+
+// overlay repaint interval; the WinXP-compat build stays at 30 FPS
+#if !SPICE_XP
+static const int SPICETOUCH_OVERLAY_TIMER_MS = 1000 / 60;
+#else
+static const int SPICETOUCH_OVERLAY_TIMER_MS = 1000 / 30;
+#endif // !SPICE_XP
 
 // in mainline spicetools, this was false (show by default)
 // in spice2x, this is true (hide by default)
@@ -309,7 +320,10 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 break;
             }
             case WM_TIMER: {
-                InvalidateRect(hWnd, NULL, TRUE);
+
+                // request a repaint; the frame is composed into an offscreen buffer, so no
+                // background erase is needed (bErase = FALSE avoids a transparent flash)
+                InvalidateRect(hWnd, NULL, FALSE);
                 break;
             }
             case WM_PAINT: {
@@ -341,45 +355,47 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                             SWP_NOZORDER | SWP_NOREDRAW | SWP_NOREPOSITION | SWP_NOACTIVATE);
                 }
 
-                // render the software overlay to a bitmap BEFORE BeginPaint: the imgui
-                // render is expensive, and running it between the background erase and the
-                // blit leaves the window transparent long enough to flicker
-                HBITMAP overlay_bitmap = nullptr;
+                // render the software overlay before BeginPaint so only GDI composition
+                // and the final blit happen while the window is being painted
                 int overlay_width = 0, overlay_height = 0;
+                uint32_t *overlay_pixels = nullptr;
+                bool overlay_pixels_dirty = false;
                 if (overlay_enabled) {
                     overlay::OVERLAY->update();
                     overlay::OVERLAY->new_frame();
                     overlay::OVERLAY->render();
 
-                    uint32_t *pixel_data = overlay::OVERLAY.get()->sw_get_pixel_data(&overlay_width, &overlay_height);
-                    if (overlay_width > 0 && overlay_height > 0) {
-                        overlay_bitmap = CreateBitmap(overlay_width, overlay_height, 1, 8 * sizeof(uint32_t), pixel_data);
-                    }
+                    overlay_pixels = overlay::OVERLAY.get()->sw_get_pixel_data(
+                        &overlay_width, &overlay_height);
+                    overlay_pixels_dirty = overlay::OVERLAY->sw_pixels_dirty;
                 }
                 bool overlay_active = overlay_enabled && overlay::OVERLAY->get_active();
 
-                // draw everything in a single BeginPaint/EndPaint (a WM_PAINT has one update
-                // region, so a second BeginPaint would get an empty region), keeping only
-                // fast blits between the background erase and EndPaint
+                // compose the whole frame into an offscreen back buffer and present it with a
+                // single blit; the window never shows a half-erased (transparent) surface
+                // mid-paint, which is what caused the occasional flicker at higher frame rates
                 PAINTSTRUCT paint {};
                 HDC hdc = BeginPaint(hWnd, &paint);
-                SetBkMode(hdc, TRANSPARENT);
 
-                // blit the overlay bitmap
-                if (overlay_bitmap) {
+                RECT bufferRect {};
+                GetClientRect(hWnd, &bufferRect);
+                int buffer_width = bufferRect.right - bufferRect.left;
+                int buffer_height = bufferRect.bottom - bufferRect.top;
 
-                    /*
-                     * draw bitmap
-                     * - this currently sets the background to black because of SRCCOPY
-                     * - SRCPAINT will blend but colors are wrong
-                     * - once this is figured out we could also try hooking WM_PAINT and
-                     *   draw directly to the game window
-                     */
-                    HDC hdcMem = CreateCompatibleDC(hdc);
-                    SelectObject(hdcMem, overlay_bitmap);
-                    BitBlt(hdc, 0, 0, overlay_width, overlay_height, hdcMem, 0, 0, SRCCOPY);
-                    DeleteDC(hdcMem);
-                    DeleteObject(overlay_bitmap);
+                HBRUSH color_key_brush =
+                    (HBRUSH) GetClassLongPtr(hWnd, GCLP_HBRBACKGROUND);
+                HDC draw_dc = touch_gdi_overlay_begin_frame(
+                    hdc,
+                    color_key_brush,
+                    buffer_width,
+                    buffer_height,
+                    overlay_pixels,
+                    overlay_pixels_dirty,
+                    overlay_width,
+                    overlay_height);
+                if (draw_dc == nullptr) {
+                    EndPaint(hWnd, &paint);
+                    return 0;
                 }
 
                 // draw the insert-card button below the jubeat debug overlay; it is
@@ -414,7 +430,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     SPICETOUCH_CARD_RECT = boxRect;
 
                     // draw borders
-                    FillRect(hdc, &boxRect, brushBorder);
+                    FillRect(draw_dc, &boxRect, brushBorder);
 
                     // modify box rect
                     boxRect.left += 1;
@@ -423,7 +439,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     boxRect.bottom -= 1;
 
                     // fill box
-                    FillRect(hdc, &boxRect, brushFill);
+                    FillRect(draw_dc, &boxRect, brushFill);
 
                     // modify box rect
                     if (should_rotate) {
@@ -435,19 +451,24 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     }
 
                     // draw text
-                    SelectObject(hdc, SPICETOUCH_FONT);
-                    SetTextColor(hdc, RGB(0, 196, 0));
-                    DrawText(hdc, INSERT_CARD_TEXT, -1, &boxRect, DT_LEFT | DT_BOTTOM | DT_NOCLIP);
+                    SelectObject(draw_dc, SPICETOUCH_FONT);
+                    SetTextColor(draw_dc, RGB(0, 196, 0));
+                    DrawText(draw_dc, INSERT_CARD_TEXT, -1, &boxRect, DT_LEFT | DT_BOTTOM | DT_NOCLIP);
 
                     // delete objects
                     DeleteObject(brushFill);
                     DeleteObject(brushBorder);
                 }
 
+#if !SPICE_XP
                 // draw the jubeat debug overlay on top (hidden while the overlay is active)
                 if (overlay_enabled && !overlay_active && games::jb::touch_debug_overlay_enabled()) {
-                    games::jb::touch_draw_debug_overlay(hdc);
+                    games::jb::touch_draw_debug_overlay(draw_dc);
                 }
+#endif // !SPICE_XP
+
+                // present the composed frame in a single blit
+                touch_gdi_overlay_present(hdc);
 
                 EndPaint(hWnd, &paint);
                 return 0;
@@ -480,6 +501,11 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 return 0;
             }
             case WM_DESTROY: {
+                touch_gdi_overlay_release();
+                if (SPICETOUCH_FONT != nullptr) {
+                    DeleteObject(SPICETOUCH_FONT);
+                    SPICETOUCH_FONT = nullptr;
+                }
                 PostQuitMessage(0);
                 return 0;
             }
@@ -768,8 +794,8 @@ void touch_create_wnd(HWND hWnd, bool overlay) {
                 // create instance
                 overlay::OVERLAY.reset(new overlay::SpiceOverlay(touch_window));
 
-                // draw overlay in 30 FPS
-                SetTimer(touch_window, 1, 1000 / 30, NULL);
+                // draw overlay repaint timer (30 FPS on WinXP, 60 FPS otherwise)
+                SetTimer(touch_window, SPICETOUCH_OVERLAY_TIMER_ID, SPICETOUCH_OVERLAY_TIMER_MS, NULL);
             }
         }
 

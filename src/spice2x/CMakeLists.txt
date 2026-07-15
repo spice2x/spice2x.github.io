@@ -647,6 +647,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         stubs/stubs.cpp
 
         # touch
+        touch/gdi_overlay.cpp
         touch/touch.cpp
         touch/touch_gestures.cpp
         touch/win7.cpp
