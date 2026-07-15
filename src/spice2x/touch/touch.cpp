@@ -23,6 +23,7 @@
 #include "util/time.h"
 #include "util/utils.h"
 
+#include "gdi_overlay.h"
 #include "handler.h"
 #include "touch_gestures.h"
 #include "win7.h"
@@ -354,20 +355,17 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                             SWP_NOZORDER | SWP_NOREDRAW | SWP_NOREPOSITION | SWP_NOACTIVATE);
                 }
 
-                // render the software overlay to a bitmap BEFORE BeginPaint: the imgui
-                // render is expensive, and running it between the background erase and the
-                // blit leaves the window transparent long enough to flicker
-                HBITMAP overlay_bitmap = nullptr;
+                // render the software overlay before BeginPaint so only GDI composition
+                // and the final blit happen while the window is being painted
                 int overlay_width = 0, overlay_height = 0;
+                uint32_t *overlay_pixels = nullptr;
                 if (overlay_enabled) {
                     overlay::OVERLAY->update();
                     overlay::OVERLAY->new_frame();
                     overlay::OVERLAY->render();
 
-                    uint32_t *pixel_data = overlay::OVERLAY.get()->sw_get_pixel_data(&overlay_width, &overlay_height);
-                    if (overlay_width > 0 && overlay_height > 0) {
-                        overlay_bitmap = CreateBitmap(overlay_width, overlay_height, 1, 8 * sizeof(uint32_t), pixel_data);
-                    }
+                    overlay_pixels = overlay::OVERLAY.get()->sw_get_pixel_data(
+                        &overlay_width, &overlay_height);
                 }
                 bool overlay_active = overlay_enabled && overlay::OVERLAY->get_active();
 
@@ -382,31 +380,19 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 int buffer_width = bufferRect.right - bufferRect.left;
                 int buffer_height = bufferRect.bottom - bufferRect.top;
 
-                HDC back_dc = CreateCompatibleDC(hdc);
-                HBITMAP back_bitmap = CreateCompatibleBitmap(hdc, buffer_width, buffer_height);
-                HGDIOBJ back_old = SelectObject(back_dc, back_bitmap);
-                SetBkMode(back_dc, TRANSPARENT);
-
-                // clear the buffer to the color key so unpainted areas stay transparent
-                HBRUSH colorKeyBrush = CreateSolidBrush(RGB(255, 192, 203));
-                FillRect(back_dc, &bufferRect, colorKeyBrush);
-                DeleteObject(colorKeyBrush);
-
-                // blit the overlay bitmap
-                if (overlay_bitmap) {
-
-                    /*
-                     * draw bitmap
-                     * - this currently sets the background to black because of SRCCOPY
-                     * - SRCPAINT will blend but colors are wrong
-                     * - once this is figured out we could also try hooking WM_PAINT and
-                     *   draw directly to the game window
-                     */
-                    HDC hdcMem = CreateCompatibleDC(back_dc);
-                    SelectObject(hdcMem, overlay_bitmap);
-                    BitBlt(back_dc, 0, 0, overlay_width, overlay_height, hdcMem, 0, 0, SRCCOPY);
-                    DeleteDC(hdcMem);
-                    DeleteObject(overlay_bitmap);
+                HBRUSH color_key_brush =
+                    (HBRUSH) GetClassLongPtr(hWnd, GCLP_HBRBACKGROUND);
+                HDC draw_dc = touch_gdi_overlay_begin_frame(
+                    hdc,
+                    color_key_brush,
+                    buffer_width,
+                    buffer_height,
+                    overlay_pixels,
+                    overlay_width,
+                    overlay_height);
+                if (draw_dc == nullptr) {
+                    EndPaint(hWnd, &paint);
+                    return 0;
                 }
 
                 // draw the insert-card button below the jubeat debug overlay; it is
@@ -441,7 +427,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     SPICETOUCH_CARD_RECT = boxRect;
 
                     // draw borders
-                    FillRect(back_dc, &boxRect, brushBorder);
+                    FillRect(draw_dc, &boxRect, brushBorder);
 
                     // modify box rect
                     boxRect.left += 1;
@@ -450,7 +436,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     boxRect.bottom -= 1;
 
                     // fill box
-                    FillRect(back_dc, &boxRect, brushFill);
+                    FillRect(draw_dc, &boxRect, brushFill);
 
                     // modify box rect
                     if (should_rotate) {
@@ -462,9 +448,9 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     }
 
                     // draw text
-                    SelectObject(back_dc, SPICETOUCH_FONT);
-                    SetTextColor(back_dc, RGB(0, 196, 0));
-                    DrawText(back_dc, INSERT_CARD_TEXT, -1, &boxRect, DT_LEFT | DT_BOTTOM | DT_NOCLIP);
+                    SelectObject(draw_dc, SPICETOUCH_FONT);
+                    SetTextColor(draw_dc, RGB(0, 196, 0));
+                    DrawText(draw_dc, INSERT_CARD_TEXT, -1, &boxRect, DT_LEFT | DT_BOTTOM | DT_NOCLIP);
 
                     // delete objects
                     DeleteObject(brushFill);
@@ -474,17 +460,12 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 #if !SPICE_XP
                 // draw the jubeat debug overlay on top (hidden while the overlay is active)
                 if (overlay_enabled && !overlay_active && games::jb::touch_debug_overlay_enabled()) {
-                    games::jb::touch_draw_debug_overlay(back_dc);
+                    games::jb::touch_draw_debug_overlay(draw_dc);
                 }
 #endif // !SPICE_XP
 
                 // present the composed frame in a single blit
-                BitBlt(hdc, 0, 0, buffer_width, buffer_height, back_dc, 0, 0, SRCCOPY);
-
-                // clean up the back buffer
-                SelectObject(back_dc, back_old);
-                DeleteObject(back_bitmap);
-                DeleteDC(back_dc);
+                touch_gdi_overlay_present(hdc);
 
                 EndPaint(hWnd, &paint);
                 return 0;
@@ -517,6 +498,11 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 return 0;
             }
             case WM_DESTROY: {
+                touch_gdi_overlay_release();
+                if (SPICETOUCH_FONT != nullptr) {
+                    DeleteObject(SPICETOUCH_FONT);
+                    SPICETOUCH_FONT = nullptr;
+                }
                 PostQuitMessage(0);
                 return 0;
             }
