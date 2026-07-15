@@ -511,13 +511,28 @@ namespace rawinput::touch {
         }
 
         // set TTL and last report time
-        if (!touch.elements_x.empty() && !touch_modifications.empty()) {
+        if (!touch.elements_x.empty()) {
+
+            // a HID digitizer reports only a fixed number of contacts per report and
+            // cycles the remaining ones through following reports, so a contact can be
+            // absent for up to this many reports before it comes back around
             auto ttl = touch.touch_points.size() / touch.elements_x.size() + 1;
             auto system_time_ms = get_system_milliseconds();
+
+            // extend every tracked contact to the current cycle length without ever
+            // shrinking it; otherwise a rising contact count (e.g. rapid taps) lengthens
+            // the cycle and can starve a stationary held contact into being reaped before
+            // it is reported again. the 50ms last-report timeout remains the hard backstop
+            for (auto &hid_tp : touch.touch_points) {
+                if (hid_tp.ttl < ttl) {
+                    hid_tp.ttl = ttl;
+                }
+            }
+
+            // only contacts actually seen this report refresh their last-report time
             for (auto &hid_tp_id : touch_modifications) {
                 for (auto &hid_tp : touch.touch_points) {
                     if (hid_tp.id == hid_tp_id) {
-                        hid_tp.ttl = ttl;
                         hid_tp.last_report = system_time_ms;
                     }
                 }
