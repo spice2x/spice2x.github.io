@@ -120,6 +120,7 @@ namespace {
             SelectObject(OVERLAY_BUFFER.dc, OVERLAY_BUFFER.old_bitmap);
         if (overlay_bitmap == nullptr || overlay_bitmap == HGDI_ERROR) {
             log_warning("touch", "failed to deselect software overlay bitmap: {}", GetLastError());
+            release_buffer(OVERLAY_BUFFER);
             return false;
         }
 
@@ -151,6 +152,7 @@ namespace {
         if (copied_lines != height) {
             log_warning("touch", "failed to update software overlay bitmap: {} of {} lines copied",
                         copied_lines, height);
+            release_buffer(OVERLAY_BUFFER);
             return false;
         }
         return true;
