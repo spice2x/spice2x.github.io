@@ -307,6 +307,7 @@ mkdir -p ${OUTDIR_EXTRAS}/largeaddressaware
 mkdir -p ${OUTDIR_EXTRAS}/linux
 mkdir -p ${OUTDIR_EXTRAS}/sdk/samples/32
 mkdir -p ${OUTDIR_EXTRAS}/sdk/samples/64
+mkdir -p ${OUTDIR_EXTRAS}/updater
 if ((BUILD_XP_32 > 0)) || ((BUILD_XP_64 > 0))
 then
 mkdir -p ${OUTDIR_EXTRAS}/winxp
@@ -368,8 +369,7 @@ find ./api/resources/python -name "__pycache__" -exec rm -rf {} +
 cp -r ./api/resources/* ${OUTDIR_EXTRAS}/api
 
 # generate the standalone updater scripts from the shared template and drop them
-# straight into the output folder (included in both the regular and full archives)
-bash ./build_updaters.sh ${OUTDIR}
+bash ./build_updaters.sh ${OUTDIR_EXTRAS}/updater
 
 # build distribution archive
 if ((DIST_ENABLE > 0))
