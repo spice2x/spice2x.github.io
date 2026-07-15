@@ -93,10 +93,16 @@ namespace {
     bool update_overlay_buffer(
             HDC target_dc,
             const uint32_t *pixels,
+            bool pixels_dirty,
             int width,
             int height) {
-        if (pixels == nullptr ||
-            !ensure_buffer(
+        if (pixels == nullptr) {
+            return false;
+        }
+
+        bool needs_update = pixels_dirty || OVERLAY_BUFFER.bitmap == nullptr ||
+            OVERLAY_BUFFER.width != width || OVERLAY_BUFFER.height != height;
+        if (!ensure_buffer(
                 OVERLAY_BUFFER,
                 target_dc,
                 width,
@@ -105,12 +111,46 @@ namespace {
                 "software overlay")) {
             return false;
         }
+        if (!needs_update) {
+            return true;
+        }
 
-        // update the cached bitmap contents without reallocating the bitmap or its DC
-        LONG bitmap_size = static_cast<LONG>(
-            static_cast<size_t>(width) * static_cast<size_t>(height) * sizeof(uint32_t));
-        if (SetBitmapBits(OVERLAY_BUFFER.bitmap, bitmap_size, pixels) != bitmap_size) {
-            log_warning("touch", "failed to update software overlay bitmap: {}", GetLastError());
+        // SetDIBits requires the destination bitmap not to be selected into a DC
+        HGDIOBJ overlay_bitmap =
+            SelectObject(OVERLAY_BUFFER.dc, OVERLAY_BUFFER.old_bitmap);
+        if (overlay_bitmap == nullptr || overlay_bitmap == HGDI_ERROR) {
+            log_warning("touch", "failed to deselect software overlay bitmap: {}", GetLastError());
+            return false;
+        }
+
+        BITMAPINFO bitmap_info {};
+        bitmap_info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        bitmap_info.bmiHeader.biWidth = width;
+        bitmap_info.bmiHeader.biHeight = -height;
+        bitmap_info.bmiHeader.biPlanes = 1;
+        bitmap_info.bmiHeader.biBitCount = sizeof(uint32_t) * 8;
+        bitmap_info.bmiHeader.biCompression = BI_RGB;
+
+        int copied_lines = SetDIBits(
+            target_dc,
+            OVERLAY_BUFFER.bitmap,
+            0,
+            height,
+            pixels,
+            &bitmap_info,
+            DIB_RGB_COLORS);
+
+        HGDIOBJ old_bitmap = SelectObject(OVERLAY_BUFFER.dc, OVERLAY_BUFFER.bitmap);
+        if (old_bitmap == nullptr || old_bitmap == HGDI_ERROR) {
+            log_warning("touch", "failed to reselect software overlay bitmap: {}", GetLastError());
+            release_buffer(OVERLAY_BUFFER);
+            return false;
+        }
+        OVERLAY_BUFFER.old_bitmap = old_bitmap;
+
+        if (copied_lines != height) {
+            log_warning("touch", "failed to update software overlay bitmap: {} of {} lines copied",
+                        copied_lines, height);
             return false;
         }
         return true;
@@ -123,6 +163,7 @@ HDC touch_gdi_overlay_begin_frame(
         int width,
         int height,
         const uint32_t *overlay_pixels,
+        bool overlay_pixels_dirty,
         int overlay_width,
         int overlay_height) {
     if (!ensure_buffer(
@@ -145,6 +186,7 @@ HDC touch_gdi_overlay_begin_frame(
     if (update_overlay_buffer(
             target_dc,
             overlay_pixels,
+            overlay_pixels_dirty,
             overlay_width,
             overlay_height) &&
         !BitBlt(draw_dc, 0, 0, overlay_width, overlay_height,

@@ -359,6 +359,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                 // and the final blit happen while the window is being painted
                 int overlay_width = 0, overlay_height = 0;
                 uint32_t *overlay_pixels = nullptr;
+                bool overlay_pixels_dirty = false;
                 if (overlay_enabled) {
                     overlay::OVERLAY->update();
                     overlay::OVERLAY->new_frame();
@@ -366,6 +367,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
 
                     overlay_pixels = overlay::OVERLAY.get()->sw_get_pixel_data(
                         &overlay_width, &overlay_height);
+                    overlay_pixels_dirty = overlay::OVERLAY->sw_pixels_dirty;
                 }
                 bool overlay_active = overlay_enabled && overlay::OVERLAY->get_active();
 
@@ -388,6 +390,7 @@ static LRESULT CALLBACK SpiceTouchWndProc(HWND hWnd, UINT msg, WPARAM wParam, LP
                     buffer_width,
                     buffer_height,
                     overlay_pixels,
+                    overlay_pixels_dirty,
                     overlay_width,
                     overlay_height);
                 if (draw_dc == nullptr) {

@@ -10,6 +10,7 @@ HDC touch_gdi_overlay_begin_frame(
     int width,
     int height,
     const uint32_t *overlay_pixels,
+    bool overlay_pixels_dirty,
     int overlay_width,
     int overlay_height);
 
