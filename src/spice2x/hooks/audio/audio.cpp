@@ -54,22 +54,26 @@ namespace hooks::audio {
     bool ASIO_FORCE_UNLOAD_ON_STOP = false;
 
     std::mutex INITIALIZE_LOCK; // for asio
-    
+
     IAudioClient *CLIENT = nullptr;
     static std::mutex CLIENT_LOCK;
+    static bool CLIENT_STOPPING = false;
 
     void set_active_client(IAudioClient *client, const char *source) {
-        std::lock_guard lock(CLIENT_LOCK);
+        IAudioClient *previous_client = nullptr;
+        {
+            std::lock_guard lock(CLIENT_LOCK);
 
-        if (CLIENT == client) {
-            return;
-        }
-        if (client) {
-            client->AddRef();
-        }
+            if (CLIENT_STOPPING || CLIENT == client) {
+                return;
+            }
+            if (client) {
+                client->AddRef();
+            }
 
-        IAudioClient *previous_client = CLIENT;
-        CLIENT = client;
+            previous_client = CLIENT;
+            CLIENT = client;
+        }
 
         if (previous_client) {
             previous_client->Release();
@@ -159,10 +163,16 @@ namespace hooks::audio {
 
     void stop() {
         log_info("audio", "stopping");
-        if (CLIENT) {
-            CLIENT->Stop();
-            CLIENT->Release();
+        IAudioClient *client = nullptr;
+        {
+            std::lock_guard lock(CLIENT_LOCK);
+            CLIENT_STOPPING = true;
+            client = CLIENT;
             CLIENT = nullptr;
+        }
+        if (client) {
+            client->Stop();
+            client->Release();
         }
         stop_low_latency();
 
