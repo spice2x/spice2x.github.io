@@ -83,7 +83,7 @@ HRESULT STDMETHODCALLTYPE DummyIAudioClient::Initialize(
         pFormat,
         AudioSessionGuid);
     if (SUCCEEDED(ret)) {
-        hooks::audio::set_active_client(this);
+        hooks::audio::set_active_client(this, "DummyIAudioClient::Initialize");
     }
     CHECK_RESULT(ret);
 }

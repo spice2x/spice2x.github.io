@@ -15,5 +15,5 @@ namespace hooks::audio {
     extern bool VOLUME_HOOK_ENABLED;
     extern LowLatencyAudioClient *LOW_LATENCY_CLIENT;
 
-    void set_active_client(IAudioClient *client);
+    void set_active_client(IAudioClient *client, const char *source);
 }

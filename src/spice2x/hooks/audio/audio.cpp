@@ -58,7 +58,7 @@ namespace hooks::audio {
     IAudioClient *CLIENT = nullptr;
     static std::mutex CLIENT_LOCK;
 
-    void set_active_client(IAudioClient *client) {
+    void set_active_client(IAudioClient *client, const char *source) {
         std::lock_guard lock(CLIENT_LOCK);
 
         if (CLIENT == client) {
@@ -76,7 +76,10 @@ namespace hooks::audio {
         }
 
         if (client) {
-            log_info("audio", "active client selected after successful initialization (issue-782-v2)");
+            log_info(
+                "audio",
+                "active client selected by {} after successful initialization",
+                source);
         }
     }
 }
@@ -146,7 +149,7 @@ namespace hooks::audio {
             return;
         }
 
-        log_info("audio", "initializing (issue-782-v2)");
+        log_info("audio", "initializing");
         init_low_latency();
         hooks::audio::acm::init();
 
