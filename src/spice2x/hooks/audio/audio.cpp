@@ -53,9 +53,32 @@ namespace hooks::audio {
     std::string ASIO_DRIVER_NAME = "";
     bool ASIO_FORCE_UNLOAD_ON_STOP = false;
 
-    // private globals
-    IAudioClient *CLIENT = nullptr;
     std::mutex INITIALIZE_LOCK; // for asio
+    
+    IAudioClient *CLIENT = nullptr;
+    static std::mutex CLIENT_LOCK;
+
+    void set_active_client(IAudioClient *client) {
+        std::lock_guard lock(CLIENT_LOCK);
+
+        if (CLIENT == client) {
+            return;
+        }
+        if (client) {
+            client->AddRef();
+        }
+
+        IAudioClient *previous_client = CLIENT;
+        CLIENT = client;
+
+        if (previous_client) {
+            previous_client->Release();
+        }
+
+        if (client) {
+            log_info("audio", "active client selected after successful initialization (issue-782-v2)");
+        }
+    }
 }
 
 static HRESULT STDAPICALLTYPE CoCreateInstance_hook(
@@ -123,7 +146,7 @@ namespace hooks::audio {
             return;
         }
 
-        log_info("audio", "initializing");
+        log_info("audio", "initializing (issue-782-v2)");
         init_low_latency();
         hooks::audio::acm::init();
 

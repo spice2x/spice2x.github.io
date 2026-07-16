@@ -153,18 +153,8 @@ HRESULT STDMETHODCALLTYPE NullMMDevice::Activate(
     log_info("audio::null", "NullMMDevice::Activate {}", guid2s(iid));
 
     if (iid == IID_IAudioClient) {
-
-        // release any previously persisted client
-        if (hooks::audio::CLIENT != nullptr) {
-            hooks::audio::CLIENT->Release();
-        }
-
         auto *client = static_cast<IAudioClient *>(new DummyIAudioClient(new NullDiscardBackend()));
         *ppInterface = client;
-
-        // persist the audio client
-        hooks::audio::CLIENT = client;
-        hooks::audio::CLIENT->AddRef();
 
         return S_OK;
     }

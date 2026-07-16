@@ -14,4 +14,6 @@ namespace hooks::audio {
     extern std::mutex INITIALIZE_LOCK;
     extern bool VOLUME_HOOK_ENABLED;
     extern LowLatencyAudioClient *LOW_LATENCY_CLIENT;
+
+    void set_active_client(IAudioClient *client);
 }

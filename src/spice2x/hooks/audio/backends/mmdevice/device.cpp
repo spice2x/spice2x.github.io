@@ -95,11 +95,6 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
         }
         std::lock_guard initialize_guard(hooks::audio::INITIALIZE_LOCK, std::adopt_lock);
 
-        // release old audio client if initialized
-        if (hooks::audio::CLIENT) {
-            hooks::audio::CLIENT->Release();
-        }
-
         IAudioClient *client = nullptr;
         if (iid == IID_IAudioClient) {
             client = wrap_audio_client(reinterpret_cast<IAudioClient *>(*ppInterface));
@@ -107,9 +102,6 @@ HRESULT STDMETHODCALLTYPE WrappedIMMDevice::Activate(
             client = wrap_audio_client3(reinterpret_cast<IAudioClient3 *>(*ppInterface));
         }
         *ppInterface = client;
-        // persist the audio client
-        hooks::audio::CLIENT = client;
-        hooks::audio::CLIENT->AddRef();
 
     } else if (iid == __uuidof(IAudioEndpointVolume) && hooks::audio::VOLUME_HOOK_ENABLED) {
         *ppInterface = new WrappedIAudioEndpointVolume(reinterpret_cast<IAudioEndpointVolume *>(*ppInterface));

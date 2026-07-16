@@ -75,13 +75,17 @@ HRESULT STDMETHODCALLTYPE DummyIAudioClient::Initialize(
     log_info("audio::wasapi", "IAudioClient::Initialize hook hit");
     print_format(ShareMode, StreamFlags, hnsBufferDuration, hnsPeriodicity, pFormat);
 
-    CHECK_RESULT(this->backend->on_initialize(
+    HRESULT ret = this->backend->on_initialize(
         &ShareMode,
         &StreamFlags,
         &hnsBufferDuration,
         &hnsPeriodicity,
         pFormat,
-        AudioSessionGuid));
+        AudioSessionGuid);
+    if (SUCCEEDED(ret)) {
+        hooks::audio::set_active_client(this);
+    }
+    CHECK_RESULT(ret);
 }
 HRESULT STDMETHODCALLTYPE DummyIAudioClient::GetBufferSize(UINT32 *pNumBufferFrames) {
     static std::once_flag printed;
