@@ -22,9 +22,9 @@ namespace overlay::windows {
         PATCH_COLUMN_STATUS = 1,
     };
 
-    std::string PatchManagerWindow::patch_name_filter("");
+    std::string PatchManager::patch_name_filter("");
 
-    PatchManagerWindow::PatchManagerWindow(SpiceOverlay *overlay) : Window(overlay) {
+    PatchManager::PatchManager(SpiceOverlay *overlay) : Window(overlay) {
         // configurator skips the launcher's init(), so call it here as well
         // this is idempotent, so a no-op if it happens to be called twice
         patcher::init();
@@ -34,9 +34,9 @@ namespace overlay::windows {
         this->init_pos = ImVec2(10, 10);
     }
 
-    PatchManagerWindow::~PatchManagerWindow() = default;
+    PatchManager::~PatchManager() = default;
 
-    void PatchManagerWindow::build_content() {
+    void PatchManager::build_content() {
 
         // check if initialized
         if (!local_patches_initialized) {
@@ -639,7 +639,7 @@ namespace overlay::windows {
         }
     }
 
-    void PatchManagerWindow::update_sorted_patches() {
+    void PatchManager::update_sorted_patches() {
         // Rebuild/re-sort only when the sort order changes (SpecsDirty) or when
         // the patch list count changed - not every frame. reload_local_patches()
         // clears the cache to avoid dangling pointers when `patches` is rebuilt.
@@ -688,7 +688,7 @@ namespace overlay::windows {
         }
     }
 
-    void PatchManagerWindow::show_patch_tooltip(const patcher::PatchData& patch) {
+    void PatchManager::show_patch_tooltip(const patcher::PatchData& patch) {
         if (!patch.caution.empty()) {
             ImGui::WarnTooltip(patch.description.c_str(), patch.caution.c_str());
         } else if (!patch.description.empty()) {

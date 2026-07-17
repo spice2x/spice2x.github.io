@@ -420,7 +420,7 @@ void overlay::SpiceOverlay::init() {
     if (!cfg::CONFIGURATOR_STANDALONE) {
         this->window_add(window_resize = new overlay::windows::ScreenResize(this));
     }
-    this->window_add(new overlay::windows::PatchManagerWindow(this));
+    this->window_add(new overlay::windows::PatchManager(this));
 
     // OBS control spawns a background WebSocket worker; skip it in the standalone
     // configurator, where there is no running game to stream/record

@@ -130,7 +130,7 @@ namespace overlay::windows {
         std::vector<bool> template_is_applied;
 
         // patches tab
-        std::unique_ptr<PatchManagerWindow> patch_manager;
+        std::unique_ptr<PatchManager> patch_manager;
 
         // options tab
         bool options_show_hidden = false;

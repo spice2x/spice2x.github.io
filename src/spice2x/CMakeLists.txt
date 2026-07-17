@@ -617,8 +617,8 @@ set(SOURCE_FILES ${SOURCE_FILES}
 
         # patcher
         patcher/config.cpp
+        patcher/lifecycle.cpp
         patcher/loader.cpp
-        patcher/patch_manager.cpp
         patcher/runtime.cpp
 
         # external

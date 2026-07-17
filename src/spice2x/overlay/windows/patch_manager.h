@@ -5,10 +5,10 @@
 
 namespace overlay::windows {
 
-    class PatchManagerWindow : public Window {
+    class PatchManager : public Window {
     public:
-        explicit PatchManagerWindow(SpiceOverlay *overlay);
-        ~PatchManagerWindow() override;
+        explicit PatchManager(SpiceOverlay *overlay);
+        ~PatchManager() override;
 
         void build_content() override;
 
