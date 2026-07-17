@@ -14,7 +14,6 @@
 #include "util/utils.h"
 
 namespace overlay::windows {
-    using namespace patcher;
 
     // user-assigned IDs for the patches table columns, used by the sort logic
     enum PatchColumnId {
@@ -39,11 +38,11 @@ namespace overlay::windows {
     void PatchManager::build_content() {
 
         // check if initialized
-        if (!local_patches_initialized) {
-            if (fileutils::file_exists(config_path)) {
-                config_load();
+        if (!patcher::local_patches_initialized) {
+            if (fileutils::file_exists(patcher::config_path)) {
+                patcher::config_load();
             }
-            reload_local_patches();
+            patcher::reload_local_patches();
         }
 
         if (avs::game::DLL_NAME == "kamunity.dll") {
@@ -55,12 +54,12 @@ namespace overlay::windows {
         // game code info
         std::string identifiers;
         identifiers += avs::game::get_identifier() + "\n\n";
-        identifiers += avs::game::DLL_NAME + " / " + get_game_identifier(MODULE_PATH / avs::game::DLL_NAME) + "\n";
+        identifiers += avs::game::DLL_NAME + " / " + patcher::get_game_identifier(MODULE_PATH / avs::game::DLL_NAME) + "\n";
 
-        for (const auto& dll : getExtraDlls(avs::game::DLL_NAME)) {
+        for (const auto& dll : patcher::getExtraDlls(avs::game::DLL_NAME)) {
             const auto dll_path = MODULE_PATH / dll;
             if (fileutils::file_exists(dll_path)) {
-                identifiers += dll + " / " + get_game_identifier(dll_path) + "\n";
+                identifiers += dll + " / " + patcher::get_game_identifier(dll_path) + "\n";
             }
         }
 
@@ -79,15 +78,15 @@ namespace overlay::windows {
             "Wrong path? Run spicecfg from the correct directory, or fix your modules parameter before launching spicecfg.\n"
             "Make sure you're not using a different one when launching the game.");
         ImGui::SameLine();
-        ImGui::Text("Modules Path: %s", displayPath(MODULE_PATH).c_str());
+        ImGui::Text("Modules Path: %s", patcher::displayPath(MODULE_PATH).c_str());
 
         ImGui::AlignTextToFramePadding();
         ImGui::DummyMarker();
         ImGui::SameLine();
-        if (ACTIVE_JSON_FILE.empty()) {
+        if (patcher::ACTIVE_JSON_FILE.empty()) {
             ImGui::Text("Patches JSON: built-in");
         } else {
-            ImGui::Text("Patches JSON: %s", ACTIVE_JSON_FILE.c_str());
+            ImGui::Text("Patches JSON: %s", patcher::ACTIVE_JSON_FILE.c_str());
         }
 
         if (patcher::PATCH_MANAGER_CFG_PATH_OVERRIDE.has_value()) {
@@ -108,15 +107,15 @@ namespace overlay::windows {
                 "When checked, all set patches will be applied on game boot."
         );
         ImGui::SameLine();
-        if (ImGui::Checkbox("Auto apply patches on game start", &setting_auto_apply)) {
-            config_dirty = true;
+        if (ImGui::Checkbox("Auto apply patches on game start", &patcher::setting_auto_apply)) {
+            patcher::config_dirty = true;
         }
 
         // handle dirty state
         if (cfg::CONFIGURATOR_STANDALONE) {
             // auto save for configurator version
-            if (config_dirty) {
-                config_save();
+            if (patcher::config_dirty) {
+                patcher::config_save();
             }
         } else {
             // manual save for live version: always render the row so the rest
@@ -125,9 +124,9 @@ namespace overlay::windows {
             ImGui::AlignTextToFramePadding();
             ImGui::HelpMarker("Save current patch state to the configuration file.");
             ImGui::SameLine();
-            ImGui::BeginDisabled(!config_dirty);
+            ImGui::BeginDisabled(!patcher::config_dirty);
             if (ImGui::Button("Save")) {
-                config_save();
+                patcher::config_save();
             }
             ImGui::EndDisabled();
         }
@@ -156,7 +155,7 @@ namespace overlay::windows {
 
             // overwrite DLL
             ImGui::SameLine();
-            if (!patches.empty()) {
+            if (!patcher::patches.empty()) {
                 if (ImGui::Button("Overwrite game files##Button")) {
                     ImGui::OpenPopup("Overwrite game files?");
                 }
@@ -172,8 +171,8 @@ namespace overlay::windows {
                 ImGui::PopTextWrapPos();
                 ImGui::Separator();
                 if (ImGui::Button("Yes, overwrite")) {
-                    hard_apply_patches();
-                    reload_local_patches();
+                    patcher::hard_apply_patches();
+                    patcher::reload_local_patches();
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
@@ -185,12 +184,12 @@ namespace overlay::windows {
 
             // disable all
             ImGui::SameLine();
-            if (!patches.empty()) {
+            if (!patcher::patches.empty()) {
                 disable_all_patches = ImGui::Button("Disable all");
                 if (disable_all_patches) {
                     // reset auto apply now, and disable every patch down below
-                    config_dirty = true;
-                    setting_auto_apply = false;
+                    patcher::config_dirty = true;
+                    patcher::setting_auto_apply = false;
                 }
             }
         }
@@ -218,7 +217,7 @@ namespace overlay::windows {
                 ImGui::InputTextWithHint(
                     "##url_textinput",
                     "http://www.example.com",
-                    &patch_url,
+                    &patcher::patch_url,
                     ImGuiInputTextFlags_CharsNoBlank | ImGuiInputTextFlags_AutoSelectAll);
 
                 if (ImGui::Button("Paste from clipboard")) {
@@ -226,14 +225,14 @@ namespace overlay::windows {
                     if (!clipboard_url.empty()) {
                         strreplace(clipboard_url, "\r\n", "");
                         strreplace(clipboard_url, " ", "");
-                        patch_url = clipboard_url;
+                        patcher::patch_url = clipboard_url;
                     }
                 }
                 ImGui::SameLine();
-                ImGui::BeginDisabled(patch_url.empty());
+                ImGui::BeginDisabled(patcher::patch_url.empty());
                 if (ImGui::Button("Clear")) {
-                    patch_url.clear();
-                    url_recent_idx = -1;
+                    patcher::patch_url.clear();
+                    patcher::url_recent_idx = -1;
                 }
                 ImGui::EndDisabled();
 
@@ -248,28 +247,28 @@ namespace overlay::windows {
                         "##url_recents",
                         ImVec2(360.f, 3 * ImGui::GetTextLineHeightWithSpacing()))) {
 
-                    for (size_t i = 0; i < url_recents.size(); i++) {
-                        const bool is_selected = (url_recent_idx == i);
-                        if (ImGui::Selectable(url_recents[i].c_str(), is_selected)) {
-                            url_recent_idx = i;
-                            patch_url = url_recents[i];
+                    for (size_t i = 0; i < patcher::url_recents.size(); i++) {
+                        const bool is_selected = (patcher::url_recent_idx == i);
+                        if (ImGui::Selectable(patcher::url_recents[i].c_str(), is_selected)) {
+                            patcher::url_recent_idx = i;
+                            patcher::patch_url = patcher::url_recents[i];
                         }
                     }
                     ImGui::EndListBox();
                 }
-                ImGui::BeginDisabled(url_recent_idx == (size_t)(-1));
+                ImGui::BeginDisabled(patcher::url_recent_idx == (size_t)(-1));
                 if (ImGui::Button("Remove selected")) {
-                    url_recents.erase(url_recents.begin() + url_recent_idx);
-                    url_recent_idx = -1;
-                    config_save();
+                    patcher::url_recents.erase(patcher::url_recents.begin() + patcher::url_recent_idx);
+                    patcher::url_recent_idx = -1;
+                    patcher::config_save();
                 }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
-                ImGui::BeginDisabled(url_recents.empty());
+                ImGui::BeginDisabled(patcher::url_recents.empty());
                 if (ImGui::Button("Clear all")) {
-                    url_recents.clear();
-                    url_recent_idx = -1;
-                    config_save();
+                    patcher::url_recents.clear();
+                    patcher::url_recent_idx = -1;
+                    patcher::config_save();
                 }
                 ImGui::EndDisabled();
                 ImGui::TreePop();
@@ -278,33 +277,33 @@ namespace overlay::windows {
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
-            ImGui::BeginDisabled(patch_url.empty());
+            ImGui::BeginDisabled(patcher::patch_url.empty());
             if (ImGui::Button("Import")) {
                 url_entered = true;
-                if (patch_url.find("http://") == 0 || patch_url.find("https://") == 0) {
+                if (patcher::patch_url.find("http://") == 0 || patcher::patch_url.find("https://") == 0) {
                     is_valid_url = true;
                 }
-                url_recent_idx = -1;
+                patcher::url_recent_idx = -1;
             }
             ImGui::EndDisabled();
 
             if (is_valid_url) {
-                patches_imported = import_remote_patches_to_disk();
+                patches_imported = patcher::import_remote_patches_to_disk();
                 if (patches_imported) {
-                    if (std::find(url_recents.begin(), url_recents.end(), patch_url) == url_recents.end()) {
-                        url_recents.emplace_back(patch_url);
+                    if (std::find(patcher::url_recents.begin(), patcher::url_recents.end(), patcher::patch_url) == patcher::url_recents.end()) {
+                        patcher::url_recents.emplace_back(patcher::patch_url);
                     }
-                    config_save();
+                    patcher::config_save();
                 }
                 // import_remote_patches_to_disk clears out old patches, so regardless of result,
                 // reload patches from disk
-                reload_local_patches(true);
+                patcher::reload_local_patches(true);
                 ImGui::CloseCurrentPopup();
             }
             ImGui::SameLine();
             if (ImGui::Button("Cancel")) {
-                patch_url.clear();
-                url_recent_idx = -1;
+                patcher::patch_url.clear();
+                patcher::url_recent_idx = -1;
                 ImGui::CloseCurrentPopup();
             }
 
@@ -330,20 +329,20 @@ namespace overlay::windows {
         }
         if (ImGui::BeginPopupModal("Import failed##URLImport", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("Failed to import patches from URL.");
-            if (!url_fetch_errors.empty()) {
+            if (!patcher::url_fetch_errors.empty()) {
                 ImGui::TextUnformatted("");
                 ImGui::PushTextWrapPos(ImGui::GetIO().DisplaySize.x * 0.7);
-                ImGui::TextUnformatted(url_fetch_errors.c_str());
+                ImGui::TextUnformatted(patcher::url_fetch_errors.c_str());
                 ImGui::PopTextWrapPos();
             }
             ImGui::Separator();
             if (ImGui::Button("OK")) {
                 ImGui::CloseCurrentPopup();
             }
-            if (!url_fetch_errors.empty()) {
+            if (!patcher::url_fetch_errors.empty()) {
                 ImGui::SameLine();
                 if (ImGui::Button("Copy Error")) {
-                    clipboard::copy_text(url_fetch_errors);
+                    clipboard::copy_text(patcher::url_fetch_errors);
                 }
             }
             ImGui::EndPopup();
@@ -354,7 +353,7 @@ namespace overlay::windows {
         ImGui::Spacing();
 
         // search function
-        if (!patches.empty()) {
+        if (!patcher::patches.empty()) {
             ImGui::AlignTextToFramePadding();
             ImGui::DummyMarker();
             ImGui::SameLine();
@@ -371,7 +370,7 @@ namespace overlay::windows {
         }
 
         // check for empty list
-        if (patches.empty()) {
+        if (patcher::patches.empty()) {
             ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "No patches available.");
             ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "New patches are no longer being added to spice2x.");
             if (cfg::CONFIGURATOR_STANDALONE) {
@@ -413,23 +412,23 @@ namespace overlay::windows {
 
                 const auto search_str_in_lower = strtolower(patch_name_filter);
                 size_t patches_shown = 0;
-                for (auto patch_index : patches_sorted) {
-                    auto &patch = patches[patch_index];
+                for (auto patch_index : patcher::patches_sorted) {
+                    auto &patch = patcher::patches[patch_index];
 
                     // get patch status
-                    PatchStatus patch_status = is_patch_active(patch);
+                    patcher::PatchStatus patch_status = patcher::is_patch_active(patch);
                     patch.last_status = patch_status;
 
                     // user requested to disable all
                     if (disable_all_patches && patch.enabled) {
                         patch.enabled = false;
-                        config_dirty = true;
+                        patcher::config_dirty = true;
                         switch (patch_status) {
-                            case PatchStatus::Enabled:
-                            case PatchStatus::Disabled:
-                                apply_patch(patch, false);
+                            case patcher::PatchStatus::Enabled:
+                            case patcher::PatchStatus::Disabled:
+                                patcher::apply_patch(patch, false);
                                 break;
-                            case PatchStatus::Error:
+                            case patcher::PatchStatus::Error:
                                 if (cfg::CONFIGURATOR_STANDALONE) {
                                     patch.enabled = false;
                                 }
@@ -461,7 +460,7 @@ namespace overlay::windows {
                     }
 
                     // get current state
-                    bool patch_checked = patch_status == PatchStatus::Enabled;
+                    bool patch_checked = patch_status == patcher::PatchStatus::Enabled;
 
                     // default text for the label (patch name)
                     auto patch_name = patch.name;
@@ -469,25 +468,25 @@ namespace overlay::windows {
                     // push style
                     int style_color_pushed = 0;
                     switch (patch_status) {
-                        case PatchStatus::Error:
+                        case patcher::PatchStatus::Error:
                             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.f, 0.f, 1.f));
                             patch_name += " (Error)";
                             style_color_pushed++;
                             break;
-                        case PatchStatus::Enabled:
-                            if (setting_auto_apply && patch.enabled) {
+                        case patcher::PatchStatus::Enabled:
+                            if (patcher::setting_auto_apply && patch.enabled) {
                                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.f, 1.f, 0.f, 1.f));
                                 style_color_pushed++;
                             }
                             break;
-                        case PatchStatus::Disabled:
+                        case patcher::PatchStatus::Disabled:
                             break;
                         default:
                             break;
                     }
 
                     if (patch.enabled) {
-                        patch_name += setting_auto_apply ? " (Auto apply)" : " (Saved)";
+                        patch_name += patcher::setting_auto_apply ? " (Auto apply)" : " (Saved)";
                     }
                     if (patch.unverified) {
                         patch_name += " (Unverified patch)";
@@ -506,7 +505,7 @@ namespace overlay::windows {
                     }
 
                     // show range after label for integer patches
-                    if (patch.type == PatchType::Integer) {
+                    if (patch.type == patcher::PatchType::Integer) {
                         ImGui::SameLine();
                         auto& numpatch = patch.patch_number;
                         ImGui::AlignTextToFramePadding();
@@ -515,22 +514,22 @@ namespace overlay::windows {
 
                     // second column, part 1: enable checkbox (applies to all)
                     ImGui::TableNextColumn();
-                    ImGui::BeginDisabled(patch_status == PatchStatus::Error);
+                    ImGui::BeginDisabled(patch_status == patcher::PatchStatus::Error);
                     if (ImGui::Checkbox("##patch_checked_checkbox", &patch_checked)) {
-                        config_dirty = true;
+                        patcher::config_dirty = true;
                         switch (patch_status) {
-                            case PatchStatus::Enabled:
-                            case PatchStatus::Disabled:
+                            case patcher::PatchStatus::Enabled:
+                            case patcher::PatchStatus::Disabled:
                                 if (patch_checked) {
-                                    setting_auto_apply = true;
+                                    patcher::setting_auto_apply = true;
                                 }
                                 patch.enabled = patch_checked;
-                                apply_patch(patch, patch_checked);
+                                patcher::apply_patch(patch, patch_checked);
                                 break;
-                            case PatchStatus::Error:
+                            case patcher::PatchStatus::Error:
                                 if (cfg::CONFIGURATOR_STANDALONE) {
                                     if (patch_checked) {
-                                        setting_auto_apply = true;
+                                        patcher::setting_auto_apply = true;
                                     }
                                     patch.enabled = patch_checked;
                                 }
@@ -539,7 +538,7 @@ namespace overlay::windows {
                                 break;
                         }
                         // update status
-                        patch.last_status = is_patch_active(patch);
+                        patch.last_status = patcher::is_patch_active(patch);
                     }
                     ImGui::EndDisabled();
                     if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
@@ -548,7 +547,7 @@ namespace overlay::windows {
 
                     // second column, part 2: additional options UI (dropdown, text input)
                     ImGui::SameLine();
-                    if (patch_status == PatchStatus::Error){
+                    if (patch_status == patcher::PatchStatus::Error){
                         ImGui::AlignTextToFramePadding();
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.f, 0.f, 1.f));
                         if (patch.error_reason.empty()) {
@@ -557,16 +556,16 @@ namespace overlay::windows {
                             ImGui::TextUnformatted(patch.error_reason.c_str());
                         }
                         ImGui::PopStyleColor();
-                    } else if (patch.type == PatchType::Union || patch.type == PatchType::Integer) {
-                        if (patch_status == PatchStatus::Enabled) {
-                            if (patch.type == PatchType::Union) {
+                    } else if (patch.type == patcher::PatchType::Union || patch.type == patcher::PatchType::Integer) {
+                        if (patch_status == patcher::PatchStatus::Enabled) {
+                            if (patch.type == patcher::PatchType::Union) {
                                 ImGui::SetNextItemWidth(200.0f);
                                 if (ImGui::BeginCombo("##union_patch_dropdown", patch.selected_union_name.c_str())) {
                                     for (const auto& union_patch : patch.patches_union) {
                                         if (ImGui::Selectable(union_patch.name.c_str())) {
                                             patch.selected_union_name = union_patch.name;
-                                            apply_patch(patch, true);
-                                            config_dirty = true;
+                                            patcher::apply_patch(patch, true);
+                                            patcher::config_dirty = true;
                                         }
                                     }
                                     ImGui::EndCombo();
@@ -574,7 +573,7 @@ namespace overlay::windows {
                                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                                     show_patch_tooltip(patch);
                                 }
-                            } else if (patch.type == PatchType::Integer) {
+                            } else if (patch.type == patcher::PatchType::Integer) {
                                 ImGui::SetNextItemWidth(200.0f);
                                 auto& numpatch = patch.patch_number;
                                 ImGui::InputInt("##int_input", &numpatch.value, 1, 10);
@@ -584,23 +583,23 @@ namespace overlay::windows {
                                             numpatch.min,
                                             numpatch.max);
 
-                                    apply_patch(patch, true);
-                                    config_dirty = true;
+                                    patcher::apply_patch(patch, true);
+                                    patcher::config_dirty = true;
                                 }
                                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                                     show_patch_tooltip(patch);
                                 }
                             }
-                        } else if (patch_status == PatchStatus::Disabled) {
+                        } else if (patch_status == patcher::PatchStatus::Disabled) {
                             ImGui::SetNextItemWidth(200.0f);
                             ImGui::BeginDisabled();
-                            if (patch.type == PatchType::Union) {
+                            if (patch.type == patcher::PatchType::Union) {
                                 if (ImGui::BeginCombo(
                                         "##dummy_union_patch_dropdown",
                                         patch.selected_union_name.c_str())) {
                                     ImGui::EndCombo();
                                 }
-                            } else if (patch.type == PatchType::Integer) {
+                            } else if (patch.type == patcher::PatchType::Integer) {
                                 ImGui::InputInt("##dummy_int_input", &patch.patch_number.value);
                             }
                             ImGui::EndDisabled();
@@ -644,33 +643,33 @@ namespace overlay::windows {
         // the patch list count changed - not every frame. reload_local_patches()
         // clears the cache to avoid dangling pointers when `patches` is rebuilt.
         auto *sort_specs = ImGui::TableGetSortSpecs();
-        const bool patches_changed = patches_sorted.size() != patches.size();
+        const bool patches_changed = patcher::patches_sorted.size() != patcher::patches.size();
         if (!patches_changed && !(sort_specs && sort_specs->SpecsDirty)) {
             return;
         }
 
         // rebuild the view in the underlying vector order (this is also the
         // default order shown when the sort is cleared / tristate "unsorted")
-        patches_sorted.clear();
-        patches_sorted.reserve(patches.size());
-        for (size_t i = 0; i < patches.size(); i++) {
-            patches_sorted.push_back(i);
+        patcher::patches_sorted.clear();
+        patcher::patches_sorted.reserve(patcher::patches.size());
+        for (size_t i = 0; i < patcher::patches.size(); i++) {
+            patcher::patches_sorted.push_back(i);
         }
 
         // SpecsCount == 0 means no active sort: keep the default order
         if (sort_specs && sort_specs->SpecsCount > 0) {
             const auto &spec = sort_specs->Specs[0];
             const bool ascending = spec.SortDirection != ImGuiSortDirection_Descending;
-            std::stable_sort(patches_sorted.begin(), patches_sorted.end(),
+            std::stable_sort(patcher::patches_sorted.begin(), patcher::patches_sorted.end(),
                 [&](size_t ia, size_t ib) {
-                    const PatchData *a = &patches[ia];
-                    const PatchData *b = &patches[ib];
+                    const patcher::PatchData *a = &patcher::patches[ia];
+                    const patcher::PatchData *b = &patcher::patches[ib];
                     int cmp;
                     if (spec.ColumnUserID == PATCH_COLUMN_STATUS) {
                         // sort by displayed status (matches the checkbox), then
                         // by name as a tiebreaker
-                        const bool a_on = a->last_status == PatchStatus::Enabled;
-                        const bool b_on = b->last_status == PatchStatus::Enabled;
+                        const bool a_on = a->last_status == patcher::PatchStatus::Enabled;
+                        const bool b_on = b->last_status == patcher::PatchStatus::Enabled;
                         if (a_on != b_on) {
                             cmp = a_on ? -1 : 1;
                         } else {
