@@ -2517,8 +2517,8 @@ int main_implementation(int argc, char *argv[]) {
     // copy defaults to nvram
     avs::core::copy_defaults();
 
-    // prepare patches
-    patcher::PatchManager patch_manager;
+    // prepare patches (registers the DLL-load notification before the game DLL loads)
+    patcher::init();
 
     // load game
     avs::game::load_dll();
@@ -2646,7 +2646,7 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // apply patches
-    patch_manager.apply_patches_on_start();
+    patcher::apply_patches_on_start();
 
     // load AVS-EA3
     avs::ea3::boot(easrv_port, easrv_maint, easrv_smart);

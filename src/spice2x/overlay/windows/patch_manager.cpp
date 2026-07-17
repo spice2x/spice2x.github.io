@@ -11,17 +11,10 @@
 #include "overlay/imgui/extensions.h"
 #include "util/fileutils.h"
 #include "util/logging.h"
-#include "util/nt_loader.h"
 #include "util/utils.h"
 
 namespace overlay::windows {
-    using patcher::apply_patch;
-    using patcher::displayPath;
-    using patcher::get_game_identifier;
-    using patcher::is_patch_active;
-    using patcher::PatchData;
-    using patcher::PatchStatus;
-    using patcher::PatchType;
+    using namespace patcher;
 
     // user-assigned IDs for the patches table columns, used by the sort logic
     enum PatchColumnId {
@@ -32,6 +25,9 @@ namespace overlay::windows {
     std::string PatchManagerWindow::patch_name_filter("");
 
     PatchManagerWindow::PatchManagerWindow(SpiceOverlay *overlay) : Window(overlay) {
+        // configurator skips the launcher's init(), so call it here as well
+        // this is idempotent, so a no-op if it happens to be called twice
+        patcher::init();
         this->title = "Patch Manager";
         this->flags |= ImGuiWindowFlags_AlwaysAutoResize;
         this->toggle_button = games::OverlayButtons::TogglePatchManager;
@@ -45,9 +41,9 @@ namespace overlay::windows {
         // check if initialized
         if (!local_patches_initialized) {
             if (fileutils::file_exists(config_path)) {
-                this->config_load();
+                config_load();
             }
-            this->reload_local_patches();
+            reload_local_patches();
         }
 
         if (avs::game::DLL_NAME == "kamunity.dll") {
@@ -120,7 +116,7 @@ namespace overlay::windows {
         if (cfg::CONFIGURATOR_STANDALONE) {
             // auto save for configurator version
             if (config_dirty) {
-                this->config_save();
+                config_save();
             }
         } else {
             // manual save for live version: always render the row so the rest
@@ -131,7 +127,7 @@ namespace overlay::windows {
             ImGui::SameLine();
             ImGui::BeginDisabled(!config_dirty);
             if (ImGui::Button("Save")) {
-                this->config_save();
+                config_save();
             }
             ImGui::EndDisabled();
         }
@@ -265,7 +261,7 @@ namespace overlay::windows {
                 if (ImGui::Button("Remove selected")) {
                     url_recents.erase(url_recents.begin() + url_recent_idx);
                     url_recent_idx = -1;
-                    this->config_save();
+                    config_save();
                 }
                 ImGui::EndDisabled();
                 ImGui::SameLine();
@@ -273,7 +269,7 @@ namespace overlay::windows {
                 if (ImGui::Button("Clear all")) {
                     url_recents.clear();
                     url_recent_idx = -1;
-                    this->config_save();
+                    config_save();
                 }
                 ImGui::EndDisabled();
                 ImGui::TreePop();
@@ -298,7 +294,7 @@ namespace overlay::windows {
                     if (std::find(url_recents.begin(), url_recents.end(), patch_url) == url_recents.end()) {
                         url_recents.emplace_back(patch_url);
                     }
-                    this->config_save();
+                    config_save();
                 }
                 // import_remote_patches_to_disk clears out old patches, so regardless of result,
                 // reload patches from disk

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-#include <format>
 #include <memory>
 #include <sstream>
 #include <windows.h>
@@ -29,7 +28,7 @@ using namespace rapidjson;
 
 namespace patcher {
 
-    std::vector<std::string> PatchManager::getExtraDlls(const std::string& firstDll) {
+    std::vector<std::string> getExtraDlls(const std::string& firstDll) {
         if (!EXTRA_DLLS.contains(firstDll)) {
             return {};
         }
@@ -41,7 +40,7 @@ namespace patcher {
         return fmt::format(FMT_STRING("{}"), path);
     }
 
-    std::string PatchManager::getFromUrl(const std::string& dll_name, const std::string& url) {
+    std::string getFromUrl(const std::string& dll_name, const std::string& url) {
         log_info("patchmanager", "getting patches from URL: {}, for file: {}", url, dll_name);
         std::string result;
 
@@ -186,7 +185,7 @@ namespace patcher {
         return identifier;
     }
 
-    void PatchManager::load_embedded_patches(bool apply_patches) {
+    void load_embedded_patches(bool apply_patches) {
         // load embedded patches from resources
         auto patches_json = resutil::load_file_string(IDR_PATCHES);
 
@@ -544,7 +543,7 @@ namespace patcher {
         }
     }
 
-    bool PatchManager::import_remote_patches_for_dll(const std::string& url, const std::string& dll_name) {
+    bool import_remote_patches_for_dll(const std::string& url, const std::string& dll_name) {
         log_info("patchmanager", "loading remote patches for {}...", dll_name);
         std::string identifier = get_game_identifier(MODULE_PATH / dll_name);
         std::string url_cpy = url;
@@ -596,7 +595,7 @@ namespace patcher {
         return false;
     }
 
-    bool PatchManager::load_from_patches_json(bool apply_patches) {
+    bool load_from_patches_json(bool apply_patches) {
         bool ret = false;
 
         // list valid PE identifiers from our local files
@@ -654,7 +653,7 @@ namespace patcher {
         return ret;
     }
 
-    void PatchManager::reload_local_patches(bool apply_patches) {
+    void reload_local_patches(bool apply_patches) {
         // announce reload
         if (apply_patches) {
             log_info("patchmanager", "reloading (local) and applying patches");
@@ -716,7 +715,7 @@ namespace patcher {
         local_patches_initialized = true;
     }
 
-    bool PatchManager::import_remote_patches_to_disk() {
+    bool import_remote_patches_to_disk() {
         bool imported = false;
         // clear old patches
         patches.clear();
@@ -734,7 +733,7 @@ namespace patcher {
         return imported;
     }
 
-    void PatchManager::append_patches(
+    void append_patches(
         std::string &patches_json,
         bool apply_patches,
         std::function<bool(const PatchData&)> filter,

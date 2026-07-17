@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "util/nt_loader.h"
-
 namespace patcher {
 
     enum class PatchType {
@@ -102,59 +100,32 @@ namespace patcher {
 
     std::string get_game_identifier(const std::filesystem::path& dll_path, bool print_info = false);
 
-    class PatchManager {
-    public:
-        PatchManager();
+    // lifecycle: init() sets up the config path and registers for DLL-load
+    // notifications; apply_patches_on_start() applies auto-apply patches once the
+    // game DLL is loaded. both are safe to call repeatedly.
+    void init();
+    void apply_patches_on_start();
 
-        void apply_patches_on_start();
-        void reload_local_patches(bool apply_patches = false);
-        bool import_remote_patches_to_disk();
-        bool load_from_patches_json(bool apply_patches);
-        bool import_remote_patches_for_dll(const std::string& url, const std::string& dll_name);
-        void hard_apply_patches();
-        void load_embedded_patches(bool apply_patches);
+    // patch load / apply operations (also driven by the overlay window)
+    void reload_local_patches(bool apply_patches = false);
+    bool import_remote_patches_to_disk();
+    void hard_apply_patches();
+    void config_load();
+    void config_save();
+    std::vector<std::string> getExtraDlls(const std::string& firstDll);
 
-    protected:
-        void config_load();
-        void config_save();
-        void append_patches(
-            std::string& patches_json,
-            bool apply_patches = false,
-            std::function<bool(const PatchData&)> filter = std::function<bool(const PatchData&)>(),
-            std::string pe_identifier_for_patch = "");
-        bool is_game_id_wildcard_matched(const std::string& id_from_config);
-        static std::vector<std::string> getExtraDlls(const std::string& firstDll);
-        static std::string getFromUrl(const std::string& dll_name, const std::string& url);
-
-        static std::filesystem::path config_path;
-        static bool config_dirty;
-        static bool setting_auto_apply;
-        static std::vector<std::string> setting_auto_apply_list;
-        static std::vector<std::string> setting_patches_enabled;
-        static std::map<std::string, std::string> setting_union_patches_enabled;
-        static std::map<std::string, int64_t> setting_int_patches_enabled;
-        static std::string patch_url;
-
-        static std::filesystem::path LOCAL_PATCHES_PATH;
-        static std::string ACTIVE_JSON_FILE;
-
-        static std::vector<PatchData> patches;
-        static bool local_patches_initialized;
-        static std::vector<size_t> patches_sorted;
-        static std::map<std::string, std::vector<std::string>> EXTRA_DLLS;
-
-        static std::string url_fetch_errors;
-        static size_t url_recent_idx;
-        static std::vector<std::string> url_recents;
-
-        static bool ldr_registered;
-        static void *ldr_notify_cookie;
-        static std::vector<std::string> ldr_target_libraries;
-        static VOID CALLBACK loader_notification(
-            ULONG reason,
-            PCLDR_DLL_NOTIFICATION_DATA data,
-            PVOID context);
-    };
+    // process-wide patch engine state, rendered and edited by the overlay window
+    extern std::filesystem::path config_path;
+    extern bool config_dirty;
+    extern bool setting_auto_apply;
+    extern std::string patch_url;
+    extern std::string ACTIVE_JSON_FILE;
+    extern std::vector<PatchData> patches;
+    extern bool local_patches_initialized;
+    extern std::vector<size_t> patches_sorted;
+    extern std::string url_fetch_errors;
+    extern size_t url_recent_idx;
+    extern std::vector<std::string> url_recents;
 
     PatchStatus is_patch_active(PatchData& patch);
     bool apply_patch(PatchData& patch, bool active);

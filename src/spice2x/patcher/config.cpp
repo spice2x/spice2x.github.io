@@ -14,12 +14,12 @@ using namespace rapidjson;
 
 namespace patcher {
 
-    bool PatchManager::is_game_id_wildcard_matched(const std::string& id_from_config) {
+    bool is_game_id_wildcard_matched(const std::string& id_from_config) {
         return ((id_from_config.compare(0, 3, avs::game::MODEL) == 0) &&
                 (id_from_config.compare(10, 10, avs::game::EXT) == 0));
     }
 
-    void PatchManager::config_load() {
+    void config_load() {
         log_info("patchmanager", "loading config");
 
         // read config file
@@ -146,7 +146,7 @@ namespace patcher {
         return hash.getHash();
     }
 
-    void PatchManager::config_save() {
+    void config_save() {
 
         // create document
         Document doc;

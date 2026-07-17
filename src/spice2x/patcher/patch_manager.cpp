@@ -1,6 +1,7 @@
-#include "patch_manager.h"
+#include "internal.h"
 
 #include <algorithm>
+#include <windows.h>
 
 #include "avs/game.h"
 #include "cfg/configurator.h"
@@ -10,27 +11,27 @@
 
 namespace patcher {
 
-    std::filesystem::path PatchManager::config_path;
     std::optional<std::string> PATCH_MANAGER_CFG_PATH_OVERRIDE;
 
-    bool PatchManager::config_dirty = false;
-    bool PatchManager::setting_auto_apply = false;
+    std::filesystem::path config_path;
+    bool config_dirty = false;
+    bool setting_auto_apply = false;
 
-    std::vector<std::string> PatchManager::setting_auto_apply_list;
-    std::vector<std::string> PatchManager::setting_patches_enabled;
+    std::vector<std::string> setting_auto_apply_list;
+    std::vector<std::string> setting_patches_enabled;
 
-    std::map<std::string, std::string> PatchManager::setting_union_patches_enabled;
-    std::map<std::string, int64_t> PatchManager::setting_int_patches_enabled;
+    std::map<std::string, std::string> setting_union_patches_enabled;
+    std::map<std::string, int64_t> setting_int_patches_enabled;
 
-    std::string PatchManager::patch_url("");
+    std::string patch_url;
 
-    std::filesystem::path PatchManager::LOCAL_PATCHES_PATH("patches");
-    std::string PatchManager::ACTIVE_JSON_FILE("");
+    std::filesystem::path LOCAL_PATCHES_PATH("patches");
+    std::string ACTIVE_JSON_FILE;
 
-    std::vector<PatchData> PatchManager::patches;
-    bool PatchManager::local_patches_initialized = false;
-    std::vector<size_t> PatchManager::patches_sorted;
-    std::map<std::string, std::vector<std::string>> PatchManager::EXTRA_DLLS = {
+    std::vector<PatchData> patches;
+    bool local_patches_initialized = false;
+    std::vector<size_t> patches_sorted;
+    std::map<std::string, std::vector<std::string>> EXTRA_DLLS = {
         {"jubeat.dll", {"music_db.dll", "coin.dll"}},
         {"arkmdxp3.dll", {"gamemdx.dll"}},
         {"arkmdxp4.dll", {"gamemdx.dll"}},
@@ -45,15 +46,15 @@ namespace patcher {
         {"gdxg.dll", {"game.dll", "libshare-pj.dll", "boot.dll"}}
     };
 
-    std::string PatchManager::url_fetch_errors;
-    size_t PatchManager::url_recent_idx = -1;
-    std::vector<std::string> PatchManager::url_recents = {};
+    std::string url_fetch_errors;
+    size_t url_recent_idx = -1;
+    std::vector<std::string> url_recents;
 
-    bool PatchManager::ldr_registered = false;
-    void *PatchManager::ldr_notify_cookie = nullptr;
-    std::vector<std::string> PatchManager::ldr_target_libraries;
+    bool ldr_registered = false;
+    void *ldr_notify_cookie = nullptr;
+    std::vector<std::string> ldr_target_libraries;
 
-    PatchManager::PatchManager() {
+    void init() {
         if (PATCH_MANAGER_CFG_PATH_OVERRIDE.has_value()) {
             config_path = PATCH_MANAGER_CFG_PATH_OVERRIDE.value();
             log_info("patchmanager", "using custom config file path: {}", config_path);
@@ -62,6 +63,9 @@ namespace patcher {
                 fileutils::get_config_file_path("patchmanager", "spicetools_patch_manager.json");
         }
 
+        // register for DLL load notifications so patches can be (re)applied as
+        // the game's target libraries come into memory. registration happens
+        // once and is left in place for the lifetime of the process.
         if (!ldr_registered) {
             ldr_target_libraries = getExtraDlls(avs::game::DLL_NAME);
             ldr_target_libraries.push_back(avs::game::DLL_NAME);
@@ -70,7 +74,7 @@ namespace patcher {
                 GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "LdrRegisterDllNotification"));
 
             if (register_fn && NT_SUCCESS(register_fn(
-                    0, &PatchManager::loader_notification, this, &ldr_notify_cookie))) {
+                    0, &loader_notification, nullptr, &ldr_notify_cookie))) {
                 log_info("patchmanager", "registered for DLL load notifications");
             } else {
                 log_warning("patchmanager", "failed to register for DLL load notifications");
@@ -90,16 +94,16 @@ namespace patcher {
         }
     }
 
-    void PatchManager::apply_patches_on_start() {
+    void apply_patches_on_start() {
         if (!local_patches_initialized) {
             reload_local_patches(true);
         }
     }
 
-    VOID CALLBACK PatchManager::loader_notification(
+    VOID CALLBACK loader_notification(
         ULONG reason,
         PCLDR_DLL_NOTIFICATION_DATA data,
-        PVOID context) {
+        PVOID) {
 
         if (reason == LDR_DLL_NOTIFICATION_REASON_LOADED) {
             const auto dll = strtolower(std::filesystem::path({
@@ -108,7 +112,7 @@ namespace patcher {
             }).filename().string());
 
             if (std::ranges::find(ldr_target_libraries, dll) != ldr_target_libraries.end()) {
-                static_cast<PatchManager *>(context)->reload_local_patches(true);
+                reload_local_patches(true);
             }
         }
     }

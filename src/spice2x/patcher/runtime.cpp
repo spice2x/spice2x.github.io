@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <memory>
+#include <windows.h>
 #include <psapi.h>
 #include <sstream>
 #include <unordered_set>
@@ -37,7 +38,7 @@ namespace patcher {
         DLL_MAP_ORG.clear();
     }
 
-    void PatchManager::hard_apply_patches() {
+    void hard_apply_patches() {
         std::vector<std::filesystem::path> written_list;
 
         // dll_name -> in-memory image; populated lazily, written back once at
