@@ -26,6 +26,7 @@ namespace overlay::windows {
         el->SetAttribute("debounce_down", entry.debounce_down);
         el->SetAttribute("bat_threshold", entry.bat_threshold);
         el->SetAttribute("velocity_threshold", entry.velocity_threshold);
+        el->SetAttribute("modifiers", entry.modifier_mask);
         parent->InsertEndChild(el);
     }
 
@@ -53,6 +54,10 @@ namespace overlay::windows {
         int bat = 0;
         el->QueryIntAttribute("bat_threshold", &bat);
         entry.bat_threshold = bat;
+
+        unsigned int modifier_mask = 0;
+        el->QueryUnsignedAttribute("modifiers", &modifier_mask);
+        entry.modifier_mask = static_cast<uint8_t>(modifier_mask & UINT8_C(0x0F));
 
         return entry;
     }
@@ -160,6 +165,28 @@ namespace overlay::windows {
                 }
             }
 
+            // modifier buttons
+            auto *mod_el = tmpl_el->FirstChildElement("modifier_buttons");
+            if (mod_el) {
+                auto *btn_el = mod_el->FirstChildElement("button");
+                while (btn_el) {
+                    const char *btn_name = btn_el->Attribute("name");
+                    std::string btn_name_str = btn_name ? btn_name : "";
+
+                    TemplateButtonBinding *binding = nullptr;
+                    for (auto &b : tmpl.modifier_buttons) {
+                        if (b.name == btn_name_str) { binding = &b; break; }
+                    }
+                    if (!binding) {
+                        tmpl.modifier_buttons.push_back(
+                            {btn_name_str, read_button_entry(btn_el), {}});
+                    } else {
+                        binding->alternatives.push_back(read_button_entry(btn_el));
+                    }
+                    btn_el = btn_el->NextSiblingElement("button");
+                }
+            }
+
             // keypad buttons
             auto *kp_el = tmpl_el->FirstChildElement("keypad_buttons");
             if (kp_el) {
@@ -244,6 +271,7 @@ namespace overlay::windows {
     bool save_user_template(
         const ControllerTemplate &tmpl,
         const bool save_buttons,
+        const bool save_modifiers,
         const bool save_keypads,
         const bool save_analogs,
         const bool save_lights) {
@@ -299,6 +327,24 @@ namespace overlay::windows {
             }
         }
         tmpl_el->InsertEndChild(buttons_el);
+
+        // modifier buttons - skip unbound entries
+        if (!tmpl.modifier_buttons.empty()) {
+            auto *mod_el = doc.NewElement("modifier_buttons");
+            if (save_modifiers) {
+                for (auto &btn : tmpl.modifier_buttons) {
+                    if (!btn.primary.is_unbound()) {
+                        write_button_entry(doc, mod_el, btn.name, btn.primary);
+                    }
+                    for (auto &alt : btn.alternatives) {
+                        if (!alt.is_unbound()) {
+                            write_button_entry(doc, mod_el, btn.name, alt);
+                        }
+                    }
+                }
+            }
+            tmpl_el->InsertEndChild(mod_el);
+        }
 
         // keypad buttons — skip unbound entries
         if (!tmpl.keypad_buttons.empty()) {

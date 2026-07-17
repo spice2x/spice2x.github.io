@@ -5,6 +5,16 @@
 
 namespace games {
 
+    namespace ModifierButtons {
+        enum {
+            Modifier1,
+            Modifier2,
+            Modifier3,
+            Modifier4,
+            Size,
+        };
+    }
+
     namespace OverlayButtons {
         enum {
             Screenshot,
@@ -59,6 +69,7 @@ namespace games {
 
     const std::vector<std::string> &get_games();
     std::vector<Button> *get_buttons(const std::string &game);
+    std::vector<Button> *get_buttons_modifiers(const std::string &game);
     std::string get_buttons_help(const std::string &game);
     std::string get_analogs_help(const std::string &game);
     std::vector<Button> *get_buttons_keypads(const std::string &game);

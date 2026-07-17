@@ -3,7 +3,9 @@
 #include <cassert>
 #include <optional>
 
+#include "games/io.h"
 #include "launcher/superexit.h"
+#include "misc/eamuse.h"
 #include "rawinput/rawinput.h"
 #include "rawinput/piuio.h"
 #include "util/time.h"
@@ -62,7 +64,43 @@ std::vector<Button> GameAPI::Buttons::sortButtons(
     return sorted;
 }
 
-GameAPI::Buttons::State GameAPI::Buttons::getState(rawinput::RawInputManager *manager, Button &_button, bool check_alts) {
+namespace GameAPI::Buttons {
+    static State get_button_state(
+        rawinput::RawInputManager *manager,
+        Button &button,
+        bool check_alts,
+        bool check_modifiers);
+
+    static bool modifiers_pressed(rawinput::RawInputManager *manager, Button &button);
+}
+
+bool GameAPI::Buttons::modifiers_pressed(rawinput::RawInputManager *manager, Button &button) {
+    const auto modifier_mask = button.getModifierMask();
+    if (modifier_mask == 0) {
+        return true;
+    }
+
+    auto *modifier_buttons = games::get_buttons_modifiers(eamuse_get_game());
+    if (!modifier_buttons) {
+        return false;
+    }
+
+    for (uint8_t index = 0; index < games::ModifierButtons::Size; index++) {
+        if ((modifier_mask & (UINT8_C(1) << index)) != 0 &&
+            (index >= modifier_buttons->size() ||
+             get_button_state(manager, modifier_buttons->at(index), true, false) !=
+                 GameAPI::Buttons::BUTTON_PRESSED)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+GameAPI::Buttons::State GameAPI::Buttons::get_button_state(
+        rawinput::RawInputManager *manager,
+        Button &_button,
+        bool check_alts,
+        bool check_modifiers) {
 
     // check override
     if (_button.override_enabled) {
@@ -75,6 +113,23 @@ GameAPI::Buttons::State GameAPI::Buttons::getState(rawinput::RawInputManager *ma
     unsigned int button_count = 0;
     std::optional<bool> window_has_focus;
     while (true) {
+
+        // skip bindings whose required modifiers are not held
+        //
+        // note that modifiers cannot process MIDI as the logic is written
+        // below, since MIDI buttons are event-based (on event, off event, etc)
+        // and cannot be correctly handled by a simple early return
+        // there is not explicit check for MIDI here, but the UI should have
+        // prevented it
+        if (check_modifiers && !modifiers_pressed(manager, *current_button)) {
+            button_count++;
+            if (!alternatives || alternatives->empty() ||
+                button_count - 1 >= alternatives->size()) {
+                return BUTTON_NOT_PRESSED;
+            }
+            current_button = &alternatives->at(button_count - 1);
+            continue;
+        }
 
         // naive behavior
         if (current_button->isNaive()) {
@@ -469,6 +524,10 @@ GameAPI::Buttons::State GameAPI::Buttons::getState(rawinput::RawInputManager *ma
     }
 }
 
+Buttons::State Buttons::getState(rawinput::RawInputManager *manager, Button &button, bool check_alts) {
+    return get_button_state(manager, button, check_alts, true);
+}
+
 Buttons::State Buttons::getState(std::unique_ptr<rawinput::RawInputManager> &manager, Button &button, bool check_alts) {
     if (manager) {
         return getState(manager.get(), button, check_alts);
@@ -484,17 +543,13 @@ static float getVelocityHelper(rawinput::RawInputManager *manager, Button &butto
         return button.override_velocity;
     }
 
-    // naive behavior
-    if (button.isNaive()) {
-        if (button.getInvert()) {
-            return (GetAsyncKeyState(button.getVKey()) & 0x8000) ? 0.f : 1.f;
-        } else {
-            return (GetAsyncKeyState(button.getVKey()) & 0x8000) ? 1.f : 0.f;
-        }
-    }
-
     // get button state
-    Buttons::State button_state = Buttons::getState(manager, button, false);
+    const auto button_state = Buttons::getState(manager, button, false);
+
+    // naive bindings report their digital state as full or zero velocity
+    if (button.isNaive()) {
+        return button_state == Buttons::BUTTON_PRESSED ? 1.f : 0.f;
+    }
 
     // check if button isn't being pressed
     if (button_state != Buttons::BUTTON_PRESSED) {

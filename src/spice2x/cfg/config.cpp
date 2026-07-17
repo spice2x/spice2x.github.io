@@ -165,6 +165,7 @@ bool Config::addGame(Game &game, bool save) {
                     int bat_threshold = 0;
                     int velocity_threshold = 0;
                     bool invert = false;
+                    unsigned int modifier_mask = 0;
                     tinyxml2::XMLError attrError = gameButtonNode->QueryIntAttribute("vkey", &vKey);
                     const char *devid = gameButtonNode->Attribute("devid");
                     gameButtonNode->QueryIntAttribute("analogtype", &analogType);
@@ -173,6 +174,7 @@ bool Config::addGame(Game &game, bool save) {
                     gameButtonNode->QueryIntAttribute("bat_threshold", &bat_threshold);
                     gameButtonNode->QueryIntAttribute("velocity_threshold", &velocity_threshold);
                     gameButtonNode->QueryBoolAttribute("invert", &invert);
+                    gameButtonNode->QueryUnsignedAttribute("modifiers", &modifier_mask);
                     if (attrError != tinyxml2::XMLError::XML_SUCCESS) {
                         gameButtonsNode->DeleteChild(gameButtonNode);
                         gameButtonNode = this->configFile.NewElement("button");
@@ -185,6 +187,7 @@ bool Config::addGame(Game &game, bool save) {
                         gameButtonNode->SetAttribute("bat_threshold", bat_threshold);
                         gameButtonNode->SetAttribute("velocity_threshold", velocity_threshold);
                         gameButtonNode->SetAttribute("invert", invert);
+                        gameButtonNode->SetAttribute("modifiers", button->getModifierMask());
                         gameButtonsNode->InsertEndChild(gameButtonNode);
                     } else {
                         button->setVKey(static_cast<unsigned short int>(vKey));
@@ -194,6 +197,7 @@ bool Config::addGame(Game &game, bool save) {
                         button->setBatThreshold(bat_threshold);
                         button->setVelocityThreshold(velocity_threshold);
                         button->setInvert(invert);
+                        button->setModifierMask(static_cast<uint8_t>(modifier_mask));
                         if (devid) {
                             button->setDeviceIdentifier(devid);
                         }
@@ -214,6 +218,7 @@ bool Config::addGame(Game &game, bool save) {
                 gameButtonNode->SetAttribute("bat_threshold", it.getBatThreshold());
                 gameButtonNode->SetAttribute("velocity_threshold", it.getVelocityThreshold());
                 gameButtonNode->SetAttribute("invert", it.getInvert());
+                gameButtonNode->SetAttribute("modifiers", it.getModifierMask());
                 gameButtonNode->SetAttribute("devid", it.getDeviceIdentifier().c_str());
                 gameButtonsNode->InsertEndChild(gameButtonNode);
             }
@@ -440,6 +445,7 @@ bool Config::addGame(Game &game, bool save) {
             gameButtonNode->SetAttribute("bat_threshold", it.getBatThreshold());
             gameButtonNode->SetAttribute("velocity_threshold", it.getVelocityThreshold());
             gameButtonNode->SetAttribute("invert", it.getInvert());
+            gameButtonNode->SetAttribute("modifiers", it.getModifierMask());
             gameButtonNode->SetAttribute("devid", it.getDeviceIdentifier().c_str());
             gameButtonsNode->InsertEndChild(gameButtonNode);
         }
@@ -552,6 +558,7 @@ bool Config::updateBinding(const Game &game, const Button &button, int alternati
                 gameButtonNode->SetAttribute("velocity_threshold", button.getVelocityThreshold());
                 gameButtonNode->SetAttribute("invert", button.getInvert());
                 gameButtonNode->SetAttribute("devid", button.getDeviceIdentifier().c_str());
+                gameButtonNode->SetAttribute("modifiers", button.getModifierMask());
                 break;
             }
         }
@@ -569,6 +576,7 @@ bool Config::updateBinding(const Game &game, const Button &button, int alternati
             gameButtonNode->SetAttribute("velocity_threshold", 0);
             gameButtonNode->SetAttribute("invert", false);
             gameButtonNode->SetAttribute("devid", "");
+            gameButtonNode->SetAttribute("modifiers", 0);
             gameButtonsNode->InsertEndChild(gameButtonNode);
         }
     }
@@ -964,6 +972,7 @@ std::vector<Button> Config::getButtons(const std::string &gameName) {
                 int bat_threshold = 0;
                 int velocity_threshold = 0;
                 bool invert = false;
+                unsigned int modifier_mask = 0;
                 gameButtonNode->QueryIntAttribute("vkey", &vKey);
                 gameButtonNode->QueryIntAttribute("analogtype", &analogType);
                 gameButtonNode->QueryDoubleAttribute("debounce_up", &debounce_up);
@@ -971,6 +980,7 @@ std::vector<Button> Config::getButtons(const std::string &gameName) {
                 gameButtonNode->QueryIntAttribute("bat_threshold", &bat_threshold);
                 gameButtonNode->QueryIntAttribute("velocity_threshold", &velocity_threshold);
                 gameButtonNode->QueryBoolAttribute("invert", &invert);
+                gameButtonNode->QueryUnsignedAttribute("modifiers", &modifier_mask);
                 const char *devid = gameButtonNode->Attribute("devid");
 
                 // find alternative
@@ -986,6 +996,7 @@ std::vector<Button> Config::getButtons(const std::string &gameName) {
                         alt.setBatThreshold(bat_threshold);
                         alt.setVelocityThreshold(velocity_threshold);
                         alt.setInvert(invert);
+                        alt.setModifierMask(static_cast<uint8_t>(modifier_mask));
                         if (devid) {
                             alt.setDeviceIdentifier(std::string(devid));
                         }
@@ -1005,6 +1016,7 @@ std::vector<Button> Config::getButtons(const std::string &gameName) {
                     button.setBatThreshold(bat_threshold);
                     button.setVelocityThreshold(velocity_threshold);
                     button.setInvert(invert);
+                    button.setModifierMask(static_cast<uint8_t>(modifier_mask));
                     if (devid) {
                         button.setDeviceIdentifier(devid);
                     }

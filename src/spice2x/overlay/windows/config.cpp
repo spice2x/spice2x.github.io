@@ -85,6 +85,7 @@ namespace overlay::windows {
     static const std::vector<std::pair<const char *, ControllerPage>> CONTROLLER_PAGE_GROUPS = {
         { "Buttons", ControllerPage::CONTROLLER_PAGE_BUTTONS },
         { "Keypads", ControllerPage::CONTROLLER_PAGE_KEYPADS },
+        { "Modifiers", ControllerPage::CONTROLLER_PAGE_MODIFIERS },
         { "Analogs", ControllerPage::CONTROLLER_PAGE_ANALOGS },
         { "Overlay", ControllerPage::CONTROLLER_PAGE_OVERLAY },
         { "Lights", ControllerPage::CONTROLLER_PAGE_LIGHTS },
@@ -614,6 +615,18 @@ namespace overlay::windows {
                     } else if (keypad_count >= 2) {
                         this->build_buttons("Keypad", keypad_buttons);
                     }
+                    break;
+                }
+                case ControllerPage::CONTROLLER_PAGE_MODIFIERS: {
+                    ImGui::TextColored(ImVec4(1.f, 0.7f, 0, 1), "Button Modifiers");
+                    ImGui::Spacing();
+                    ImGui::TextWrapped(
+                        "Bind modifier buttons below, then open Edit properties on any button binding "
+                        "(except MIDI) to select the required modifiers. This allows you to configure "
+                        "button combinations.");
+                    ImGui::TextUnformatted("");
+                    this->build_buttons(
+                        "Modifier", games::get_buttons_modifiers(this->games_selected_name));
                     break;
                 }
                 case ControllerPage::CONTROLLER_PAGE_ANALOGS: {
@@ -1256,7 +1269,8 @@ namespace overlay::windows {
         if (open_edit) {
             ImGui::OpenPopup(edit_name.c_str());
         }
-        edit_button_popup(edit_name, button_display, button, button_velocity, alt_index);
+        edit_button_popup(
+            edit_name, button_display, button, button_velocity, alt_index, name != "Modifier");
 
         // clean up
         ImGui::PopID();
@@ -1275,6 +1289,7 @@ namespace overlay::windows {
         button->setBatThreshold(0);
         button->setVelocityThreshold(0);
         button->setInvert(false);
+        button->setModifierMask(0);
         button->setLastState(GameAPI::Buttons::BUTTON_NOT_PRESSED);
         button->setLastVelocity(0);
         button->setTemporary(false);
@@ -1890,27 +1905,75 @@ namespace overlay::windows {
         }
     }
 
+    bool Config::build_modifier_picker(Button &button) {
+        bool changed = false;
+
+        std::string modifier_preview;
+        for (uint8_t index = 0; index < games::ModifierButtons::Size; index++) {
+            if ((button.getModifierMask() & (UINT8_C(1) << index)) == 0) {
+                continue;
+            }
+            modifier_preview += modifier_preview.empty() ? "Mod " : "+";
+            modifier_preview += std::to_string(index + 1);
+        }
+        if (modifier_preview.empty()) {
+            modifier_preview = "None";
+        }
+
+        if (ImGui::BeginCombo("Modifiers", modifier_preview.c_str())) {
+            for (uint8_t index = 0; index < games::ModifierButtons::Size; index++) {
+                const uint8_t modifier_bit = UINT8_C(1) << index;
+                bool required = (button.getModifierMask() & modifier_bit) != 0;
+                const auto label = fmt::format("Modifier {}", index + 1);
+                if (ImGui::Checkbox(label.c_str(), &required)) {
+                    const auto modifier_mask = static_cast<uint8_t>(required ?
+                        button.getModifierMask() | modifier_bit :
+                        button.getModifierMask() & ~modifier_bit);
+                    button.setModifierMask(modifier_mask);
+                    changed = true;
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        return changed;
+    }
+
     void Config::edit_button_popup(
         const std::string &edit_name,
         const std::string &button_display,
         Button *button,
         const float button_velocity,
-        const int alt_index) {
+        const int alt_index,
+        const bool allow_modifiers) {
 
         const auto button_state = GameAPI::Buttons::getState(RI_MGR, *button, false);
         if (ImGui::BeginPopupModal(edit_name.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
             bool dirty = false;
             auto device = RI_MGR->devices_get(button->getDeviceIdentifier());
 
+            auto switch_device = [&](const std::string &device_identifier) {
+                button->setDeviceIdentifier(device_identifier);
+                button->setAnalogType(ButtonAnalogType::BAT_NONE);
+                button->setDebounceUp(0.0);
+                button->setDebounceDown(0.0);
+                button->setBatThreshold(0);
+                button->setVelocityThreshold(0);
+                button->setVKey(0);
+                button->setInvert(false);
+                button->setModifierMask(0);
+                dirty = true;
+            };
+
             // binding
             ImGui::Text("Binding");
+            ImGui::Separator();
 
             // combo for devices
             std::string device_desc = (device != nullptr) ? device->desc : "Empty (Naive)";
             if (ImGui::BeginCombo("Device Identifier", device_desc.c_str())) {
-                if (ImGui::Selectable("Empty (Naive)", button->isNaive())) {
-                    button->setDeviceIdentifier("");
-                    dirty = true;
+                if (ImGui::Selectable("Empty (Naive)", button->isNaive()) && !button->isNaive()) {
+                    switch_device("");
                 }
                 if (button->isNaive()) {
                     ImGui::SetItemDefaultFocus();
@@ -1918,17 +1981,8 @@ namespace overlay::windows {
                 for (auto &device : RI_MGR->devices_get()) {
                     bool selected = button->getDeviceIdentifier() == device.name.c_str();
                     const auto device_desc = fmt::format("{}##{}", device.desc, device.name);
-                    if (ImGui::Selectable(device_desc.c_str(), selected)) {
-                        button->setDeviceIdentifier(device.name);
-                        // reset controls when switching devices
-                        button->setAnalogType(ButtonAnalogType::BAT_NONE);
-                        button->setDebounceUp(0.0);
-                        button->setDebounceDown(0.0);
-                        button->setBatThreshold(0);
-                        button->setVelocityThreshold(0);
-                        button->setVKey(0);
-                        button->setInvert(false);
-                        dirty = true;
+                    if (ImGui::Selectable(device_desc.c_str(), selected) && !selected) {
+                        switch_device(device.name);
                     }
                     if (selected) {
                         ImGui::SetItemDefaultFocus();
@@ -1936,6 +1990,7 @@ namespace overlay::windows {
                 }
                 ImGui::EndCombo();
             }
+            device = RI_MGR->devices_get(button->getDeviceIdentifier());
 
             // analog type (only for HID)
             const auto bat = button->getAnalogType();
@@ -2227,6 +2282,14 @@ namespace overlay::windows {
                 }
             }
 
+            // modifiers
+            {
+                const bool is_midi = device != nullptr && device->type == rawinput::MIDI;
+                if (allow_modifiers && button->isValid() && !is_midi) {
+                    dirty |= build_modifier_picker(*button);
+                }
+            }
+
             // preview
             if (!button_display.empty()) {
                 ImGui::TextUnformatted("\nPreview");
@@ -2250,8 +2313,10 @@ namespace overlay::windows {
                 ImGui::TextUnformatted("");
             }
 
+
             // options
-            ImGui::Text("Options");
+            ImGui::TextUnformatted("Options");
+            ImGui::Separator();
 
             // check for debounce
             if (button->getDebounceUp() || button->getDebounceDown()
@@ -2370,6 +2435,7 @@ namespace overlay::windows {
                 ImGui::ProgressBar(button_velocity);
             } else {
                 ImGui::Text("State");
+                ImGui::Separator();
                 ImGui::ProgressBar(button_velocity);
             }
 
@@ -5490,6 +5556,12 @@ namespace overlay::windows {
                 tmpl.buttons.emplace_back(btn);
             }
         }
+        auto *modifier_buttons = games::get_buttons_modifiers(this->games_selected_name);
+        if (modifier_buttons) {
+            for (auto &modifier : *modifier_buttons) {
+                tmpl.modifier_buttons.emplace_back(modifier);
+            }
+        }
 
         // capture keypad buttons
         auto *keypad_buttons = games::get_buttons_keypads(this->games_selected_name);
@@ -5542,6 +5614,17 @@ namespace overlay::windows {
                 }
                 // clear primary
                 clear_button(&btn, -1);
+            }
+        }
+
+        // clear all modifier buttons
+        auto *modifier_buttons = games::get_buttons_modifiers(this->games_selected_name);
+        if (modifier_buttons) {
+            for (auto &modifier : *modifier_buttons) {
+                for (int ai = (int)modifier.getAlternatives().size() - 1; ai >= 0; ai--) {
+                    clear_button(&modifier.getAlternatives()[ai], ai + 1);
+                }
+                clear_button(&modifier, -1);
             }
         }
 
@@ -5638,6 +5721,7 @@ namespace overlay::windows {
                             btn.setDebounceDown(entry->debounce_down);
                             btn.setBatThreshold(entry->bat_threshold);
                             btn.setVelocityThreshold(entry->velocity_threshold);
+                            btn.setModifierMask(entry->modifier_mask);
                             ::Config::getInstance().updateBinding(game, btn, -1);
                         } else {
                             Button alt_btn(btn.getName());
@@ -5649,6 +5733,7 @@ namespace overlay::windows {
                             alt_btn.setDebounceDown(entry->debounce_down);
                             alt_btn.setBatThreshold(entry->bat_threshold);
                             alt_btn.setVelocityThreshold(entry->velocity_threshold);
+                            alt_btn.setModifierMask(entry->modifier_mask);
                             alt_btn.setTemporary(true);
                             btn.getAlternatives().push_back(alt_btn);
                             ::Config::getInstance().updateBinding(
@@ -5666,6 +5751,11 @@ namespace overlay::windows {
         // apply game buttons and keypad buttons
         if (this->apply_buttons) {
             apply_buttons(tmpl.buttons, games::get_buttons(this->games_selected_name));
+        }
+        if (this->apply_modifiers) {
+            apply_buttons(
+                tmpl.modifier_buttons,
+                games::get_buttons_modifiers(this->games_selected_name));
         }
         if (this->apply_keypads) {
             apply_buttons(tmpl.keypad_buttons, games::get_buttons_keypads(this->games_selected_name));
@@ -5908,7 +5998,7 @@ namespace overlay::windows {
                 ImGui::EndDisabled();
                 ImGui::SameLine();
                 ImGui::HelpMarker(
-                    "Clears all game button, analog, and light bindings.");
+                    "Clears all game button, modifier, keypad, analog, and light bindings.");
                 if (this->all_cleared) {
                     ImGui::SameLine();
                     ImGui::TextUnformatted("Done.");
@@ -5923,6 +6013,8 @@ namespace overlay::windows {
                 bool selection_changed = false;
                 selection_changed |= ImGui::Checkbox("Buttons", &this->apply_buttons);
                 ImGui::SameLine();
+                selection_changed |= ImGui::Checkbox("Modifiers", &this->apply_modifiers);
+                ImGui::SameLine();
                 selection_changed |= ImGui::Checkbox("Keypads", &this->apply_keypads);
                 ImGui::SameLine();
                 selection_changed |= ImGui::Checkbox("Analogs", &this->apply_analogs);
@@ -5932,7 +6024,7 @@ namespace overlay::windows {
                     std::fill(this->template_is_applied.begin(), this->template_is_applied.end(), false);
                 }
 
-                if (!this->apply_buttons && !this->apply_keypads &&
+                if (!this->apply_buttons && !this->apply_modifiers && !this->apply_keypads &&
                     !this->apply_analogs && !this->apply_lights) {
                     ImGui::TextUnformatted("\nYou must select at least one group to apply.\n\n");
                 }
@@ -5972,7 +6064,8 @@ namespace overlay::windows {
                     }
                 }
 
-                if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
+                if (!apply_buttons && !apply_modifiers && !apply_keypads &&
+                    !apply_analogs && !apply_lights) {
                     ImGui::BeginDisabled();
                 }
 
@@ -6141,7 +6234,8 @@ namespace overlay::windows {
                     ImGui::EndTable();
                 }
 
-                if (!apply_buttons && !apply_keypads && !apply_analogs && !apply_lights) {
+                if (!apply_buttons && !apply_modifiers && !apply_keypads &&
+                    !apply_analogs && !apply_lights) {
                     ImGui::EndDisabled();
                 }
             }
@@ -6220,12 +6314,14 @@ namespace overlay::windows {
             ImGui::TextUnformatted("Pick which groups to save:");
             ImGui::Checkbox("Buttons", &this->save_buttons);
             ImGui::SameLine();
+            ImGui::Checkbox("Modifiers", &this->save_modifiers);
+            ImGui::SameLine();
             ImGui::Checkbox("Keypads", &this->save_keypads);
             ImGui::SameLine();
             ImGui::Checkbox("Analogs", &this->save_analogs);
             ImGui::SameLine();
             ImGui::Checkbox("Lights", &this->save_lights);
-            if (!this->save_analogs && !this->save_keypads &&
+            if (!this->save_buttons && !this->save_modifiers && !this->save_keypads &&
                 !this->save_analogs && !this->save_lights) {
                 ImGui::TextUnformatted("\nYou must select at least one group to save.\n\n");
             }
@@ -6277,7 +6373,8 @@ namespace overlay::windows {
 
             ImGui::BeginDisabled(
                 !all_labels_set ||
-                (!this->save_buttons && !this->save_keypads && !this->save_analogs && !this->save_lights));
+                (!this->save_buttons && !this->save_modifiers && !this->save_keypads &&
+                 !this->save_analogs && !this->save_lights));
 
             if (ImGui::Button("Save")) {
                 // replace device IDs with labels in the template
@@ -6286,7 +6383,8 @@ namespace overlay::windows {
                         template_save_sources[si], template_save_labels[si]);
                 }
                 if (save_user_template(template_pending_save,
-                        this->save_buttons, this->save_keypads, this->save_analogs, this->save_lights)) {
+                    this->save_buttons, this->save_modifiers, this->save_keypads,
+                    this->save_analogs, this->save_lights)) {
                     template_save_name[0] = '\0';
                     templates_cache_dirty = true;
                 }
@@ -6368,7 +6466,7 @@ namespace overlay::windows {
                             t.rename_source(template_save_sources[si], template_save_labels[si]);
                         }
                     }
-                    save_user_template(t, true, true, true, true);
+                    save_user_template(t, true, true, true, true, true);
                     templates_cache_dirty = true;
                     template_save_sources.clear();
                     template_save_labels.clear();

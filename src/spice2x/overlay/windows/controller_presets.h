@@ -19,6 +19,7 @@ namespace overlay::windows {
         double debounce_down = 0.0;
         int bat_threshold = 0;
         unsigned short velocity_threshold = 0;
+        uint8_t modifier_mask = 0;
 
         bool is_naive() const { return device_identifier.empty() && vKey != INVALID_VKEY; }
         bool is_device() const { return !device_identifier.empty(); }
@@ -34,6 +35,7 @@ namespace overlay::windows {
             e.debounce_down = btn.getDebounceDown();
             e.bat_threshold = btn.getBatThreshold();
             e.velocity_threshold = btn.getVelocityThreshold();
+            e.modifier_mask = btn.getModifierMask();
             return e;
         }
     };
@@ -123,6 +125,7 @@ namespace overlay::windows {
         std::string game_name;
         bool is_builtin = false;
         std::vector<TemplateButtonBinding> buttons;
+        std::vector<TemplateButtonBinding> modifier_buttons;
         std::vector<TemplateButtonBinding> keypad_buttons;
         std::vector<TemplateAnalogBinding> analogs;
         std::vector<TemplateLightBinding> lights;
@@ -150,6 +153,7 @@ namespace overlay::windows {
     bool save_user_template(
         const ControllerTemplate &tmpl,
         const bool save_buttons,
+        const bool save_modifiers,
         const bool save_keypads,
         const bool save_analogs,
         const bool save_lights);
