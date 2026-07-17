@@ -752,7 +752,7 @@ namespace overlay::windows {
 
                     // allocate patch manager
                     if (!patch_manager) {
-                        patch_manager.reset(new PatchManager(overlay));
+                        patch_manager.reset(new PatchManagerWindow(overlay));
                     }
 
                     // display patch manager
