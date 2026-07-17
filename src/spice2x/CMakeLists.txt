@@ -615,6 +615,12 @@ set(SOURCE_FILES ${SOURCE_FILES}
         overlay/windows/popn_sub.cpp
         overlay/windows/wnd_manager.cpp
 
+        # patcher
+        patcher/config.cpp
+        patcher/lifecycle.cpp
+        patcher/loader.cpp
+        patcher/runtime.cpp
+
         # external
         external/easywsclient/easywsclient.cpp
 

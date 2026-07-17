@@ -102,7 +102,7 @@
 #include "misc/wintouchemu.h"
 #include "overlay/overlay.h"
 #include "overlay/notifications.h"
-#include "overlay/windows/patch_manager.h"
+#include "patcher/patch_manager.h"
 #include "overlay/windows/iidx_seg.h"
 #include "overlay/windows/obs.h"
 #include "rawinput/rawinput.h"
@@ -889,7 +889,7 @@ int main_implementation(int argc, char *argv[]) {
             options[launcher::Options::ScreenResizeConfigPath].value_text();
     }
     if (options[launcher::Options::PatchManagerConfigPath].is_active()) {
-        overlay::windows::PATCH_MANAGER_CFG_PATH_OVERRIDE =
+        patcher::PATCH_MANAGER_CFG_PATH_OVERRIDE =
             options[launcher::Options::PatchManagerConfigPath].value_text();
     }
     if (options[launcher::Options::PathToAppConfig].is_active()) {
@@ -2517,10 +2517,8 @@ int main_implementation(int argc, char *argv[]) {
     // copy defaults to nvram
     avs::core::copy_defaults();
 
-    // prepare patches
-    {
-        overlay::windows::PatchManager patch_manager(nullptr, false);
-    }
+    // prepare patches (registers the DLL-load notification before the game DLL loads)
+    patcher::init();
 
     // load game
     avs::game::load_dll();
@@ -2648,9 +2646,7 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // apply patches
-    {
-        overlay::windows::PatchManager patch_manager(nullptr, true);
-    }
+    patcher::apply_patches_on_start();
 
     // load AVS-EA3
     avs::ea3::boot(easrv_port, easrv_maint, easrv_smart);
