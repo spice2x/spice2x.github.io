@@ -65,6 +65,9 @@ void rawinput::RawInputManager::rawinput_device_add(Device *device) {
 
 void rawinput::RawInputManager::rawinput_device_remove(Device *device) {
     std::lock_guard<std::mutex> lock(this->rawinput_devices_mutex);
+
+    // teardown is shared by every device type, and handles can be reused; only erase
+    // an entry that still belongs to this exact RawInput device
     auto it = this->rawinput_devices.find(device->handle);
     if (it != this->rawinput_devices.end() && it->second == device) {
         this->rawinput_devices.erase(it);
