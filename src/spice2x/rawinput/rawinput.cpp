@@ -44,18 +44,40 @@ namespace rawinput {
     bool OS_WINDOW_ACTIVE = false;
 }
 
-// when replacing a device slot in place, keep the old slot's per-device mutexes
-// instead of the freshly allocated pair on `replacement`. their addresses stay
-// stable, so a thread still holding a snapshot pointer to the slot (e.g. the
-// output thread blocked on mutex_out, which is taken without devices_mutex)
-// never locks freed memory. the freshly allocated pair is freed here rather
-// than leaking the old one. the slot must already be destructed so both
-// mutexes are unlocked
-void rawinput::RawInputManager::reuse_device_mutexes(Device &replacement, const Device &existing) {
-    delete replacement.mutex;
-    delete replacement.mutex_out;
-    replacement.mutex = existing.mutex;
-    replacement.mutex_out = existing.mutex_out;
+// serialize replacement with input and output users, matching teardown lock order
+void rawinput::RawInputManager::replace_device_slot(Device &existing, Device &replacement) {
+    if (existing.mutex == nullptr || existing.mutex_out == nullptr) {
+        log_fatal("rawinput", "existing device slot has no mutexes");
+    }
+    if (replacement.mutex != nullptr || replacement.mutex_out != nullptr) {
+        log_fatal("rawinput", "replacement device already has mutexes");
+    }
+    std::lock_guard<std::mutex> lock_out(*existing.mutex_out);
+    std::lock_guard<std::mutex> lock(*existing.mutex);
+
+    // copy every field except the stable mutex pointers: snapshot users may be blocked
+    // on those exact locks without devices_mutex, so rewriting the pointers could send a
+    // waiter to a different mutex. when adding a field, add it here too (see device.h)
+    existing.id = replacement.id;
+    existing.name = std::move(replacement.name);
+    existing.desc = std::move(replacement.desc);
+    existing.handle = replacement.handle;
+    existing.type = replacement.type;
+    existing.info = replacement.info;
+    existing.updated = replacement.updated;
+    existing.output_pending = replacement.output_pending;
+    existing.output_enabled = replacement.output_enabled;
+    existing.mouseInfo = replacement.mouseInfo;
+    existing.keyboardInfo = replacement.keyboardInfo;
+    existing.hidInfo = replacement.hidInfo;
+    existing.midiInfo = replacement.midiInfo;
+    existing.sextetInfo = replacement.sextetInfo;
+    existing.piuioDev = replacement.piuioDev;
+    existing.smxstageInfo = replacement.smxstageInfo;
+    existing.smxdedicabInfo = replacement.smxdedicabInfo;
+    existing.input_time = replacement.input_time;
+    existing.input_hz = replacement.input_hz;
+    existing.input_hz_max = replacement.input_hz_max;
 }
 
 rawinput::RawInputManager::RawInputManager() {
@@ -277,8 +299,6 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
     new_device.name = device_name;
     new_device.desc = device_description;
     new_device.info = device_info;
-    new_device.mutex = new std::mutex();
-    new_device.mutex_out = new std::mutex();
     new_device.input_time = get_performance_seconds();
     switch (device->dwType) {
         case RIM_TYPEMOUSE:
@@ -805,10 +825,10 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
             // carry over old device ID
             new_device.id = prev_device.id;
 
-            // destruct and replace, reusing the slot's existing mutexes
+            // destruct and replace the slot in place under its locks
             this->devices_destruct(&prev_device);
-            reuse_device_mutexes(new_device, prev_device);
-            prev_device = new_device;
+            replace_device_slot(prev_device, new_device);
+            this->rawinput_handles.add(&prev_device);
 
             // notify change
             for (auto &cb : this->callback_change) {
@@ -820,7 +840,10 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
     }
 
     // add device to list
+    new_device.mutex = new std::mutex();
+    new_device.mutex_out = new std::mutex();
     auto &added_device = this->devices.emplace_back(new_device);
+    this->rawinput_handles.add(&added_device);
     if (log) {
         log_info("rawinput", "added device: {} / {}", added_device.desc, added_device.name);
     }
@@ -951,8 +974,6 @@ void rawinput::RawInputManager::devices_scan_xinput() {
         device.name = xinput::get_device_desc(player);
         device.desc = fmt::format("XInput Gamepad P{}", player + 1);
         device.handle = reinterpret_cast<HANDLE>(player);
-        device.mutex = new std::mutex();
-        device.mutex_out = new std::mutex();
         return device;
     };
 
@@ -969,11 +990,10 @@ void rawinput::RawInputManager::devices_scan_xinput() {
                 log_info("rawinput", "overwriting previously destroyed XInput device: {}", prev_device.name);
                 const auto old_id = prev_device.id;
 
-                // replace in place, reusing the slot's existing mutexes
+                // replace the slot in place under its locks
                 auto replacement = create_device(player);
-                reuse_device_mutexes(replacement, prev_device);
-                prev_device = replacement;
-                prev_device.id = old_id;
+                replacement.id = old_id;
+                replace_device_slot(prev_device, replacement);
 
                 // notify change
                 for (auto &cb : this->callback_change) {
@@ -989,6 +1009,8 @@ void rawinput::RawInputManager::devices_scan_xinput() {
             log_info("rawinput", "adding new XInput device: player {}", player + 1);
             auto new_xinput_device = create_device(player);
             new_xinput_device.id = this->devices.size() + 1;
+            new_xinput_device.mutex = new std::mutex();
+            new_xinput_device.mutex_out = new std::mutex();
             auto &device = this->devices.emplace_back(new_xinput_device);
 
             // notify add
@@ -1438,6 +1460,8 @@ void rawinput::RawInputManager::devices_destruct() {
 
 void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
 
+    this->rawinput_handles.remove(device);
+
     // check if destroyed
     if (device->type == DESTROYED) {
         return;
@@ -1454,21 +1478,20 @@ void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
     // devices_mutex, so mutex_out is what actually serializes it against us
     std::lock_guard<std::mutex> lock_out(*device->mutex_out);
 
-    // mark as destroyed
-    auto device_type = device->type;
-    device->type = DESTROYED;
+    // mark the device destroyed while synchronized with in-flight input
+    DeviceType device_type;
+    {
+        std::lock_guard<std::mutex> lock(*device->mutex);
+        device_type = device->type;
+        device->type = DESTROYED;
+    }
 
-    // notify change
+    // callbacks may lock the device mutex
     for (auto &cb : this->callback_change) {
         cb.f(cb.data, device);
     }
 
-    /*
-     * lock device
-     * note: this is an exception to only locking devices when we acquire them from the list
-     * callbacks could want to lock the mutex as well and it isn't recursive
-     * this also means the device must be unlocked before calling this function
-     */
+    // wait for input users before releasing device resources
     std::lock_guard<std::mutex> lock(*device->mutex);
 
     // close device handles
@@ -1561,20 +1584,12 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
             // find device
             HANDLE device_handle = data->header.hDevice;
-            // lock the device list so a concurrent scan can't mutate it while we iterate
-            std::lock_guard<std::recursive_mutex> devices_lock(ref->devices_mutex);
-            for (auto &device : ref->devices_get()) {
-
-                // skip if this is the wrong device
-                if (device.handle != device_handle) {
-                    continue;
-                }
+            auto acquired_device = ref->rawinput_handles.acquire(device_handle);
+            if (acquired_device.device != nullptr) {
+                auto &device = *acquired_device.device;
 
                 // get input time
                 const auto input_time = get_performance_seconds();
-
-                // lock device
-                device.mutex->lock();
 
                 // update hz
                 double diff_time = input_time - device.input_time;
@@ -1834,7 +1849,7 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
                                         USAGE usage = usages[usage_num] - button_caps.Range.UsageMin;
 
-                                        // guard against some buggy device sending an event for a usage below `UsageMin`
+                                        // guard against some buggy device sending an event for a usage below UsageMin
                                         if (usage < button_count) {
                                             new_states[usage] = true;
                                         }
@@ -1937,11 +1952,7 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                         break;
                 }
 
-                // free device
-                device.mutex->unlock();
-
-                // don't iterate through the other devices
-                break;
+                acquired_device.lock.unlock();
             }
             
             // update controller state ring buffers (DDR/MDXF)
@@ -1973,6 +1984,9 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
 void rawinput::RawInputManager::device_write_output(Device *device, bool only_updated) {
 
+    // lock device
+    std::lock_guard<std::mutex> lock(*device->mutex_out);
+
     // check if output is enabled
     if (!device->output_enabled) {
         return;
@@ -1982,9 +1996,6 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
     if (only_updated && !device->output_pending) {
         return;
     }
-
-    // lock device
-    device->mutex_out->lock();
 
     // mark device as updated
     device->output_pending = false;
@@ -2208,8 +2219,6 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
             break;
     }
 
-    // unlock device
-    device->mutex_out->unlock();
 }
 
 void rawinput::RawInputManager::devices_flush_output(bool optimized) {

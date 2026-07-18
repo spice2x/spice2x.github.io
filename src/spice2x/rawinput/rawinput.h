@@ -12,6 +12,7 @@
 
 #include "device.h"
 #include "hotplug.h"
+#include "rawinput_handles.h"
 #include "rawinput/xinput.h"
 #include "util/scope_guard.h"
 
@@ -74,6 +75,9 @@ namespace rawinput {
         std::list<Device> devices;
         std::recursive_mutex devices_mutex;
 
+        // separate lookup isolated from devices_mutex for the latency-sensitive WM_INPUT path
+        RawInputHandles rawinput_handles;
+
         WNDCLASSEX input_hwnd_class {};
         std::thread *input_thread = nullptr;
         std::thread *midi_thread = nullptr;
@@ -134,10 +138,9 @@ namespace rawinput {
         static void CALLBACK input_midi_proc(HMIDIIN, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
         static DeviceInfo get_device_info(const std::string &device_name);
 
-        // shared by the rawinput / xinput / midi device scans when replacing a slot
-        // in place; keeps the existing slot's mutex pair so snapshot pointers held by
-        // other threads stay valid (see the definition in rawinput.cpp)
-        static void reuse_device_mutexes(Device &replacement, const Device &existing);
+        // replace an already-destructed slot in place, holding both device locks so
+        // concurrent pollers and the output thread never see a half-copied Device
+        static void replace_device_slot(Device &existing, Device &replacement);
 
     public:
 
@@ -193,6 +196,7 @@ namespace rawinput {
             std::lock_guard<std::recursive_mutex> lock(devices_mutex);
             for (auto &device : devices_get()) {
                 if (device.type == MIDI) {
+                    std::lock_guard<std::mutex> device_lock(*device.mutex);
                     device.midiInfo->freeze = freeze;
                     if (!freeze) {
                         for (unsigned short index = 0; index < device.midiInfo->states.size(); index++) {

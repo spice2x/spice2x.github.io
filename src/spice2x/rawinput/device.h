@@ -197,8 +197,8 @@ namespace rawinput {
         HANDLE handle = INVALID_HANDLE_VALUE;
         DeviceType type = UNKNOWN;
         DeviceInfo info;
-        std::mutex *mutex;
-        std::mutex *mutex_out;
+        std::mutex *mutex = nullptr;
+        std::mutex *mutex_out = nullptr;
         bool updated = true;
         bool output_pending = true;
         bool output_enabled = false;
@@ -213,5 +213,7 @@ namespace rawinput {
         double input_time = 0.0;
         double input_hz = 0.f;
         double input_hz_max = 0.f;
+
+        // when adding or removing a field, update replace_device_slot to match
     };
 }
