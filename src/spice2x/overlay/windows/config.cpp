@@ -1922,34 +1922,62 @@ namespace overlay::windows {
 
     bool Config::build_modifier_picker(Button &button) {
         bool changed = false;
+        auto modifier_mask = button.getModifierMask();
 
+        // collect live states and build the closed dropdown summary
+        uint8_t pressed_modifier_mask = 0;
         std::string modifier_preview;
+        auto *modifier_buttons = games::get_buttons_modifiers(this->games_selected_name);
         for (uint8_t index = 0; index < games::ModifierButtons::Size; index++) {
-            if ((button.getModifierMask() & (UINT8_C(1) << index)) == 0) {
-                continue;
+            const uint8_t modifier_bit = UINT8_C(1) << index;
+            if (modifier_buttons && index < modifier_buttons->size() &&
+                GameAPI::Buttons::getState(RI_MGR, modifier_buttons->at(index))) {
+                pressed_modifier_mask |= modifier_bit;
             }
-            modifier_preview += modifier_preview.empty() ? "Mod " : "+";
-            modifier_preview += std::to_string(index + 1);
+            if ((modifier_mask & modifier_bit) != 0) {
+                modifier_preview += modifier_preview.empty() ? "Mod " : "+";
+                modifier_preview += std::to_string(index + 1);
+            }
         }
         if (modifier_preview.empty()) {
             modifier_preview = "None";
         }
 
-        if (ImGui::BeginCombo("Modifiers", modifier_preview.c_str())) {
+        // color the combo when all requirements are held, but keep its label unchanged
+        const bool all_modifiers_pressed = modifier_mask != 0 &&
+            (pressed_modifier_mask & modifier_mask) == modifier_mask;
+        if (all_modifiers_pressed) {
+            ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
+        }
+        const bool combo_open = ImGui::BeginCombo("##Modifiers", modifier_preview.c_str());
+        if (all_modifiers_pressed) {
+            ImGui::PopStyleColor();
+        }
+
+        // update requirements while highlighting modifier sources that are currently pressed
+        if (combo_open) {
             for (uint8_t index = 0; index < games::ModifierButtons::Size; index++) {
                 const uint8_t modifier_bit = UINT8_C(1) << index;
-                bool required = (button.getModifierMask() & modifier_bit) != 0;
+                bool required = (modifier_mask & modifier_bit) != 0;
                 const auto label = fmt::format("Modifier {}", index + 1);
-                if (ImGui::Checkbox(label.c_str(), &required)) {
-                    const auto modifier_mask = static_cast<uint8_t>(required ?
-                        button.getModifierMask() | modifier_bit :
-                        button.getModifierMask() & ~modifier_bit);
+                const bool modifier_pressed = (pressed_modifier_mask & modifier_bit) != 0;
+                if (modifier_pressed) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
+                }
+                const bool requirement_changed = ImGui::Checkbox(label.c_str(), &required);
+                if (modifier_pressed) {
+                    ImGui::PopStyleColor();
+                }
+                if (requirement_changed) {
+                    modifier_mask ^= modifier_bit;
                     button.setModifierMask(modifier_mask);
                     changed = true;
                 }
             }
             ImGui::EndCombo();
         }
+        ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::TextUnformatted("Modifiers");
 
         return changed;
     }
@@ -2310,16 +2338,9 @@ namespace overlay::windows {
                 ImGui::TextUnformatted("\nPreview");
                 ImGui::Separator();
                 if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.7f, 0.f, 1.f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, TEXT_COLOR_GREEN);
                 }
-                // this doesn't account for utf-8 but whatever
-                if (button_display.size() >= 40) {
-                    ImGui::Text("%.37s...", button_display.c_str());
-                    ImGui::SameLine();
-                    ImGui::HelpMarker(button_display.c_str());
-                } else {
-                    ImGui::TextUnformatted(button_display.c_str());
-                }
+                ImGui::TextTruncated(button_display, ImGui::GetContentRegionAvail().x);
                 ImGui::TextUnformatted("\n");
                 if (button_state == GameAPI::Buttons::State::BUTTON_PRESSED) {
                     ImGui::PopStyleColor();

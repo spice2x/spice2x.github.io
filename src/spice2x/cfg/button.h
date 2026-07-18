@@ -66,6 +66,7 @@ private:
     unsigned short velocity_threshold = 0;
 
     std::string getMidiNoteString();
+    std::string getBindingDisplayString(rawinput::RawInputManager *manager);
 
 public:
     std::string getVKeyString();

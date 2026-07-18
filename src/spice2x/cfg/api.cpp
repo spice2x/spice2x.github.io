@@ -119,7 +119,7 @@ GameAPI::Buttons::State GameAPI::Buttons::get_button_state(
         // note that modifiers cannot process MIDI as the logic is written
         // below, since MIDI buttons are event-based (on event, off event, etc)
         // and cannot be correctly handled by a simple early return
-        // there is not explicit check for MIDI here, but the UI should have
+        // there is no explicit check for MIDI here, but the UI should have
         // prevented it
         if (check_modifiers && !modifiers_pressed(manager, *current_button)) {
             button_count++;
