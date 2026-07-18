@@ -1356,8 +1356,9 @@ namespace overlay::windows {
             if (check_devices) {
                 // iterate updated devices
                 auto updated_devices = RI_MGR->devices_get_updated();
+                bool binding_finished = false;
                 for (auto device : updated_devices) {
-                    std::lock_guard<std::mutex> lock(*device->mutex);
+                    std::unique_lock<std::mutex> lock(*device->mutex);
                     switch (device->type) {
                         case rawinput::MOUSE: {
                             auto mouse = device->mouseInfo;
@@ -1374,7 +1375,7 @@ namespace overlay::windows {
                                     ImGui::CloseCurrentPopup();
                                     buttons_bind_active = false;
                                     inc_buttons_many_index(button_it_max);
-                                    RI_MGR->devices_midi_freeze(false);
+                                    binding_finished = true;
                                     break;
                                 }
                             }
@@ -1393,7 +1394,7 @@ namespace overlay::windows {
                                         buttons_bind_active = false;
                                         buttons_many_index = -1;
                                         buttons_many_active = false;
-                                        RI_MGR->devices_midi_freeze(false);
+                                        binding_finished = true;
                                         break;
                                     }
 
@@ -1406,7 +1407,7 @@ namespace overlay::windows {
                                     ImGui::CloseCurrentPopup();
                                     buttons_bind_active = false;
                                     inc_buttons_many_index(button_it_max);
-                                    RI_MGR->devices_midi_freeze(false);
+                                    binding_finished = true;
                                     break;
                                 }
                             }
@@ -1542,7 +1543,7 @@ namespace overlay::windows {
                                 ImGui::CloseCurrentPopup();
                                 buttons_bind_active = false;
                                 inc_buttons_many_index(button_it_max);
-                                RI_MGR->devices_midi_freeze(false);
+                                binding_finished = true;
                             }
 
                             break;
@@ -1590,7 +1591,7 @@ namespace overlay::windows {
                                     ImGui::CloseCurrentPopup();
                                     buttons_bind_active = false;
                                     inc_buttons_many_index(button_it_max);
-                                    RI_MGR->devices_midi_freeze(false);
+                                    binding_finished = true;
                                     break;
                                 }
                             }
@@ -1614,7 +1615,7 @@ namespace overlay::windows {
                                         ImGui::CloseCurrentPopup();
                                         buttons_bind_active = false;
                                         inc_buttons_many_index(button_it_max);
-                                        RI_MGR->devices_midi_freeze(false);
+                                        binding_finished = true;
                                         break;
                                     }
                                 } else {
@@ -1641,7 +1642,7 @@ namespace overlay::windows {
                                         ImGui::CloseCurrentPopup();
                                         buttons_bind_active = false;
                                         inc_buttons_many_index(button_it_max);
-                                        RI_MGR->devices_midi_freeze(false);
+                                        binding_finished = true;
                                         break;
                                     }
                                 } else {
@@ -1668,7 +1669,7 @@ namespace overlay::windows {
                                         ImGui::CloseCurrentPopup();
                                         buttons_bind_active = false;
                                         inc_buttons_many_index(button_it_max);
-                                        RI_MGR->devices_midi_freeze(false);
+                                        binding_finished = true;
                                         break;
                                     }
                                 } else {
@@ -1694,7 +1695,7 @@ namespace overlay::windows {
                                     ImGui::CloseCurrentPopup();
                                     buttons_bind_active = false;
                                     inc_buttons_many_index(button_it_max);
-                                    RI_MGR->devices_midi_freeze(false);
+                                    binding_finished = true;
                                     break;
                                 }
 
@@ -1715,7 +1716,7 @@ namespace overlay::windows {
                                     ImGui::CloseCurrentPopup();
                                     buttons_bind_active = false;
                                     inc_buttons_many_index(button_it_max);
-                                    RI_MGR->devices_midi_freeze(false);
+                                    binding_finished = true;
                                     break;
                                 }
                             }
@@ -1745,7 +1746,7 @@ namespace overlay::windows {
                                     ImGui::CloseCurrentPopup();
                                     buttons_bind_active = false;
                                     inc_buttons_many_index(button_it_max);
-                                    RI_MGR->devices_midi_freeze(false);
+                                    binding_finished = true;
                                     break;
                                 }
                             }
@@ -1755,6 +1756,13 @@ namespace overlay::windows {
                         default:
                             break;
                     }
+                    lock.unlock();
+                    if (binding_finished) {
+                        break;
+                    }
+                }
+                if (binding_finished) {
+                    RI_MGR->devices_midi_freeze(false);
                 }
             }
 
