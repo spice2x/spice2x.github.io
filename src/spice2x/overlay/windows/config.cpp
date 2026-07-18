@@ -623,7 +623,10 @@ namespace overlay::windows {
                     ImGui::TextWrapped(
                         "Bind modifier buttons below, then open Edit properties on any button binding "
                         "(except MIDI) to select the required modifiers. This allows you to configure "
-                        "button combinations.");
+                        "button combinations.\n\n"
+                        "For example, if you bind the Start button as Modifier 1, and then bind "
+                        "the A button for Service Coin and set it to require Modifier 1, you press "
+                        "Start + A to trigger Service Coin.");
                     ImGui::TextUnformatted("");
                     this->build_buttons(
                         "Modifier", games::get_buttons_modifiers(this->games_selected_name));
@@ -1385,6 +1388,7 @@ namespace overlay::windows {
                                     button->setDeviceIdentifier(device->name);
                                     button->setVKey(static_cast<unsigned short>(i));
                                     button->setAnalogType(BAT_NONE);
+                                    button->setModifierMask(0);
                                     ::Config::getInstance().updateBinding(
                                             games_list[games_selected], *button, alt_index - 1);
                                     ImGui::CloseCurrentPopup();
@@ -1417,6 +1421,7 @@ namespace overlay::windows {
                                     button->setDeviceIdentifier(device->name);
                                     button->setVKey(vkey);
                                     button->setAnalogType(BAT_NONE);
+                                    button->setModifierMask(0);
                                     ::Config::getInstance().updateBinding(
                                             games_list[games_selected], *button, alt_index - 1);
                                     ImGui::CloseCurrentPopup();
@@ -1552,6 +1557,7 @@ namespace overlay::windows {
                                 button->setDebounceDown(0.0);
                                 button->setBatThreshold(0);
                                 button->setVelocityThreshold(0);
+                                button->setModifierMask(0);
                                 ::Config::getInstance().updateBinding(
                                         games_list[games_selected], *button,
                                         alt_index - 1);
@@ -1597,6 +1603,7 @@ namespace overlay::windows {
                                     button->setDebounceUp(0.0);
                                     button->setDebounceDown(0.0);
                                     button->setBatThreshold(0);
+                                    button->setModifierMask(0);
                                     // same idea as setMidiVKey - keep velocity threshold consistent
                                     button->setVelocityThreshold(
                                         device->midiInfo->v2_velocity_threshold[button->getVKey()]);
@@ -1624,6 +1631,7 @@ namespace overlay::windows {
                                         button->setDebounceDown(0.0);
                                         button->setBatThreshold(0);
                                         button->setVelocityThreshold(0);
+                                        button->setModifierMask(0);
                                         ::Config::getInstance().updateBinding(
                                                 games_list[games_selected], *button,
                                                 alt_index - 1);
@@ -1651,6 +1659,7 @@ namespace overlay::windows {
                                         button->setDebounceDown(0.0);
                                         button->setBatThreshold(0);
                                         button->setVelocityThreshold(0);
+                                        button->setModifierMask(0);
                                         ::Config::getInstance().updateBinding(
                                                 games_list[games_selected], *button,
                                                 alt_index - 1);
@@ -1678,6 +1687,7 @@ namespace overlay::windows {
                                         button->setDebounceDown(0.0);
                                         button->setBatThreshold(0);
                                         button->setVelocityThreshold(0);
+                                        button->setModifierMask(0);
                                         ::Config::getInstance().updateBinding(
                                                 games_list[games_selected], *button,
                                                 alt_index - 1);
@@ -1704,6 +1714,7 @@ namespace overlay::windows {
                                     button->setDebounceDown(0.0);
                                     button->setBatThreshold(0);
                                     button->setVelocityThreshold(0);
+                                    button->setModifierMask(0);
                                     ::Config::getInstance().updateBinding(
                                             games_list[games_selected], *button,
                                             alt_index - 1);
@@ -1725,6 +1736,7 @@ namespace overlay::windows {
                                     button->setDebounceDown(0.0);
                                     button->setBatThreshold(0);
                                     button->setVelocityThreshold(0);
+                                    button->setModifierMask(0);
                                     ::Config::getInstance().updateBinding(
                                             games_list[games_selected], *button,
                                             alt_index - 1);
@@ -1755,6 +1767,7 @@ namespace overlay::windows {
                                     button->setDebounceDown(0.0);
                                     button->setBatThreshold(0);
                                     button->setVelocityThreshold(0);
+                                    button->setModifierMask(0);
                                     ::Config::getInstance().updateBinding(
                                             games_list[games_selected], *button,
                                             alt_index - 1);
@@ -1831,6 +1844,7 @@ namespace overlay::windows {
                 if (RI_MGR->XINPUT_MGR->get_any_button_pressed(xinput)) {
                     button->setDeviceIdentifier(xinput::get_device_desc(xinput.player));
                     button->setVKey(static_cast<uint16_t>(xinput.button));
+                    button->setModifierMask(0);
                     ::Config::getInstance().updateBinding(
                             games_list[games_selected], *button, alt_index - 1);
                     inc_buttons_many_index(button_it_max);
@@ -1887,6 +1901,7 @@ namespace overlay::windows {
                         button->setDebounceDown(0.0);
                         button->setBatThreshold(0);
                         button->setVelocityThreshold(0);
+                        button->setModifierMask(0);
                         ::Config::getInstance().updateBinding(
                                 games_list[games_selected], *button,
                                 alt_index - 1);
