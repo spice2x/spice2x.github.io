@@ -74,6 +74,14 @@ namespace patcher {
         bool fatal_error = false;
     };
 
+    struct PatchGroup {
+        std::string id;
+        std::string name;
+        std::string description;
+        std::string caution;
+        std::string name_in_lower_case;
+    };
+
     struct PatchData {
         bool enabled;
         std::string game_code;
@@ -86,6 +94,7 @@ namespace patcher {
         std::vector<MemoryPatch> patches_memory;
         std::vector<UnionPatch> patches_union;
         NumberPatch patch_number;
+        PatchGroup group;
         PatchStatus last_status;
         std::string hash;
         bool unverified = false;
