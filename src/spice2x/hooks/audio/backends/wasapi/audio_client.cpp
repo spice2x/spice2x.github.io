@@ -302,6 +302,7 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
                 device_format->nChannels * (device_format->wBitsPerSample / 8));
     }
 
+    hooks::audio::set_active_client(this, "WrappedIAudioClient::Initialize");
     return ret;
 }
 HRESULT STDMETHODCALLTYPE WrappedIAudioClient::GetBufferSize(UINT32 *pNumBufferFrames) {
@@ -651,5 +652,6 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::InitializeSharedAudioStream(
     log_info("audio::wasapi", "IAudioClient3::InitializeSharedAudioStream success, hr={}", FMT_HRESULT(ret));
     copy_wave_format(&hooks::audio::FORMAT, pFormat);
     copy_wave_format(&this->device_format, pFormat);
+    hooks::audio::set_active_client(this, "WrappedIAudioClient::InitializeSharedAudioStream");
     return ret;
 }
