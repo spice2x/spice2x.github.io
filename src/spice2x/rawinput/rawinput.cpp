@@ -58,6 +58,19 @@ void rawinput::RawInputManager::reuse_device_mutexes(Device &replacement, const 
     replacement.mutex_out = existing.mutex_out;
 }
 
+void rawinput::RawInputManager::rawinput_device_add(Device *device) {
+    std::lock_guard<std::mutex> lock(this->rawinput_devices_mutex);
+    this->rawinput_devices[device->handle] = device;
+}
+
+void rawinput::RawInputManager::rawinput_device_remove(Device *device) {
+    std::lock_guard<std::mutex> lock(this->rawinput_devices_mutex);
+    auto it = this->rawinput_devices.find(device->handle);
+    if (it != this->rawinput_devices.end() && it->second == device) {
+        this->rawinput_devices.erase(it);
+    }
+}
+
 rawinput::RawInputManager::RawInputManager() {
 
     XINPUT_MGR = std::make_unique<xinput::XInputManager>();
@@ -809,6 +822,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
             this->devices_destruct(&prev_device);
             reuse_device_mutexes(new_device, prev_device);
             prev_device = new_device;
+            this->rawinput_device_add(&prev_device);
 
             // notify change
             for (auto &cb : this->callback_change) {
@@ -821,6 +835,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
 
     // add device to list
     auto &added_device = this->devices.emplace_back(new_device);
+    this->rawinput_device_add(&added_device);
     if (log) {
         log_info("rawinput", "added device: {} / {}", added_device.desc, added_device.name);
     }
@@ -1438,6 +1453,8 @@ void rawinput::RawInputManager::devices_destruct() {
 
 void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
 
+    this->rawinput_device_remove(device);
+
     // check if destroyed
     if (device->type == DESTROYED) {
         return;
@@ -1454,21 +1471,20 @@ void rawinput::RawInputManager::devices_destruct(Device *device, bool log) {
     // devices_mutex, so mutex_out is what actually serializes it against us
     std::lock_guard<std::mutex> lock_out(*device->mutex_out);
 
-    // mark as destroyed
-    auto device_type = device->type;
-    device->type = DESTROYED;
+    // mark the device destroyed while synchronized with in-flight input
+    DeviceType device_type;
+    {
+        std::lock_guard<std::mutex> lock(*device->mutex);
+        device_type = device->type;
+        device->type = DESTROYED;
+    }
 
-    // notify change
+    // callbacks may lock the device mutex
     for (auto &cb : this->callback_change) {
         cb.f(cb.data, device);
     }
 
-    /*
-     * lock device
-     * note: this is an exception to only locking devices when we acquire them from the list
-     * callbacks could want to lock the mutex as well and it isn't recursive
-     * this also means the device must be unlocked before calling this function
-     */
+    // wait for input users before releasing device resources
     std::lock_guard<std::mutex> lock(*device->mutex);
 
     // close device handles
@@ -1561,20 +1577,17 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
             // find device
             HANDLE device_handle = data->header.hDevice;
-            // lock the device list so a concurrent scan can't mutate it while we iterate
-            std::lock_guard<std::recursive_mutex> devices_lock(ref->devices_mutex);
-            for (auto &device : ref->devices_get()) {
-
-                // skip if this is the wrong device
-                if (device.handle != device_handle) {
-                    continue;
-                }
+            std::unique_lock<std::mutex> rawinput_devices_lock(ref->rawinput_devices_mutex);
+            auto device_it = ref->rawinput_devices.find(device_handle);
+            if (device_it != ref->rawinput_devices.end()) {
+                auto &device = *device_it->second;
 
                 // get input time
                 const auto input_time = get_performance_seconds();
 
-                // lock device
-                device.mutex->lock();
+                // lock the device before releasing the index so teardown cannot replace its resources
+                std::lock_guard<std::mutex> device_lock(*device.mutex);
+                rawinput_devices_lock.unlock();
 
                 // update hz
                 double diff_time = input_time - device.input_time;
@@ -1937,11 +1950,9 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                         break;
                 }
 
-                // free device
-                device.mutex->unlock();
-
-                // don't iterate through the other devices
-                break;
+            }
+            if (rawinput_devices_lock.owns_lock()) {
+                rawinput_devices_lock.unlock();
             }
             
             // update controller state ring buffers (DDR/MDXF)
