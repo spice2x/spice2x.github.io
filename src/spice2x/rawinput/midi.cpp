@@ -238,8 +238,6 @@ void rawinput::RawInputManager::devices_scan_midi() {
         midi_device.name = midi_identifier;
         midi_device.desc = to_string(midi_device_caps.szPname);
         midi_device.info = midi_device_info;
-        midi_device.mutex = new std::mutex();
-        midi_device.mutex_out = new std::mutex();
         midi_device.midiInfo = midi_device_midi_info;
 
         // mutate the shared device list under lock (the slow WinMM calls above
@@ -256,10 +254,9 @@ void rawinput::RawInputManager::devices_scan_midi() {
                 // carry over ID
                 midi_device.id = device.id;
 
-                // destruct and replace, reusing the slot's existing mutexes
+                // destruct and replace the slot in place under its locks
                 this->devices_destruct(&device);
-                reuse_device_mutexes(midi_device, device);
-                device = midi_device;
+                replace_device_slot(device, midi_device);
 
                 // notify change
                 for (auto &cb : this->callback_change) {
@@ -275,6 +272,8 @@ void rawinput::RawInputManager::devices_scan_midi() {
         }
 
         // add device to list
+        midi_device.mutex = new std::mutex();
+        midi_device.mutex_out = new std::mutex();
         auto &device = this->devices.emplace_back(midi_device);
 
         // notify add
