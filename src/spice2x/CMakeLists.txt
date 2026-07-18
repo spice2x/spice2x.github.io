@@ -626,6 +626,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
 
         # rawinput
         rawinput/rawinput.cpp
+        rawinput/rawinput_handles.cpp
         rawinput/midi.cpp
         rawinput/sextet.cpp
         rawinput/piuio.cpp

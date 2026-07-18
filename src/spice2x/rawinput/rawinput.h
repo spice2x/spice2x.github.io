@@ -5,7 +5,6 @@
 #include <condition_variable>
 #include <list>
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 
 #include <windows.h>
@@ -13,6 +12,7 @@
 
 #include "device.h"
 #include "hotplug.h"
+#include "rawinput_handles.h"
 #include "rawinput/xinput.h"
 #include "util/scope_guard.h"
 
@@ -75,9 +75,8 @@ namespace rawinput {
         std::list<Device> devices;
         std::recursive_mutex devices_mutex;
 
-        // separate lookup for the latency-sensitive WM_INPUT path
-        std::unordered_map<HANDLE, Device *> rawinput_devices;
-        std::mutex rawinput_devices_mutex;
+        // separate lookup isolated from devices_mutex for the latency-sensitive WM_INPUT path
+        RawInputHandles rawinput_handles;
 
         WNDCLASSEX input_hwnd_class {};
         std::thread *input_thread = nullptr;
@@ -138,9 +137,6 @@ namespace rawinput {
         static LRESULT CALLBACK input_wnd_proc(HWND, UINT, WPARAM, LPARAM);
         static void CALLBACK input_midi_proc(HMIDIIN, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
         static DeviceInfo get_device_info(const std::string &device_name);
-
-        void rawinput_device_add(Device *device);
-        void rawinput_device_remove(Device *device);
 
         // shared by the rawinput / xinput / midi device scans when replacing a slot
         // in place; keeps the existing slot's mutex pair so snapshot pointers held by
