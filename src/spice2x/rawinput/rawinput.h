@@ -196,6 +196,7 @@ namespace rawinput {
             std::lock_guard<std::recursive_mutex> lock(devices_mutex);
             for (auto &device : devices_get()) {
                 if (device.type == MIDI) {
+                    std::lock_guard<std::mutex> device_lock(*device.mutex);
                     device.midiInfo->freeze = freeze;
                     if (!freeze) {
                         for (unsigned short index = 0; index < device.midiInfo->states.size(); index++) {
