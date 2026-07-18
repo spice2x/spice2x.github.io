@@ -25,6 +25,7 @@ rawinput::RawInputHandles::AcquiredDevice rawinput::RawInputHandles::acquire(HAN
 
     auto *device = it->second;
 
-    // lock the device before releasing the index so teardown cannot invalidate it
+    // take the device mutex while index_lock is still held so teardown can't free it
+    // between the lookup and the lock
     return {device, std::unique_lock<std::mutex>(*device->mutex)};
 }

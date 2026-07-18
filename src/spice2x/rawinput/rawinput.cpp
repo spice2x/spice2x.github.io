@@ -55,8 +55,9 @@ void rawinput::RawInputManager::replace_device_slot(Device &existing, Device &re
     std::lock_guard<std::mutex> lock_out(*existing.mutex_out);
     std::lock_guard<std::mutex> lock(*existing.mutex);
 
-    // copy fields individually so the stable mutex pointers are never rewritten;
-    // snapshot users must dereference those pointers before they can acquire the locks
+    // copy every field except the stable mutex pointers: snapshot users may be blocked
+    // on those exact locks without devices_mutex, so rewriting the pointers could send a
+    // waiter to a different mutex. when adding a field, add it here too (see device.h)
     existing.id = replacement.id;
     existing.name = std::move(replacement.name);
     existing.desc = std::move(replacement.desc);

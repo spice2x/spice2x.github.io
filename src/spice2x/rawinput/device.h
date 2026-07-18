@@ -214,6 +214,6 @@ namespace rawinput {
         double input_hz = 0.f;
         double input_hz_max = 0.f;
 
-        // when adding new fields, ensure replace_device_slot can copy it
+        // when adding or removing a field, update replace_device_slot to match
     };
 }
