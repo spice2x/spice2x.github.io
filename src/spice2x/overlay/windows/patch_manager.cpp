@@ -44,6 +44,7 @@ namespace overlay::windows {
             }
         };
 
+        // aggregate child runtime and configuration state for the group UI
         PatchGroupState get_patch_group_state(const std::vector<size_t>& members) {
             PatchGroupState state;
             bool any_enabled = false;
@@ -86,6 +87,7 @@ namespace overlay::windows {
             return state;
         }
 
+        // index sorted patch members by their resolved group
         PatchGroupMembers collect_patch_group_members() {
             PatchGroupMembers group_members;
             for (const auto patch_index : patcher::patches_sorted) {
@@ -97,6 +99,7 @@ namespace overlay::windows {
             return group_members;
         }
 
+        // determine whether the group or any child matches the current filter
         PatchGroupSearchMatch get_patch_group_search_match(
             const patcher::PatchGroup& group,
             const std::vector<size_t>& members,
@@ -118,6 +121,7 @@ namespace overlay::windows {
             return match;
         }
 
+        // select the stripe color for a logical patch or group row
         ImU32 get_patch_row_background_color(size_t logical_row_index) {
             const auto color = logical_row_index % 2 == 0
                 ? ImGuiCol_TableRowBg
@@ -125,11 +129,13 @@ namespace overlay::windows {
             return ImGui::GetColorU32(color);
         }
 
+        // begin a physical table row using its logical row's stripe color
         void begin_patch_row(ImU32 row_background_color) {
             ImGui::TableNextRow();
             ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, row_background_color);
         }
 
+        // draw the tree branch connecting a group parent to a child row
         void draw_patch_group_child_guide(
             const ImVec2& cursor,
             float branch_x,
@@ -156,6 +162,7 @@ namespace overlay::windows {
                 guide_thickness);
         }
 
+        // reserve and render the group-child gutter in the current column
         void render_patch_group_child_gutter(bool last_group_child) {
             const auto& style = ImGui::GetStyle();
             const auto cursor = ImGui::GetCursorScreenPos();
@@ -169,11 +176,13 @@ namespace overlay::windows {
             ImGui::Dummy(ImVec2(gutter_width, ImGui::GetFrameHeight()));
         }
 
+        // constrain the next patch option control to the available column width
         void set_patch_option_width() {
             const float available_width = ImGui::GetContentRegionAvail().x;
             ImGui::SetNextItemWidth(available_width < 200.0f ? available_width : 200.0f);
         }
 
+        // show the group's help or caution marker
         void show_patch_group_tooltip(const patcher::PatchGroup& group) {
             if (!group.caution.empty()) {
                 ImGui::WarnTooltip(group.description.c_str(), group.caution.c_str());
@@ -182,6 +191,7 @@ namespace overlay::windows {
             }
         }
 
+        // append aggregate state details to the group's displayed name
         std::string get_patch_group_display_name(
             const patcher::PatchGroup& group,
             const PatchGroupState& state,
@@ -205,6 +215,7 @@ namespace overlay::windows {
             return name;
         }
 
+        // draw a square checkmark for mixed-state groups (neither checked or unchecked)
         void render_patch_group_mixed_checkbox_mark() {
             const auto check_min = ImGui::GetItemRectMin();
             const float check_size = ImGui::GetFrameHeight();
@@ -219,6 +230,8 @@ namespace overlay::windows {
                 ImGui::GetStyle().FrameRounding);
         }
 
+        // render a tri-state checkbox for groups
+        // user can interact with this to enable or disable all child patches
         bool render_patch_group_checkbox(
             const PatchGroupState& state,
             const std::vector<size_t>& members,
@@ -253,6 +266,7 @@ namespace overlay::windows {
             return true;
         }
 
+        // render aggregate status or error text beside the group checkbox
         void render_patch_group_status(const PatchGroupState& state, bool checked) {
             ImGui::SameLine();
             ImGui::AlignTextToFramePadding();
@@ -274,6 +288,7 @@ namespace overlay::windows {
             }
         }
 
+        // render a group parent row and report whether its children are expanded
         bool render_patch_group_parent(
             const patcher::PatchGroup& group,
             const std::vector<size_t>& members,
@@ -774,6 +789,7 @@ namespace overlay::windows {
                 // order (used by config save and hashing) is left untouched
                 update_sorted_patches();
 
+                // function for rendering a patch row, used for both grouped and ungrouped patches
                 const auto search_str_in_lower = strtolower(patch_name_filter);
                 size_t items_shown = 0;
                 auto render_patch = [&](size_t patch_index, ImU32 row_background_color,
@@ -964,8 +980,9 @@ namespace overlay::windows {
                 };
 
                 const auto group_members = collect_patch_group_members();
-
                 std::unordered_set<const patcher::PatchGroup*> rendered_groups;
+
+                // time to render each row using render_patch
                 for (const auto patch_index : patcher::patches_sorted) {
                     auto& patch = patcher::patches[patch_index];
                     const auto *group = patcher::find_patch_group(patch);
@@ -1016,6 +1033,7 @@ namespace overlay::windows {
                     ImGui::PopID();
                 }
 
+                // no patches, show empty table
                 if (items_shown == 0) {
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
