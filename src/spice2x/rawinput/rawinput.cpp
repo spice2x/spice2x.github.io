@@ -246,7 +246,8 @@ void rawinput::RawInputManager::devices_scan_rawinput(const std::string &device_
         return;
     }
 
-    // iterate devices
+    // hotplug gives us an interface path rather than a RawInput handle, so find its
+    // matching entry; an empty path means this is a full device scan
     for (UINT device_cur_index = 0; device_cur_index < device_no; device_cur_index++) {
         auto device = &device_list.get()[device_cur_index];
         if (device_name.length() == 0) {

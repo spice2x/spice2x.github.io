@@ -9,7 +9,9 @@ namespace rawinput {
     class HotplugManager {
     private:
         RawInputManager *ri_mgr;
-        HANDLE hotplug_hid;
+        HANDLE hotplug_hid = nullptr;
+        HANDLE hotplug_keyboard = nullptr;
+        HANDLE hotplug_mouse = nullptr;
 
     public:
         HotplugManager(RawInputManager *ri_mgr, HWND hwnd);

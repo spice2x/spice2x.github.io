@@ -4,6 +4,10 @@
 
 #include <dbt.h>
 #include <devguid.h>
+#include <hidclass.h>
+#include <ntddkbd.h>
+#include <ntddmou.h>
+#include <objbase.h>
 
 #include "misc/eamuse.h"
 #include "rawinput.h"
@@ -12,31 +16,42 @@
 
 namespace rawinput {
 
-    DEFINE_GUID(GUID_HID, 0x4D1E55B2L, 0xF16F, 0x11CF, 0x88, 0xCB, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30);
+    static bool is_rawinput_interface(const GUID &guid) {
+        return IsEqualGUID(guid, GUID_DEVINTERFACE_HID)
+            || IsEqualGUID(guid, GUID_DEVINTERFACE_KEYBOARD)
+            || IsEqualGUID(guid, GUID_DEVINTERFACE_MOUSE);
+    }
 
     HotplugManager::HotplugManager(RawInputManager *ri_mgr, HWND hWnd) : ri_mgr(ri_mgr) {
+        auto register_notification = [hWnd](const GUID &guid, const char *name) -> HANDLE {
+            DEV_BROADCAST_DEVICEINTERFACE settings {
+                    .dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE),
+                    .dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE,
+                    .dbcc_reserved = 0,
+                    .dbcc_classguid = guid,
+                    .dbcc_name = {0},
+            };
 
-        // init settings
-        DEV_BROADCAST_DEVICEINTERFACE settings_hid {
-                .dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE),
-                .dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE,
-                .dbcc_reserved = 0,
-                .dbcc_classguid = GUID_HID,
-                .dbcc_name = {0},
+            auto notification = RegisterDeviceNotification(hWnd, &settings, DEVICE_NOTIFY_WINDOW_HANDLE);
+            if (notification == nullptr) {
+                log_warning("hotplug", "failed to register {} notifications: {}", name, GetLastError());
+            }
+            return notification;
         };
 
         // register notifications
-        this->hotplug_hid = RegisterDeviceNotification(hWnd, &settings_hid, DEVICE_NOTIFY_WINDOW_HANDLE);
-        if (this->hotplug_hid == nullptr) {
-            log_warning("hotplug", "failed to register HID notifications: {}", GetLastError());
-        }
+        this->hotplug_hid = register_notification(GUID_DEVINTERFACE_HID, "HID");
+        this->hotplug_keyboard = register_notification(GUID_DEVINTERFACE_KEYBOARD, "keyboard");
+        this->hotplug_mouse = register_notification(GUID_DEVINTERFACE_MOUSE, "mouse");
     }
 
     HotplugManager::~HotplugManager() {
 
         // unregister notifications
-        if (this->hotplug_hid != nullptr) {
-            UnregisterDeviceNotification(this->hotplug_hid);
+        for (auto notification : {this->hotplug_hid, this->hotplug_keyboard, this->hotplug_mouse}) {
+            if (notification != nullptr) {
+                UnregisterDeviceNotification(notification);
+            }
         }
     }
 
@@ -54,11 +69,16 @@ namespace rawinput {
                     switch (hdr->dbch_devicetype) {
                         case DBT_DEVTYP_DEVICEINTERFACE: {
                             auto dev = (const DEV_BROADCAST_DEVICEINTERFACE *) hdr;
-                            this->ri_mgr->midi_scan_start();
 
-                            // check if class is not HID
-                            if (memcmp(&dev->dbcc_classguid, &GUID_HID, sizeof(GUID_HID)) != 0)
+                            // check if this is one of the registered RawInput interfaces
+                            if (!is_rawinput_interface(dev->dbcc_classguid)) {
                                 break;
+                            }
+
+                            // keyboard and mouse class events accompany the HID event, so scan MIDI only once
+                            if (IsEqualGUID(dev->dbcc_classguid, GUID_DEVINTERFACE_HID)) {
+                                this->ri_mgr->midi_scan_start();
+                            }
 
                             // hotplug
                             std::string name(dev->dbcc_name);
@@ -109,6 +129,9 @@ namespace rawinput {
                     switch (hdr->dbch_devicetype) {
                         case DBT_DEVTYP_DEVICEINTERFACE: {
                             auto dev = (DEV_BROADCAST_DEVICEINTERFACE*) hdr;
+                            if (!is_rawinput_interface(dev->dbcc_classguid)) {
+                                break;
+                            }
                             std::string name(dev->dbcc_name);
 
                             // destruct device
