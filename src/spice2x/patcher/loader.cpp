@@ -199,8 +199,13 @@ namespace patcher {
             log_warning("patchmanager", "embedded patches json file parse error: {}", static_cast<uint32_t>(error));
         }
 
+        const auto group_definitions = parse_patch_group_definitions(doc);
+
         // iterate patches
         for (auto &patch : doc.GetArray()) {
+            if (is_patch_group_definition(patch)) {
+                continue;
+            }
 
             // verfiy patch data
             auto name_it = patch.FindMember("name");
@@ -214,6 +219,9 @@ namespace patcher {
                         name_it->value.GetString());
                 continue;
             }
+            const std::string game_code(
+                game_code_it->value.GetString(),
+                game_code_it->value.GetStringLength());
             auto description_it = patch.FindMember("description");
             if (description_it == patch.MemberEnd() || !description_it->value.IsString()) {
                 log_warning("patchmanager", "failed to parse description for {}",
@@ -235,7 +243,7 @@ namespace patcher {
             // build patch data
             PatchData patch_data {
                 .enabled = false,
-                .game_code = game_code_it->value.GetString(),
+                .game_code = game_code,
                 .datecode_min = 0,
                 .datecode_max = 0,
                 .name = name_it->value.GetString(),
@@ -247,6 +255,11 @@ namespace patcher {
                 .patches_memory = std::vector<MemoryPatch>(),
                 .patches_union = std::vector<UnionPatch>(),
                 .patch_number = NumberPatch(),
+                .group_id = resolve_patch_group_id(
+                    patch,
+                    group_definitions,
+                    game_code,
+                    name_it->value.GetString()),
                 .last_status = PatchStatus::Disabled,
                 .hash = "",
                 .unverified = false,
@@ -533,6 +546,7 @@ namespace patcher {
             }
 
             // auto apply
+            register_patch_group(patch_data, group_definitions);
             if (apply_patches && setting_auto_apply && patch_data.enabled) {
                 print_auto_apply_status(patch_data);
                 apply_patch(patch_data, true);
@@ -663,6 +677,7 @@ namespace patcher {
 
         // clear old patches
         patches.clear();
+        patch_groups.clear();
         // drop the cached sorted view so the table rebuilds it (in default order)
         // on the next frame
         patches_sorted.clear();
@@ -719,6 +734,7 @@ namespace patcher {
         bool imported = false;
         // clear old patches
         patches.clear();
+        patch_groups.clear();
         patches_sorted.clear();
         url_fetch_errors.clear();
 
@@ -755,8 +771,13 @@ namespace patcher {
                 rapidjson::GetParseError_En(error));
         }
 
+        const auto group_definitions = parse_patch_group_definitions(doc);
+
         // iterate patches
         for (auto &patch : doc.GetArray()) {
+            if (is_patch_group_definition(patch)) {
+                continue;
+            }
 
             // verfiy patch data
             auto name_it = patch.FindMember("name");
@@ -778,6 +799,9 @@ namespace patcher {
                     name_it->value.GetString());
                 continue;
             }
+            const std::string game_code(
+                game_code_it->value.GetString(),
+                game_code_it->value.GetStringLength());
             auto description_it = patch.FindMember("description");
             if (description_it == patch.MemberEnd() || !description_it->value.IsString()) {
                 log_warning("patchmanager", "failed to parse description for {}",
@@ -809,7 +833,7 @@ namespace patcher {
             // build patch data
             PatchData patch_data {
                 .enabled = false,
-                .game_code = game_code_it->value.GetString(),
+                .game_code = game_code,
                 .datecode_min = 0,
                 .datecode_max = 0,
                 .name = name_it->value.GetString(),
@@ -821,6 +845,11 @@ namespace patcher {
                 .patches_memory = std::vector<MemoryPatch>(),
                 .patches_union = std::vector<UnionPatch>(),
                 .patch_number = NumberPatch(),
+                .group_id = resolve_patch_group_id(
+                    patch,
+                    group_definitions,
+                    game_code,
+                    name_it->value.GetString()),
                 .last_status = PatchStatus::Disabled,
                 .hash = "",
                 .unverified = false,
@@ -1264,6 +1293,7 @@ namespace patcher {
             }
 
             // auto apply
+            register_patch_group(patch_data, group_definitions);
             if (apply_patches && setting_auto_apply && patch_data.enabled) {
                 print_auto_apply_status(patch_data);
                 apply_patch(patch_data, true);

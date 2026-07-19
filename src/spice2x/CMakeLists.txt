@@ -619,6 +619,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         patcher/config.cpp
         patcher/lifecycle.cpp
         patcher/loader.cpp
+        patcher/loader_group.cpp
         patcher/runtime.cpp
 
         # external

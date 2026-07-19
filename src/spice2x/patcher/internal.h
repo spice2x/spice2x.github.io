@@ -1,5 +1,8 @@
 #pragma once
 
+#include <map>
+#include <utility>
+
 #include "patch_manager.h"
 #include "external/rapidjson/document.h"
 #include "util/nt_loader.h"
@@ -11,6 +14,7 @@ namespace patcher {
     extern std::vector<std::string> setting_patches_enabled;
     extern std::map<std::string, std::string> setting_union_patches_enabled;
     extern std::map<std::string, int64_t> setting_int_patches_enabled;
+    extern std::map<std::pair<std::string, std::string>, PatchGroup> patch_groups;
     extern std::filesystem::path LOCAL_PATCHES_PATH;
     extern std::map<std::string, std::vector<std::string>> EXTRA_DLLS;
     extern bool ldr_registered;
@@ -28,6 +32,17 @@ namespace patcher {
     bool load_from_patches_json(bool apply_patches);
     void load_embedded_patches(bool apply_patches);
     bool import_remote_patches_for_dll(const std::string& url, const std::string& dll_name);
+    bool is_patch_group_definition(const rapidjson::Value& patch);
+    std::map<std::pair<std::string, std::string>, PatchGroup> parse_patch_group_definitions(
+        const rapidjson::Document& doc);
+    std::string resolve_patch_group_id(
+        const rapidjson::Value& patch,
+        const std::map<std::pair<std::string, std::string>, PatchGroup>& groups,
+        const std::string& game_code,
+        const char *patch_name);
+    void register_patch_group(
+        PatchData& patch,
+        const std::map<std::pair<std::string, std::string>, PatchGroup>& definitions);
     VOID CALLBACK loader_notification(ULONG reason, PCLDR_DLL_NOTIFICATION_DATA data, PVOID context);
 
     std::string patch_hash(PatchData& patch);
