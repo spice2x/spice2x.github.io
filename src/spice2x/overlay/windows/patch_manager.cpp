@@ -1055,8 +1055,10 @@ namespace overlay::windows {
         };
 
         PatchGroupMembers group_members;
+        std::vector<const patcher::PatchGroup*> groups_by_patch(patcher::patches.size());
         for (size_t i = 0; i < patcher::patches.size(); i++) {
             const auto *group = patcher::find_patch_group(patcher::patches[i]);
+            groups_by_patch[i] = group;
             if (group) {
                 group_members[group].push_back(i);
             }
@@ -1069,7 +1071,7 @@ namespace overlay::windows {
         std::unordered_set<const patcher::PatchGroup*> emitted_groups;
         for (size_t i = 0; i < patcher::patches.size(); i++) {
             const auto& patch = patcher::patches[i];
-            const auto *group = patcher::find_patch_group(patch);
+            const auto *group = groups_by_patch[i];
             if (!group) {
                 sort_items.push_back({
                     .members = {i},

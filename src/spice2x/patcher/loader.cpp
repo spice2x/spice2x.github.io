@@ -199,7 +199,7 @@ namespace patcher {
             log_warning("patchmanager", "embedded patches json file parse error: {}", static_cast<uint32_t>(error));
         }
 
-        const auto patch_groups = parse_patch_group_definitions(doc);
+        const auto group_definitions = parse_patch_group_definitions(doc);
 
         // iterate patches
         for (auto &patch : doc.GetArray()) {
@@ -257,7 +257,7 @@ namespace patcher {
                 .patch_number = NumberPatch(),
                 .group_id = resolve_patch_group_id(
                     patch,
-                    patch_groups,
+                    group_definitions,
                     game_code,
                     name_it->value.GetString()),
                 .last_status = PatchStatus::Disabled,
@@ -546,7 +546,7 @@ namespace patcher {
             }
 
             // auto apply
-            register_patch_group(patch_data, patch_groups);
+            register_patch_group(patch_data, group_definitions);
             if (apply_patches && setting_auto_apply && patch_data.enabled) {
                 print_auto_apply_status(patch_data);
                 apply_patch(patch_data, true);
@@ -771,7 +771,7 @@ namespace patcher {
                 rapidjson::GetParseError_En(error));
         }
 
-        const auto patch_groups = parse_patch_group_definitions(doc);
+        const auto group_definitions = parse_patch_group_definitions(doc);
 
         // iterate patches
         for (auto &patch : doc.GetArray()) {
@@ -847,7 +847,7 @@ namespace patcher {
                 .patch_number = NumberPatch(),
                 .group_id = resolve_patch_group_id(
                     patch,
-                    patch_groups,
+                    group_definitions,
                     game_code,
                     name_it->value.GetString()),
                 .last_status = PatchStatus::Disabled,
@@ -1293,7 +1293,7 @@ namespace patcher {
             }
 
             // auto apply
-            register_patch_group(patch_data, patch_groups);
+            register_patch_group(patch_data, group_definitions);
             if (apply_patches && setting_auto_apply && patch_data.enabled) {
                 print_auto_apply_status(patch_data);
                 apply_patch(patch_data, true);

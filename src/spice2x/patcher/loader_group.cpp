@@ -6,6 +6,12 @@
 
 namespace patcher {
 
+    static std::pair<std::string, std::string> make_patch_group_key(
+        const std::string& game_code,
+        const std::string& group_id) {
+        return {strtolower(game_code), group_id};
+    }
+
     static bool has_embedded_null(const rapidjson::Value& value) {
         return strlen(value.GetString()) != value.GetStringLength();
     }
@@ -82,7 +88,7 @@ namespace patcher {
                 game_code_it->value.GetString(),
                 game_code_it->value.GetStringLength());
             if (!groups.emplace(
-                    std::make_pair(strtolower(game_code), group_id),
+                    make_patch_group_key(game_code, group_id),
                     std::move(group)).second) {
                 log_warning(
                     "patchmanager",
@@ -99,7 +105,7 @@ namespace patcher {
         const std::map<std::pair<std::string, std::string>, PatchGroup>& groups,
         const std::string& game_code,
         const std::string& group_id) {
-        const auto group = groups.find(std::make_pair(strtolower(game_code), group_id));
+        const auto group = groups.find(make_patch_group_key(game_code, group_id));
         return group == groups.end() ? nullptr : &group->second;
     }
 
@@ -155,7 +161,7 @@ namespace patcher {
             return;
         }
 
-        const auto key = std::make_pair(strtolower(patch.game_code), patch.group_id);
+        const auto key = make_patch_group_key(patch.game_code, patch.group_id);
         const auto [existing, inserted] = patch_groups.emplace(key, *definition);
         if (!inserted
             && (existing->second.name != definition->name
