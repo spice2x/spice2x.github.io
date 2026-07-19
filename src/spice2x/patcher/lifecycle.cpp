@@ -31,6 +31,7 @@ namespace patcher {
     std::vector<PatchData> patches;
     bool local_patches_initialized = false;
     std::vector<size_t> patches_sorted;
+    std::map<std::pair<std::string, std::string>, PatchGroup> patch_groups;
     std::map<std::string, std::vector<std::string>> EXTRA_DLLS = {
         {"jubeat.dll", {"music_db.dll", "coin.dll"}},
         {"arkmdxp3.dll", {"gamemdx.dll"}},

@@ -33,7 +33,7 @@ namespace overlay::windows {
             size_t unverified_count = 0;
         };
 
-        using PatchGroupMembers = std::unordered_map<std::string, std::vector<size_t>>;
+        using PatchGroupMembers = std::unordered_map<const patcher::PatchGroup*, std::vector<size_t>>;
 
         struct PatchGroupSearchMatch {
             bool group_matches = false;
@@ -89,9 +89,9 @@ namespace overlay::windows {
         PatchGroupMembers collect_patch_group_members() {
             PatchGroupMembers group_members;
             for (const auto patch_index : patcher::patches_sorted) {
-                const auto& group_id = patcher::patches[patch_index].group.id;
-                if (!group_id.empty()) {
-                    group_members[group_id].push_back(patch_index);
+                const auto *group = patcher::find_patch_group(patcher::patches[patch_index]);
+                if (group) {
+                    group_members[group].push_back(patch_index);
                 }
             }
             return group_members;
@@ -170,7 +170,8 @@ namespace overlay::windows {
         }
 
         void set_patch_option_width() {
-            ImGui::SetNextItemWidth(std::min(200.0f, ImGui::GetContentRegionAvail().x));
+            const float available_width = ImGui::GetContentRegionAvail().x;
+            ImGui::SetNextItemWidth(available_width < 200.0f ? available_width : 200.0f);
         }
 
         void show_patch_group_tooltip(const patcher::PatchGroup& group) {
@@ -207,7 +208,8 @@ namespace overlay::windows {
         void render_patch_group_mixed_checkbox_mark() {
             const auto check_min = ImGui::GetItemRectMin();
             const float check_size = ImGui::GetFrameHeight();
-            const float padding = std::max(1.0f, check_size / 3.6f);
+            const float calculated_padding = check_size / 3.6f;
+            const float padding = calculated_padding < 1.0f ? 1.0f : calculated_padding;
             ImGui::GetWindowDrawList()->AddRectFilled(
                 ImVec2(check_min.x + padding, check_min.y + padding),
                 ImVec2(
@@ -963,10 +965,11 @@ namespace overlay::windows {
 
                 const auto group_members = collect_patch_group_members();
 
-                std::unordered_set<std::string> rendered_groups;
+                std::unordered_set<const patcher::PatchGroup*> rendered_groups;
                 for (const auto patch_index : patcher::patches_sorted) {
                     auto& patch = patcher::patches[patch_index];
-                    if (patch.group.id.empty()) {
+                    const auto *group = patcher::find_patch_group(patch);
+                    if (!group) {
                         if (!patch_name_filter.empty()
                         && patch.name_in_lower_case.find(search_str_in_lower) == std::string::npos) {
                             continue;
@@ -978,25 +981,24 @@ namespace overlay::windows {
                         continue;
                     }
 
-                    if (!rendered_groups.insert(patch.group.id).second) {
+                    if (!rendered_groups.insert(group).second) {
                         continue;
                     }
 
-                    const auto& members = group_members.at(patch.group.id);
-                    const auto& group = patch.group;
+                    const auto& members = group_members.at(group);
                     const auto search_match = get_patch_group_search_match(
-                        group,
+                        *group,
                         members,
                         search_str_in_lower);
                     if (!search_match.visible()) {
                         continue;
                     }
 
-                    ImGui::PushID(group.id.c_str());
+                    ImGui::PushID(group);
                     const auto row_background_color =
                         get_patch_row_background_color(items_shown++);
                     const bool group_open = render_patch_group_parent(
-                        group,
+                        *group,
                         members,
                         search_match.child_matches,
                         row_background_color);
@@ -1054,9 +1056,9 @@ namespace overlay::windows {
 
         PatchGroupMembers group_members;
         for (size_t i = 0; i < patcher::patches.size(); i++) {
-            const auto& group_id = patcher::patches[i].group.id;
-            if (!group_id.empty()) {
-                group_members[group_id].push_back(i);
+            const auto *group = patcher::find_patch_group(patcher::patches[i]);
+            if (group) {
+                group_members[group].push_back(i);
             }
         }
 
@@ -1064,22 +1066,23 @@ namespace overlay::windows {
         // group at its first occurrence in the underlying file order
         std::vector<SortItem> sort_items;
         sort_items.reserve(patcher::patches.size());
-        std::unordered_set<std::string> emitted_groups;
+        std::unordered_set<const patcher::PatchGroup*> emitted_groups;
         for (size_t i = 0; i < patcher::patches.size(); i++) {
             const auto& patch = patcher::patches[i];
-            if (patch.group.id.empty()) {
+            const auto *group = patcher::find_patch_group(patch);
+            if (!group) {
                 sort_items.push_back({
                     .members = {i},
                     .name_in_lower_case = patch.name_in_lower_case,
                     .enabled = patch.last_status == patcher::PatchStatus::Enabled,
                 });
-            } else if (emitted_groups.insert(patch.group.id).second) {
-                auto members = std::move(group_members.at(patch.group.id));
+            } else if (emitted_groups.insert(group).second) {
+                auto members = std::move(group_members.at(group));
                 const bool group_enabled = get_patch_group_state(members).status
                     == PatchGroupStatus::Enabled;
                 sort_items.push_back({
                     .members = std::move(members),
-                    .name_in_lower_case = patch.group.name_in_lower_case,
+                    .name_in_lower_case = group->name_in_lower_case,
                     .enabled = group_enabled,
                 });
             }

@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <functional>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -75,7 +74,6 @@ namespace patcher {
     };
 
     struct PatchGroup {
-        std::string id;
         std::string name;
         std::string description;
         std::string caution;
@@ -94,7 +92,7 @@ namespace patcher {
         std::vector<MemoryPatch> patches_memory;
         std::vector<UnionPatch> patches_union;
         NumberPatch patch_number;
-        PatchGroup group;
+        std::string group_id;
         PatchStatus last_status;
         std::string hash;
         bool unverified = false;
@@ -138,6 +136,7 @@ namespace patcher {
 
     PatchStatus is_patch_active(PatchData& patch);
     bool apply_patch(PatchData& patch, bool active);
+    const PatchGroup* find_patch_group(const PatchData& patch);
 
     std::string displayPath(const std::filesystem::path& path);
 }

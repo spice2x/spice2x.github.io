@@ -28,160 +28,6 @@ using namespace rapidjson;
 
 namespace patcher {
 
-    using PatchGroupKey = std::pair<std::string, std::string>;
-    using PatchGroupDefinitions = std::map<PatchGroupKey, PatchGroup>;
-
-    static PatchGroupKey make_patch_group_key(
-        const std::string& game_code,
-        const std::string& group_id) {
-        return {strtolower(game_code), group_id};
-    }
-
-    static bool has_embedded_null(const rapidjson::Value& value) {
-        return strlen(value.GetString()) != value.GetStringLength();
-    }
-
-    static bool is_patch_group_definition(const rapidjson::Value& patch) {
-        if (!patch.IsObject()) {
-            return false;
-        }
-
-        const auto type_it = patch.FindMember("type");
-        return type_it != patch.MemberEnd()
-            && type_it->value.IsString()
-            && type_it->value.GetStringLength() == strlen("group")
-            && !_stricmp(type_it->value.GetString(), "group");
-    }
-
-    static PatchGroupDefinitions parse_patch_group_definitions(
-        const rapidjson::Document& doc) {
-        PatchGroupDefinitions groups;
-
-        for (const auto& patch : doc.GetArray()) {
-            if (!is_patch_group_definition(patch)) {
-                continue;
-            }
-
-            const auto id_it = patch.FindMember("id");
-            const auto game_code_it = patch.FindMember("gameCode");
-            const auto name_it = patch.FindMember("name");
-            if (id_it == patch.MemberEnd() || !id_it->value.IsString()
-                || id_it->value.GetStringLength() == 0
-                || has_embedded_null(id_it->value)
-                || game_code_it == patch.MemberEnd() || !game_code_it->value.IsString()
-                || game_code_it->value.GetStringLength() == 0
-                || has_embedded_null(game_code_it->value)
-                || name_it == patch.MemberEnd() || !name_it->value.IsString()
-                || name_it->value.GetStringLength() == 0
-                || has_embedded_null(name_it->value)) {
-                log_warning("patchmanager", "invalid patch group definition");
-                continue;
-            }
-
-            PatchGroup group;
-            group.id.assign(id_it->value.GetString(), id_it->value.GetStringLength());
-            group.name.assign(name_it->value.GetString(), name_it->value.GetStringLength());
-            group.name_in_lower_case = strtolower(group.name);
-
-            const auto description_it = patch.FindMember("description");
-            if (description_it != patch.MemberEnd()) {
-                if (!description_it->value.IsString()
-                    || has_embedded_null(description_it->value)) {
-                    log_warning("patchmanager", "invalid description for patch group {}", group.id);
-                    continue;
-                }
-                group.description.assign(
-                    description_it->value.GetString(),
-                    description_it->value.GetStringLength());
-            }
-
-            const auto caution_it = patch.FindMember("caution");
-            if (caution_it != patch.MemberEnd()) {
-                if (!caution_it->value.IsString() || has_embedded_null(caution_it->value)) {
-                    log_warning("patchmanager", "invalid caution for patch group {}", group.id);
-                    continue;
-                }
-                group.caution.assign(
-                    caution_it->value.GetString(),
-                    caution_it->value.GetStringLength());
-            }
-
-            const std::string game_code(
-                game_code_it->value.GetString(),
-                game_code_it->value.GetStringLength());
-            const std::string group_id = group.id;
-            if (!groups.emplace(make_patch_group_key(game_code, group_id), std::move(group)).second) {
-                log_warning(
-                    "patchmanager",
-                    "duplicate patch group definition for {}/{}, ignoring duplicate",
-                    game_code,
-                    group_id);
-            }
-        }
-
-        return groups;
-    }
-
-    static PatchGroup resolve_patch_group(
-        const rapidjson::Value& patch,
-        const PatchGroupDefinitions& groups,
-        const std::string& game_code,
-        const char *patch_name) {
-        const auto group_it = patch.FindMember("group");
-        if (group_it == patch.MemberEnd()) {
-            return {};
-        }
-        if (!group_it->value.IsString()
-            || group_it->value.GetStringLength() == 0
-            || has_embedded_null(group_it->value)) {
-            log_warning("patchmanager", "invalid group reference for {}", patch_name);
-            return {};
-        }
-
-        const std::string group_id(
-            group_it->value.GetString(),
-            group_it->value.GetStringLength());
-        const auto definition = groups.find(make_patch_group_key(game_code, group_id));
-        if (definition == groups.end()) {
-            log_warning(
-                "patchmanager",
-                "unknown patch group {}/{} referenced by {}",
-                game_code,
-                group_id,
-                patch_name);
-            return {};
-        }
-
-        return definition->second;
-    }
-
-    static void validate_patch_group(PatchData& patch) {
-        if (patch.group.id.empty()) {
-            return;
-        }
-
-        // definitions are canonical within one document; guard ID reuse across appended documents
-        for (const auto& existing : patches) {
-            if (_stricmp(existing.game_code.c_str(), patch.game_code.c_str())
-                || existing.group.id != patch.group.id) {
-                continue;
-            }
-            if (existing.group.name == patch.group.name
-                && existing.group.description == patch.group.description
-                && existing.group.caution == patch.group.caution) {
-                return;
-            }
-
-            log_warning(
-                "patchmanager",
-                "conflicting group metadata for {}, ignoring group on {}",
-                patch.group.id,
-                patch.name);
-            patch.group = {};
-            return;
-        }
-    }
-
     std::vector<std::string> getExtraDlls(const std::string& firstDll) {
         if (!EXTRA_DLLS.contains(firstDll)) {
             return {};
@@ -409,7 +255,7 @@ namespace patcher {
                 .patches_memory = std::vector<MemoryPatch>(),
                 .patches_union = std::vector<UnionPatch>(),
                 .patch_number = NumberPatch(),
-                .group = resolve_patch_group(
+                .group_id = resolve_patch_group_id(
                     patch,
                     patch_groups,
                     game_code,
@@ -700,7 +546,7 @@ namespace patcher {
             }
 
             // auto apply
-            validate_patch_group(patch_data);
+            register_patch_group(patch_data, patch_groups);
             if (apply_patches && setting_auto_apply && patch_data.enabled) {
                 print_auto_apply_status(patch_data);
                 apply_patch(patch_data, true);
@@ -831,6 +677,7 @@ namespace patcher {
 
         // clear old patches
         patches.clear();
+        patch_groups.clear();
         // drop the cached sorted view so the table rebuilds it (in default order)
         // on the next frame
         patches_sorted.clear();
@@ -887,6 +734,7 @@ namespace patcher {
         bool imported = false;
         // clear old patches
         patches.clear();
+        patch_groups.clear();
         patches_sorted.clear();
         url_fetch_errors.clear();
 
@@ -997,7 +845,7 @@ namespace patcher {
                 .patches_memory = std::vector<MemoryPatch>(),
                 .patches_union = std::vector<UnionPatch>(),
                 .patch_number = NumberPatch(),
-                .group = resolve_patch_group(
+                .group_id = resolve_patch_group_id(
                     patch,
                     patch_groups,
                     game_code,
@@ -1445,7 +1293,7 @@ namespace patcher {
             }
 
             // auto apply
-            validate_patch_group(patch_data);
+            register_patch_group(patch_data, patch_groups);
             if (apply_patches && setting_auto_apply && patch_data.enabled) {
                 print_auto_apply_status(patch_data);
                 apply_patch(patch_data, true);
