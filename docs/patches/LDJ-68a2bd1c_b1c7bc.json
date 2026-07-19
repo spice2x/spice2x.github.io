@@ -1,0 +1,187 @@
+[
+    {
+        "gameCode": "LDJ",
+        "version": "2025-08-25 (010)",
+        "source": "https://spice2x.github.io/"
+    },
+    {
+        "type": "group",
+        "gameCode": "LDJ",
+        "id": "timer-freeze",
+        "name": "Timer Freeze Patches",
+        "description": "Freezes various timers in the game."
+    },
+    {
+        "name": "Standard/Menu Timer Freeze",
+        "description": "Freezes all non-premium area timers.",
+        "caution": "",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "group": "timer-freeze",
+        "patches": [
+            {
+                "offset": 9962743,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "0F84",
+                "dataEnabled": "90E9"
+            }
+        ]
+    },
+    {
+        "name": "Premium Free Timer Freeze",
+        "description": "Freezes all premium area timers.",
+        "caution": "",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "group": "timer-freeze",
+        "patches": [
+            {
+                "offset": 9111965,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "7E",
+                "dataEnabled": "EB"
+            }
+        ]
+    },
+    {
+        "name": "Video Purchase Timer Freeze",
+        "description": "Freezes the subscreen countdown on the transition from result to music select.",
+        "caution": "Only useful with a TDJ (010) dll.",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "group": "timer-freeze",
+        "patches": [
+            {
+                "offset": 10340157,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "FFC8",
+                "dataEnabled": "9090"
+            }
+        ]
+    },
+    {
+        "type": "group",
+        "gameCode": "LDJ",
+        "id": "quick-retry",
+        "name": "Quick Retry Patches",
+        "description": "Makes retrying songs quicker."
+    },
+    {
+        "name": "Skip Decide Screen",
+        "description": "Skips the splash animation that appears upon starting a song.",
+        "caution": "",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "group": "quick-retry",
+        "patches": [
+            {
+                "offset": 6230736,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "488BC455",
+                "dataEnabled": "488BC1C3"
+            }
+        ]
+    },
+    {
+        "name": "Quick Retry",
+        "description": "Makes retrying a song quicker.",
+        "caution": "",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "group": "quick-retry",
+        "patches": [
+            {
+                "offset": 8901984,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "40534883EC20",
+                "dataEnabled": "B001C3909090"
+            }
+        ]
+    },
+    {
+        "name": "Quicker Quick Retry",
+        "description": "Makes retrying a song even quicker. Shortens the duration of the 'Stage Failed' animation.",
+        "caution": "To be used along with \"Quick Retry\".",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "group": "quick-retry",
+        "patches": [
+            {
+                "offset": 9623152,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "7C79",
+                "dataEnabled": "9090"
+            }
+        ]
+    },
+    {
+        "type": "group",
+        "gameCode": "LDJ",
+        "id": "ldj-fps",
+        "name": "LDJ Custom FPS Patches",
+        "description": "Custom FPS for LDJ mode."
+    },
+    {
+        "name": "Force LDJ Custom Timing/Adapter FPS",
+        "description": "Forces Custom Timing/Adapter FPS in LDJ.",
+        "caution": "Enable this if \"Custom LDJ Timing/Adapter FPS\" is not default. May cause desync. Consider \"Force TDJ/LDJ Mode\" patches instead.",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "group": "ldj-fps",
+        "patches": [
+            {
+                "offset": 8568291,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "75",
+                "dataEnabled": "EB"
+            },
+            {
+                "offset": 10906103,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "7403",
+                "dataEnabled": "9090"
+            }
+        ]
+    },
+    {
+        "name": "Choose LDJ Custom Timing/Adapter FPS",
+        "description": "Sets the Timing/Adapter FPS in LDJ.",
+        "caution": "Requires \"Force Custom Timing/Adapter in LDJ\" to be enabled. May cause desync. Consider \"Force TDJ/LDJ Mode\" patches instead.",
+        "gameCode": "LDJ",
+        "type": "union",
+        "group": "ldj-fps",
+        "patches": [
+            {
+                "name": "60 FPS (Default)",
+                "patch": {
+                    "offset": 10905569,
+                    "dllName": "bm2dx.dll",
+                    "data": "C745DB3C000000C745FF01000000488B45D748894503C745D701000000C745DB3C000000"
+                }
+            },
+            {
+                "name": "120 FPS",
+                "patch": {
+                    "offset": 10905569,
+                    "dllName": "bm2dx.dll",
+                    "data": "C745DB78000000C745FF01000000488B45D748894503C745D701000000C745DB78000000"
+                }
+            }
+        ]
+    },
+    {
+        "name": "Debug Mode",
+        "description": "While in game, press F1 to enable menu. (Disables Profile/Score saving)",
+        "caution": "Ignore if you're not sure know what this does.",
+        "gameCode": "LDJ",
+        "type": "memory",
+        "patches": [
+            {
+                "offset": 9803904,
+                "dllName": "bm2dx.dll",
+                "dataDisabled": "32C0",
+                "dataEnabled": "B001"
+            }
+        ]
+    }
+]
