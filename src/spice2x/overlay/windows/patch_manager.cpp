@@ -221,10 +221,17 @@ namespace overlay::windows {
             const PatchGroupState& state,
             const std::vector<size_t>& members,
             bool& checked) {
+            const bool mixed = state.status == PatchGroupStatus::Mixed;
             ImGui::BeginDisabled(state.status == PatchGroupStatus::Error);
+            if (mixed) {
+                ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.f, 0.f, 0.f, 0.f));
+            }
             const bool changed = ImGui::Checkbox("##group_checked_checkbox", &checked);
+            if (mixed) {
+                ImGui::PopStyleColor();
+            }
             ImGui::EndDisabled();
-            if (state.status == PatchGroupStatus::Mixed && !changed) {
+            if (mixed && !changed) {
                 render_patch_group_mixed_checkbox_mark();
             }
             if (!changed) {
@@ -270,7 +277,26 @@ namespace overlay::windows {
             const std::vector<size_t>& members,
             bool child_matches_search,
             ImU32 row_background_color) {
-            const auto group_state = get_patch_group_state(members);
+            auto group_state = get_patch_group_state(members);
+
+            begin_patch_row(row_background_color);
+            // render status first so its checkbox can set the tree's next open state
+            ImGui::TableSetColumnIndex(1);
+            bool group_checked = group_state.status == PatchGroupStatus::Enabled
+                || group_state.status == PatchGroupStatus::Mixed;
+            const bool group_checkbox_changed = render_patch_group_checkbox(
+                group_state,
+                members,
+                group_checked);
+            if (group_checkbox_changed) {
+                group_state = get_patch_group_state(members);
+            }
+            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
+                show_patch_group_tooltip(group);
+            }
+            render_patch_group_status(group_state, group_checked);
+
+            ImGui::TableSetColumnIndex(0);
             const auto group_name = get_patch_group_display_name(
                 group,
                 group_state,
@@ -297,21 +323,6 @@ namespace overlay::windows {
                 default:
                     break;
             }
-
-            begin_patch_row(row_background_color);
-            // render status first so its checkbox can set the tree's next open state
-            ImGui::TableSetColumnIndex(1);
-            bool group_checked = group_state.status == PatchGroupStatus::Enabled;
-            const bool group_checkbox_changed = render_patch_group_checkbox(
-                group_state,
-                members,
-                group_checked);
-            if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
-                show_patch_group_tooltip(group);
-            }
-            render_patch_group_status(group_state, group_checked);
-
-            ImGui::TableSetColumnIndex(0);
             if (!group.caution.empty()) {
                 ImGui::AlignTextToFramePadding();
                 ImGui::WarnMarker(group.description.c_str(), group.caution.c_str());
@@ -981,7 +992,7 @@ namespace overlay::windows {
                         continue;
                     }
 
-                    ImGui::PushID(static_cast<int>(members.front()));
+                    ImGui::PushID(group.id.c_str());
                     const auto row_background_color =
                         get_patch_row_background_color(items_shown++);
                     const bool group_open = render_patch_group_parent(

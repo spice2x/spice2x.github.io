@@ -28,7 +28,14 @@ using namespace rapidjson;
 
 namespace patcher {
 
-    using PatchGroupDefinitions = std::map<std::string, PatchGroup>;
+    using PatchGroupKey = std::pair<std::string, std::string>;
+    using PatchGroupDefinitions = std::map<PatchGroupKey, PatchGroup>;
+
+    static PatchGroupKey make_patch_group_key(
+        const std::string& game_code,
+        const std::string& group_id) {
+        return {strtolower(game_code), group_id};
+    }
 
     static bool has_embedded_null(const rapidjson::Value& value) {
         return strlen(value.GetString()) != value.GetStringLength();
@@ -56,10 +63,14 @@ namespace patcher {
             }
 
             const auto id_it = patch.FindMember("id");
+            const auto game_code_it = patch.FindMember("gameCode");
             const auto name_it = patch.FindMember("name");
             if (id_it == patch.MemberEnd() || !id_it->value.IsString()
                 || id_it->value.GetStringLength() == 0
                 || has_embedded_null(id_it->value)
+                || game_code_it == patch.MemberEnd() || !game_code_it->value.IsString()
+                || game_code_it->value.GetStringLength() == 0
+                || has_embedded_null(game_code_it->value)
                 || name_it == patch.MemberEnd() || !name_it->value.IsString()
                 || name_it->value.GetStringLength() == 0
                 || has_embedded_null(name_it->value)) {
@@ -95,11 +106,16 @@ namespace patcher {
                     caution_it->value.GetStringLength());
             }
 
-            if (!groups.emplace(group.id, std::move(group)).second) {
+            const std::string game_code(
+                game_code_it->value.GetString(),
+                game_code_it->value.GetStringLength());
+            const std::string group_id = group.id;
+            if (!groups.emplace(make_patch_group_key(game_code, group_id), std::move(group)).second) {
                 log_warning(
                     "patchmanager",
-                    "duplicate patch group definition for {}, ignoring duplicate",
-                    id_it->value.GetString());
+                    "duplicate patch group definition for {}/{}, ignoring duplicate",
+                    game_code,
+                    group_id);
             }
         }
 
@@ -109,6 +125,7 @@ namespace patcher {
     static PatchGroup resolve_patch_group(
         const rapidjson::Value& patch,
         const PatchGroupDefinitions& groups,
+        const std::string& game_code,
         const char *patch_name) {
         const auto group_it = patch.FindMember("group");
         if (group_it == patch.MemberEnd()) {
@@ -124,11 +141,12 @@ namespace patcher {
         const std::string group_id(
             group_it->value.GetString(),
             group_it->value.GetStringLength());
-        const auto definition = groups.find(group_id);
+        const auto definition = groups.find(make_patch_group_key(game_code, group_id));
         if (definition == groups.end()) {
             log_warning(
                 "patchmanager",
-                "unknown patch group {} referenced by {}",
+                "unknown patch group {}/{} referenced by {}",
+                game_code,
                 group_id,
                 patch_name);
             return {};
@@ -144,7 +162,8 @@ namespace patcher {
 
         // definitions are canonical within one document; guard ID reuse across appended documents
         for (const auto& existing : patches) {
-            if (existing.group.id != patch.group.id) {
+            if (_stricmp(existing.game_code.c_str(), patch.game_code.c_str())
+                || existing.group.id != patch.group.id) {
                 continue;
             }
             if (existing.group.name == patch.group.name
@@ -354,6 +373,9 @@ namespace patcher {
                         name_it->value.GetString());
                 continue;
             }
+            const std::string game_code(
+                game_code_it->value.GetString(),
+                game_code_it->value.GetStringLength());
             auto description_it = patch.FindMember("description");
             if (description_it == patch.MemberEnd() || !description_it->value.IsString()) {
                 log_warning("patchmanager", "failed to parse description for {}",
@@ -375,7 +397,7 @@ namespace patcher {
             // build patch data
             PatchData patch_data {
                 .enabled = false,
-                .game_code = game_code_it->value.GetString(),
+                .game_code = game_code,
                 .datecode_min = 0,
                 .datecode_max = 0,
                 .name = name_it->value.GetString(),
@@ -387,7 +409,11 @@ namespace patcher {
                 .patches_memory = std::vector<MemoryPatch>(),
                 .patches_union = std::vector<UnionPatch>(),
                 .patch_number = NumberPatch(),
-                .group = resolve_patch_group(patch, patch_groups, name_it->value.GetString()),
+                .group = resolve_patch_group(
+                    patch,
+                    patch_groups,
+                    game_code,
+                    name_it->value.GetString()),
                 .last_status = PatchStatus::Disabled,
                 .hash = "",
                 .unverified = false,
@@ -925,6 +951,9 @@ namespace patcher {
                     name_it->value.GetString());
                 continue;
             }
+            const std::string game_code(
+                game_code_it->value.GetString(),
+                game_code_it->value.GetStringLength());
             auto description_it = patch.FindMember("description");
             if (description_it == patch.MemberEnd() || !description_it->value.IsString()) {
                 log_warning("patchmanager", "failed to parse description for {}",
@@ -956,7 +985,7 @@ namespace patcher {
             // build patch data
             PatchData patch_data {
                 .enabled = false,
-                .game_code = game_code_it->value.GetString(),
+                .game_code = game_code,
                 .datecode_min = 0,
                 .datecode_max = 0,
                 .name = name_it->value.GetString(),
@@ -968,7 +997,11 @@ namespace patcher {
                 .patches_memory = std::vector<MemoryPatch>(),
                 .patches_union = std::vector<UnionPatch>(),
                 .patch_number = NumberPatch(),
-                .group = resolve_patch_group(patch, patch_groups, name_it->value.GetString()),
+                .group = resolve_patch_group(
+                    patch,
+                    patch_groups,
+                    game_code,
+                    name_it->value.GetString()),
                 .last_status = PatchStatus::Disabled,
                 .hash = "",
                 .unverified = false,
