@@ -3,9 +3,8 @@
 #define _WIN32_WINNT 0x0601
 
 #include "avs/game.h"
-#include "wintouchemu.h"
+#include "nativetouch_inject.h"
 #include "rawinput/touch.h"
-#include "hooks/graphics/graphics.h"
 
 #include "util/detour.h"
 #include "util/logging.h"
@@ -99,6 +98,8 @@ namespace nativetouchhook {
         for (size_t i = 0; i < cInputs; i++) {
             PTOUCHINPUT point = &pInputs[i];
 
+            nativetouch_inject::transform_touch_input(point);
+
             if (avs::game::is_model("LDJ")) {
                 strip_contact_size(point);
             }
@@ -112,6 +113,8 @@ namespace nativetouchhook {
     }
 
     void hook(HMODULE module) {
+        nativetouch_inject::hook(module);
+
         GetTouchInputInfo_orig = detour::iat_try("GetTouchInputInfo", GetTouchInputInfoHook, module);
         if (GetTouchInputInfo_orig != nullptr) {
             log_misc("touch::native", "GetTouchInputInfo hooked");

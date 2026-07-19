@@ -15,8 +15,6 @@ namespace overlay::windows {
             this->disabled_message = "Close this overlay and use the second window. (try ALT+TAB)";
         } else if (games::iidx::IIDX_TDJ_MONITOR_WARNING) {
             this->disabled_message = "TDJ mode subscreen overlay is not compatible with -dxmainadapter option; use -mainmonitor instead";
-        } else if (games::iidx::NATIVE_TOUCH) {
-            this->disabled_message = "Overlay disabled by user (-iidxnativetouch option is on, used for real touch screens)";
         }
 
         float size = 0.5f;

@@ -28,6 +28,7 @@
 #include "util/logging.h"
 #include "util/fileutils.h"
 #include "util/utils.h"
+#include "misc/nativetouch_inject.h"
 #include "misc/wintouchemu.h"
 #include "util/time.h"
 #include "rawinput/rawinput.h"
@@ -797,7 +798,11 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
             nWidth = rect.right - rect.left;
             nHeight = rect.bottom - rect.top;
 
-            touch_attach_wnd(TDJ_SUBSCREEN_WINDOW);
+            if (games::iidx::NATIVE_TOUCH) {
+                nativetouch_inject::register_and_attach_window(TDJ_SUBSCREEN_WINDOW);
+            } else {
+                touch_attach_wnd(TDJ_SUBSCREEN_WINDOW);
+            }
         } else {
             // Existing behaviour: suppress subscreen window and prompt user to use overlay instead
              log_info(
@@ -1162,6 +1167,10 @@ void graphics_hook_window(HWND hWnd, D3DPRESENT_PARAMETERS *pPresentationParamet
     if (WNDPROC_ORIG == nullptr) {
         WNDPROC_ORIG = reinterpret_cast<WNDPROC>(GetWindowLongPtrA(hWnd, GWLP_WNDPROC));
         SetWindowLongPtrA(hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WindowProc));
+
+        if (games::iidx::NATIVE_TOUCH && !GRAPHICS_IIDX_WSUB) {
+            nativetouch_inject::register_and_attach_window(hWnd);
+        }
 
         // NOLEGACY causes WM_CHAR to be not received
         // reflec beat game engine does not pass WM_CHAR through for some reason (unrelated to SpiceTouch)
