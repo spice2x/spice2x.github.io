@@ -15,6 +15,8 @@ namespace overlay::windows {
             this->disabled_message = "Game did not launch as Pikapika Pop-kun (invalid <spec>)!";
         } else if (games::popn::SHOW_PIKA_MONITOR_WARNING) {
             this->disabled_message = "Subscreen overlay is not compatible with -dxmainadapter option, use -mainmonitor instead";
+        } else if (games::popn::NATIVE_TOUCH) {
+            this->disabled_message = "Overlay disabled by user (-popnnativetouch option is on, used for real touch screens)";
         } else if (GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
             this->disabled_message = "Subscren overlay was not enabled in spicecfg. Use the second window (ALT+TAB).";
         }
