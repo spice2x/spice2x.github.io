@@ -119,7 +119,8 @@
         "gameCode": "LDJ",
         "id": "ldj-fps",
         "name": "LDJ Custom FPS Patches",
-        "description": "Custom FPS for LDJ mode."
+        "description": "Custom FPS for LDJ mode.",
+        "caution": "Only if you know what you're doing."
     },
     {
         "name": "Force LDJ Custom Timing/Adapter FPS",
