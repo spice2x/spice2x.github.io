@@ -12,6 +12,7 @@ static robin_hood::unordered_map<std::string, FARPROC> PROCS;
 
 static decltype(LoadLibraryA) *LoadLibraryA_orig = nullptr;
 static decltype(LoadLibraryW) *LoadLibraryW_orig = nullptr;
+static decltype(LoadLibraryExW) *LoadLibraryExW_orig = nullptr;
 static decltype(GetModuleHandleA) *GetModuleHandleA_orig = nullptr;
 static decltype(GetModuleHandleW) *GetModuleHandleW_orig = nullptr;
 static decltype(GetProcAddress) *GetProcAddress_orig = nullptr;
@@ -42,6 +43,20 @@ static HMODULE WINAPI LoadLibraryW_hook(LPCWSTR lpFileName) {
 
     // fallback
     return LoadLibraryW_orig(lpFileName);
+}
+
+static HMODULE WINAPI LoadLibraryExW_hook(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags) {
+
+    // check hooks
+    if (lpFileName) {
+        auto module = LIBRARIES_W.find(lpFileName);
+        if (module != LIBRARIES_W.end()) {
+            return module->second;
+        }
+    }
+
+    // fallback
+    return LoadLibraryExW_orig(lpFileName, hFile, dwFlags);
 }
 
 static HMODULE WINAPI GetModuleHandleA_hook(LPCSTR lpModuleName) {
@@ -103,6 +118,7 @@ void libraryhook_enable(HMODULE module) {
     // detour
     detour::trampoline_try("kernel32.dll", "LoadLibraryA", LoadLibraryA_hook, &LoadLibraryA_orig);
     detour::trampoline_try("kernel32.dll", "LoadLibraryW", LoadLibraryW_hook, &LoadLibraryW_orig);
+    detour::trampoline_try("kernel32.dll", "LoadLibraryExW", LoadLibraryExW_hook, &LoadLibraryExW_orig);
     detour::trampoline_try("kernel32.dll", "GetModuleHandleA", GetModuleHandleA_hook, &GetModuleHandleA_orig);
     detour::trampoline_try("kernel32.dll", "GetModuleHandleW", GetModuleHandleW_hook, &GetModuleHandleW_orig);
     detour::trampoline_try("kernel32.dll", "GetProcAddress", GetProcAddress_hook, &GetProcAddress_orig);

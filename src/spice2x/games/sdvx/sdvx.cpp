@@ -8,6 +8,9 @@
 #include "hooks/graphics/graphics.h"
 #include "hooks/devicehook.h"
 #include "hooks/libraryhook.h"
+#ifdef SPICE64
+#include "hooks/graphics/nvapi_impl.h"
+#endif
 #include "hooks/graphics/nvapi_hook.h"
 #include "hooks/powrprof.h"
 #include "hooks/sleephook.h"
@@ -428,11 +431,24 @@ namespace games::sdvx {
         if (aio != nullptr) {
 
             // enable 9on12 for AMD
-            if (!libutils::try_library("nvapi64.dll")) {
+            const auto nvapi = libutils::try_library("nvapi64.dll");
+            if (nvapi == nullptr) {
                 log_info(
                     "sdvx",
                     "nvapi64.dll not found; for non-NVIDIA GPUs, requesting 9on12 to be enabled");
                 GRAPHICS_9_ON_12_REQUESTED_BY_GAME = true;
+            }
+
+            if (nvapi_hook::BYPASS_NVAPI || nvapi == nullptr) {
+                const uint32_t main_refresh_hz = GRAPHICS_FORCE_REFRESH > 0 ?
+                    GRAPHICS_FORCE_REFRESH : (is_valkyrie_model() ? 120 : 60);
+                const uint32_t sub_refresh_hz = GRAPHICS_FORCE_REFRESH_SUB.value_or(60);
+                if (!nvapi_impl::initialize(
+                        avs::game::DLL_INSTANCE,
+                        main_refresh_hz,
+                        sub_refresh_hz)) {
+                    log_warning("sdvx", "failed to initialize synthetic NVAPI");
+                }
             } else {
                 // don't let nvapi mess with display settings
                 nvapi_hook::initialize(avs::game::DLL_INSTANCE);
