@@ -178,11 +178,16 @@ namespace games::iidx::poke {
                                     float x = x_iter->second / 1920.0;
                                     float y = y_iter->second / 1080.0;
                                     if (use_native) {
-                                        if (SPICETOUCH_TOUCH_WIDTH <= 0 || SPICETOUCH_TOUCH_HEIGHT <= 0) {
-                                            continue;
+                                        if (GRAPHICS_WINDOWED) {
+                                            if (SPICETOUCH_TOUCH_WIDTH <= 0 || SPICETOUCH_TOUCH_HEIGHT <= 0) {
+                                                continue;
+                                            }
+                                            x = SPICETOUCH_TOUCH_X + x * SPICETOUCH_TOUCH_WIDTH;
+                                            y = SPICETOUCH_TOUCH_Y + y * SPICETOUCH_TOUCH_HEIGHT;
+                                        } else {
+                                            x = x_iter->second;
+                                            y = y_iter->second;
                                         }
-                                        x = SPICETOUCH_TOUCH_X + x * SPICETOUCH_TOUCH_WIDTH;
-                                        y = SPICETOUCH_TOUCH_Y + y * SPICETOUCH_TOUCH_HEIGHT;
                                     } else if (GRAPHICS_IIDX_WSUB) {
                                         // Scale to windowed subscreen
                                         x *= GRAPHICS_WSUB_WIDTH;

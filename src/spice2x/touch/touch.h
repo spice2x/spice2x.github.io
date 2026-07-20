@@ -29,6 +29,7 @@ extern int SPICETOUCH_TOUCH_WIDTH;
 extern int SPICETOUCH_TOUCH_HEIGHT;
 
 bool is_touch_available(LPCSTR caller);
+bool is_mouse_message_from_touchscreen();
 
 void touch_attach_wnd(HWND hWnd);
 void touch_attach_dx_hook();
