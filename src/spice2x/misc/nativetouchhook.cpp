@@ -22,6 +22,33 @@
 namespace nativetouchhook {
 
     static decltype(GetTouchInputInfo) *GetTouchInputInfo_orig = nullptr;
+    static bool native_display_initialized = false;
+    static DWORD native_display_orientation = DMDO_DEFAULT;
+    static long native_display_size_x = 1920L;
+    static long native_display_size_y = 1080L;
+
+    static void update_native_display_mode() {
+        RECT display_rect{};
+        if (GetWindowRect(GetDesktopWindow(), &display_rect)) {
+            native_display_size_x = display_rect.right - display_rect.left;
+            native_display_size_y = display_rect.bottom - display_rect.top;
+        }
+
+        DEVMODE display_mode{};
+        display_mode.dmSize = sizeof(display_mode);
+        if (EnumDisplaySettingsEx(nullptr, ENUM_CURRENT_SETTINGS, &display_mode, EDS_RAWMODE) &&
+            (display_mode.dmFields & DM_DISPLAYORIENTATION)) {
+            native_display_orientation = display_mode.dmDisplayOrientation;
+        } else {
+            log_info("touch::native", "failed to determine monitor orientation");
+        }
+
+        log_info(
+            "touch::native", "primary display mode: {}x{}, orientation {}",
+            native_display_size_x,
+            native_display_size_y,
+            native_display_orientation);
+    }
 
     static void strip_contact_size(PTOUCHINPUT point) {
 
@@ -66,12 +93,18 @@ namespace nativetouchhook {
     }
 
     static void flip_touch_points(PTOUCHINPUT point) {
-        point->x = rawinput::touch::DISPLAY_SIZE_X * 100 - point->x;
-        point->y = rawinput::touch::DISPLAY_SIZE_Y * 100 - point->y;
+        point->x = native_display_size_x * 100 - point->x;
+        point->y = native_display_size_y * 100 - point->y;
     }
 
     static BOOL WINAPI GetTouchInputInfoHook(
         HTOUCHINPUT hTouchInput, UINT cInputs, PTOUCHINPUT pInputs, int cbSize) {
+
+        // Refresh after exclusive fullscreen establishes the final display mode.
+        if (!native_display_initialized) {
+            update_native_display_mode();
+            native_display_initialized = true;
+        }
 
         // call the original fist
         const auto result = GetTouchInputInfo_orig(hTouchInput, cInputs, pInputs, cbSize);
@@ -80,13 +113,13 @@ namespace nativetouchhook {
         }
 
         bool flip_hardware_touch = false;
-        if (avs::game::is_model("KFC") && rawinput::touch::DISPLAY_INITIALIZED) {
+        if (avs::game::is_model("KFC")) {
             log_debug(
-                "touch::native", "DISPLAY_ORIENTATION = {}, DISPLAY_SIZE_X = {}, DISPLAY_SIZE_Y = {}",
-                rawinput::touch::DISPLAY_ORIENTATION,
-                rawinput::touch::DISPLAY_SIZE_X,
-                rawinput::touch::DISPLAY_SIZE_Y);
-            if (rawinput::touch::DISPLAY_ORIENTATION == DMDO_270) {
+                "touch::native", "orientation = {}, display size = {}x{}",
+                native_display_orientation,
+                native_display_size_x,
+                native_display_size_y);
+            if (native_display_orientation == DMDO_270) {
                 flip_hardware_touch = true;
             }
         }
