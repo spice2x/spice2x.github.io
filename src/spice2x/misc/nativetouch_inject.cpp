@@ -225,14 +225,14 @@ namespace nativetouch_inject {
     }
 
     // rewrite only the contact created by this injector into game touch coordinates
-    void transform_touch_input(PTOUCHINPUT point) {
+    bool transform_touch_input(PTOUCHINPUT point) {
         auto transform_window = contact_transform_window.load(std::memory_order_acquire);
         if (transform_window == nullptr) {
-            return;
+            return false;
         }
 
         if (!synthetic_touch_identity.matches(point)) {
-            return;
+            return false;
         }
 
         // Windows receives the physical position; the game receives the mapped position
@@ -247,6 +247,8 @@ namespace nativetouch_inject {
             contact_transform_window.compare_exchange_strong(
                 transform_window, nullptr, std::memory_order_acq_rel);
         }
+
+        return true;
     }
 
     // end whichever producer currently owns the single synthetic contact

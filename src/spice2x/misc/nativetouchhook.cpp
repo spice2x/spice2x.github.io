@@ -79,7 +79,7 @@ namespace nativetouchhook {
             return result;
         }
 
-        bool flip_values = false;
+        bool flip_hardware_touch = false;
         if (avs::game::is_model("KFC") && rawinput::touch::DISPLAY_INITIALIZED) {
             log_debug(
                 "touch::native", "DISPLAY_ORIENTATION = {}, DISPLAY_SIZE_X = {}, DISPLAY_SIZE_Y = {}",
@@ -87,23 +87,21 @@ namespace nativetouchhook {
                 rawinput::touch::DISPLAY_SIZE_X,
                 rawinput::touch::DISPLAY_SIZE_Y);
             if (rawinput::touch::DISPLAY_ORIENTATION == DMDO_270) {
-                flip_values = true;
+                flip_hardware_touch = true;
             }
-        }
-
-        if (rawinput::touch::INVERTED) {
-            flip_values = !flip_values;
         }
 
         for (size_t i = 0; i < cInputs; i++) {
             PTOUCHINPUT point = &pInputs[i];
 
-            nativetouch_inject::transform_touch_input(point);
+            const auto synthetic = nativetouch_inject::transform_touch_input(point);
 
             if (avs::game::is_model("LDJ")) {
                 strip_contact_size(point);
             }
 
+            const auto flip_values = !synthetic &&
+                (rawinput::touch::INVERTED ^ flip_hardware_touch);
             if (flip_values) {
                 flip_touch_points(point);
             }

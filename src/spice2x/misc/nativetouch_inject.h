@@ -9,5 +9,5 @@ namespace nativetouch_inject {
     void register_and_attach_window(HWND window);
     void hook(HMODULE module);
     bool inject_external_touch(POINT position, bool down);
-    void transform_touch_input(tagTOUCHINPUT *point);
+    bool transform_touch_input(tagTOUCHINPUT *point);
 }
