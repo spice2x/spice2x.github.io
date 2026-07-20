@@ -42,7 +42,6 @@ struct SyntheticDisplay {
 static bool provider_initialized = false;
 static bool nvapi_initialized = false;
 static int gpu_handle_storage = 0;
-static HMODULE synthetic_module = nullptr;
 // snapshot of the Win32 display state exposed through synthetic NVAPI
 static std::vector<SyntheticDisplay> displays;
 
@@ -451,19 +450,17 @@ static uintptr_t *__cdecl NvAPI_QueryInterface_impl(unsigned int function_id) {
 
 }
 
-bool initialize(uint32_t main_refresh_hz, uint32_t sub_refresh_hz) {
+bool initialize(HINSTANCE dll, uint32_t main_refresh_hz, uint32_t sub_refresh_hz) {
     if (provider_initialized) {
         return true;
     }
-
-    displays = enumerate_displays(main_refresh_hz, sub_refresh_hz);
-    synthetic_module = LoadLibraryW(L"version.dll");
-    if (synthetic_module == nullptr) {
-        log_warning("nvapi_impl", "failed to acquire synthetic module handle");
+    if (dll == nullptr) {
+        log_warning("nvapi_impl", "invalid synthetic module handle");
         return false;
     }
 
-    libraryhook_hook_library(NVAPI_DLL_NAME_A, synthetic_module);
+    displays = enumerate_displays(main_refresh_hz, sub_refresh_hz);
+    libraryhook_hook_library(NVAPI_DLL_NAME_A, dll);
     libraryhook_hook_proc("nvapi_QueryInterface", NvAPI_QueryInterface_impl);
     libraryhook_enable();
 

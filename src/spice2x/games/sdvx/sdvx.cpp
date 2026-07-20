@@ -443,7 +443,10 @@ namespace games::sdvx {
                 const uint32_t main_refresh_hz = GRAPHICS_FORCE_REFRESH > 0 ?
                     GRAPHICS_FORCE_REFRESH : (is_valkyrie_model() ? 120 : 60);
                 const uint32_t sub_refresh_hz = GRAPHICS_FORCE_REFRESH_SUB.value_or(60);
-                if (!nvapi_impl::initialize(main_refresh_hz, sub_refresh_hz)) {
+                if (!nvapi_impl::initialize(
+                        avs::game::DLL_INSTANCE,
+                        main_refresh_hz,
+                        sub_refresh_hz)) {
                     log_warning("sdvx", "failed to initialize synthetic NVAPI");
                 }
             } else {
