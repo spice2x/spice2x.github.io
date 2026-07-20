@@ -1168,7 +1168,10 @@ void graphics_hook_window(HWND hWnd, D3DPRESENT_PARAMETERS *pPresentationParamet
         WNDPROC_ORIG = reinterpret_cast<WNDPROC>(GetWindowLongPtrA(hWnd, GWLP_WNDPROC));
         SetWindowLongPtrA(hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WindowProc));
 
-        if (games::iidx::NATIVE_TOUCH && !GRAPHICS_IIDX_WSUB) {
+        const bool native_touch_overlay =
+            (games::iidx::NATIVE_TOUCH && !GRAPHICS_IIDX_WSUB) ||
+            (games::popn::NATIVE_TOUCH && GRAPHICS_PREVENT_SECONDARY_WINDOWS);
+        if (native_touch_overlay) {
             nativetouch_inject::register_and_attach_window(hWnd);
         }
 

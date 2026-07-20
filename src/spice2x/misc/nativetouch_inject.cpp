@@ -195,10 +195,12 @@ namespace nativetouch_inject {
         return overlay::OVERLAY->transform_touch_point(&position->x, &position->y);
     }
 
-    // retain the physical injection point but reject clicks outside the subscreen
-    static bool get_mouse_injection_position(HWND window, LPARAM l_param, POINT *position) {
-        *position = { GET_X_LPARAM(l_param), GET_Y_LPARAM(l_param) };
-        if (!ClientToScreen(window, position)) {
+    // use the current physical cursor but reject points outside the subscreen
+    static bool get_mouse_injection_position(HWND window, POINT *position) {
+
+        // queued WM_MOUSEMOVE coordinates can lag behind the cursor; injecting them makes
+        // Windows move its primary pointer back to stale positions during a drag.
+        if (!GetCursorPos(position)) {
             return false;
         }
 
@@ -292,13 +294,13 @@ namespace nativetouch_inject {
     }
 
     // begin a contact at the physical cursor position and capture future mouse input
-    static void begin_mouse_contact(HWND window, LPARAM l_param) {
+    static void begin_mouse_contact(HWND window) {
         if (contact_state.is_active()) {
             return;
         }
 
         POINT position;
-        if (!get_mouse_injection_position(window, l_param, &position)) {
+        if (!get_mouse_injection_position(window, &position)) {
             return;
         }
 
@@ -327,14 +329,14 @@ namespace nativetouch_inject {
 
     // update the contact while the primary button remains held
     static void move_mouse_contact(
-            HWND window, WPARAM w_param, LPARAM l_param, WPARAM primary_button_state) {
+            HWND window, WPARAM w_param, WPARAM primary_button_state) {
         if (contact_state.owner != ContactOwner::Mouse ||
             contact_state.input_window != window) {
             return;
         }
 
         POINT position;
-        if (!get_mouse_injection_position(window, l_param, &position)) {
+        if (!get_mouse_injection_position(window, &position)) {
             return;
         }
 
@@ -350,9 +352,24 @@ namespace nativetouch_inject {
 
     // emit stationary update frames so Windows keeps the contact alive
     static void refresh_mouse_contact(HWND window) {
-        if (contact_state.owner == ContactOwner::Mouse &&
-            contact_state.input_window == window) {
-            inject_touch_frame(contact_state.position, CONTACT_UPDATE_FLAGS);
+        if (contact_state.owner != ContactOwner::Mouse ||
+            contact_state.input_window != window) {
+            return;
+        }
+
+        POINT position {};
+        if (!GetCursorPos(&position)) {
+            return;
+        }
+
+        POINT transformed = position;
+        if (!transform_mouse_position(window, &transformed)) {
+            end_mouse_contact(window);
+            return;
+        }
+
+        if (inject_touch_frame(position, CONTACT_UPDATE_FLAGS)) {
+            contact_state.position = position;
         }
     }
 
@@ -464,9 +481,9 @@ namespace nativetouch_inject {
         // translate the primary mouse-button lifecycle into one touch contact
         if ((message == primary_button.down_message ||
              message == primary_button.double_click_message)) {
-            begin_mouse_contact(window, l_param);
+            begin_mouse_contact(window);
         } else if (message == WM_MOUSEMOVE) {
-            move_mouse_contact(window, w_param, l_param, primary_button.state_mask);
+            move_mouse_contact(window, w_param, primary_button.state_mask);
         } else if (message == primary_button.up_message) {
             end_mouse_contact(window);
         } else if ((message == WM_CANCELMODE || message == WM_KILLFOCUS ||
