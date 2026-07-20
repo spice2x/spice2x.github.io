@@ -86,6 +86,9 @@ bool games::rb::ReflecBeatTouchDeviceHandle::open(LPCWSTR lpFileName) {
                          SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER);
         }
 
+        // request automatic aspect ratio fixes
+        ::rawinput::touch::ASPECT_COMPENSATION_GAME = true;
+
         // create touch window
         touch_create_wnd(wnd);
 
@@ -93,9 +96,6 @@ bool games::rb::ReflecBeatTouchDeviceHandle::open(LPCWSTR lpFileName) {
         if (!GRAPHICS_WINDOWED) {
             ShowWindow(wnd, SW_SHOW);
         }
-
-        // request automatic aspect ratio fixes
-        ::rawinput::touch::ASPECT_COMPENSATION_GAME = true;
 
     } else {
 

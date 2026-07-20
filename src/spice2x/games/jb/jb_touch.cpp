@@ -202,10 +202,11 @@ namespace games::jb {
             IS_PORTRAIT = avs::game::is_model("L44");
 
             log_info("jubeat", "using window handle for touch: {}", fmt::ptr(wnd));
-            touch_create_wnd(wnd, true);
 
             // let the rawinput stack correct the aspect ratio
             ::rawinput::touch::ASPECT_COMPENSATION_GAME = true;
+
+            touch_create_wnd(wnd, true);
 
             if (GRAPHICS_SHOW_CURSOR) {
                 ShowCursor(TRUE);

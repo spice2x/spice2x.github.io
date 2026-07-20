@@ -35,6 +35,8 @@ namespace rawinput::touch {
     long DISPLAY_NATIVE_Y = 0L;
     bool DISPLAY_INITIALIZED = false;
 
+    static void update_current_display_mode();
+
     bool aspect_compensation_enabled() {
         switch (ASPECT_COMPENSATION_MODE) {
             case AspectMode::On:
@@ -279,7 +281,7 @@ namespace rawinput::touch {
 
         // check if display is initialized
         if (!DISPLAY_INITIALIZED) {
-            display_update();
+            update_current_display_mode();
         }
 
         // update timeouts here as well so events are in the right order
@@ -638,24 +640,13 @@ namespace rawinput::touch {
         return false;
     }
 
-    void display_update() {
-
-        // check if disabled
-        if (DISABLED)
-            return;
-
+    static void update_current_display_mode() {
         // determine monitor size
         static RECT display_rect;
         GetWindowRect(GetDesktopWindow(), &display_rect);
         DISPLAY_SIZE_X = display_rect.right - display_rect.left;
         DISPLAY_SIZE_Y = display_rect.bottom - display_rect.top;
         log_info("rawinput", "primary display size: {}x{}", (int) DISPLAY_SIZE_X, (int) DISPLAY_SIZE_Y);
-
-        // determine the native (maximum) resolution of the primary display; used to
-        // detect and undo letterboxing when a non-native display mode is in use
-        detect_native_resolution();
-        log_info("rawinput", "primary display native size: {}x{}",
-                 (int) DISPLAY_NATIVE_X, (int) DISPLAY_NATIVE_Y);
 
         // determine monitor orientation
         DEVMODE display_mode{};
@@ -702,5 +693,22 @@ namespace rawinput::touch {
 
         // mark as initialized
         DISPLAY_INITIALIZED = true;
+    }
+
+    void display_update() {
+
+        // check if disabled
+        if (DISABLED)
+            return;
+
+        update_current_display_mode();
+
+        if (aspect_compensation_enabled()) {
+            // determine the native (maximum) resolution of the primary display; used to
+            // detect and undo letterboxing when a non-native display mode is in use
+            detect_native_resolution();
+            log_info("rawinput", "primary display native size: {}x{}",
+                     (int) DISPLAY_NATIVE_X, (int) DISPLAY_NATIVE_Y);
+        }
     }
 }
