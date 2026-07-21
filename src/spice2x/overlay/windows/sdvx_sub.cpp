@@ -14,8 +14,6 @@ namespace overlay::windows {
             this->disabled_message = "Valkyrie Model mode is not enabled!";
         } else if (games::sdvx::SHOW_VM_MONITOR_WARNING) {
             this->disabled_message = "VM mode subscreen overlay is not compatible with -dxmainadapter option, use -mainmonitor instead";
-        } else if (games::sdvx::NATIVETOUCH) {
-            this->disabled_message = "Overlay disabled by user (-sdvxnativetouch option is on, used for real touch screens)";
         } else if (GRAPHICS_WINDOWED) {
             if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                 this->disabled_message = "Subscreen has been disabled by the user (-sdvxnosub).";

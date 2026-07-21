@@ -81,8 +81,6 @@ static const char *LOG_MODULE_NAME = "touch";
 
 static TouchHandler *TOUCH_HANDLER = nullptr;
 
-static bool is_mouse_message_from_touchscreen();
-
 TouchHandler::TouchHandler(std::string name) {
     log_info("touch", "Using touch handler: {}", name);
 }
@@ -1003,7 +1001,7 @@ void update_spicetouch_window_dimensions(HWND hWnd) {
 }
 
 // https://learn.microsoft.com/en-us/windows/win32/tablet/system-events-and-mouse-messages
-static bool is_mouse_message_from_touchscreen() {
+bool is_mouse_message_from_touchscreen() {
     constexpr ULONG_PTR MI_WP_SIGNATURE = 0xFF515700;
     constexpr ULONG_PTR SIGNATURE_MASK = 0xFFFFFF00;
     return (GetMessageExtraInfo() & SIGNATURE_MASK) == MI_WP_SIGNATURE;

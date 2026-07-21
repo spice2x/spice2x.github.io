@@ -1,6 +1,6 @@
 #include <windows.h>
 
-namespace nativetouchhook {
+namespace nativetouch {
     void hook(HMODULE module);
 }
  

@@ -572,7 +572,6 @@ set(SOURCE_FILES ${SOURCE_FILES}
         misc/device.cpp
         misc/eamuse.cpp
         misc/extdev.cpp
-        misc/nativetouchhook.cpp
         misc/sciunit.cpp
         misc/sde.cpp
         misc/wintouchemu.cpp
@@ -657,6 +656,11 @@ set(SOURCE_FILES ${SOURCE_FILES}
 
         # touch
         touch/gdi_overlay.cpp
+        touch/native/inject.cpp
+        touch/native/inject_mouse.cpp
+        touch/native/inject_synthetic.cpp
+        touch/native/nativetouchhook.cpp
+        touch/native/transform.cpp
         touch/touch.cpp
         touch/touch_gestures.cpp
         touch/win7.cpp

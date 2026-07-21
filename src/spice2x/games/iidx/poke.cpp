@@ -11,21 +11,10 @@
 #include "misc/eamuse.h"
 #include "overlay/overlay.h"
 #include "overlay/windows/generic_sub.h"
-#include "rawinput/rawinput.h"
+#include "touch/native/inject.h"
 #include "touch/touch.h"
-#include "util/libutils.h"
 #include "util/logging.h"
 #include "util/precise_timer.h"
-
-#define POKE_NATIVE_TOUCH 0
-
-#if POKE_NATIVE_TOUCH
-static HINSTANCE USER32_INSTANCE = nullptr;
-typedef BOOL (WINAPI *InitializeTouchInjection_t)(UINT32, DWORD);
-typedef BOOL (WINAPI *InjectTouchInput_t)(UINT32, POINTER_TOUCH_INFO*);
-static InitializeTouchInjection_t pInitializeTouchInjection = nullptr;
-static InjectTouchInput_t pInjectTouchInput = nullptr;
-#endif
 
 namespace games::iidx::poke {
 
@@ -116,72 +105,14 @@ namespace games::iidx::poke {
         {"1/D", 50},
     };
 
-#if POKE_NATIVE_TOUCH
-    void initialize_native_touch_library() {
-        if (USER32_INSTANCE == nullptr) {
-            USER32_INSTANCE = libutils::load_library("user32.dll");
-        }
-
-        pInitializeTouchInjection = libutils::try_proc<InitializeTouchInjection_t>(
-                USER32_INSTANCE, "InitializeTouchInjection");
-        pInjectTouchInput = libutils::try_proc<InjectTouchInput_t>(
-                USER32_INSTANCE, "InjectTouchInput");
-    }
-
-    void emulate_native_touch(TouchPoint tp, bool is_down) {
-        if (pInjectTouchInput == nullptr) {
+    static void inject_native_touch_points(const std::vector<TouchPoint> &touch_points, bool down) {
+        if (touch_points.empty()) {
             return;
         }
 
-        POINTER_TOUCH_INFO contact;
-        BOOL bRet = TRUE;
-        const int contact_offset = 2;
-
-        memset(&contact, 0, sizeof(POINTER_TOUCH_INFO));
-
-        contact.pointerInfo.pointerType = PT_TOUCH;
-        contact.pointerInfo.pointerId = 0;
-        contact.pointerInfo.ptPixelLocation.x = tp.x;
-        contact.pointerInfo.ptPixelLocation.y = tp.y;
-        if (is_down) {
-            contact.pointerInfo.pointerFlags = POINTER_FLAG_DOWN | POINTER_FLAG_INRANGE | POINTER_FLAG_INCONTACT;
-        } else {
-            contact.pointerInfo.pointerFlags = POINTER_FLAG_UP;
-        }
-
-        contact.pointerInfo.dwTime = 0;
-        contact.pointerInfo.PerformanceCount = 0;
-
-        contact.touchFlags = TOUCH_FLAG_NONE;
-        contact.touchMask = TOUCH_MASK_CONTACTAREA | TOUCH_MASK_ORIENTATION | TOUCH_MASK_PRESSURE;
-        contact.orientation = 0;
-        contact.pressure = 1024;
-
-        contact.rcContact.top = tp.y - contact_offset;
-        contact.rcContact.bottom = tp.y + contact_offset;
-        contact.rcContact.left = tp.x - contact_offset;
-        contact.rcContact.right = tp.x + contact_offset;
-
-        bRet = InjectTouchInput(1, &contact);
-        if (!bRet) {
-            log_warning("poke", "error injecting native touch {}: ({}, {}) error: {}", is_down ? "down" : "up", tp.x, tp.y, GetLastError());
-        }
+        const auto &touch = touch_points.front();
+        nativetouch::inject::inject_synthetic_touch({ touch.x, touch.y }, down);
     }
-
-    void emulate_native_touch_points(std::vector<TouchPoint> *touch_points) {
-        int i = 0;
-        for (auto &touch : *touch_points) {
-            emulate_native_touch(touch, true);
-        }
-    }
-
-    void clear_native_touch_points(std::vector<TouchPoint> *touch_points) {
-        for (auto &touch : *touch_points) {
-            emulate_native_touch(touch, false);
-        }
-        touch_points->clear();
-    }
-#endif
     
     void clear_touch_points(std::vector<TouchPoint> *touch_points) {
         std::vector<DWORD> touch_ids;
@@ -209,36 +140,19 @@ namespace games::iidx::poke {
 
             std::vector<TouchPoint> touch_points;
             std::vector<uint16_t> last_keypad_state = {0, 0};
-
-#if POKE_NATIVE_TOUCH
-            bool use_native = games::iidx::NATIVE_TOUCH;
-
-            if (use_native) {
-                initialize_native_touch_library();
-                
-                if (pInitializeTouchInjection != nullptr) {
-                    pInitializeTouchInjection(1, TOUCH_FEEDBACK_NONE);
-                }
-            }
-
-#else 
-            bool use_native = false;
-#endif
+            const bool use_native = games::iidx::NATIVE_TOUCH;
 
             // set variable to false to stop
             while (THREAD_RUNNING) {
 
                 // clean up touch from last frame
                 if (touch_points.size() > 0) {
-#if POKE_NATIVE_TOUCH
                     if (use_native) {
-                        clear_native_touch_points(&touch_points);
+                        inject_native_touch_points(touch_points, false);
+                        touch_points.clear();
                     } else {
                         clear_touch_points(&touch_points);
                     }
-#else
-                    clear_touch_points(&touch_points);
-#endif
                 }
 
                 for (int unit = 0; unit < 2; unit++) {
@@ -264,8 +178,16 @@ namespace games::iidx::poke {
                                     float x = x_iter->second / 1920.0;
                                     float y = y_iter->second / 1080.0;
                                     if (use_native) {
-                                        x *= rawinput::TOUCHSCREEN_RANGE_X;
-                                        y *= rawinput::TOUCHSCREEN_RANGE_Y;
+                                        if (GRAPHICS_WINDOWED) {
+                                            if (SPICETOUCH_TOUCH_WIDTH <= 0 || SPICETOUCH_TOUCH_HEIGHT <= 0) {
+                                                continue;
+                                            }
+                                            x = SPICETOUCH_TOUCH_X + x * SPICETOUCH_TOUCH_WIDTH;
+                                            y = SPICETOUCH_TOUCH_Y + y * SPICETOUCH_TOUCH_HEIGHT;
+                                        } else {
+                                            x = x_iter->second;
+                                            y = y_iter->second;
+                                        }
                                     } else if (GRAPHICS_IIDX_WSUB) {
                                         // Scale to windowed subscreen
                                         x *= GRAPHICS_WSUB_WIDTH;
@@ -309,19 +231,23 @@ namespace games::iidx::poke {
                 } // for all units
 
                 if (touch_points.size() > 0) {
-#if POKE_NATIVE_TOUCH
                     if (use_native) {
-                        emulate_native_touch_points(&touch_points);
+                        inject_native_touch_points(touch_points, true);
                     } else {
                         touch_write_points(&touch_points);
                     }
-#else
-                    touch_write_points(&touch_points);
-#endif
                 }
 
                 // slow down
                 timer.sleep(50);
+            }
+
+            if (!touch_points.empty()) {
+                if (use_native) {
+                    inject_native_touch_points(touch_points, false);
+                } else {
+                    clear_touch_points(&touch_points);
+                }
             }
 
             return nullptr;
