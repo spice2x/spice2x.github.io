@@ -299,7 +299,27 @@ std::string Button::getMidiNoteString() {
     return fmt::format("{}{}", note_names[index % 12], ((index / 12) - 1));
 }
 
-std::string Button::getDisplayString(rawinput::RawInputManager* manager) {
+std::string Button::getDisplayString(rawinput::RawInputManager *manager) {
+    auto binding_display = this->getBindingDisplayString(manager);
+    auto modifiers = this->getModifierMask();
+    if (binding_display.empty() || modifiers == 0) {
+        return binding_display;
+    }
+
+    std::string modifier_display;
+    for (unsigned int index = 1; modifiers != 0; index++, modifiers >>= 1) {
+        if ((modifiers & UINT8_C(1)) == 0) {
+            continue;
+        }
+        if (!modifier_display.empty()) {
+            modifier_display += "+";
+        }
+        modifier_display += fmt::format("Mod{}", index);
+    }
+    return modifier_display + "+" + binding_display;
+}
+
+std::string Button::getBindingDisplayString(rawinput::RawInputManager *manager) {
 
     // get VKey string
     auto vKey = (uint16_t) this->getVKey();

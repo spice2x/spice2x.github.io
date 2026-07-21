@@ -26,6 +26,7 @@ namespace overlay::windows {
         CONTROLLER_PAGE_INVALID,
         CONTROLLER_PAGE_BUTTONS,
         CONTROLLER_PAGE_KEYPADS,
+        CONTROLLER_PAGE_MODIFIERS,
         CONTROLLER_PAGE_ANALOGS,
         CONTROLLER_PAGE_OVERLAY,
         CONTROLLER_PAGE_LIGHTS,
@@ -119,10 +120,12 @@ namespace overlay::windows {
         std::vector<std::string> template_save_sources;
         std::vector<std::string> template_save_labels;
         bool apply_buttons = true;
+        bool apply_modifiers = true;
         bool apply_keypads = true;
         bool apply_analogs = true;
         bool apply_lights = true;
         bool save_buttons = true;
+        bool save_modifiers = true;
         bool save_keypads = true;
         bool save_analogs = true;
         bool save_lights = true;
@@ -168,12 +171,14 @@ namespace overlay::windows {
 
         void bind_button_popup(const std::string &bind_name, Button *button, const int button_it_max, const int alt_index);
         void naive_button_popup(const std::string &naive_string, Button *button, const int button_it_max, const int alt_index);
+        bool build_modifier_picker(Button &button);
         void edit_button_popup(
             const std::string &edit_name,
             const std::string &button_display,
             Button *button,
             const float button_velocity,
-            const int alt_index);
+            const int alt_index,
+            const bool allow_modifiers);
         void clear_button(Button *button, const int alt_index, std::optional<unsigned short> vKey_default = std::nullopt);
         void reset_button_to_default(Button *button, unsigned short vKey_default);
         unsigned int get_keypad_top_row(const Button &button);

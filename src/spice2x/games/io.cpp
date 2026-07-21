@@ -44,6 +44,7 @@ namespace games {
     static bool IO_INITIALIZED = false;
     static std::vector<std::string> games;
     static robin_hood::unordered_map<std::string, std::vector<Button> &> buttons;
+    static robin_hood::unordered_map<std::string, std::vector<Button>> buttons_modifiers;
     static robin_hood::unordered_map<std::string, std::vector<Button>> buttons_keypads;
     static robin_hood::unordered_map<std::string, std::vector<Button>> buttons_overlay;
     static robin_hood::unordered_map<std::string, std::string> buttons_help;
@@ -363,6 +364,37 @@ namespace games {
             return "";
         }
         return it->second;
+    }
+
+    static std::vector<Button> gen_buttons_modifiers(const std::string &game) {
+        auto modifier_buttons = GameAPI::Buttons::getButtons(game);
+        const std::vector<std::string> names {
+            "Modifier 1",
+            "Modifier 2",
+            "Modifier 3",
+            "Modifier 4",
+        };
+        modifier_buttons = GameAPI::Buttons::sortButtons(modifier_buttons, names);
+        for (auto &modifier : modifier_buttons) {
+            modifier.setModifierMask(0);
+            for (auto &alternative : modifier.getAlternatives()) {
+                alternative.setModifierMask(0);
+            }
+        }
+        return modifier_buttons;
+    }
+
+    std::vector<Button> *get_buttons_modifiers(const std::string &game) {
+        initialize();
+        auto it = buttons_modifiers.find(game);
+        if (it == buttons_modifiers.end()) {
+            if (game.empty()) {
+                return nullptr;
+            }
+            buttons_modifiers[game] = gen_buttons_modifiers(game);
+            return &buttons_modifiers[game];
+        }
+        return &it->second;
     }
 
     static std::vector<Button> gen_buttons_keypads(const std::string &game) {

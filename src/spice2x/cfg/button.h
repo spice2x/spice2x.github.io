@@ -49,6 +49,7 @@ private:
     std::string name;
     std::string device_identifier = "";
     unsigned short vKey = INVALID_VKEY;
+    uint8_t modifier_mask = 0;
 
     // default bindings are always naive
     unsigned short vKey_default = INVALID_VKEY;
@@ -65,6 +66,7 @@ private:
     unsigned short velocity_threshold = 0;
 
     std::string getMidiNoteString();
+    std::string getBindingDisplayString(rawinput::RawInputManager *manager);
 
 public:
     std::string getVKeyString();
@@ -111,6 +113,7 @@ public:
         device_identifier = "";
         analog_type = BAT_NONE;
         bat_threshold = 0;
+        modifier_mask = 0;
     }
 
     std::string getDisplayString(rawinput::RawInputManager* manager);
@@ -121,6 +124,14 @@ public:
 
     inline const std::string &getName() const {
         return this->name;
+    }
+
+    inline uint8_t getModifierMask() const {
+        return this->modifier_mask;
+    }
+
+    inline void setModifierMask(uint8_t new_modifier_mask) {
+        this->modifier_mask = new_modifier_mask & UINT8_C(0x0F);
     }
 
     inline const std::string &getDeviceIdentifier() const {

@@ -6,7 +6,7 @@
 
 namespace overlay::windows {
 
-    // helpers - iterate both buttons and keypad_buttons
+    // helpers - iterate all button groups
     static void count_buttons_in(const std::vector<TemplateButtonBinding> &btns, int &naive, int &device) {
         for (auto &btn : btns) {
             if (btn.primary.is_naive()) naive++;
@@ -21,6 +21,7 @@ namespace overlay::windows {
     int ControllerTemplate::count_naive_buttons() const {
         int naive = 0, device = 0;
         count_buttons_in(buttons, naive, device);
+        count_buttons_in(modifier_buttons, naive, device);
         count_buttons_in(keypad_buttons, naive, device);
         return naive;
     }
@@ -28,6 +29,7 @@ namespace overlay::windows {
     int ControllerTemplate::count_device_buttons() const {
         int naive = 0, device = 0;
         count_buttons_in(buttons, naive, device);
+        count_buttons_in(modifier_buttons, naive, device);
         count_buttons_in(keypad_buttons, naive, device);
         return device;
     }
@@ -64,6 +66,7 @@ namespace overlay::windows {
     std::set<std::string> ControllerTemplate::get_used_devices() const {
         std::set<std::string> devices;
         collect_devices_from(buttons, devices);
+        collect_devices_from(modifier_buttons, devices);
         collect_devices_from(keypad_buttons, devices);
         for (auto &a : analogs) {
             if (a.is_device()) devices.insert(a.device_identifier);
@@ -94,6 +97,7 @@ namespace overlay::windows {
         bool has_naive = false;
 
         collect_sources_from(buttons, sources_set, has_naive);
+        collect_sources_from(modifier_buttons, sources_set, has_naive);
         collect_sources_from(keypad_buttons, sources_set, has_naive);
         for (auto &a : analogs) {
             if (a.is_device()) {
@@ -131,6 +135,7 @@ namespace overlay::windows {
             }
         };
         rename_in_buttons(buttons);
+        rename_in_buttons(modifier_buttons);
         rename_in_buttons(keypad_buttons);
         for (auto &a : analogs) {
             if (a.device_identifier == old_id) a.device_identifier = new_id;
@@ -177,6 +182,16 @@ namespace overlay::windows {
         if (!btn_lines.empty()) {
             result += "Buttons:\n";
             for (auto &line : btn_lines) {
+                result += "  " + line + "\n";
+            }
+        }
+
+        // modifier buttons
+        std::vector<std::string> modifier_lines;
+        collect_btn_lines(modifier_buttons, modifier_lines);
+        if (!modifier_lines.empty()) {
+            result += "Modifiers:\n";
+            for (auto &line : modifier_lines) {
                 result += "  " + line + "\n";
             }
         }
