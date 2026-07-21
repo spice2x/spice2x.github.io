@@ -502,6 +502,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/audio/buffer.cpp
         hooks/audio/mme.cpp
         hooks/audio/util.cpp
+        hooks/audio/xact.cpp
         hooks/audio/backends/dsound/dsound_backend.cpp
         hooks/audio/backends/mmdevice/audio_endpoint_volume.cpp
         hooks/audio/backends/mmdevice/device.cpp
