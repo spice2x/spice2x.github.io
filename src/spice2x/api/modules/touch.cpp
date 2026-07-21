@@ -1,5 +1,6 @@
 #include "touch.h"
 
+#include <cstdint>
 #include <functional>
 
 #include "external/rapidjson/document.h"
@@ -8,6 +9,8 @@
 #include "misc/eamuse.h"
 #include "launcher/launcher.h"
 #include "touch/touch.h"
+#include "touch/native/inject.h"
+#include "touch/native/nativetouchhook.h"
 #include "util/utils.h"
 #include "games/iidx/iidx.h"
 
@@ -17,6 +20,38 @@ using namespace rapidjson;
 
 namespace api::modules {
 
+    static void inject_native_touch(
+            const std::vector<TouchPoint> &touch_points, int canvas_w, int canvas_h) {
+        if (touch_points.empty()) {
+            // no active touches remain; release the synthetic contact
+            nativetouch::inject::inject_synthetic_touch({ 0, 0 }, false);
+            return;
+        }
+
+        // only a single synthetic contact is supported, so just use the first touch point
+        const auto &touch = touch_points.front();
+
+        // the API sends coordinates in the game's touch canvas (e.g. 1280x720 for the TDJ
+        // subscreen). normalize by that canvas and scale into the spicetouch touch surface,
+        // mirroring how poke feeds inject_synthetic_touch.
+        //
+        // resize-safe: game_to_screen maps this onto the subscreen window's *live* client
+        // rect, so window moves/resizes are followed automatically. the SPICETOUCH_TOUCH_*
+        // offset/size factors below cancel against the same factors inside game_to_screen,
+        // leaving a net mapping of touch/canvas -> live client rect. do not "simplify" the
+        // SPICETOUCH_TOUCH terms away.
+        POINT position { touch.x, touch.y };
+        if (canvas_w > 0 && canvas_h > 0 &&
+                SPICETOUCH_TOUCH_WIDTH > 0 && SPICETOUCH_TOUCH_HEIGHT > 0) {
+            position.x = SPICETOUCH_TOUCH_X +
+                (LONG) ((int64_t) touch.x * SPICETOUCH_TOUCH_WIDTH / canvas_w);
+            position.y = SPICETOUCH_TOUCH_Y +
+                (LONG) ((int64_t) touch.y * SPICETOUCH_TOUCH_HEIGHT / canvas_h);
+        }
+
+        nativetouch::inject::inject_synthetic_touch(position, true);
+    }
+
     Touch::Touch() : Module("touch") {
         is_sdvx = avs::game::is_model("KFC");
 
@@ -24,6 +59,21 @@ namespace api::modules {
         // special case: when windowed subscreen is in use, use the original coords
         if (GRAPHICS_IIDX_WSUB) {
             is_tdj_fhd = false;
+        }
+
+        use_native = nativetouch::is_hooked();
+
+        // resolution the API/companion sends native touch coordinates in (after errata)
+        native_canvas_w = 0;
+        native_canvas_h = 0;
+        if (is_sdvx) {
+            // exceed gear subscreen, portrait after the rotation applied in apply_touch_errata
+            native_canvas_w = 1080;
+            native_canvas_h = 1920;
+        } else if (avs::game::is_model("LDJ")) {
+            // TDJ subscreen; FHD models are upscaled to 1080p by apply_touch_errata
+            native_canvas_w = is_tdj_fhd ? 1920 : 1280;
+            native_canvas_h = is_tdj_fhd ? 1080 : 720;
         }
 
         functions["read"] = std::bind(&Touch::read, this, _1, _2);
@@ -99,7 +149,11 @@ namespace api::modules {
         }
 
         // apply touch points
-        touch_write_points(&touch_points);
+        if (use_native) {
+            inject_native_touch(touch_points, native_canvas_w, native_canvas_h);
+        } else {
+            touch_write_points(&touch_points);
+        }
     }
 
     /**
@@ -123,7 +177,12 @@ namespace api::modules {
         }
 
         // remove all IDs
-        touch_remove_points(&touch_point_ids);
+        if (use_native) {
+            // native injection tracks a single synthetic contact; a reset releases it
+            inject_native_touch({}, native_canvas_w, native_canvas_h);
+        } else {
+            touch_remove_points(&touch_point_ids);
+        }
     }
 
     void Touch::apply_touch_errata(int &x, int &y) {

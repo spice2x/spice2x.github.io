@@ -39,6 +39,21 @@ namespace nativetouch::inject {
         if (!transform::game_to_screen(window, &position)) {
             return;
         }
+
+        const auto timer_id = reinterpret_cast<UINT_PTR>(&synthetic_contact_timer_token);
+
+        // when this producer already owns the contact, move it instead of releasing and
+        // re-pressing so continuous input (such as the API surface) drags smoothly
+        if (contact_is_owned_by(ContactOwner::Synthetic, window)) {
+            update_contact(ContactOwner::Synthetic, window, position);
+
+            // refresh the safety timeout so the contact stays down while updates keep arriving
+            if (SetTimer(window, timer_id, SYNTHETIC_CONTACT_TIMEOUT_MS, nullptr)) {
+                set_contact_timer(ContactOwner::Synthetic, window, timer_id);
+            }
+            return;
+        }
+
         if (!release_active_contact()) {
             return;
         }
@@ -50,7 +65,6 @@ namespace nativetouch::inject {
             return;
         }
 
-        const auto timer_id = reinterpret_cast<UINT_PTR>(&synthetic_contact_timer_token);
         if (SetTimer(window, timer_id, SYNTHETIC_CONTACT_TIMEOUT_MS, nullptr)) {
             set_contact_timer(ContactOwner::Synthetic, window, timer_id);
         } else {

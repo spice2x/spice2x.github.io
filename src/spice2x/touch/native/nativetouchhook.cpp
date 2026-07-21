@@ -23,6 +23,7 @@
 namespace nativetouch {
 
     static decltype(GetTouchInputInfo) *GetTouchInputInfo_orig = nullptr;
+    static bool native_touch_hooked = false;
     static bool native_display_initialized = false;
     static DWORD native_display_orientation = DMDO_DEFAULT;
     static long native_display_size_x = 1920L;
@@ -157,8 +158,14 @@ namespace nativetouch {
         return result;
     }
 
+    bool is_hooked() {
+        return native_touch_hooked;
+    }
+
     void hook(HMODULE module) {
         inject::hook(module);
+
+        native_touch_hooked = true;
 
         GetTouchInputInfo_orig = detour::iat_try("GetTouchInputInfo", GetTouchInputInfoHook, module);
         if (GetTouchInputInfo_orig != nullptr) {
