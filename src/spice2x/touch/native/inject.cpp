@@ -126,9 +126,19 @@ namespace nativetouch::inject {
         contact.pointerInfo.ptPixelLocation = position;
         contact.touchFlags = TOUCH_FLAG_NONE;
 
-        // ERROR_NOT_READY is transient when frames arrive within the same timing interval
         BOOL result = InjectTouchInput_ptr(1, &contact);
-        if (!result && GetLastError() == ERROR_NOT_READY) {
+        if (result) {
+            return true;
+        }
+
+        // if UPDATE fails, drop it
+        const auto error = GetLastError();
+        if (error == ERROR_NOT_READY && (pointer_flags & POINTER_FLAG_UPDATE)) {
+            return true;
+        }
+
+        // if DOWN or UP fails, retry once after a brief delay; if it still fails, log a warning
+        if (error == ERROR_NOT_READY) {
             Sleep(INJECTION_RETRY_DELAY_MS);
             result = InjectTouchInput_ptr(1, &contact);
         }
