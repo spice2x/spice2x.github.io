@@ -803,11 +803,7 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
             nWidth = rect.right - rect.left;
             nHeight = rect.bottom - rect.top;
 
-            if (games::iidx::NATIVE_TOUCH) {
-                nativetouch::inject::register_and_attach_window(TDJ_SUBSCREEN_WINDOW);
-            } else {
-                touch_attach_wnd(TDJ_SUBSCREEN_WINDOW);
-            }
+            nativetouch::inject::register_and_attach_window(TDJ_SUBSCREEN_WINDOW);
         } else {
             // Existing behaviour: suppress subscreen window and prompt user to use overlay instead
              log_info(
@@ -1174,8 +1170,8 @@ void graphics_hook_window(HWND hWnd, D3DPRESENT_PARAMETERS *pPresentationParamet
         SetWindowLongPtrA(hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WindowProc));
 
         const bool native_touch_overlay =
-            (games::iidx::NATIVE_TOUCH && !GRAPHICS_IIDX_WSUB) ||
-            (games::popn::NATIVE_TOUCH && GRAPHICS_PREVENT_SECONDARY_WINDOWS);
+            (games::iidx::TDJ_MODE && !GRAPHICS_IIDX_WSUB) ||
+            (games::popn::is_pikapika_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS);
         if (native_touch_overlay) {
             nativetouch::inject::register_and_attach_window(hWnd);
         }

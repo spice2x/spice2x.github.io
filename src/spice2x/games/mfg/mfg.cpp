@@ -6,7 +6,6 @@
 #include "util/utils.h"
 #include "util/execexe.h"
 #include "acioemu/handle.h"
-#include "misc/wintouchemu.h"
 #include "hooks/graphics/graphics.h"
 #include "bi2a_hook.h"
 

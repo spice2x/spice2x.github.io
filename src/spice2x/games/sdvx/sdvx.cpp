@@ -27,7 +27,6 @@
 #include "util/sysutils.h"
 #include "misc/eamuse.h"
 #include "touch/native/nativetouchhook.h"
-#include "misc/wintouchemu.h"
 #include "bi2x_hook.h"
 #include "camera.h"
 #include "io.h"
@@ -49,7 +48,6 @@ namespace games::sdvx {
     const char *ORIGINAL_ASIO_DEVICE_NAME = "XONAR SOUND CARD(64)";
 
     // settings
-    bool NATIVETOUCH = false;
     uint8_t DIGITAL_KNOB_SENS = 16;
     SdvxOverlayPosition OVERLAY_POS = SDVX_OVERLAY_BOTTOM;
     bool ENABLE_COM_PORT_SCAN_HOOK = false;
@@ -455,18 +453,7 @@ namespace games::sdvx {
             }
 
             if (is_valkyrie_model()) {
-                if (NATIVETOUCH) {
-                    nativetouch::hook(avs::game::DLL_INSTANCE);
-                } else if (!NATIVETOUCH && !GRAPHICS_WINDOWED) {
-                    // hook touch window
-                    // in windowed mode, game can accept mouse input on the second screen
-                    wintouchemu::FORCE = true;
-                    wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
-                    wintouchemu::hook_title_ends(
-                            "SOUND VOLTEX",
-                            "Main Screen",
-                            avs::game::DLL_INSTANCE);
-                }
+                nativetouch::hook(avs::game::DLL_INSTANCE);
 
                 // insert BI2X hooks
                 bi2x_hook_init();

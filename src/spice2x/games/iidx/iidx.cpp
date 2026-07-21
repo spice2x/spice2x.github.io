@@ -21,7 +21,6 @@
 #include "launcher/options.h"
 #include "touch/touch.h"
 #include "touch/native/nativetouchhook.h"
-#include "misc/wintouchemu.h"
 #include "misc/eamuse.h"
 #include "util/detour.h"
 #include "util/deferlog.h"
@@ -63,7 +62,6 @@ namespace games::iidx {
     bool TDJ_MODE = false;
     bool FORCE_720P = false;
     bool DISABLE_ESPEC_IO = false;
-    bool NATIVE_TOUCH = false;
     std::optional<std::string> SOUND_OUTPUT_DEVICE = std::nullopt;
     std::optional<std::string> SOUND_OUTPUT_DEVICE_IN_EFFECT = std::nullopt;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
@@ -350,13 +348,7 @@ namespace games::iidx {
                 // need to hook `avs2-core.dll` so AVS win32fs operations go through rom hook
                 devicehook_init(avs::core::DLL_INSTANCE);
 
-                if (NATIVE_TOUCH) {
-                    nativetouch::hook(avs::game::DLL_INSTANCE);
-                } else {
-                    wintouchemu::FORCE = true;
-                    wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
-                    wintouchemu::hook_title_ends("beatmania IIDX", "main", avs::game::DLL_INSTANCE);
-                }
+                nativetouch::hook(avs::game::DLL_INSTANCE);
             }
 
             // insert BI2X hooks

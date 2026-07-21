@@ -18,7 +18,6 @@ namespace games::sdvx {
     };
 
     // settings
-    extern bool NATIVETOUCH;
     extern uint8_t DIGITAL_KNOB_SENS;
     extern std::optional<std::string> ASIO_DRIVER;
     extern SdvxOverlayPosition OVERLAY_POS;

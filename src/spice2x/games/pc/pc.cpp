@@ -12,7 +12,6 @@
 #include "util/unity_player.h"
 #include "util/execexe.h"
 #include "acioemu/handle.h"
-#include "misc/wintouchemu.h"
 #include "hooks/graphics/graphics.h"
 #include "rawinput/rawinput.h"
 #include "util/socd_cleaner.h"
