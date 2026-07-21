@@ -2,7 +2,6 @@
 
 #include "acio/icca/icca.h"
 #include "io.h"
-#include "misc/wintouchemu.h"
 #include "util/detour.h"
 #include "util/utils.h"
 #include "util/libutils.h"

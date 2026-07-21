@@ -7,7 +7,6 @@
 #include "util/utils.h"
 #include "util/detour.h"
 #include "acioemu/handle.h"
-#include "misc/wintouchemu.h"
 #include "hooks/graphics/graphics.h"
 #include "bi2x_hook.h"
 #include "trackball.h"
