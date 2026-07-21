@@ -1,5 +1,6 @@
 #include "touch.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 
@@ -20,25 +21,23 @@ using namespace rapidjson;
 
 namespace api::modules {
 
-    static void inject_native_touch(
+    static bool inject_native_touch(
             const std::vector<TouchPoint> &touch_points, int canvas_w, int canvas_h) {
         if (touch_points.empty()) {
             // no active touches remain; release the synthetic contact
-            nativetouch::inject::inject_synthetic_touch({ 0, 0 }, false);
-            return;
+            return nativetouch::inject::inject_synthetic_touch({ 0, 0 }, false);
         }
 
         // only a single synthetic contact is supported, so just use the first touch point
         const auto &touch = touch_points.front();
         POINT position { touch.x, touch.y };
         if (canvas_w > 0 && canvas_h > 0) {
-            nativetouch::inject::inject_synthetic_touch_from_canvas(
+            return nativetouch::inject::inject_synthetic_touch_from_canvas(
                 position,
                 { canvas_w, canvas_h },
                 true);
-        } else {
-            nativetouch::inject::inject_synthetic_touch(position, true);
         }
+        return nativetouch::inject::inject_synthetic_touch(position, true);
     }
 
     Touch::Touch() : Module("touch") {
@@ -143,9 +142,7 @@ namespace api::modules {
 
         // apply touch points
         if (use_native) {
-            if (!touch_points.empty()) {
-                inject_native_touch(touch_points, native_canvas_w, native_canvas_h);
-            }
+            write_native(touch_points);
         } else {
             touch_write_points(&touch_points);
         }
@@ -173,10 +170,41 @@ namespace api::modules {
 
         // remove all IDs
         if (use_native) {
-            // native injection tracks a single contact, so IDs are ignored and any reset releases it
-            inject_native_touch({}, native_canvas_w, native_canvas_h);
+            write_reset_native(touch_point_ids);
         } else {
             touch_remove_points(&touch_point_ids);
+        }
+    }
+
+    void Touch::write_native(const std::vector<TouchPoint> &touch_points) {
+        if (touch_points.empty()) {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(native_touch_mutex);
+        const auto touch_id = touch_points.front().id;
+        if (native_touch_id && *native_touch_id != touch_id) {
+            if (!inject_native_touch({}, native_canvas_w, native_canvas_h)) {
+                return;
+            }
+            native_touch_id.reset();
+        }
+        if (inject_native_touch(touch_points, native_canvas_w, native_canvas_h)) {
+            native_touch_id = touch_id;
+        }
+    }
+
+    void Touch::write_reset_native(const std::vector<DWORD> &touch_point_ids) {
+        std::lock_guard<std::mutex> lock(native_touch_mutex);
+        if (!native_touch_id ||
+                std::find(
+                    touch_point_ids.begin(),
+                    touch_point_ids.end(),
+                    *native_touch_id) == touch_point_ids.end()) {
+            return;
+        }
+        if (inject_native_touch({}, native_canvas_w, native_canvas_h)) {
+            native_touch_id.reset();
         }
     }
 
