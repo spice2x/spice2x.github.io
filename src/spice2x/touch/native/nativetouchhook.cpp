@@ -138,8 +138,11 @@ namespace nativetouchhook {
             if (flip_values) {
                 flip_touch_points(point);
             }
-            if (!synthetic) {
-                nativetouch_inject::transform_hardware_touch_input(point);
+            if (!synthetic &&
+                !nativetouch_inject::transform_hardware_touch_input(point) &&
+                !(point->dwFlags & TOUCHEVENTF_UP)) {
+                // suppress rejected contacts, but preserve UP to release an active touch ID
+                point->dwFlags = 0;
             }
         }
         

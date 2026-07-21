@@ -223,23 +223,25 @@ namespace nativetouch_inject {
     }
 
     // map corrected hardware coordinates through the dedicated subscreen or active overlay
-    void transform_hardware_touch_input(PTOUCHINPUT point) {
+    bool transform_hardware_touch_input(PTOUCHINPUT point) {
         const auto dedicated_subscreen = TDJ_SUBSCREEN_WINDOW != nullptr &&
             internal::is_tdj_dedicated_subscreen(TDJ_SUBSCREEN_WINDOW);
         const auto active_overlay = overlay::OVERLAY != nullptr &&
             overlay::OVERLAY->get_active() &&
             overlay::OVERLAY->can_transform_touch_input();
         if (!dedicated_subscreen && !active_overlay) {
-            return;
+            return true;
         }
 
         POINT position { point->x / 100, point->y / 100 };
-        if (internal::transform_touch_position(
+        const auto valid = internal::transform_touch_position(
                 dedicated_subscreen ? TDJ_SUBSCREEN_WINDOW : nullptr,
-                &position)) {
+                &position);
+        if (valid) {
             point->x = position.x * 100;
             point->y = position.y * 100;
         }
+        return valid;
     }
 
     bool internal::contact_is_active() {

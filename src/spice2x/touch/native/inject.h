@@ -10,5 +10,5 @@ namespace nativetouch_inject {
     void hook(HMODULE module);
     bool inject_synthetic_touch(POINT position, bool down);
     bool transform_touch_input(tagTOUCHINPUT *point);
-    void transform_hardware_touch_input(tagTOUCHINPUT *point);
+    bool transform_hardware_touch_input(tagTOUCHINPUT *point);
 }
