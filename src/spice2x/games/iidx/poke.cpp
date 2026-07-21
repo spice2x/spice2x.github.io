@@ -3,14 +3,10 @@
 #include <thread>
 
 #include "windows.h"
-#include "cfg/screen_resize.h"
 #include "games/io.h"
-#include "games/iidx/iidx.h"
 #include "hooks/graphics/graphics.h"
 #include "launcher/shutdown.h"
 #include "misc/eamuse.h"
-#include "overlay/overlay.h"
-#include "overlay/windows/generic_sub.h"
 #include "touch/native/inject.h"
 #include "touch/touch.h"
 #include "util/logging.h"
@@ -114,15 +110,6 @@ namespace games::iidx::poke {
         nativetouch::inject::inject_synthetic_touch({ touch.x, touch.y }, down);
     }
     
-    void clear_touch_points(std::vector<TouchPoint> *touch_points) {
-        std::vector<DWORD> touch_ids;
-        for (auto &touch : *touch_points) {
-            touch_ids.emplace_back(touch.id);
-        }
-        touch_remove_points(&touch_ids);
-        touch_points->clear();
-    }
-
     void enable() {
 
         // check if already running
@@ -140,19 +127,14 @@ namespace games::iidx::poke {
 
             std::vector<TouchPoint> touch_points;
             std::vector<uint16_t> last_keypad_state = {0, 0};
-            const bool use_native = games::iidx::NATIVE_TOUCH;
 
             // set variable to false to stop
             while (THREAD_RUNNING) {
 
                 // clean up touch from last frame
                 if (touch_points.size() > 0) {
-                    if (use_native) {
-                        inject_native_touch_points(touch_points, false);
-                        touch_points.clear();
-                    } else {
-                        clear_touch_points(&touch_points);
-                    }
+                    inject_native_touch_points(touch_points, false);
+                    touch_points.clear();
                 }
 
                 for (int unit = 0; unit < 2; unit++) {
@@ -177,40 +159,15 @@ namespace games::iidx::poke {
 
                                     float x = x_iter->second / 1920.0;
                                     float y = y_iter->second / 1080.0;
-                                    if (use_native) {
-                                        if (GRAPHICS_WINDOWED) {
-                                            if (SPICETOUCH_TOUCH_WIDTH <= 0 || SPICETOUCH_TOUCH_HEIGHT <= 0) {
-                                                continue;
-                                            }
-                                            x = SPICETOUCH_TOUCH_X + x * SPICETOUCH_TOUCH_WIDTH;
-                                            y = SPICETOUCH_TOUCH_Y + y * SPICETOUCH_TOUCH_HEIGHT;
-                                        } else {
-                                            x = x_iter->second;
-                                            y = y_iter->second;
+                                    if (GRAPHICS_WINDOWED) {
+                                        if (SPICETOUCH_TOUCH_WIDTH <= 0 || SPICETOUCH_TOUCH_HEIGHT <= 0) {
+                                            continue;
                                         }
-                                    } else if (GRAPHICS_IIDX_WSUB) {
-                                        // Scale to windowed subscreen
-                                        x *= GRAPHICS_WSUB_WIDTH;
-                                        y *= GRAPHICS_WSUB_HEIGHT;
-                                    } else if (GENERIC_SUB_WINDOW_FULLSIZE || !overlay::OVERLAY->get_active()) {
-                                        // Overlay is not present, scale to main screen
-                                        if (GRAPHICS_WINDOWED) {
-                                            x *= SPICETOUCH_TOUCH_WIDTH;
-                                            y *= SPICETOUCH_TOUCH_HEIGHT;
-                                        } else {
-                                            x *= ImGui::GetIO().DisplaySize.x;
-                                            y *= ImGui::GetIO().DisplaySize.y;
-                                        }
+                                        x = SPICETOUCH_TOUCH_X + x * SPICETOUCH_TOUCH_WIDTH;
+                                        y = SPICETOUCH_TOUCH_Y + y * SPICETOUCH_TOUCH_HEIGHT;
                                     } else {
-                                        // Overlay subscreen
-                                        x = (GENERIC_SUB_WINDOW_X + x * GENERIC_SUB_WINDOW_WIDTH);
-                                        y = (GENERIC_SUB_WINDOW_Y + y * GENERIC_SUB_WINDOW_HEIGHT);
-
-                                        // Scale to window size ratio
-                                        if (GRAPHICS_WINDOWED) {
-                                            x *= SPICETOUCH_TOUCH_WIDTH / ImGui::GetIO().DisplaySize.x;
-                                            y *= SPICETOUCH_TOUCH_HEIGHT / ImGui::GetIO().DisplaySize.y;
-                                        }
+                                        x = x_iter->second;
+                                        y = y_iter->second;
                                     }
 
                                     TouchPoint tp {
@@ -231,11 +188,7 @@ namespace games::iidx::poke {
                 } // for all units
 
                 if (touch_points.size() > 0) {
-                    if (use_native) {
-                        inject_native_touch_points(touch_points, true);
-                    } else {
-                        touch_write_points(&touch_points);
-                    }
+                    inject_native_touch_points(touch_points, true);
                 }
 
                 // slow down
@@ -243,11 +196,7 @@ namespace games::iidx::poke {
             }
 
             if (!touch_points.empty()) {
-                if (use_native) {
-                    inject_native_touch_points(touch_points, false);
-                } else {
-                    clear_touch_points(&touch_points);
-                }
+                inject_native_touch_points(touch_points, false);
             }
 
             return nullptr;

@@ -6,24 +6,16 @@
 
 #include <chrono>
 #include <algorithm>
-#include <optional>
 #include <thread>
 
-#include "cfg/screen_resize.h"
 #include "games/gitadora/gitadora.h"
-#include "games/iidx/iidx.h"
-#include "games/popn/popn.h"
 #include "hooks/graphics/graphics.h"
 #include "overlay/overlay.h"
-#include "overlay/windows/generic_sub.h"
 #include "touch/touch.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/time.h"
 #include "util/utils.h"
-#include "rawinput/touch.h"
-
-#include "avs/game.h"
 
 namespace wintouchemu {
 
@@ -86,7 +78,6 @@ namespace wintouchemu {
     std::vector<TouchPoint> TOUCH_POINTS;
     HMODULE HOOKED_MODULE = nullptr;
     std::string WINDOW_TITLE_START = "";
-    std::optional<std::string> WINDOW_TITLE_END = std::nullopt;
     volatile bool INITIALIZED = false;
     mouse_state_t mouse_state;
 
@@ -123,17 +114,6 @@ namespace wintouchemu {
             log_misc("wintouchemu", "initializing");
             INITIALIZED = true;
         }
-    }
-
-    void hook_title_ends(const char *window_title_start, const char *window_title_end, HMODULE module) {
-        hook(window_title_start, module);
-
-        WINDOW_TITLE_END = window_title_end;
-    }
-
-    static void flip_touch_points(PTOUCHINPUT point) {
-        point->x = rawinput::touch::DISPLAY_SIZE_X * 100 - point->x;
-        point->y = rawinput::touch::DISPLAY_SIZE_Y * 100 - point->y;
     }
 
     static BOOL WINAPI GetTouchInputInfoHook(HANDLE hTouchInput, UINT cInputs, PTOUCHINPUT pInputs, int cbSize) {
@@ -178,13 +158,7 @@ namespace wintouchemu {
 
                 // log_misc("wintouchemu", "touch event ({}, {})", to_string(x), to_string(y));
 
-                if (GRAPHICS_IIDX_WSUB) {
-                    // touch was received on subscreen window.
-                    RECT clientRect {};
-                    GetClientRect(TDJ_SUBSCREEN_WINDOW, &clientRect);
-                    x = (float) x / clientRect.right * SPICETOUCH_TOUCH_WIDTH + SPICETOUCH_TOUCH_X;
-                    y = (float) y / clientRect.bottom * SPICETOUCH_TOUCH_HEIGHT + SPICETOUCH_TOUCH_Y;
-                } else if (overlay::OVERLAY) {
+                if (overlay::OVERLAY) {
                     // touch was received on global coords
                     valid = overlay::OVERLAY->transform_touch_point(&x, &y);
                 } else {
@@ -229,12 +203,6 @@ namespace wintouchemu {
                 touch_input->dwExtraInfo = 0;
                 touch_input->cxContact = 0;
                 touch_input->cyContact = 0;
-
-                if (avs::game::is_model("KFC") &&
-                    rawinput::touch::DISPLAY_INITIALIZED &&
-                    rawinput::touch::DISPLAY_ORIENTATION == DMDO_270) {
-                    flip_touch_points(touch_input);
-                }
 
             } else if (USE_MOUSE && !mouse_used) {
 
@@ -305,7 +273,7 @@ namespace wintouchemu {
                     // reset it since the event was consumed & propagated as touch
                     mouse_state.touch_event = 0;
                 }
-            } else if (!GRAPHICS_IIDX_WSUB) {
+            } else {
 
                 /*
                  * For some reason, Nostalgia won't show an active touch point unless a move event
@@ -380,21 +348,6 @@ namespace wintouchemu {
                 title = get_window_title(hWnd);
             }
 
-            // if a window title end is set, check to see if it matches
-            if (WINDOW_TITLE_END.has_value() && !string_ends_with(title.c_str(), WINDOW_TITLE_END.value().c_str())) {
-                hWnd = nullptr;
-                title = "";
-
-                for (auto &window : find_windows_beginning_with(WINDOW_TITLE_START)) {
-                    auto check_title = get_window_title(window);
-                    if (string_ends_with(check_title.c_str(), WINDOW_TITLE_END.value().c_str())) {
-                        hWnd = std::move(window);
-                        title = std::move(check_title);
-                        break;
-                    }
-                }
-            }
-
             // check window
             if (hWnd == nullptr) {
                 return;
@@ -402,21 +355,7 @@ namespace wintouchemu {
 
             // check if windowed
             if (GRAPHICS_WINDOWED) {
-                if (GRAPHICS_IIDX_WSUB) {
-                    // no handling is needed here
-                    // graphics::MoveWindow_hook will attach hook to windowed subscreen
-                    log_info("wintouchemu", "attach touch hook to windowed subscreen for TDJ");
-                    USE_MOUSE = false;
-                } else if (avs::game::is_model("LDJ") && !GENERIC_SUB_WINDOW_FULLSIZE) {
-                    // overlay subscreen in IIDX
-                    // use mouse position as ImGui overlay will block the touch window  
-                    log_info("wintouchemu", "use mouse cursor API for ldj overlay subscreen");
-                    USE_MOUSE = true;
-                } else if (games::popn::is_pikapika_model()) {
-                    // same as iidx case above
-                    log_info("wintouchemu", "use mouse cursor API for popn overlay subscreen");
-                    USE_MOUSE = true;
-                } else if (games::gitadora::is_arena_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
+                if (games::gitadora::is_arena_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                     log_info("wintouchemu", "use mouse cursor API for gitadora overlay subscreen");
                     USE_MOUSE = true;
                 } else {

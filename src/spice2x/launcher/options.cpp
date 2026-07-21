@@ -962,13 +962,12 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Cab Peripherals",
     },
     {
-        .title = "SDVX FS Subscreen Native Touch Handling",
+        .title = "SDVX Native Touch (DEPRECATED - no longer needed)",
         .name = "sdvxnativetouch",
-        .desc = "Disables touch hooks and lets the game access a touch screen directly. "
-                "Requires a touch screen to be connected as a secondary monitor. "
-                "Touch input must be routed to the primary screen via Windows Tablet PC settings. "
-                "Enable this when you get duplicate touch inputs from an actual touch screen.",
+        .desc = "This option does nothing.\n\n"
+            "Native touch handling is now enabled by default and this option is no longer needed.",
         .type = OptionType::Bool,
+        .hidden = true,
         .game_name = "Sound Voltex",
         .category = "Advanced Game Options",
     },
@@ -1159,13 +1158,12 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // PopnNativeTouch
-        .title = "Pop'n Music PikaPika Native Touch Handling",
+        .title = "Pop'n Music Native Touch (DEPRECATED - no longer needed)",
         .name = "popnnativetouch",
-        .desc = "Disables touch hooks and lets the game access a touch screen directly. "
-                "Requires a touch screen to be connected as a secondary monitor. "
-                "Touch input must be routed to the primary screen via Windows Tablet PC settings. "
-                "Enable this when you get duplicate touch inputs from an actual touch screen.",
+        .desc = "This option does nothing.\n\n"
+            "Native touch handling is now enabled by default and this option is no longer needed.",
         .type = OptionType::Bool,
+        .hidden = true,
         .game_name = "Pop'n Music",
         .category = "Advanced Game Options",
     },
@@ -2870,15 +2868,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // spice2x_IIDXNativeTouch
-        .title = "IIDX TDJ Subscreen Native Touch Handling",
+        .title = "IIDX Native Touch (DEPRECATED - no longer needed)",
         .name = "sp2x-iidxnativetouch",
         .display_name = "iidxnativetouch",
         .aliases= "iidxnativetouch",
-        .desc = "Disables touch hooks and lets the game access a touch screen directly. "
-                "Requires a touch screen to be connected as a secondary monitor. "
-                "Touch input must be routed to the primary screen via Windows Tablet PC settings. "
-                "Enable this when you get duplicate touch inputs from an actual touch screen.",
+        .desc = "This option does nothing.\n\n"
+            "Native touch handling is now enabled by default and this option is no longer needed.",
         .type = OptionType::Bool,
+        .hidden = true,
         .game_name = "Beatmania IIDX",
         .category = "Advanced Game Options",
     },

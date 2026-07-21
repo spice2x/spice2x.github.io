@@ -28,7 +28,6 @@ namespace games::iidx {
     extern bool TDJ_MODE;
     extern bool FORCE_720P;
     extern bool DISABLE_ESPEC_IO;
-    extern bool NATIVE_TOUCH;
     extern std::optional<std::string> SOUND_OUTPUT_DEVICE;
     extern std::optional<std::string> ASIO_DRIVER;
     extern uint8_t DIGITAL_TT_SENS;

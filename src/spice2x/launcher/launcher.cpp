@@ -428,9 +428,6 @@ int main_implementation(int argc, char *argv[]) {
 
     if (options[launcher::Options::spice2x_NoD3D9DeviceHook].value_bool()) {
         D3D9_DEVICE_HOOK_DISABLE = true;
-        // touch emulation gets disabled, might as well turn these on
-        games::iidx::NATIVE_TOUCH = true;
-        games::sdvx::NATIVETOUCH = true;
         // not strictly necessary as it will fail to init anyway, but cleaner to just disable it now
         overlay::ENABLED = false;
         // leaving these on without dx9hooks result in torn state and therefore failure to draw
@@ -489,9 +486,6 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::LoadSoundVoltexModule].value_bool()) {
         attach_sdvx = true;
-    }
-    if (options[launcher::Options::SDVXNativeTouch].value_bool()) {
-        games::sdvx::NATIVETOUCH = true;
     }
     if (options[launcher::Options::spice2x_SDVXDigitalKnobSensitivity].is_active()) {
         games::sdvx::DIGITAL_KNOB_SENS = (uint8_t)
@@ -593,9 +587,6 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::spice2x_IIDXNoESpec].value_bool()) {
         games::iidx::DISABLE_ESPEC_IO = true;
     }
-    if (options[launcher::Options::spice2x_IIDXNativeTouch].value_bool()) {
-        games::iidx::NATIVE_TOUCH = true;
-    }
     // should come later since this will override a few settings
     if (options[launcher::Options::spice2x_IIDXWindowedTDJ].value_bool() ||
         (options[launcher::Options::IIDXTDJMode].value_bool() && GRAPHICS_WINDOWED)) {
@@ -642,9 +633,6 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::PopnSubMonitorOverride].is_active()) {
         sysutils::SECOND_MONITOR_OVERRIDE = options[launcher::Options::PopnSubMonitorOverride].value_text();
-    }
-    if (options[launcher::Options::PopnNativeTouch].value_bool()) {
-        games::popn::NATIVE_TOUCH = true;
     }
     if (options[launcher::Options::PopnSubRedraw].value_bool()) {
         SUBSCREEN_FORCE_REDRAW = true;
