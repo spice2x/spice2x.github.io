@@ -2,7 +2,7 @@
 
 #include <windows.h>
 
-namespace nativetouch_inject::internal {
+namespace nativetouch::inject {
 
     enum class ContactOwner {
         None,
@@ -13,9 +13,6 @@ namespace nativetouch_inject::internal {
     void initialize_touch_injection();
     void initialize_synthetic_touch();
     bool touch_injection_available();
-
-    bool is_tdj_dedicated_subscreen(HWND window);
-    bool transform_touch_position(HWND window, POINT *position);
 
     bool contact_is_active();
     bool contact_is_owned_by(ContactOwner owner, HWND window);

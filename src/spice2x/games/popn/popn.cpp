@@ -716,7 +716,7 @@ namespace games::popn {
         //       set third column to 0 and it will work with BIO2
         
         if (NATIVE_TOUCH) {
-            nativetouchhook::hook(avs::game::DLL_INSTANCE);
+            nativetouch::hook(avs::game::DLL_INSTANCE);
         } else if (!GRAPHICS_WINDOWED) {
             wintouchemu::FORCE = true;
             wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;

@@ -111,7 +111,7 @@ namespace games::iidx::poke {
         }
 
         const auto &touch = touch_points.front();
-        nativetouch_inject::inject_synthetic_touch({ touch.x, touch.y }, down);
+        nativetouch::inject::inject_synthetic_touch({ touch.x, touch.y }, down);
     }
     
     void clear_touch_points(std::vector<TouchPoint> *touch_points) {

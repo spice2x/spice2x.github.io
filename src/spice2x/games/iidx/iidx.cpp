@@ -351,7 +351,7 @@ namespace games::iidx {
                 devicehook_init(avs::core::DLL_INSTANCE);
 
                 if (NATIVE_TOUCH) {
-                    nativetouchhook::hook(avs::game::DLL_INSTANCE);
+                    nativetouch::hook(avs::game::DLL_INSTANCE);
                 } else {
                     wintouchemu::FORCE = true;
                     wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;

@@ -5,6 +5,7 @@
 #include "avs/game.h"
 #include "rawinput/touch.h"
 #include "inject.h"
+#include "transform.h"
 
 #include "util/detour.h"
 #include "util/logging.h"
@@ -19,7 +20,7 @@
 #define log_debug(module, format_str, ...)
 #endif
 
-namespace nativetouchhook {
+namespace nativetouch {
 
     static decltype(GetTouchInputInfo) *GetTouchInputInfo_orig = nullptr;
     static bool native_display_initialized = false;
@@ -127,7 +128,7 @@ namespace nativetouchhook {
         for (size_t i = 0; i < cInputs; i++) {
             PTOUCHINPUT point = &pInputs[i];
 
-            const auto synthetic = nativetouch_inject::transform_touch_input(point);
+            const auto synthetic = inject::transform_touch_input(point);
 
             if (avs::game::is_model("LDJ")) {
                 strip_contact_size(point);
@@ -138,11 +139,18 @@ namespace nativetouchhook {
             if (flip_values) {
                 flip_touch_points(point);
             }
-            if (!synthetic &&
-                !nativetouch_inject::transform_hardware_touch_input(point) &&
-                !(point->dwFlags & TOUCHEVENTF_UP)) {
-                // suppress rejected contacts, but preserve UP to release an active touch ID
-                point->dwFlags = 0;
+            if (!synthetic) {
+                POINT position { point->x / 100, point->y / 100 };
+                const auto transform_result =
+                    transform::hardware_to_game(&position);
+                if (transform_result == transform::Result::Transformed) {
+                    point->x = position.x * 100;
+                    point->y = position.y * 100;
+                } else if (transform_result == transform::Result::Rejected &&
+                    !(point->dwFlags & TOUCHEVENTF_UP)) {
+                    // suppress rejected contacts, but preserve UP to release an active touch ID
+                    point->dwFlags = 0;
+                }
             }
         }
         
@@ -150,7 +158,7 @@ namespace nativetouchhook {
     }
 
     void hook(HMODULE module) {
-        nativetouch_inject::hook(module);
+        inject::hook(module);
 
         GetTouchInputInfo_orig = detour::iat_try("GetTouchInputInfo", GetTouchInputInfoHook, module);
         if (GetTouchInputInfo_orig != nullptr) {

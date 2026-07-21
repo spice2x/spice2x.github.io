@@ -4,11 +4,12 @@
 #include <windows.h>
 
 #include "inject_internal.h"
+#include "transform.h"
 
 #include "touch/touch.h"
 #include "util/logging.h"
 
-namespace nativetouch_inject::internal {
+namespace nativetouch::inject {
 
     constexpr UINT CONTACT_TIMER_INTERVAL_MS = 16;
 
@@ -39,7 +40,7 @@ namespace nativetouch_inject::internal {
         }
 
         POINT transformed = *position;
-        return transform_touch_position(window, &transformed);
+        return transform::screen_to_game(window, &transformed);
     }
 
     // release the active injected contact and its window capture
@@ -104,7 +105,7 @@ namespace nativetouch_inject::internal {
         }
 
         POINT transformed = position;
-        if (!transform_touch_position(window, &transformed)) {
+        if (!transform::screen_to_game(window, &transformed)) {
             end_mouse_contact(window);
             return;
         }

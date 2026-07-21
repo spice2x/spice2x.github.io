@@ -9,15 +9,14 @@
 
 #include "inject.h"
 #include "inject_internal.h"
+#include "transform.h"
 
 #include "hooks/graphics/graphics.h"
-#include "overlay/overlay.h"
-#include "touch/touch.h"
 #include "util/detour.h"
 #include "util/libutils.h"
 #include "util/logging.h"
 
-namespace nativetouch_inject {
+namespace nativetouch::inject {
 
     constexpr DWORD INJECTION_RETRY_DELAY_MS = 1;
     constexpr POINTER_FLAGS CONTACT_DOWN_FLAGS =
@@ -32,13 +31,13 @@ namespace nativetouch_inject {
 
     // state for the single synthetic touch contact
     struct ContactState {
-        internal::ContactOwner owner = internal::ContactOwner::None;
+        ContactOwner owner = ContactOwner::None;
         HWND input_window = nullptr;
         POINT position {};
         UINT_PTR timer_id = 0;
 
         bool is_active() const {
-            return owner != internal::ContactOwner::None;
+            return owner != ContactOwner::None;
         }
     };
 
@@ -118,11 +117,6 @@ namespace nativetouch_inject {
     static std::once_flag initialization_once;
     static int window_subclass_token;
 
-    bool internal::is_tdj_dedicated_subscreen(HWND window) {
-        return GRAPHICS_WINDOWED && GRAPHICS_IIDX_WSUB &&
-            window == TDJ_SUBSCREEN_WINDOW;
-    }
-
     // submit one synthetic contact frame to Windows touch injection
     static bool inject_touch_frame(POINT position, POINTER_FLAGS pointer_flags) {
         POINTER_TOUCH_INFO contact {};
@@ -150,50 +144,6 @@ namespace nativetouch_inject {
         return false;
     }
 
-    static bool transform_overlay_touch_position(POINT *position) {
-        if (overlay::OVERLAY == nullptr ||
-            !overlay::OVERLAY->get_active() ||
-            !overlay::OVERLAY->can_transform_touch_input()) {
-            return true;
-        }
-
-        // convert physical screen coordinates to the window-relative coordinates the overlay expects
-        if (GRAPHICS_WINDOWED) {
-            position->x -= SPICETOUCH_TOUCH_X;
-            position->y -= SPICETOUCH_TOUCH_Y;
-        }
-
-        // ask the overlay to do the game-specific translation
-        return overlay::OVERLAY->transform_touch_point(&position->x, &position->y);
-    }
-
-    // map a screen point into the active dedicated window or subscreen overlay
-    bool internal::transform_touch_position(HWND window, POINT *position) {
-        // scale the resized IIDX subscreen client area into the game's touch-display coordinates
-        if (internal::is_tdj_dedicated_subscreen(window)) {
-            RECT client_rect {};
-            if (!GetClientRect(window, &client_rect) ||
-                client_rect.right <= 0 || client_rect.bottom <= 0 ||
-                SPICETOUCH_TOUCH_WIDTH <= 0 || SPICETOUCH_TOUCH_HEIGHT <= 0) {
-                return false;
-            }
-
-            if (!ScreenToClient(window, position)) {
-                return false;
-            }
-            if (!PtInRect(&client_rect, *position)) {
-                return false;
-            }
-            position->x = SPICETOUCH_TOUCH_X +
-                MulDiv(position->x, SPICETOUCH_TOUCH_WIDTH, client_rect.right);
-            position->y = SPICETOUCH_TOUCH_Y +
-                MulDiv(position->y, SPICETOUCH_TOUCH_HEIGHT, client_rect.bottom);
-            return true;
-        }
-
-        return transform_overlay_touch_position(position);
-    }
-
     // rewrite only the contact created by this injector into game touch coordinates
     bool transform_touch_input(PTOUCHINPUT point) {
         const auto transform_window = synthetic_touch_identity.get_transform_window();
@@ -209,7 +159,7 @@ namespace nativetouch_inject {
         if (synthetic_touch_identity.should_transform_coordinates()) {
             // Windows receives the physical position; the game receives the mapped position
             POINT position { point->x / 100, point->y / 100 };
-            if (internal::transform_touch_position(transform_window, &position)) {
+            if (transform::screen_to_game(transform_window, &position)) {
                 point->x = position.x * 100;
                 point->y = position.y * 100;
             }
@@ -222,39 +172,17 @@ namespace nativetouch_inject {
         return true;
     }
 
-    // map corrected hardware coordinates through the dedicated subscreen or active overlay
-    bool transform_hardware_touch_input(PTOUCHINPUT point) {
-        const auto dedicated_subscreen = TDJ_SUBSCREEN_WINDOW != nullptr &&
-            internal::is_tdj_dedicated_subscreen(TDJ_SUBSCREEN_WINDOW);
-        const auto active_overlay = overlay::OVERLAY != nullptr &&
-            overlay::OVERLAY->get_active() &&
-            overlay::OVERLAY->can_transform_touch_input();
-        if (!dedicated_subscreen && !active_overlay) {
-            return true;
-        }
-
-        POINT position { point->x / 100, point->y / 100 };
-        const auto valid = internal::transform_touch_position(
-                dedicated_subscreen ? TDJ_SUBSCREEN_WINDOW : nullptr,
-                &position);
-        if (valid) {
-            point->x = position.x * 100;
-            point->y = position.y * 100;
-        }
-        return valid;
-    }
-
-    bool internal::contact_is_active() {
+    bool contact_is_active() {
         return contact_state.is_active();
     }
 
-    bool internal::contact_is_owned_by(ContactOwner owner, HWND window) {
+    bool contact_is_owned_by(ContactOwner owner, HWND window) {
         return contact_state.is_active() &&
             contact_state.owner == owner &&
             contact_state.input_window == window;
     }
 
-    bool internal::begin_contact(
+    bool begin_contact(
             ContactOwner owner,
             HWND window,
             POINT position,
@@ -274,8 +202,8 @@ namespace nativetouch_inject {
         return false;
     }
 
-    bool internal::update_contact(ContactOwner owner, HWND window, POINT position) {
-        if (!internal::contact_is_owned_by(owner, window) ||
+    bool update_contact(ContactOwner owner, HWND window, POINT position) {
+        if (!contact_is_owned_by(owner, window) ||
             !inject_touch_frame(position, CONTACT_UPDATE_FLAGS)) {
             return false;
         }
@@ -284,15 +212,15 @@ namespace nativetouch_inject {
         return true;
     }
 
-    void internal::set_contact_timer(
+    void set_contact_timer(
             ContactOwner owner, HWND window, UINT_PTR timer_id) {
-        if (internal::contact_is_owned_by(owner, window)) {
+        if (contact_is_owned_by(owner, window)) {
             contact_state.timer_id = timer_id;
         }
     }
 
     // end whichever producer currently owns the single synthetic contact
-    bool internal::release_active_contact() {
+    bool release_active_contact() {
         if (!contact_state.is_active()) {
             return true;
         }
@@ -319,7 +247,8 @@ namespace nativetouch_inject {
 
         // IIDX handles touch on its main window even when input belongs to the subscreen
         // forward the touch message there
-        if (message == WM_TOUCH && internal::is_tdj_dedicated_subscreen(window)) {
+        if (message == WM_TOUCH &&
+            transform::is_tdj_dedicated_subscreen(window)) {
             const auto delivery_window =
                 touch_delivery_window.load(std::memory_order_acquire);
             if (delivery_window != nullptr) {
@@ -327,14 +256,14 @@ namespace nativetouch_inject {
             }
         }
 
-        if (internal::handle_synthetic_message(window, message, w_param, l_param) ||
-            internal::handle_mouse_message(window, message, w_param)) {
+        if (handle_synthetic_message(window, message, w_param, l_param) ||
+            handle_mouse_message(window, message, w_param)) {
             return 0;
         }
 
         if (message == WM_NCDESTROY) {
             if (contact_state.input_window == window) {
-                internal::release_active_contact();
+                release_active_contact();
             }
             HWND expected_window = window;
             injection_window.compare_exchange_strong(
@@ -348,9 +277,9 @@ namespace nativetouch_inject {
 
     // attach mouse injection without replacing the window's existing procedure
     static void attach_window_impl(HWND window, bool register_touch) {
-        internal::initialize_touch_injection();
+        initialize_touch_injection();
 
-        if (!internal::touch_injection_available()) {
+        if (!touch_injection_available()) {
             if (register_touch) {
                 log_warning(
                     "touch::native",
@@ -386,7 +315,7 @@ namespace nativetouch_inject {
             "touch::native", "mouse touch injection attached to window {}", fmt::ptr(window));
     }
 
-    HWND internal::get_injection_window() {
+    HWND get_injection_window() {
         return injection_window.load(std::memory_order_acquire);
     }
 
@@ -429,9 +358,9 @@ namespace nativetouch_inject {
     }
 
     // load and initialize Windows 8 touch injection without a static API dependency
-    void internal::initialize_touch_injection() {
+    void initialize_touch_injection() {
         std::call_once(initialization_once, [] {
-            internal::initialize_synthetic_touch();
+            initialize_synthetic_touch();
 
             // load all APIs from user32 without adding static imports
             const auto user32 = libutils::load_library("user32.dll");
@@ -460,13 +389,13 @@ namespace nativetouch_inject {
         });
     }
 
-    bool internal::touch_injection_available() {
+    bool touch_injection_available() {
         return InjectTouchInput_ptr != nullptr;
     }
 
     // install injection support for touch windows registered by the game module
     void hook(HMODULE module) {
-        internal::initialize_touch_injection();
+        initialize_touch_injection();
 
         RegisterTouchWindow_orig = detour::iat_try(
             "RegisterTouchWindow", RegisterTouchWindowHook, module);

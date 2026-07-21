@@ -799,7 +799,7 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
             nHeight = rect.bottom - rect.top;
 
             if (games::iidx::NATIVE_TOUCH) {
-                nativetouch_inject::register_and_attach_window(TDJ_SUBSCREEN_WINDOW);
+                nativetouch::inject::register_and_attach_window(TDJ_SUBSCREEN_WINDOW);
             } else {
                 touch_attach_wnd(TDJ_SUBSCREEN_WINDOW);
             }
@@ -1172,7 +1172,7 @@ void graphics_hook_window(HWND hWnd, D3DPRESENT_PARAMETERS *pPresentationParamet
             (games::iidx::NATIVE_TOUCH && !GRAPHICS_IIDX_WSUB) ||
             (games::popn::NATIVE_TOUCH && GRAPHICS_PREVENT_SECONDARY_WINDOWS);
         if (native_touch_overlay) {
-            nativetouch_inject::register_and_attach_window(hWnd);
+            nativetouch::inject::register_and_attach_window(hWnd);
         }
 
         // NOLEGACY causes WM_CHAR to be not received

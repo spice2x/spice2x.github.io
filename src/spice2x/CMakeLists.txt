@@ -660,6 +660,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         touch/native/inject_mouse.cpp
         touch/native/inject_synthetic.cpp
         touch/native/nativetouchhook.cpp
+        touch/native/transform.cpp
         touch/touch.cpp
         touch/touch_gestures.cpp
         touch/win7.cpp

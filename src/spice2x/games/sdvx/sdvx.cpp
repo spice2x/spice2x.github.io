@@ -456,7 +456,7 @@ namespace games::sdvx {
 
             if (is_valkyrie_model()) {
                 if (NATIVETOUCH) {
-                    nativetouchhook::hook(avs::game::DLL_INSTANCE);
+                    nativetouch::hook(avs::game::DLL_INSTANCE);
                 } else if (!NATIVETOUCH && !GRAPHICS_WINDOWED) {
                     // hook touch window
                     // in windowed mode, game can accept mouse input on the second screen
