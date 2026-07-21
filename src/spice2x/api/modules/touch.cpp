@@ -1,5 +1,7 @@
 #include "touch.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <functional>
 
 #include "external/rapidjson/document.h"
@@ -8,6 +10,8 @@
 #include "misc/eamuse.h"
 #include "launcher/launcher.h"
 #include "touch/touch.h"
+#include "touch/native/inject.h"
+#include "touch/native/nativetouchhook.h"
 #include "util/utils.h"
 #include "games/iidx/iidx.h"
 
@@ -17,6 +21,25 @@ using namespace rapidjson;
 
 namespace api::modules {
 
+    static bool inject_native_touch(
+            const std::vector<TouchPoint> &touch_points, int canvas_w, int canvas_h) {
+        if (touch_points.empty()) {
+            // no active touches remain; release the synthetic contact
+            return nativetouch::inject::inject_synthetic_touch({ 0, 0 }, false);
+        }
+
+        // only a single synthetic contact is supported, so just use the first touch point
+        const auto &touch = touch_points.front();
+        POINT position { touch.x, touch.y };
+        if (canvas_w > 0 && canvas_h > 0) {
+            return nativetouch::inject::inject_synthetic_touch_from_canvas(
+                position,
+                { canvas_w, canvas_h },
+                true);
+        }
+        return nativetouch::inject::inject_synthetic_touch(position, true);
+    }
+
     Touch::Touch() : Module("touch") {
         is_sdvx = avs::game::is_model("KFC");
 
@@ -24,6 +47,25 @@ namespace api::modules {
         // special case: when windowed subscreen is in use, use the original coords
         if (GRAPHICS_IIDX_WSUB) {
             is_tdj_fhd = false;
+        }
+
+        use_native = nativetouch::is_hooked();
+
+        // resolution the API/companion sends native touch coordinates in (after errata)
+        native_canvas_w = 0;
+        native_canvas_h = 0;
+        if (is_sdvx) {
+            // exceed gear subscreen, portrait after the rotation applied in apply_touch_errata
+            native_canvas_w = 1080;
+            native_canvas_h = 1920;
+        } else if (avs::game::is_model("LDJ")) {
+            // TDJ subscreen; FHD models are upscaled to 1080p by apply_touch_errata
+            native_canvas_w = is_tdj_fhd ? 1920 : 1280;
+            native_canvas_h = is_tdj_fhd ? 1080 : 720;
+        } else if (avs::game::is_model("M39")) {
+            // pop'n music API touch surface
+            native_canvas_w = 1280;
+            native_canvas_h = 800;
         }
 
         functions["read"] = std::bind(&Touch::read, this, _1, _2);
@@ -99,7 +141,11 @@ namespace api::modules {
         }
 
         // apply touch points
-        touch_write_points(&touch_points);
+        if (use_native) {
+            write_native(touch_points);
+        } else {
+            touch_write_points(&touch_points);
+        }
     }
 
     /**
@@ -123,7 +169,43 @@ namespace api::modules {
         }
 
         // remove all IDs
-        touch_remove_points(&touch_point_ids);
+        if (use_native) {
+            write_reset_native(touch_point_ids);
+        } else {
+            touch_remove_points(&touch_point_ids);
+        }
+    }
+
+    void Touch::write_native(const std::vector<TouchPoint> &touch_points) {
+        if (touch_points.empty()) {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(native_touch_mutex);
+        const auto touch_id = touch_points.front().id;
+        if (native_touch_id && *native_touch_id != touch_id) {
+            if (!inject_native_touch({}, native_canvas_w, native_canvas_h)) {
+                return;
+            }
+            native_touch_id.reset();
+        }
+        if (inject_native_touch(touch_points, native_canvas_w, native_canvas_h)) {
+            native_touch_id = touch_id;
+        }
+    }
+
+    void Touch::write_reset_native(const std::vector<DWORD> &touch_point_ids) {
+        std::lock_guard<std::mutex> lock(native_touch_mutex);
+        if (!native_touch_id ||
+                std::find(
+                    touch_point_ids.begin(),
+                    touch_point_ids.end(),
+                    *native_touch_id) == touch_point_ids.end()) {
+            return;
+        }
+        if (inject_native_touch({}, native_canvas_w, native_canvas_h)) {
+            native_touch_id.reset();
+        }
     }
 
     void Touch::apply_touch_errata(int &x, int &y) {
