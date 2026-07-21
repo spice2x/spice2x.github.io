@@ -188,11 +188,13 @@ static bool gitadora_should_block_game_window_placement(HWND hWnd) {
     }
 
     const auto window_name = gitadora_window_name_for_hwnd(hWnd);
-    return window_name != nullptr && graphics_gitadora_has_window_monitor(window_name);
+    return window_name != nullptr && graphics_gitadora_has_window_override(window_name);
 }
 
 static void gitadora_remember_window(HWND hWnd, const std::string &window_name) {
-    if (window_name == "LEFT") {
+    if (window_name == "GITADORA") {
+        GRAPHICS_HOOKED_WINDOW = hWnd;
+    } else if (window_name == "LEFT") {
         GFDM_LEFT_WINDOW = hWnd;
     } else if (window_name == "RIGHT") {
         GFDM_RIGHT_WINDOW = hWnd;
@@ -589,6 +591,12 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
             hWndParent, hMenu, hInstance, lpParam);
     GRAPHICS_WINDOWS.push_back(result);
 
+    // remember these windows now because full capture happens later during D3D
+    // initialization; placement calls before then can undo creation-time overrides
+    if (result != nullptr && is_gfdm_window && !is_gfdm_sub_window) {
+        gitadora_remember_window(result, gfdm_window_name);
+    }
+
     // theme the native title bar (dark/light)
     set_window_dark_titlebar(result);
 
@@ -609,9 +617,6 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     // only hook touch window if multiple windows are allowed
-    if (gfdm_window_name == "LEFT" || gfdm_window_name == "RIGHT") {
-        gitadora_remember_window(result, gfdm_window_name);
-    }
     if (is_gfdm_sub_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
         gitadora_remember_window(result, gfdm_window_name);
         graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);

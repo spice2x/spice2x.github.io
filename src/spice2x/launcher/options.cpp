@@ -2645,6 +2645,26 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .picker = OptionPickerType::Monitor,
     },
     {
+        // GitaDoraWindowedSmallSize
+        .title = "GitaDora Windowed SMALL Size",
+        .name = "gdwsmallsize",
+        .desc = "Size of the GITADORA Arena SMALL touch window. Defaults to (800,1280).",
+        .type = OptionType::Text,
+        .setting_name = "800,1280",
+        .game_name = "GitaDora",
+        .category = "Game Windowed Settings",
+    },
+    {
+        // GitaDoraWindowedSmallPosition
+        .title = "GitaDora Windowed SMALL Position",
+        .name = "gdwsmallpos",
+        .desc = "Initial position of the GITADORA Arena SMALL touch window. Defaults to (0,0).",
+        .type = OptionType::Text,
+        .setting_name = "0,0",
+        .game_name = "GitaDora",
+        .category = "Game Windowed Settings",
+    },
+    {
         // spice2x_IIDXWindowedSubscreenSize
         .title = "IIDX Windowed Subscreen Size",
         .name = "iidxwsubsize",

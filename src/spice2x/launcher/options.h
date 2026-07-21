@@ -258,6 +258,8 @@ namespace launcher {
             GitaDoraWindowedLeftMonitor,
             GitaDoraWindowedRightMonitor,
             GitaDoraWindowedSmallMonitor,
+            GitaDoraWindowedSmallSize,
+            GitaDoraWindowedSmallPosition,
             spice2x_IIDXWindowedSubscreenSize,
             spice2x_IIDXWindowedSubscreenPosition,
             IIDXWindowedSubscreenBorderless,

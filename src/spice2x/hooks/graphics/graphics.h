@@ -88,6 +88,8 @@ extern std::string GRAPHICS_GITADORA_MAIN_MONITOR;
 extern std::string GRAPHICS_GITADORA_LEFT_MONITOR;
 extern std::string GRAPHICS_GITADORA_RIGHT_MONITOR;
 extern std::string GRAPHICS_GITADORA_SMALL_MONITOR;
+extern std::optional<std::string> GRAPHICS_GITADORA_SMALL_SIZE;
+extern std::optional<std::string> GRAPHICS_GITADORA_SMALL_POS;
 
 extern bool GRAPHICS_IIDX_WSUB;
 extern std::optional<std::string> GRAPHICS_WSUB_SIZE;
@@ -157,7 +159,7 @@ bool graphics_gitadora_apply_window_monitor(
         int &width,
         int &height,
         bool log_change);
-bool graphics_gitadora_has_window_monitor(const std::string &window_name);
+bool graphics_gitadora_has_window_override(const std::string &window_name);
 
 void change_primary_monitor(const std::string &monitor_name);
 void update_monitor_on_boot(
