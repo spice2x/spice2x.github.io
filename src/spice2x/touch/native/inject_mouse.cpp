@@ -80,6 +80,7 @@ namespace nativetouch_inject::internal {
 
         POINT position;
         if (!get_mouse_injection_position(window, &position)) {
+            end_mouse_contact(window);
             return;
         }
 

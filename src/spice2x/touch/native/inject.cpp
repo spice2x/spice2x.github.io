@@ -157,6 +157,9 @@ namespace nativetouch_inject {
             if (!ScreenToClient(window, position)) {
                 return false;
             }
+            if (!PtInRect(&client_rect, *position)) {
+                return false;
+            }
             position->x = SPICETOUCH_TOUCH_X +
                 MulDiv(position->x, SPICETOUCH_TOUCH_WIDTH, client_rect.right);
             position->y = SPICETOUCH_TOUCH_Y +
