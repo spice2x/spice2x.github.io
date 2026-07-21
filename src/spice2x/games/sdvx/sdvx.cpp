@@ -26,7 +26,7 @@
 #include "util/libutils.h"
 #include "util/sysutils.h"
 #include "misc/eamuse.h"
-#include "misc/nativetouchhook.h"
+#include "touch/native/nativetouchhook.h"
 #include "misc/wintouchemu.h"
 #include "bi2x_hook.h"
 #include "camera.h"

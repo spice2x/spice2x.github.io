@@ -19,7 +19,7 @@
 #include "util/sysutils.h"
 #include "io.h"
 #include "util/deferlog.h"
-#include "misc/nativetouchhook.h"
+#include "touch/native/nativetouchhook.h"
 #include "misc/wintouchemu.h"
 
 namespace games::popn {

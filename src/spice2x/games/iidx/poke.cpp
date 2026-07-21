@@ -9,9 +9,9 @@
 #include "hooks/graphics/graphics.h"
 #include "launcher/shutdown.h"
 #include "misc/eamuse.h"
-#include "misc/nativetouch_inject.h"
 #include "overlay/overlay.h"
 #include "overlay/windows/generic_sub.h"
+#include "touch/native/inject.h"
 #include "touch/touch.h"
 #include "util/logging.h"
 #include "util/precise_timer.h"
@@ -111,7 +111,7 @@ namespace games::iidx::poke {
         }
 
         const auto &touch = touch_points.front();
-        nativetouch_inject::inject_external_touch({ touch.x, touch.y }, down);
+        nativetouch_inject::inject_synthetic_touch({ touch.x, touch.y }, down);
     }
     
     void clear_touch_points(std::vector<TouchPoint> *touch_points) {

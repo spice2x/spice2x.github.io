@@ -28,8 +28,8 @@
 #include "util/logging.h"
 #include "util/fileutils.h"
 #include "util/utils.h"
-#include "misc/nativetouch_inject.h"
 #include "misc/wintouchemu.h"
+#include "touch/native/inject.h"
 #include "util/time.h"
 #include "rawinput/rawinput.h"
 

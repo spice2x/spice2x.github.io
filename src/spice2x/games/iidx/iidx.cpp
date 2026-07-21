@@ -20,7 +20,7 @@
 #include "hooks/sleephook.h"
 #include "launcher/options.h"
 #include "touch/touch.h"
-#include "misc/nativetouchhook.h"
+#include "touch/native/nativetouchhook.h"
 #include "misc/wintouchemu.h"
 #include "misc/eamuse.h"
 #include "util/detour.h"

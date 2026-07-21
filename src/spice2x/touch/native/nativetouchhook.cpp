@@ -3,8 +3,8 @@
 #define _WIN32_WINNT 0x0601
 
 #include "avs/game.h"
-#include "nativetouch_inject.h"
 #include "rawinput/touch.h"
+#include "inject.h"
 
 #include "util/detour.h"
 #include "util/logging.h"
