@@ -49,14 +49,16 @@ namespace nativetouch_inject {
         DWORD id = 0;
         bool identified = false;
         bool pending = false;
+        bool transform_coordinates = false;
         std::atomic<HWND> transform_window { nullptr };
 
-        void begin(POINT position, HWND window) {
+        void begin(POINT position, HWND window, bool transform_returned_coordinates) {
             down_position = position;
             source = nullptr;
             id = 0;
             identified = false;
             pending = true;
+            transform_coordinates = transform_returned_coordinates;
             transform_window.store(window, std::memory_order_release);
         }
 
@@ -65,6 +67,7 @@ namespace nativetouch_inject {
             id = 0;
             identified = false;
             pending = false;
+            transform_coordinates = false;
             transform_window.compare_exchange_strong(
                 expected_window, nullptr, std::memory_order_acq_rel);
         }
@@ -95,6 +98,10 @@ namespace nativetouch_inject {
 
             // require both the provider and contact identities to match.
             return point->hSource == source && point->dwID == id;
+        }
+
+        bool should_transform_coordinates() const {
+            return transform_coordinates;
         }
     };
 
@@ -196,11 +203,13 @@ namespace nativetouch_inject {
             return false;
         }
 
-        // Windows receives the physical position; the game receives the mapped position
-        POINT position { point->x / 100, point->y / 100 };
-        if (internal::transform_touch_position(transform_window, &position)) {
-            point->x = position.x * 100;
-            point->y = position.y * 100;
+        if (synthetic_touch_identity.should_transform_coordinates()) {
+            // Windows receives the physical position; the game receives the mapped position
+            POINT position { point->x / 100, point->y / 100 };
+            if (internal::transform_touch_position(transform_window, &position)) {
+                point->x = position.x * 100;
+                point->y = position.y * 100;
+            }
         }
 
         if (point->dwFlags & TOUCHEVENTF_UP) {
@@ -224,23 +233,19 @@ namespace nativetouch_inject {
             ContactOwner owner,
             HWND window,
             POINT position,
-            bool transform_contact) {
+            bool transform_returned_coordinates) {
         contact_state.owner = owner;
         contact_state.input_window = window;
         contact_state.position = position;
         contact_state.timer_id = 0;
-        if (transform_contact) {
-            synthetic_touch_identity.begin(position, window);
-        }
+        synthetic_touch_identity.begin(position, window, transform_returned_coordinates);
 
         if (inject_touch_frame(position, CONTACT_DOWN_FLAGS)) {
             return true;
         }
 
         contact_state = {};
-        if (transform_contact) {
-            synthetic_touch_identity.reset(window);
-        }
+        synthetic_touch_identity.reset(window);
         return false;
     }
 

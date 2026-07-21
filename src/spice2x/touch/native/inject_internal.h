@@ -23,7 +23,7 @@ namespace nativetouch_inject::internal {
         ContactOwner owner,
         HWND window,
         POINT position,
-        bool transform_contact);
+        bool transform_returned_coordinates);
     bool update_contact(ContactOwner owner, HWND window, POINT position);
     void set_contact_timer(ContactOwner owner, HWND window, UINT_PTR timer_id);
     bool release_active_contact();
