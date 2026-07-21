@@ -49,31 +49,42 @@ namespace nativetouch_inject {
         }
     };
 
-    // identifies a synthetic contact without matching unrelated hardware touches
+    // tracks an injector-owned contact without matching unrelated hardware touches
     struct SyntheticTouchIdentity {
         POINT down_position {};
         HANDLE source = nullptr;
         DWORD id = 0;
         bool identified = false;
         bool pending = false;
+        std::atomic<HWND> transform_window { nullptr };
 
-        void begin(POINT position) {
+        void begin(POINT position, HWND window) {
             down_position = position;
             source = nullptr;
             id = 0;
             identified = false;
             pending = true;
+            transform_window.store(window, std::memory_order_release);
         }
 
-        void reset() {
+        void reset(HWND expected_window) {
             source = nullptr;
             id = 0;
             identified = false;
             pending = false;
+            transform_window.compare_exchange_strong(
+                expected_window, nullptr, std::memory_order_acq_rel);
+        }
+
+        HWND get_transform_window() const {
+            return transform_window.load(std::memory_order_acquire);
         }
 
         bool matches(PTOUCHINPUT point) {
+            // InjectTouchInput provides no application marker in TOUCHINPUT. Claim the first
+            // matching DOWN, then use the source and ID assigned by Windows for this contact.
             if (!identified) {
+                // correlate the pending injection's pixel position
                 constexpr LONG POSITION_TOLERANCE = 200;
                 const auto delta_x = point->x - down_position.x * 100;
                 const auto delta_y = point->y - down_position.y * 100;
@@ -83,20 +94,27 @@ namespace nativetouch_inject {
                     return false;
                 }
 
+                // save the identity that remains stable through this contact's MOVE and UP.
                 source = point->hSource;
                 id = point->dwID;
                 identified = true;
             }
 
+            // require both the provider and contact identities to match.
             return point->hSource == source && point->dwID == id;
         }
     };
 
     static ContactState contact_state;
-    static std::atomic<HWND> contact_transform_window { nullptr };
     static SyntheticTouchIdentity synthetic_touch_identity;
-    static std::atomic<HWND> injection_window { nullptr };
+
+    // main game window that receives WM_TOUCH forwarded from the dedicated TDJ subscreen
     static std::atomic<HWND> touch_delivery_window { nullptr };
+
+    // window whose UI thread owns synthetic contact state and external touch requests;
+    // normally the active touch window, while dedicated TDJ uses the subscreen window
+    static std::atomic<HWND> injection_window { nullptr };
+
     static std::once_flag initialization_once;
     static int window_subclass_token;
     static int mouse_contact_timer_token;
@@ -120,7 +138,7 @@ namespace nativetouch_inject {
         return { WM_LBUTTONDOWN, WM_LBUTTONDBLCLK, WM_LBUTTONUP, MK_LBUTTON };
     }
 
-    static bool uses_dedicated_subscreen(HWND window) {
+    static bool is_tdj_dedicated_subscreen(HWND window) {
         return GRAPHICS_WINDOWED && GRAPHICS_IIDX_WSUB &&
             window == TDJ_SUBSCREEN_WINDOW;
     }
@@ -154,8 +172,8 @@ namespace nativetouch_inject {
 
     // map a screen point into the active dedicated window or subscreen overlay
     static bool transform_mouse_position(HWND window, POINT *position) {
-        // scale the resized IIDX subscreen client area into the game's touch display
-        if (uses_dedicated_subscreen(window)) {
+        // scale the resized IIDX subscreen client area into the game's touch-display coordinates
+        if (is_tdj_dedicated_subscreen(window)) {
             RECT client_rect {};
             if (!GetClientRect(window, &client_rect) ||
                 client_rect.right <= 0 || client_rect.bottom <= 0 ||
@@ -173,17 +191,20 @@ namespace nativetouch_inject {
             return true;
         }
 
-        // use the overlay's game-specific hit test and coordinate transform when visible
+        // leave screen coordinates unchanged when no active overlay transform applies
         if (overlay::OVERLAY == nullptr ||
             !overlay::OVERLAY->get_active() ||
             !overlay::OVERLAY->can_transform_touch_input()) {
             return true;
         }
 
+        // convert physical screen coordinates to the window-relative coordinates the overlay expects
         if (GRAPHICS_WINDOWED) {
             position->x -= SPICETOUCH_TOUCH_X;
             position->y -= SPICETOUCH_TOUCH_Y;
         }
+
+        // ask the overlay to do the game-specific translation
         return overlay::OVERLAY->transform_touch_point(&position->x, &position->y);
     }
 
@@ -202,7 +223,7 @@ namespace nativetouch_inject {
 
     // map a game-space external contact onto the physical dedicated subscreen
     static bool transform_external_position(HWND window, POINT *position) {
-        if (!uses_dedicated_subscreen(window)) {
+        if (!is_tdj_dedicated_subscreen(window)) {
             return true;
         }
 
@@ -226,12 +247,13 @@ namespace nativetouch_inject {
 
     // rewrite only the contact created by this injector into game touch coordinates
     bool transform_touch_input(PTOUCHINPUT point) {
-        auto transform_window = contact_transform_window.load(std::memory_order_acquire);
+        const auto transform_window = synthetic_touch_identity.get_transform_window();
         if (transform_window == nullptr) {
             return false;
         }
 
         if (!synthetic_touch_identity.matches(point)) {
+            // this contact is not owned by this injector; leave it unchanged
             return false;
         }
 
@@ -243,9 +265,7 @@ namespace nativetouch_inject {
         }
 
         if (point->dwFlags & TOUCHEVENTF_UP) {
-            synthetic_touch_identity.reset();
-            contact_transform_window.compare_exchange_strong(
-                transform_window, nullptr, std::memory_order_acq_rel);
+            synthetic_touch_identity.reset(transform_window);
         }
 
         return true;
@@ -271,6 +291,7 @@ namespace nativetouch_inject {
         contact_state.owner = ContactOwner::None;
         contact_state.input_window = nullptr;
 
+        // release mouse capture if this contact owns it
         if (input_window != nullptr && GetCapture() == input_window) {
             ReleaseCapture();
         }
@@ -301,16 +322,16 @@ namespace nativetouch_inject {
         contact_state.owner = ContactOwner::Mouse;
         contact_state.input_window = window;
         contact_state.position = position;
-        contact_transform_window.store(window, std::memory_order_release);
-        synthetic_touch_identity.begin(position);
+        synthetic_touch_identity.begin(position, window);
 
+        // inject touch down event
         if (!inject_touch_frame(position, CONTACT_DOWN_FLAGS)) {
             contact_state = {};
-            contact_transform_window.store(nullptr, std::memory_order_release);
-            synthetic_touch_identity.reset();
+            synthetic_touch_identity.reset(window);
             return;
         }
 
+        // keep receiving drag messages after the cursor leaves the client area
         SetCapture(window);
         if (!SetTimer(
                 window,
@@ -321,6 +342,7 @@ namespace nativetouch_inject {
         }
     }
 
+    // WM_MOUSEMOVE handler
     // update the contact while the primary button remains held
     static void move_mouse_contact(
             HWND window, WPARAM w_param, WPARAM primary_button_state) {
@@ -334,16 +356,19 @@ namespace nativetouch_inject {
             return;
         }
 
+        // the primary mouse button is no longer held; end the touch contact
         if ((w_param & primary_button_state) == 0) {
             end_mouse_contact(window);
             return;
         }
 
+        // inject touch update event
         if (inject_touch_frame(position, CONTACT_UPDATE_FLAGS)) {
             contact_state.position = position;
         }
     }
 
+    // WM_TIMER handler for mouse
     // emit stationary update frames so Windows keeps the contact alive
     static void refresh_mouse_contact(HWND window) {
         if (contact_state.owner != ContactOwner::Mouse ||
@@ -362,6 +387,7 @@ namespace nativetouch_inject {
             return;
         }
 
+        // inject touch update event
         if (inject_touch_frame(position, CONTACT_UPDATE_FLAGS)) {
             contact_state.position = position;
         }
@@ -369,7 +395,7 @@ namespace nativetouch_inject {
 
     // external touches preempt the mouse and keep it disabled until release or timeout
     static void begin_external_contact(HWND window, POINT position) {
-        const auto transform_contact = uses_dedicated_subscreen(window);
+        const auto transform_contact = is_tdj_dedicated_subscreen(window);
         if (!transform_external_position(window, &position)) {
             return;
         }
@@ -382,15 +408,13 @@ namespace nativetouch_inject {
         contact_state.input_window = window;
         contact_state.position = position;
         if (transform_contact) {
-            contact_transform_window.store(window, std::memory_order_release);
-            synthetic_touch_identity.begin(position);
+            synthetic_touch_identity.begin(position, window);
         }
 
         if (!inject_touch_frame(position, CONTACT_DOWN_FLAGS)) {
             contact_state = {};
             if (transform_contact) {
-                contact_transform_window.store(nullptr, std::memory_order_release);
-                synthetic_touch_identity.reset();
+                synthetic_touch_identity.reset(window);
             }
             return;
         }
@@ -411,7 +435,9 @@ namespace nativetouch_inject {
         }
     }
 
-    // queue external touch requests onto the window thread that owns injection state
+    // inject synthetic touches
+    // only one contact is supported at a time for simplicity
+    // we intentionally avoid emulating a mouse click
     bool inject_external_touch(POINT position, bool down) {
         initialize_touch_injection();
 
@@ -420,6 +446,7 @@ namespace nativetouch_inject {
             return false;
         }
 
+        // reuse the same message (external_touch_message) so we can keep track
         return PostMessageW(
             window,
             external_touch_message,
@@ -435,7 +462,8 @@ namespace nativetouch_inject {
         const auto primary_button = get_primary_mouse_button();
 
         // IIDX handles touch on its main window even when input belongs to the subscreen
-        if (message == WM_TOUCH && uses_dedicated_subscreen(window)) {
+        // forward the touch message there
+        if (message == WM_TOUCH && is_tdj_dedicated_subscreen(window)) {
             const auto delivery_window =
                 touch_delivery_window.load(std::memory_order_acquire);
             if (delivery_window != nullptr) {
@@ -505,6 +533,7 @@ namespace nativetouch_inject {
             return;
         }
 
+        // if requested, register for touch messages (for cases where the game didn't call it)
         if (register_touch &&
             (RegisterTouchWindow_orig == nullptr ||
              !RegisterTouchWindow_orig(window, TWF_WANTPALM))) {
@@ -513,6 +542,7 @@ namespace nativetouch_inject {
             return;
         }
 
+        // set window subclass to intercept messages
         if (!SetWindowSubclass(
                 window,
                 touch_window_subclass_proc,
@@ -522,6 +552,7 @@ namespace nativetouch_inject {
             return;
         }
 
+        // publish the UI-thread target for external touch requests
         if (!GRAPHICS_IIDX_WSUB || window == TDJ_SUBSCREEN_WINDOW) {
             injection_window.store(window, std::memory_order_release);
         }
@@ -530,24 +561,35 @@ namespace nativetouch_inject {
     }
 
     void attach_window(HWND window) {
+        // attach window, but don't register for Windows touch messages
         attach_window_impl(window, false);
     }
 
     void register_and_attach_window(HWND window) {
+        // attach window and register for Windows touch messages
         attach_window_impl(window, true);
     }
 
     // preserve native registration and attach mouse injection to the touch window
     static BOOL WINAPI RegisterTouchWindowHook(HWND window, ULONG flags) {
+
+        // for TDJ in windowed subscreen mode, the main game window is
+        // target for delivering touch messages, not the subscreen
         if (GRAPHICS_IIDX_WSUB && window != TDJ_SUBSCREEN_WINDOW) {
             touch_delivery_window.store(window, std::memory_order_release);
             return TRUE;
         }
 
+        // call original
         const auto result = RegisterTouchWindow_orig(window, flags);
+
         if (result) {
+            // attach but don't register for touch messages
+            // (we're already in the middle of RegisterTouchWindow as a result
+            // of the game calling it)
             attach_window(window);
         }
+
         return result;
     }
 
