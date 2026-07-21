@@ -7,6 +7,7 @@
 #include <audioclient.h>
 #include <mmdeviceapi.h>
 
+#include "avs/game.h"
 #include "hooks/audio/backends/mmdevice/device_enumerator.h"
 #include "util/detour.h"
 #include "util/logging.h"
@@ -15,6 +16,7 @@
 #include "audio_private.h"
 #include "acm.h"
 #include "asio_proxy.h"
+#include "xact.h"
 
 #ifdef _MSC_VER
 DEFINE_GUID(CLSID_MMDeviceEnumerator,
@@ -159,6 +161,9 @@ namespace hooks::audio {
 
         // general hooks
         CoCreateInstance_orig = detour::iat_try("CoCreateInstance", CoCreateInstance_hook);
+        if (avs::game::is_model("PAN")) {
+            hooks::audio::xact::init();
+        }
     }
 
     void stop() {
