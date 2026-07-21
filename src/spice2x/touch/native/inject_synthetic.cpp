@@ -16,6 +16,12 @@ namespace nativetouch::inject {
 
     constexpr UINT SYNTHETIC_CONTACT_TIMEOUT_MS = 100;
 
+    enum class SyntheticTouchMessage : WPARAM {
+        Up, // used by callers releasing a contact
+        DownGameSpace, // coordinates are relative to the game's logical touch surface
+        DownScreenSpace, // coordinates are absolute pixels in Windows desktop coordinates
+    };
+
     static std::once_flag synthetic_initialization_once;
     static int synthetic_contact_timer_token;
     static UINT synthetic_touch_message;
@@ -31,12 +37,12 @@ namespace nativetouch::inject {
     }
 
     // synthetic touches preempt the mouse and keep it disabled until release or timeout
-    static void begin_synthetic_contact(HWND window, POINT position) {
+    static void begin_synthetic_contact(HWND window, POINT position, bool screen_space) {
         // dedicated TDJ injects into the physical subscreen, so map Windows'
         // returned coordinates back into the game's touch coordinate space
         const auto transform_returned_coordinates =
             transform::is_tdj_dedicated_subscreen(window);
-        if (!transform::game_to_screen(window, &position)) {
+        if (!screen_space && !transform::game_to_screen(window, &position)) {
             return;
         }
 
@@ -45,13 +51,13 @@ namespace nativetouch::inject {
         // when this producer already owns the contact, move it instead of releasing and
         // re-pressing so continuous input (such as the API surface) drags smoothly
         if (contact_is_owned_by(ContactOwner::Synthetic, window)) {
-            update_contact(ContactOwner::Synthetic, window, position);
-
-            // refresh the safety timeout so the contact stays down while updates keep arriving
-            if (SetTimer(window, timer_id, SYNTHETIC_CONTACT_TIMEOUT_MS, nullptr)) {
-                set_contact_timer(ContactOwner::Synthetic, window, timer_id);
+            if (update_contact(ContactOwner::Synthetic, window, position)) {
+                // refresh the safety timeout while updates keep arriving
+                if (SetTimer(window, timer_id, SYNTHETIC_CONTACT_TIMEOUT_MS, nullptr)) {
+                    set_contact_timer(ContactOwner::Synthetic, window, timer_id);
+                }
+                return;
             }
-            return;
         }
 
         if (!release_active_contact()) {
@@ -82,10 +88,16 @@ namespace nativetouch::inject {
             HWND window, UINT message, WPARAM w_param, LPARAM l_param) {
         if (synthetic_touch_message != 0 && message == synthetic_touch_message) {
             POINT position { GET_X_LPARAM(l_param), GET_Y_LPARAM(l_param) };
-            if (w_param) {
-                begin_synthetic_contact(window, position);
-            } else {
-                end_synthetic_contact(window);
+            switch (static_cast<SyntheticTouchMessage>(w_param)) {
+                case SyntheticTouchMessage::DownGameSpace:
+                    begin_synthetic_contact(window, position, false);
+                    break;
+                case SyntheticTouchMessage::DownScreenSpace:
+                    begin_synthetic_contact(window, position, true);
+                    break;
+                default:
+                    end_synthetic_contact(window);
+                    break;
             }
             return true;
         }
@@ -99,20 +111,63 @@ namespace nativetouch::inject {
         return false;
     }
 
-    // inject synthetic touches; only one contact is supported at a time for simplicity
-    bool inject_synthetic_touch(POINT position, bool down) {
+    static HWND prepare_synthetic_touch() {
         initialize_touch_injection();
 
         const auto window = get_injection_window();
         if (!touch_injection_available() || window == nullptr ||
             synthetic_touch_message == 0) {
-            return false;
+            return nullptr;
         }
+        return window;
+    }
 
+    static bool post_synthetic_touch(
+            HWND window, POINT position, SyntheticTouchMessage message) {
         return PostMessageW(
             window,
             synthetic_touch_message,
-            static_cast<WPARAM>(down),
+            static_cast<WPARAM>(message),
             MAKELPARAM(position.x, position.y)) != FALSE;
+    }
+
+    // inject a point expressed in the game's synthetic touch coordinate space
+    bool inject_synthetic_touch(POINT position, bool down) {
+        const auto window = prepare_synthetic_touch();
+        if (window == nullptr) {
+            return false;
+        }
+
+        const auto message = down
+            ? SyntheticTouchMessage::DownGameSpace
+            : SyntheticTouchMessage::Up;
+        return post_synthetic_touch(window, position, message);
+    }
+
+    // map a logical canvas point onto the live injection window before injecting it
+    bool inject_synthetic_touch_from_canvas(POINT position, SIZE canvas, bool down) {
+        const auto window = prepare_synthetic_touch();
+        if (window == nullptr) {
+            return false;
+        }
+
+        if (!down) {
+            return post_synthetic_touch(window, position, SyntheticTouchMessage::Up);
+        }
+
+        RECT client_rect {};
+        if (canvas.cx <= 0 || canvas.cy <= 0 ||
+                !GetClientRect(window, &client_rect) ||
+                client_rect.right <= 0 || client_rect.bottom <= 0) {
+            return false;
+        }
+
+        position.x = MulDiv(position.x, client_rect.right, canvas.cx);
+        position.y = MulDiv(position.y, client_rect.bottom, canvas.cy);
+        if (!ClientToScreen(window, &position)) {
+            return false;
+        }
+
+        return post_synthetic_touch(window, position, SyntheticTouchMessage::DownScreenSpace);
     }
 }
