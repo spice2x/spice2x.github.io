@@ -150,6 +150,23 @@ namespace nativetouch_inject {
         return false;
     }
 
+    static bool transform_overlay_touch_position(POINT *position) {
+        if (overlay::OVERLAY == nullptr ||
+            !overlay::OVERLAY->get_active() ||
+            !overlay::OVERLAY->can_transform_touch_input()) {
+            return true;
+        }
+
+        // convert physical screen coordinates to the window-relative coordinates the overlay expects
+        if (GRAPHICS_WINDOWED) {
+            position->x -= SPICETOUCH_TOUCH_X;
+            position->y -= SPICETOUCH_TOUCH_Y;
+        }
+
+        // ask the overlay to do the game-specific translation
+        return overlay::OVERLAY->transform_touch_point(&position->x, &position->y);
+    }
+
     // map a screen point into the active dedicated window or subscreen overlay
     bool internal::transform_touch_position(HWND window, POINT *position) {
         // scale the resized IIDX subscreen client area into the game's touch-display coordinates
@@ -174,21 +191,7 @@ namespace nativetouch_inject {
             return true;
         }
 
-        // leave screen coordinates unchanged when no active overlay transform applies
-        if (overlay::OVERLAY == nullptr ||
-            !overlay::OVERLAY->get_active() ||
-            !overlay::OVERLAY->can_transform_touch_input()) {
-            return true;
-        }
-
-        // convert physical screen coordinates to the window-relative coordinates the overlay expects
-        if (GRAPHICS_WINDOWED) {
-            position->x -= SPICETOUCH_TOUCH_X;
-            position->y -= SPICETOUCH_TOUCH_Y;
-        }
-
-        // ask the overlay to do the game-specific translation
-        return overlay::OVERLAY->transform_touch_point(&position->x, &position->y);
+        return transform_overlay_touch_position(position);
     }
 
     // rewrite only the contact created by this injector into game touch coordinates
@@ -217,6 +220,26 @@ namespace nativetouch_inject {
         }
 
         return true;
+    }
+
+    // map corrected hardware coordinates through the dedicated subscreen or active overlay
+    void transform_hardware_touch_input(PTOUCHINPUT point) {
+        const auto dedicated_subscreen = TDJ_SUBSCREEN_WINDOW != nullptr &&
+            internal::is_tdj_dedicated_subscreen(TDJ_SUBSCREEN_WINDOW);
+        const auto active_overlay = overlay::OVERLAY != nullptr &&
+            overlay::OVERLAY->get_active() &&
+            overlay::OVERLAY->can_transform_touch_input();
+        if (!dedicated_subscreen && !active_overlay) {
+            return;
+        }
+
+        POINT position { point->x / 100, point->y / 100 };
+        if (internal::transform_touch_position(
+                dedicated_subscreen ? TDJ_SUBSCREEN_WINDOW : nullptr,
+                &position)) {
+            point->x = position.x * 100;
+            point->y = position.y * 100;
+        }
     }
 
     bool internal::contact_is_active() {

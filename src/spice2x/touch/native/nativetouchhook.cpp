@@ -138,6 +138,9 @@ namespace nativetouchhook {
             if (flip_values) {
                 flip_touch_points(point);
             }
+            if (!synthetic) {
+                nativetouch_inject::transform_hardware_touch_input(point);
+            }
         }
         
         return result;
