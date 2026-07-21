@@ -11,7 +11,7 @@ namespace nativetouch::transform {
             window == TDJ_SUBSCREEN_WINDOW;
     }
 
-    // map game-space coordinates onto the physical dedicated subscreen
+    // convert game touch coordinates to physical screen coordinates for dedicated subscreen injection
     bool game_to_screen(HWND window, POINT *position) {
         if (!is_tdj_dedicated_subscreen(window)) {
             return true;
@@ -52,7 +52,7 @@ namespace nativetouch::transform {
         return overlay::OVERLAY->transform_touch_point(&position->x, &position->y);
     }
 
-    // map a screen point into the active dedicated window or subscreen overlay
+    // convert physical screen coordinates to game touch coordinates for a known target
     bool screen_to_game(HWND window, POINT *position) {
         // scale the resized IIDX subscreen client area into the game's touch-display coordinates
         if (is_tdj_dedicated_subscreen(window)) {
@@ -76,20 +76,32 @@ namespace nativetouch::transform {
             return true;
         }
 
-        return !has_active_overlay_transform() || transform_overlay_touch_position(position);
+        // check if subscreen overlay is active and can transform the touch point;
+        // if not, the touch point is valid as-is
+        if (!has_active_overlay_transform()) {
+            return true;
+        }
+
+        // ask the overlay to transform the touch point into game coordinates
+        return transform_overlay_touch_position(position);
     }
 
-    // map a physical screen point through the dedicated subscreen or active overlay
+    // route hardware screen coordinates through dedicated or overlay mapping and report the result
     Result hardware_to_game(POINT *position) {
         const auto dedicated_subscreen = is_tdj_dedicated_subscreen(TDJ_SUBSCREEN_WINDOW);
         const auto active_overlay = has_active_overlay_transform();
+
+        // no dedicated subscreen or active overlay mapping; pass the point through unchanged
         if (!dedicated_subscreen && !active_overlay) {
             return Result::Unchanged;
         }
 
+        // route through the dedicated subscreen when active, otherwise through the overlay
         const auto valid = screen_to_game(
                 dedicated_subscreen ? TDJ_SUBSCREEN_WINDOW : nullptr,
                 position);
+
+        // reject out-of-bounds points and any coordinate conversion failure
         return valid ? Result::Transformed : Result::Rejected;
     }
 }

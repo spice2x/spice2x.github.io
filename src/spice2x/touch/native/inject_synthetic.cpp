@@ -36,9 +36,13 @@ namespace nativetouch::inject {
         // returned coordinates back into the game's touch coordinate space
         const auto transform_returned_coordinates =
             transform::is_tdj_dedicated_subscreen(window);
-        if (!transform::game_to_screen(window, &position) ||
-            !release_active_contact() ||
-            !begin_contact(
+        if (!transform::game_to_screen(window, &position)) {
+            return;
+        }
+        if (!release_active_contact()) {
+            return;
+        }
+        if (!begin_contact(
                 ContactOwner::Synthetic,
                 window,
                 position,
