@@ -321,6 +321,11 @@ namespace nativetouch_inject {
         internal::initialize_touch_injection();
 
         if (!internal::touch_injection_available()) {
+            if (register_touch) {
+                log_warning(
+                    "touch::native",
+                    "touch injection unavailable; touch window was not registered");
+            }
             return;
         }
 
