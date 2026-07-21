@@ -30,6 +30,8 @@ std::string GRAPHICS_GITADORA_MAIN_MONITOR;
 std::string GRAPHICS_GITADORA_LEFT_MONITOR;
 std::string GRAPHICS_GITADORA_RIGHT_MONITOR;
 std::string GRAPHICS_GITADORA_SMALL_MONITOR;
+std::optional<std::string> GRAPHICS_GITADORA_SMALL_SIZE;
+std::optional<std::string> GRAPHICS_GITADORA_SMALL_POS;
 
 // IIDX Windowed Subscreen - starts out as false, enabled by IIDX module on pre-attach as needed
 bool GRAPHICS_IIDX_WSUB = false;
@@ -89,9 +91,12 @@ static const std::string &graphics_gitadora_monitor_for_window_name(
     return empty;
 }
 
-bool graphics_gitadora_has_window_monitor(const std::string &window_name) {
+bool graphics_gitadora_has_window_override(const std::string &window_name) {
     const auto &monitor_name = graphics_gitadora_monitor_for_window_name(window_name);
-    return !monitor_name.empty();
+    return !monitor_name.empty() ||
+        (window_name == "SMALL" &&
+            (GRAPHICS_GITADORA_SMALL_SIZE.has_value() ||
+             GRAPHICS_GITADORA_SMALL_POS.has_value()));
 }
 
 static bool graphics_monitor_rect_from_name(
@@ -212,7 +217,11 @@ bool graphics_gitadora_apply_window_monitor(
         int &width,
         int &height,
         bool log_change) {
-    return graphics_gitadora_apply_monitor_rect(
+    if (!GRAPHICS_WINDOWED || !games::gitadora::is_arena_model()) {
+        return false;
+    }
+
+    bool applied = graphics_gitadora_apply_monitor_rect(
         graphics_gitadora_monitor_for_window_name(window_name),
         window_name,
         x,
@@ -220,6 +229,42 @@ bool graphics_gitadora_apply_window_monitor(
         width,
         height,
         log_change);
+
+    if (window_name != "SMALL") {
+        return applied;
+    }
+
+    std::pair<uint32_t, uint32_t> result;
+    if (GRAPHICS_GITADORA_SMALL_SIZE.has_value()) {
+        if (parse_width_height(GRAPHICS_GITADORA_SMALL_SIZE.value(), result)) {
+            width = result.first;
+            height = result.second;
+            applied = true;
+        } else {
+            log_fatal("graphics-windowed", "failed to parse -gdwsmallsize");
+        }
+    }
+    if (GRAPHICS_GITADORA_SMALL_POS.has_value()) {
+        if (parse_width_height(GRAPHICS_GITADORA_SMALL_POS.value(), result)) {
+            x = result.first;
+            y = result.second;
+            applied = true;
+        } else {
+            log_fatal("graphics-windowed", "failed to parse -gdwsmallpos");
+        }
+    }
+
+    if (applied && log_change &&
+        (GRAPHICS_GITADORA_SMALL_SIZE.has_value() || GRAPHICS_GITADORA_SMALL_POS.has_value())) {
+        log_info(
+            "graphics-windowed",
+            "GITADORA SMALL custom override: pos=({}, {}), size={}x{}",
+            x,
+            y,
+            width,
+            height);
+    }
+    return applied;
 }
 
 void graphics_capture_initial_window(HWND hWnd) {
@@ -254,7 +299,7 @@ void graphics_capture_initial_window(HWND hWnd) {
     cfg::SCREENRESIZE->init_client_width = client_w;
     cfg::SCREENRESIZE->init_client_height = client_h;
     cfg::SCREENRESIZE->init_client_aspect_ratio = (float)client_w / (float)client_h;
-    log_debug(
+    log_misc(
         "graphics-windowed",
         "[{}] graphics_capture_initial_window initial window size {}x{}, ratio {}",
         fmt::ptr(hWnd),

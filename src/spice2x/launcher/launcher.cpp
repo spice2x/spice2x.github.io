@@ -1286,6 +1286,14 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_GITADORA_SMALL_MONITOR =
             options[launcher::Options::GitaDoraWindowedSmallMonitor].value_text();
     }
+    if (options[launcher::Options::GitaDoraWindowedSmallSize].is_active()) {
+        GRAPHICS_GITADORA_SMALL_SIZE =
+            options[launcher::Options::GitaDoraWindowedSmallSize].value_text();
+    }
+    if (options[launcher::Options::GitaDoraWindowedSmallPosition].is_active()) {
+        GRAPHICS_GITADORA_SMALL_POS =
+            options[launcher::Options::GitaDoraWindowedSmallPosition].value_text();
+    }
 
     // IIDX/SDVX Windowed Subscreen
     if (options[launcher::Options::spice2x_IIDXWindowedSubscreenSize].is_active()) {
