@@ -939,6 +939,13 @@ static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
         return true;
     }
 
+    if (games::iidx::TDJ_MODE &&
+        GRAPHICS_PREVENT_SECONDARY_WINDOWS &&
+        hWnd == TDJ_SUBSCREEN_WINDOW) {
+        log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
+        return true;
+    }
+
     // call original
     return ShowWindow_orig(hWnd, nCmdShow);
 }
