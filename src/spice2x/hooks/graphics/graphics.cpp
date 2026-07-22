@@ -28,7 +28,6 @@
 #include "util/logging.h"
 #include "util/fileutils.h"
 #include "util/utils.h"
-#include "misc/wintouchemu.h"
 #include "touch/native/inject.h"
 #include "util/time.h"
 #include "rawinput/rawinput.h"
@@ -305,22 +304,6 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
             }
             default:
                 break;
-        }
-    }
-
-    if (wintouchemu::INJECT_MOUSE_AS_WM_TOUCH) {
-        // drop mouse inputs since only wintouches should be used
-        switch (uMsg) {
-            case WM_MOUSEMOVE:
-            case WM_LBUTTONDOWN:
-            case WM_LBUTTONUP:
-            case WM_MBUTTONDOWN:
-            case WM_MBUTTONUP:
-            case WM_RBUTTONDOWN:
-            case WM_RBUTTONUP:
-            case WM_XBUTTONDOWN:
-            case WM_XBUTTONUP:
-                return true;
         }
     }
 
