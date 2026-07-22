@@ -75,6 +75,8 @@ namespace games::nost::poke {
             bool contact_active = false;
             bool release_pending = false;
             POINT last_position {};
+            std::unordered_map<games::nost::Buttons::Button, bool> button_states;
+            uint16_t last_keypad_state = 0;
 
             // log
             log_info("poke", "enabled");
@@ -121,21 +123,35 @@ namespace games::nost::poke {
                         release_after_touch = true;
                     }
                 } else {
+                    const auto button_triggered = [&](games::nost::Buttons::Button button) {
+                        const auto pressed =
+                            GameAPI::Buttons::getState(RI_MGR, buttons.at(button));
+                        const auto triggered = pressed && !button_states[button];
+                        button_states[button] = pressed;
+                        return triggered;
+                    };
+
                     for (const auto& it : NOST_POKE) {
-                        if (GameAPI::Buttons::getState(RI_MGR, buttons.at(it.first))) {
+                        if (button_triggered(it.first) && !touch_position.has_value()) {
                             touch_position = POINT {
                                 it.second.first,
                                 it.second.second,
                             };
                             release_after_touch = true;
-                            break;
                         }
                     }
+
+                    const auto next_triggered =
+                        button_triggered(games::nost::Buttons::PokeNextPage);
+                    const auto prev_triggered =
+                        button_triggered(games::nost::Buttons::PokePrevPage);
+
+                    const auto state = eamuse_get_keypad_state(0);
                     if (!touch_position.has_value()) {
-                        const auto state = eamuse_get_keypad_state(0);
                         if (state) {
                             for (const auto& it : NOST_POKE_NUM) {
-                                if (state & (1 << it.first)) {
+                                const auto mask = static_cast<uint16_t>(1 << it.first);
+                                if ((state & mask) && !(last_keypad_state & mask)) {
                                     touch_position = POINT {
                                         it.second.first,
                                         it.second.second,
@@ -146,13 +162,15 @@ namespace games::nost::poke {
                             }
                         }
                     }
+                    last_keypad_state = state;
 
                     // start animations for next frame
                     if (!touch_position.has_value()) {
-                        if (GameAPI::Buttons::getState(RI_MGR, buttons.at(games::nost::Buttons::PokeNextPage))) {
+                        if (next_triggered) {
                             next_page_anim_index = swipe_anim_total_frames;
                         }
-                        if (GameAPI::Buttons::getState(RI_MGR, buttons.at(games::nost::Buttons::PokePrevPage))) {
+
+                        if (prev_triggered) {
                             prev_page_anim_index = swipe_anim_total_frames;
                         }
                     }
