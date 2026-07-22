@@ -936,14 +936,17 @@ namespace overlay::windows {
                             } else if (patch.type == patcher::PatchType::Integer) {
                                 set_patch_option_width();
                                 auto& numpatch = patch.patch_number;
-                                ImGui::InputInt("##int_input", &numpatch.value, 1, 10);
-                                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                                const bool value_changed = ImGui::InputInt(
+                                    "##int_input", &numpatch.value, 1, 10);
+                                if (value_changed || ImGui::IsItemDeactivatedAfterEdit()) {
                                     numpatch.value = CLAMP(
                                             numpatch.value,
                                             numpatch.min,
                                             numpatch.max);
 
                                     patcher::apply_patch(patch, true);
+                                }
+                                if (ImGui::IsItemDeactivated()) {
                                     patcher::config_dirty = true;
                                 }
                                 if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
