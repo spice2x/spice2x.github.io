@@ -4,10 +4,6 @@
 
 #include "wintouchemu.h"
 
-#include <chrono>
-#include <algorithm>
-#include <thread>
-
 #include "games/gitadora/gitadora.h"
 #include "hooks/graphics/graphics.h"
 #include "overlay/overlay.h"
@@ -78,10 +74,10 @@ namespace wintouchemu {
     std::vector<TouchPoint> TOUCH_POINTS;
     HMODULE HOOKED_MODULE = nullptr;
     std::string WINDOW_TITLE_START = "";
-    volatile bool INITIALIZED = false;
+    bool INITIALIZED = false;
     mouse_state_t mouse_state;
 
-    void hook(const char *window_title, HMODULE module, int delay_in_s) {
+    void hook(const char *window_title, HMODULE module) {
 
         // hooks
         auto system_metrics_hook = detour::iat_try(
@@ -100,20 +96,8 @@ namespace wintouchemu {
         // set module and title
         HOOKED_MODULE = module;
         WINDOW_TITLE_START = window_title;
-
-        if (0 < delay_in_s) {
-            // some games crash when touch events are injected too early during boot
-            std::thread t([&]() {
-                log_misc("wintouchemu", "defer initialization until later (with delay of {}s)", delay_in_s);
-                std::this_thread::sleep_for(std::chrono::seconds(delay_in_s));
-                log_misc("wintouchemu", "initializing", delay_in_s);
-                INITIALIZED = true;
-            });
-            t.detach();
-        } else {
-            log_misc("wintouchemu", "initializing");
-            INITIALIZED = true;
-        }
+        log_misc("wintouchemu", "initializing");
+        INITIALIZED = true;
     }
 
     static BOOL WINAPI GetTouchInputInfoHook(HANDLE hTouchInput, UINT cInputs, PTOUCHINPUT pInputs, int cbSize) {
@@ -275,12 +259,8 @@ namespace wintouchemu {
                 }
             } else {
 
-                /*
-                 * For some reason, Nostalgia won't show an active touch point unless a move event
-                 * triggers in the same frame. To work around this, we just supply a fake move
-                 * event if we didn't update the same pointer ID in the same call.
-                 */
-
+                // beatstream requires a MOVE for active points in each update
+                // add one for every active point without a matching input event
                 // find touch point which has no associated input event
                 TouchPoint *touch_point = nullptr;
                 for (auto &tp : TOUCH_POINTS) {

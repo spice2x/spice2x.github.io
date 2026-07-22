@@ -4,6 +4,7 @@
 #include <windows.h>
 
 #include "inject_internal.h"
+#include "settings.h"
 #include "transform.h"
 
 #include "touch/touch.h"
@@ -64,11 +65,13 @@ namespace nativetouch::inject {
 
         // keep receiving drag messages after the cursor leaves the client area
         SetCapture(window);
-        const auto timer_id = reinterpret_cast<UINT_PTR>(&mouse_contact_timer_token);
-        if (SetTimer(window, timer_id, CONTACT_TIMER_INTERVAL_MS, nullptr)) {
-            set_contact_timer(ContactOwner::Mouse, window, timer_id);
-        } else {
-            log_warning("touch::native", "failed to start mouse touch injection timer");
+        if (!settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP) {
+            const auto timer_id = reinterpret_cast<UINT_PTR>(&mouse_contact_timer_token);
+            if (SetTimer(window, timer_id, CONTACT_TIMER_INTERVAL_MS, nullptr)) {
+                set_contact_timer(ContactOwner::Mouse, window, timer_id);
+            } else {
+                log_warning("touch::native", "failed to start mouse touch injection timer");
+            }
         }
     }
 

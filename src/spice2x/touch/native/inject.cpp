@@ -114,11 +114,18 @@ namespace nativetouch::inject {
     // normally the active touch window, while dedicated TDJ uses the subscreen window
     static std::atomic<HWND> injection_window { nullptr };
 
+    // cross-thread game-loop refreshes are coalesced so they cannot flood the window queue
+    static std::atomic<bool> contact_refresh_pending { false };
+
     static std::once_flag initialization_once;
     static int window_subclass_token;
 
+    // asks the touch window thread to send an UPDATE when the game loop runs elsewhere
+    static UINT contact_refresh_message;
+
     // submit one synthetic contact frame to Windows touch injection
-    static bool inject_touch_frame(POINT position, POINTER_FLAGS pointer_flags) {
+    static bool inject_touch_frame(
+            POINT position, POINTER_FLAGS pointer_flags, bool retry_if_not_ready = false) {
         POINTER_TOUCH_INFO contact {};
         contact.pointerInfo.pointerType = PT_TOUCH;
         contact.pointerInfo.pointerId = 0;
@@ -131,13 +138,14 @@ namespace nativetouch::inject {
             return true;
         }
 
-        // if UPDATE fails, drop it
+        // drop ordinary UPDATE frames when Windows is still processing the prior frame
         const auto error = GetLastError();
-        if (error == ERROR_NOT_READY && (pointer_flags & POINTER_FLAG_UPDATE)) {
+        if (error == ERROR_NOT_READY &&
+            (pointer_flags & POINTER_FLAG_UPDATE) && !retry_if_not_ready) {
             return true;
         }
 
-        // if DOWN or UP fails, retry once after a brief delay; if it still fails, log a warning
+        // retry required frames once after a brief delay
         if (error == ERROR_NOT_READY) {
             Sleep(INJECTION_RETRY_DELAY_MS);
             result = InjectTouchInput_ptr(1, &contact);
@@ -222,6 +230,41 @@ namespace nativetouch::inject {
         return true;
     }
 
+    // contact state belongs to the injection window thread; this helper must run there
+    static void refresh_contact_lifetime_on_window_thread(HWND window) {
+        if (!contact_is_owned_by(contact_state.owner, window)) {
+            return;
+        }
+
+        inject_touch_frame(contact_state.position, CONTACT_UPDATE_FLAGS, true);
+    }
+
+    // PAN calls this from ac_io_update to keep a stationary contact alive. Contact state is
+    // owned by the touch window thread, so same-thread calls refresh immediately. Calls from
+    // another thread post one coalesced private message for the window thread to handle.
+    void refresh_contact_lifetime() {
+        const auto window = injection_window.load(std::memory_order_acquire);
+        if (window == nullptr) {
+            return;
+        }
+
+        // preserve synchronous game-loop timing when it already runs on the window thread
+        const auto window_thread = GetWindowThreadProcessId(window, nullptr);
+        if (window_thread == GetCurrentThreadId()) {
+            refresh_contact_lifetime_on_window_thread(window);
+            return;
+        }
+
+        // otherwise marshal one outstanding refresh instead of sharing contact state across threads
+        if (contact_refresh_message == 0 ||
+            contact_refresh_pending.exchange(true, std::memory_order_acq_rel)) {
+            return;
+        }
+        if (!PostMessageW(window, contact_refresh_message, 0, 0)) {
+            contact_refresh_pending.store(false, std::memory_order_release);
+        }
+    }
+
     void set_contact_timer(
             ContactOwner owner, HWND window, UINT_PTR timer_id) {
         if (contact_is_owned_by(owner, window)) {
@@ -255,6 +298,13 @@ namespace nativetouch::inject {
             HWND window, UINT message, WPARAM w_param, LPARAM l_param,
             UINT_PTR subclass_id, DWORD_PTR) {
 
+        // consume marshalled lifetime refreshes on the contact-owning window thread
+        if (contact_refresh_message != 0 && message == contact_refresh_message) {
+            contact_refresh_pending.store(false, std::memory_order_release);
+            refresh_contact_lifetime_on_window_thread(window);
+            return 0;
+        }
+
         // IIDX handles touch on its main window even when input belongs to the subscreen
         // forward the touch message there
         if (message == WM_TOUCH &&
@@ -278,6 +328,7 @@ namespace nativetouch::inject {
             HWND expected_window = window;
             injection_window.compare_exchange_strong(
                 expected_window, nullptr, std::memory_order_acq_rel);
+            contact_refresh_pending.store(false, std::memory_order_release);
             touch_delivery_window.store(nullptr, std::memory_order_release);
             RemoveWindowSubclass(window, touch_window_subclass_proc, subclass_id);
         }
@@ -313,7 +364,10 @@ namespace nativetouch::inject {
                 touch_window_subclass_proc,
                 reinterpret_cast<UINT_PTR>(&window_subclass_token),
                 0)) {
-            log_warning("touch::native", "failed to attach mouse touch injection to window: {}", GetLastError());
+            log_warning(
+                "touch::native",
+                "failed to attach mouse touch injection to window: {}",
+                GetLastError());
             return;
         }
 
@@ -371,6 +425,12 @@ namespace nativetouch::inject {
     void initialize_touch_injection() {
         std::call_once(initialization_once, [] {
             initialize_synthetic_touch();
+            contact_refresh_message =
+                RegisterWindowMessageW(L"spice2x.native_touch.refresh_contact");
+            if (contact_refresh_message == 0) {
+                log_warning(
+                    "touch::native", "failed to register contact refresh message: {}", GetLastError());
+            }
 
             // load all APIs from user32 without adding static imports
             const auto user32 = libutils::load_library("user32.dll");

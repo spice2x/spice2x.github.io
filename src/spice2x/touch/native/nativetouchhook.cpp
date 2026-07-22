@@ -5,6 +5,8 @@
 #include "avs/game.h"
 #include "rawinput/touch.h"
 #include "inject.h"
+#include "inject_internal.h"
+#include "settings.h"
 #include "transform.h"
 
 #include "util/detour.h"
@@ -22,12 +24,41 @@
 
 namespace nativetouch {
 
+    namespace settings {
+        bool EMULATE_DIGITIZER = false;
+        bool REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP = false;
+        bool SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES = false;
+    }
+
+    static decltype(GetSystemMetrics) *GetSystemMetrics_orig = nullptr;
     static decltype(GetTouchInputInfo) *GetTouchInputInfo_orig = nullptr;
     static bool native_touch_hooked = false;
     static bool native_display_initialized = false;
     static DWORD native_display_orientation = DMDO_DEFAULT;
     static long native_display_size_x = 1920L;
     static long native_display_size_y = 1080L;
+
+    static void initialize_game_settings() {
+        const auto is_pan = avs::game::is_model("PAN");
+        settings::EMULATE_DIGITIZER = is_pan;
+
+        // PAN samples and clears touch events in its I/O update loop. Window-timer updates
+        // made stationary holds flicker while movement updates remained stable, so refresh
+        // the native contact from ac_io_update instead of using the generic mouse timer.
+        settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP = is_pan;
+
+        // translate native touch between desktop and game-window client coordinates
+        settings::SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES = is_pan;
+    }
+
+    static int WINAPI GetSystemMetricsHook(int index) {
+        if (index == SM_DIGITIZER) {
+            return NID_INTEGRATED_TOUCH | NID_EXTERNAL_TOUCH |
+                NID_MULTI_INPUT | NID_READY;
+        }
+
+        return GetSystemMetrics_orig(index);
+    }
 
     static void update_native_display_mode() {
         RECT display_rect{};
@@ -102,13 +133,13 @@ namespace nativetouch {
     static BOOL WINAPI GetTouchInputInfoHook(
         HTOUCHINPUT hTouchInput, UINT cInputs, PTOUCHINPUT pInputs, int cbSize) {
 
-        // Refresh after exclusive fullscreen establishes the final display mode.
+        // refresh after exclusive fullscreen establishes the final display mode
         if (!native_display_initialized) {
             update_native_display_mode();
             native_display_initialized = true;
         }
 
-        // call the original fist
+        // call the original first
         const auto result = GetTouchInputInfo_orig(hTouchInput, cInputs, pInputs, cbSize);
         if (result == 0) {
             return result;
@@ -162,10 +193,26 @@ namespace nativetouch {
         return native_touch_hooked;
     }
 
+    void refresh_contact_lifetime() {
+        if (settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP) {
+            inject::refresh_contact_lifetime();
+        }
+    }
+
     void hook(HMODULE module) {
+        initialize_game_settings();
+
         inject::hook(module);
 
         native_touch_hooked = true;
+
+        if (settings::EMULATE_DIGITIZER) {
+            GetSystemMetrics_orig = detour::iat_try(
+                "GetSystemMetrics", GetSystemMetricsHook, module);
+            if (GetSystemMetrics_orig != nullptr) {
+                log_misc("touch::native", "GetSystemMetrics hooked");
+            }
+        }
 
         GetTouchInputInfo_orig = detour::iat_try("GetTouchInputInfo", GetTouchInputInfoHook, module);
         if (GetTouchInputInfo_orig != nullptr) {

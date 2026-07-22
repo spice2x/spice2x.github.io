@@ -1,11 +1,7 @@
-// enable touch functions - set version to windows 7
-// mingw otherwise doesn't load touch stuff
-#define _WIN32_WINNT 0x0601
-
 #include "nost.h"
 #include "poke.h"
 #include "hooks/setupapihook.h"
-#include "misc/wintouchemu.h"
+#include "touch/native/nativetouchhook.h"
 #include "avs/game.h"
 
 namespace games::nost {
@@ -43,9 +39,7 @@ namespace games::nost {
         setupapihook_init(avs::game::DLL_INSTANCE);
         setupapihook_add(touch_settings);
 
-        // custom touch
-        // nostalgia crashes if you inject touch events too early
-        wintouchemu::hook("nostalgia", avs::game::DLL_INSTANCE, 20);
+        nativetouch::hook(avs::game::DLL_INSTANCE);
     }
 
     void NostGame::post_attach() {

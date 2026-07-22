@@ -13,6 +13,7 @@ namespace nativetouch::inject {
     void initialize_touch_injection();
     void initialize_synthetic_touch();
     bool touch_injection_available();
+    void refresh_contact_lifetime();
 
     bool contact_is_active();
     bool contact_is_owned_by(ContactOwner owner, HWND window);
