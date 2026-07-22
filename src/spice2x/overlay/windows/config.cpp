@@ -252,7 +252,7 @@ namespace overlay::windows {
     }
 
     // Renders an arrow-less, non-collapsible left-nav header row, highlighted when
-    // active. Returns true if the row was clicked this frame; callers apply their
+    // active. Returns true if the row was activated this frame; callers apply their
     // own selection side effects.
     bool Config::build_nav_header(const char *label, bool active) {
         ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf;
@@ -283,7 +283,7 @@ namespace overlay::windows {
             ImGui::PopStyleColor(colors_pushed);
         }
 
-        return ImGui::IsItemClicked();
+        return ImGui::IsItemActivated();
     }
 
     void Config::build_options_tab(float page_offset) {
