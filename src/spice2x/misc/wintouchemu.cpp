@@ -71,6 +71,7 @@ namespace wintouchemu {
     BOOL (WINAPI *GetTouchInputInfo_orig)(HANDLE, UINT, PTOUCHINPUT, int);
     bool USE_MOUSE = false;
     std::vector<TouchEvent> TOUCH_EVENTS;
+    std::vector<TouchPoint> TOUCH_POINTS;
     HMODULE HOOKED_MODULE = nullptr;
     std::string WINDOW_TITLE_START = "";
     bool INITIALIZED = false;
@@ -256,6 +257,43 @@ namespace wintouchemu {
                     // reset it since the event was consumed & propagated as touch
                     mouse_state.touch_event = 0;
                 }
+            } else {
+
+                // beatstream requires a MOVE for active points in each update
+                // add one for every active point without a matching input event
+                // find touch point which has no associated input event
+                TouchPoint *touch_point = nullptr;
+                for (auto &tp : TOUCH_POINTS) {
+                    bool found = false;
+                    for (UINT i = 0; i < cInputs; i++) {
+                        if (input > 0 && pInputs[i].dwID == tp.id) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        touch_point = &tp;
+                        break;
+                    }
+                }
+
+                // check if unused touch point was found
+                if (touch_point) {
+
+                    // set touch point
+                    result = true;
+                    touch_input->x = touch_point->x * 100;
+                    touch_input->y = touch_point->y * 100;
+                    touch_input->hSource = hTouchInput;
+                    touch_input->dwID = touch_point->id;
+                    touch_input->dwFlags = 0;
+                    touch_input->dwFlags |= TOUCHEVENTF_MOVE;
+                    touch_input->dwMask = 0;
+                    touch_input->dwTime = 0;
+                    touch_input->dwExtraInfo = 0;
+                    touch_input->cxContact = 0;
+                    touch_input->cyContact = 0;
+                }
             }
         }
 
@@ -335,7 +373,15 @@ namespace wintouchemu {
             TOUCH_EVENTS.clear();
             touch_get_events(TOUCH_EVENTS);
 
-            const auto event_count = TOUCH_EVENTS.size();
+            // get touch points
+            TOUCH_POINTS.clear();
+            touch_get_points(TOUCH_POINTS);
+
+            // get event count
+            auto event_count = TOUCH_EVENTS.size();
+
+            // for the fake move events
+            event_count += MAX(0, (int) (TOUCH_POINTS.size() - TOUCH_EVENTS.size()));
 
             // check if new events are available
             if (event_count > 0) {
