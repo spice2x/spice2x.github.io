@@ -27,7 +27,7 @@ namespace nativetouch {
     namespace settings {
         bool EMULATE_DIGITIZER = false;
         bool REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP = false;
-        bool USE_GAME_CLIENT_COORDINATES = false;
+        bool SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES = false;
     }
 
     static decltype(GetSystemMetrics) *GetSystemMetrics_orig = nullptr;
@@ -48,7 +48,7 @@ namespace nativetouch {
         settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP = is_pan;
 
         // translate native touch between desktop and game-window client coordinates
-        settings::USE_GAME_CLIENT_COORDINATES = is_pan;
+        settings::SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES = is_pan;
     }
 
     static int WINAPI GetSystemMetricsHook(int index) {
@@ -133,13 +133,13 @@ namespace nativetouch {
     static BOOL WINAPI GetTouchInputInfoHook(
         HTOUCHINPUT hTouchInput, UINT cInputs, PTOUCHINPUT pInputs, int cbSize) {
 
-        // Refresh after exclusive fullscreen establishes the final display mode.
+        // refresh after exclusive fullscreen establishes the final display mode
         if (!native_display_initialized) {
             update_native_display_mode();
             native_display_initialized = true;
         }
 
-        // call the original fist
+        // call the original first
         const auto result = GetTouchInputInfo_orig(hTouchInput, cInputs, pInputs, cbSize);
         if (result == 0) {
             return result;

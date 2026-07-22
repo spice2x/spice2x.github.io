@@ -1,7 +1,8 @@
 #include "poke.h"
 
-#include <thread>
+#include <atomic>
 #include <optional>
+#include <thread>
 
 #include "games/nost/io.h"
 #include "cfg/api.h"
@@ -14,9 +15,10 @@
 namespace games::nost::poke {
 
     static std::thread *THREAD = nullptr;
-    static volatile bool THREAD_RUNNING = false;
-    
-    static const std::unordered_map<int, std::pair<LONG, LONG>> NOST_POKE_NUM {
+    static std::atomic<bool> THREAD_RUNNING { false };
+
+    // positions use game-client pixels, matching the legacy client-sized touch window
+    static const std::unordered_map<int, std::pair<LONG, LONG>> NOST_POKE_KEYPAD {
         {EAM_IO_KEYPAD_0, {760, 440}},
         {EAM_IO_KEYPAD_1, {760, 385}},
         {EAM_IO_KEYPAD_2, {820, 385}},
@@ -31,7 +33,8 @@ namespace games::nost::poke {
         {EAM_IO_KEYPAD_DECIMAL, {880, 440}} // also erase button
     };
 
-    static const std::unordered_map<games::nost::Buttons::Button, std::pair<LONG, LONG>> NOST_POKE {
+    static const std::unordered_map<
+        games::nost::Buttons::Button, std::pair<LONG, LONG>> NOST_POKE_BUTTONS {
         {games::nost::Buttons::Button::PokeConfirm, {1100, 525}},
         {games::nost::Buttons::Button::PokeBack, {340, 100}},
         {games::nost::Buttons::Button::PokeSong1, {450, 190}},
@@ -84,9 +87,8 @@ namespace games::nost::poke {
             // set variable to false to stop
             while (THREAD_RUNNING) {
                 if (release_pending) {
-                    if (contact_active && !inject_poke_position(last_position, false)) {
-                        timer.sleep(30);
-                        continue;
+                    if (contact_active) {
+                        inject_poke_position(last_position, false);
                     }
                     contact_active = false;
                     release_pending = false;
@@ -95,6 +97,44 @@ namespace games::nost::poke {
                 auto &buttons = games::nost::get_buttons();
                 std::optional<POINT> touch_position;
                 bool release_after_touch = false;
+
+                const auto button_triggered = [&](games::nost::Buttons::Button button) {
+                    const auto pressed =
+                        GameAPI::Buttons::getState(RI_MGR, buttons.at(button));
+                    const auto triggered = pressed && !button_states[button];
+                    button_states[button] = pressed;
+                    return triggered;
+                };
+
+                std::optional<POINT> triggered_touch_position;
+                for (const auto& it : NOST_POKE_BUTTONS) {
+                    if (button_triggered(it.first) && !triggered_touch_position.has_value()) {
+                        triggered_touch_position = POINT {
+                            it.second.first,
+                            it.second.second,
+                        };
+                    }
+                }
+
+                const auto next_triggered =
+                    button_triggered(games::nost::Buttons::PokeNextPage);
+                const auto prev_triggered =
+                    button_triggered(games::nost::Buttons::PokePrevPage);
+
+                const auto keypad_state = eamuse_get_keypad_state(0);
+                if (!triggered_touch_position.has_value()) {
+                    for (const auto& it : NOST_POKE_KEYPAD) {
+                        const auto mask = static_cast<uint16_t>(1 << it.first);
+                        if ((keypad_state & mask) && !(last_keypad_state & mask)) {
+                            triggered_touch_position = POINT {
+                                it.second.first,
+                                it.second.second,
+                            };
+                            break;
+                        }
+                    }
+                }
+                last_keypad_state = keypad_state;
 
                 if (0 <= next_page_anim_index) {
                     const auto delta =
@@ -123,46 +163,8 @@ namespace games::nost::poke {
                         release_after_touch = true;
                     }
                 } else {
-                    const auto button_triggered = [&](games::nost::Buttons::Button button) {
-                        const auto pressed =
-                            GameAPI::Buttons::getState(RI_MGR, buttons.at(button));
-                        const auto triggered = pressed && !button_states[button];
-                        button_states[button] = pressed;
-                        return triggered;
-                    };
-
-                    for (const auto& it : NOST_POKE) {
-                        if (button_triggered(it.first) && !touch_position.has_value()) {
-                            touch_position = POINT {
-                                it.second.first,
-                                it.second.second,
-                            };
-                            release_after_touch = true;
-                        }
-                    }
-
-                    const auto next_triggered =
-                        button_triggered(games::nost::Buttons::PokeNextPage);
-                    const auto prev_triggered =
-                        button_triggered(games::nost::Buttons::PokePrevPage);
-
-                    const auto state = eamuse_get_keypad_state(0);
-                    if (!touch_position.has_value()) {
-                        if (state) {
-                            for (const auto& it : NOST_POKE_NUM) {
-                                const auto mask = static_cast<uint16_t>(1 << it.first);
-                                if ((state & mask) && !(last_keypad_state & mask)) {
-                                    touch_position = POINT {
-                                        it.second.first,
-                                        it.second.second,
-                                    };
-                                    release_after_touch = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    last_keypad_state = state;
+                    touch_position = triggered_touch_position;
+                    release_after_touch = touch_position.has_value();
 
                     // start animations for next frame
                     if (!touch_position.has_value()) {

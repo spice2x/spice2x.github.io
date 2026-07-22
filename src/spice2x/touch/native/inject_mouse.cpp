@@ -9,7 +9,6 @@
 
 #include "touch/touch.h"
 #include "util/logging.h"
-#include "util/utils.h"
 
 namespace nativetouch::inject {
 
@@ -89,9 +88,7 @@ namespace nativetouch::inject {
             return;
         }
 
-        const auto button_down = settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP ?
-            get_async_primary_mouse() : (w_param & primary_button_state) != 0;
-        if (!button_down) {
+        if ((w_param & primary_button_state) == 0) {
             end_mouse_contact(window);
             return;
         }
@@ -139,13 +136,8 @@ namespace nativetouch::inject {
             move_mouse_contact(window, w_param, primary_button.state_mask);
         } else if (message == primary_button.up_message) {
             end_mouse_contact(window);
-        } else if (message == WM_CANCELMODE) {
-            end_mouse_contact(window);
-        } else if (message == WM_KILLFOCUS) {
-            end_mouse_contact(window);
-        } else if (message == WM_CAPTURECHANGED &&
-                   (!settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP ||
-                    !get_async_primary_mouse())) {
+        } else if (message == WM_CANCELMODE || message == WM_KILLFOCUS ||
+                   message == WM_CAPTURECHANGED) {
             end_mouse_contact(window);
         }
 

@@ -37,9 +37,9 @@ namespace nativetouch::transform {
             window == TDJ_SUBSCREEN_WINDOW;
     }
 
-    // convert game touch coordinates to physical screen coordinates for dedicated subscreen injection
+    // convert game touch coordinates to Windows desktop coordinates
     bool game_to_screen(HWND window, POINT *position) {
-        if (settings::USE_GAME_CLIENT_COORDINATES) {
+        if (settings::SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES) {
             return game_client_to_screen(window, position);
         }
 
@@ -84,7 +84,7 @@ namespace nativetouch::transform {
 
     // convert physical screen coordinates to game touch coordinates for a known target
     bool screen_to_game(HWND window, POINT *position) {
-        if (settings::USE_GAME_CLIENT_COORDINATES) {
+        if (settings::SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES) {
             return screen_to_game_client(window, position);
         }
 

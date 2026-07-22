@@ -39,11 +39,10 @@ namespace nativetouch::inject {
 
     // synthetic touches preempt the mouse and keep it disabled until release or timeout
     static void begin_synthetic_contact(HWND window, POINT position, bool screen_space) {
-        // dedicated TDJ injects into the physical subscreen, so map Windows'
-        // returned coordinates back into the game's touch coordinate space
+        // remember when Windows-returned coordinates must map back into game space
         const auto transform_returned_coordinates =
             transform::is_tdj_dedicated_subscreen(window) ||
-            settings::USE_GAME_CLIENT_COORDINATES;
+            settings::SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES;
         if (!screen_space && !transform::game_to_screen(window, &position)) {
             return;
         }
