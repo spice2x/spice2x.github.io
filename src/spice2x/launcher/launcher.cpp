@@ -379,6 +379,7 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::spice2x_IIDXNoSub].value_bool()) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
+        GRAPHICS_PREVENT_SECONDARY_WINDOWS = true;
     }
     if (options[launcher::Options::spice2x_SDVXNoSub].value_bool()) {
         GRAPHICS_FORCE_SINGLE_ADAPTER = true;
