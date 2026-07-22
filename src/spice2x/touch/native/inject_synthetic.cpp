@@ -8,6 +8,7 @@
 
 #include "inject.h"
 #include "inject_internal.h"
+#include "settings.h"
 #include "transform.h"
 
 #include "util/logging.h"
@@ -41,7 +42,8 @@ namespace nativetouch::inject {
         // dedicated TDJ injects into the physical subscreen, so map Windows'
         // returned coordinates back into the game's touch coordinate space
         const auto transform_returned_coordinates =
-            transform::is_tdj_dedicated_subscreen(window);
+            transform::is_tdj_dedicated_subscreen(window) ||
+            settings::USE_GAME_CLIENT_COORDINATES;
         if (!screen_space && !transform::game_to_screen(window, &position)) {
             return;
         }

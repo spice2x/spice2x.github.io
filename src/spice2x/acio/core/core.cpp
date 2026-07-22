@@ -4,6 +4,7 @@
 #include "launcher/launcher.h"
 #include "misc/wintouchemu.h"
 #include "rawinput/rawinput.h"
+#include "touch/native/nativetouchhook.h"
 
 // static stuff
 static int ACIO_WARMUP = 0;
@@ -140,8 +141,9 @@ static int __cdecl ac_io_update(int a1) {
     // flush device output
     RI_MGR->devices_flush_output();
 
-    // update wintouchemu
+    // update touch emulation
     wintouchemu::update();
+    nativetouch::refresh_contact_lifetime();
 
     return 1;
 }

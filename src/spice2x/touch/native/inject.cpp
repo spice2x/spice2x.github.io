@@ -118,7 +118,8 @@ namespace nativetouch::inject {
     static int window_subclass_token;
 
     // submit one synthetic contact frame to Windows touch injection
-    static bool inject_touch_frame(POINT position, POINTER_FLAGS pointer_flags) {
+    static bool inject_touch_frame(
+            POINT position, POINTER_FLAGS pointer_flags, bool retry_if_not_ready = false) {
         POINTER_TOUCH_INFO contact {};
         contact.pointerInfo.pointerType = PT_TOUCH;
         contact.pointerInfo.pointerId = 0;
@@ -131,13 +132,14 @@ namespace nativetouch::inject {
             return true;
         }
 
-        // if UPDATE fails, drop it
+        // drop ordinary UPDATE frames when Windows is still processing the prior frame
         const auto error = GetLastError();
-        if (error == ERROR_NOT_READY && (pointer_flags & POINTER_FLAG_UPDATE)) {
+        if (error == ERROR_NOT_READY &&
+            (pointer_flags & POINTER_FLAG_UPDATE) && !retry_if_not_ready) {
             return true;
         }
 
-        // if DOWN or UP fails, retry once after a brief delay; if it still fails, log a warning
+        // retry required frames once after a brief delay
         if (error == ERROR_NOT_READY) {
             Sleep(INJECTION_RETRY_DELAY_MS);
             result = InjectTouchInput_ptr(1, &contact);
@@ -220,6 +222,14 @@ namespace nativetouch::inject {
 
         contact_state.position = position;
         return true;
+    }
+
+    void refresh_contact_lifetime() {
+        if (!contact_state.is_active() || contact_state.input_window == nullptr) {
+            return;
+        }
+
+        inject_touch_frame(contact_state.position, CONTACT_UPDATE_FLAGS, true);
     }
 
     void set_contact_timer(

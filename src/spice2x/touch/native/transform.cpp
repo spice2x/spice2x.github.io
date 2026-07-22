@@ -2,9 +2,35 @@
 
 #include "hooks/graphics/graphics.h"
 #include "overlay/overlay.h"
+#include "settings.h"
 #include "touch/touch.h"
 
 namespace nativetouch::transform {
+
+    static bool game_client_to_screen(HWND window, POINT *position) {
+        RECT client_rect {};
+        if (window == nullptr ||
+            !GetClientRect(window, &client_rect) ||
+            client_rect.right <= 0 || client_rect.bottom <= 0 ||
+            !PtInRect(&client_rect, *position)) {
+            return false;
+        }
+
+        return ClientToScreen(window, position) != FALSE;
+    }
+
+    static bool screen_to_game_client(HWND window, POINT *position) {
+        RECT client_rect {};
+        if (window == nullptr ||
+            !GetClientRect(window, &client_rect) ||
+            client_rect.right <= 0 || client_rect.bottom <= 0 ||
+            !ScreenToClient(window, position) ||
+            !PtInRect(&client_rect, *position)) {
+            return false;
+        }
+
+        return true;
+    }
 
     bool is_tdj_dedicated_subscreen(HWND window) {
         return window != nullptr && GRAPHICS_WINDOWED && GRAPHICS_IIDX_WSUB &&
@@ -13,6 +39,10 @@ namespace nativetouch::transform {
 
     // convert game touch coordinates to physical screen coordinates for dedicated subscreen injection
     bool game_to_screen(HWND window, POINT *position) {
+        if (settings::USE_GAME_CLIENT_COORDINATES) {
+            return game_client_to_screen(window, position);
+        }
+
         if (!is_tdj_dedicated_subscreen(window)) {
             return true;
         }
@@ -54,6 +84,10 @@ namespace nativetouch::transform {
 
     // convert physical screen coordinates to game touch coordinates for a known target
     bool screen_to_game(HWND window, POINT *position) {
+        if (settings::USE_GAME_CLIENT_COORDINATES) {
+            return screen_to_game_client(window, position);
+        }
+
         // scale the resized IIDX subscreen client area into the game's touch-display coordinates
         if (is_tdj_dedicated_subscreen(window)) {
             RECT client_rect {};

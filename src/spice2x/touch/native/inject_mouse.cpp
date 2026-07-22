@@ -4,10 +4,12 @@
 #include <windows.h>
 
 #include "inject_internal.h"
+#include "settings.h"
 #include "transform.h"
 
 #include "touch/touch.h"
 #include "util/logging.h"
+#include "util/utils.h"
 
 namespace nativetouch::inject {
 
@@ -64,11 +66,13 @@ namespace nativetouch::inject {
 
         // keep receiving drag messages after the cursor leaves the client area
         SetCapture(window);
-        const auto timer_id = reinterpret_cast<UINT_PTR>(&mouse_contact_timer_token);
-        if (SetTimer(window, timer_id, CONTACT_TIMER_INTERVAL_MS, nullptr)) {
-            set_contact_timer(ContactOwner::Mouse, window, timer_id);
-        } else {
-            log_warning("touch::native", "failed to start mouse touch injection timer");
+        if (!settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP) {
+            const auto timer_id = reinterpret_cast<UINT_PTR>(&mouse_contact_timer_token);
+            if (SetTimer(window, timer_id, CONTACT_TIMER_INTERVAL_MS, nullptr)) {
+                set_contact_timer(ContactOwner::Mouse, window, timer_id);
+            } else {
+                log_warning("touch::native", "failed to start mouse touch injection timer");
+            }
         }
     }
 
@@ -85,7 +89,9 @@ namespace nativetouch::inject {
             return;
         }
 
-        if ((w_param & primary_button_state) == 0) {
+        const auto button_down = settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP ?
+            get_async_primary_mouse() : (w_param & primary_button_state) != 0;
+        if (!button_down) {
             end_mouse_contact(window);
             return;
         }
@@ -133,8 +139,13 @@ namespace nativetouch::inject {
             move_mouse_contact(window, w_param, primary_button.state_mask);
         } else if (message == primary_button.up_message) {
             end_mouse_contact(window);
-        } else if (message == WM_CANCELMODE || message == WM_KILLFOCUS ||
-                   message == WM_CAPTURECHANGED) {
+        } else if (message == WM_CANCELMODE) {
+            end_mouse_contact(window);
+        } else if (message == WM_KILLFOCUS) {
+            end_mouse_contact(window);
+        } else if (message == WM_CAPTURECHANGED &&
+                   (!settings::REFRESH_CONTACT_LIFETIME_FROM_GAME_LOOP ||
+                    !get_async_primary_mouse())) {
             end_mouse_contact(window);
         }
 

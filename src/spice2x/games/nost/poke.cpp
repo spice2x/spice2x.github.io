@@ -7,7 +7,7 @@
 #include "cfg/api.h"
 #include "rawinput/rawinput.h"
 #include "misc/eamuse.h"
-#include "touch/touch.h"
+#include "touch/native/inject.h"
 #include "util/logging.h"
 #include "util/precise_timer.h"
 
@@ -46,13 +46,8 @@ namespace games::nost::poke {
         {games::nost::Buttons::Button::PokeDifficulty4, {820, 490}},
     };
 
-    void clear_touch_points(std::vector<TouchPoint> *touch_points) {
-        std::vector<DWORD> touch_ids;
-        for (auto &touch : *touch_points) {
-            touch_ids.emplace_back(touch.id);
-        }
-        touch_remove_points(&touch_ids);
-        touch_points->clear();
+    static bool inject_poke_position(POINT position, bool down) {
+        return nativetouch::inject::inject_synthetic_touch(position, down);
     }
 
     void enable() {
@@ -65,99 +60,87 @@ namespace games::nost::poke {
         THREAD_RUNNING = true;
         THREAD = new std::thread([] {
             timeutils::PreciseSleepTimer timer;
-            const DWORD touch_id = (DWORD)(0xFFFFFFFE);
 
             const int swipe_anim_total_frames = 6;
             const int swipe_anim_y = 300;
 
             const int swipe_next_page_x_begin = 1120;
-            const int swipe_next_page_x_end = 1120-120;
+            const int swipe_next_page_x_end = 1120 - 120;
 
-            const int swipe_prev_page_x_begin = 280-120;
+            const int swipe_prev_page_x_begin = 280 - 120;
             const int swipe_prev_page_x_end = 280;
 
             int next_page_anim_index = -1;
             int prev_page_anim_index = -1;
-            std::vector<TouchPoint> touch_points;
-
-            bool touch_release = false;
+            bool contact_active = false;
+            bool release_pending = false;
+            POINT last_position {};
 
             // log
             log_info("poke", "enabled");
 
             // set variable to false to stop
             while (THREAD_RUNNING) {
-                // clean up touch from last frame
-                if (!touch_points.empty()) {
-                    if (touch_release) {
-                        clear_touch_points(&touch_points);
-                        touch_release = false;
-                    } else {
-                        touch_points.clear();
+                if (release_pending) {
+                    if (contact_active && !inject_poke_position(last_position, false)) {
+                        timer.sleep(30);
+                        continue;
                     }
+                    contact_active = false;
+                    release_pending = false;
                 }
 
                 auto &buttons = games::nost::get_buttons();
+                std::optional<POINT> touch_position;
+                bool release_after_touch = false;
 
                 if (0 <= next_page_anim_index) {
                     const auto delta =
                         (swipe_next_page_x_end - swipe_next_page_x_begin)
                         * (swipe_anim_total_frames - next_page_anim_index) / swipe_anim_total_frames;
 
-                    TouchPoint tp {
-                        .id = touch_id,
-                        .x = (LONG)swipe_next_page_x_begin + delta,
-                        .y = (LONG)swipe_anim_y,
-                        .mouse = true,
+                    touch_position = POINT {
+                        swipe_next_page_x_begin + delta,
+                        swipe_anim_y,
                     };
-                    touch_points.emplace_back(tp);
                     next_page_anim_index--;
                     if (next_page_anim_index < 0) {
-                        touch_release = true;
+                        release_after_touch = true;
                     }
                 } else if (0 <= prev_page_anim_index) {
                     const auto delta =
                         (swipe_prev_page_x_end - swipe_prev_page_x_begin)
                         * (swipe_anim_total_frames - prev_page_anim_index) / swipe_anim_total_frames;
 
-                    TouchPoint tp {
-                        .id = touch_id,
-                        .x = (LONG)swipe_prev_page_x_begin + delta,
-                        .y = (LONG)swipe_anim_y,
-                        .mouse = true,
+                    touch_position = POINT {
+                        swipe_prev_page_x_begin + delta,
+                        swipe_anim_y,
                     };
-                    touch_points.emplace_back(tp);
                     prev_page_anim_index--;
                     if (prev_page_anim_index < 0) {
-                        touch_release = true;
+                        release_after_touch = true;
                     }
                 } else {
                     for (const auto& it : NOST_POKE) {
                         if (GameAPI::Buttons::getState(RI_MGR, buttons.at(it.first))) {
-                            TouchPoint tp {
-                                .id = touch_id,
-                                .x = it.second.first,
-                                .y = it.second.second,
-                                .mouse = true,
+                            touch_position = POINT {
+                                it.second.first,
+                                it.second.second,
                             };
-                            touch_points.emplace_back(tp);
-                            touch_release = true;
+                            release_after_touch = true;
                             break;
                         }
                     }
-                    if (!touch_release) {
+                    if (!touch_position.has_value()) {
                         const auto state = eamuse_get_keypad_state(0);
                         if (state) {
                             for (const auto& it : NOST_POKE_NUM) {
                                 if (state & (1 << it.first)) {
-                                    TouchPoint tp {
-                                        .id = touch_id,
-                                        .x = it.second.first,
-                                        .y = it.second.second,
-                                        .mouse = true,
+                                    touch_position = POINT {
+                                        it.second.first,
+                                        it.second.second,
                                     };
-                                    touch_points.emplace_back(tp);
-                                    touch_release = true;
+                                    release_after_touch = true;
                                     break;
                                 }
                             }
@@ -165,7 +148,7 @@ namespace games::nost::poke {
                     }
 
                     // start animations for next frame
-                    if (!touch_release) {
+                    if (!touch_position.has_value()) {
                         if (GameAPI::Buttons::getState(RI_MGR, buttons.at(games::nost::Buttons::PokeNextPage))) {
                             next_page_anim_index = swipe_anim_total_frames;
                         }
@@ -175,12 +158,21 @@ namespace games::nost::poke {
                     }
                 }
 
-                if (!touch_points.empty()) {
-                    touch_write_points(&touch_points);
+                if (touch_position.has_value() &&
+                    inject_poke_position(*touch_position, true)) {
+                    contact_active = true;
+                    last_position = *touch_position;
+                }
+                if (release_after_touch && contact_active) {
+                    release_pending = true;
                 }
 
                 // slow down
                 timer.sleep(30);
+            }
+
+            if (contact_active) {
+                inject_poke_position(last_position, false);
             }
 
             return nullptr;
