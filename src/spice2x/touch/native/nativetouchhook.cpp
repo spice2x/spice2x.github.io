@@ -2,6 +2,9 @@
 // mingw otherwise doesn't load touch stuff
 #define _WIN32_WINNT 0x0601
 
+#include <atomic>
+
+#include "nativetouchhook.h"
 #include "avs/game.h"
 #include "rawinput/touch.h"
 #include "inject.h"
@@ -32,6 +35,7 @@ namespace nativetouch {
 
     static decltype(GetSystemMetrics) *GetSystemMetrics_orig = nullptr;
     static decltype(GetTouchInputInfo) *GetTouchInputInfo_orig = nullptr;
+    static std::atomic<TouchInputFilter> touch_input_filter { nullptr };
     static bool native_touch_hooked = false;
     static bool native_display_initialized = false;
     static DWORD native_display_orientation = DMDO_DEFAULT;
@@ -184,6 +188,11 @@ namespace nativetouch {
                     point->dwFlags = 0;
                 }
             }
+
+            const auto filter = touch_input_filter.load(std::memory_order_acquire);
+            if (point->dwFlags != 0 && filter != nullptr && filter(*point, synthetic)) {
+                point->dwFlags = 0;
+            }
         }
         
         return result;
@@ -191,6 +200,10 @@ namespace nativetouch {
 
     bool is_hooked() {
         return native_touch_hooked;
+    }
+
+    void set_input_filter(TouchInputFilter filter) {
+        touch_input_filter.store(filter, std::memory_order_release);
     }
 
     void refresh_contact_lifetime() {

@@ -1787,6 +1787,15 @@ int main_implementation(int argc, char *argv[]) {
         if (options[launcher::Options::NostalgiaPoke].is_active()) {
             games::nost::ENABLE_POKE = TRUE;
         }
+        if (options[launcher::Options::NostalgiaTouchMode].is_active()) {
+            if (overlay::ENABLED) {
+                games::nost::ENABLE_TOUCH_MODE = true;
+            } else {
+                log_warning(
+                    "launcher",
+                    "Nostalgia Touch Mode requires the global overlay; ignoring -nosttouch");
+            }
+        }
     }
 
     // early hooks

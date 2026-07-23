@@ -1,5 +1,6 @@
 #include "nost.h"
 #include "poke.h"
+#include "touch_mode.h"
 #include "hooks/setupapihook.h"
 #include "touch/native/nativetouchhook.h"
 #include "avs/game.h"
@@ -7,6 +8,7 @@
 namespace games::nost {
 
     bool ENABLE_POKE = false;
+    bool ENABLE_TOUCH_MODE = false;
 
     NostGame::NostGame() : Game("Nostalgia") {
     }
@@ -40,6 +42,9 @@ namespace games::nost {
         setupapihook_add(touch_settings);
 
         nativetouch::hook(avs::game::DLL_INSTANCE);
+        if (ENABLE_TOUCH_MODE) {
+            touch_mode::enable();
+        }
     }
 
     void NostGame::post_attach() {
@@ -49,6 +54,9 @@ namespace games::nost {
     }
 
     void NostGame::detach() {
+        if (ENABLE_TOUCH_MODE) {
+            touch_mode::disable();
+        }
         if (ENABLE_POKE) {
             poke::disable();
         }

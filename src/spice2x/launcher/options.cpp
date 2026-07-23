@@ -3149,6 +3149,20 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Nostalgia",
         .category = "Game Options",
+        .quick_setting_category = "Game",
+    },
+    {
+        // NostalgiaTouchMode
+        .title = "Nostalgia Touch Piano",
+        .name = "nosttouch",
+        .desc =
+            "Allows you to play the piano by touching the screen instead of a controller. "
+            "Use the mode switch button to toggle between interacting with the menu and playing the piano. "
+            "Velocity sensitivity is not supported.",
+        .type = OptionType::Bool,
+        .game_name = "Nostalgia",
+        .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // ForceBackBufferCount

@@ -3,6 +3,7 @@
 #include "rawinput/rawinput.h"
 #include "games/nost/io.h"
 #include "games/nost/nost.h"
+#include "games/nost/touch_mode.h"
 #include "util/logging.h"
 #include "avs/game.h"
 
@@ -226,6 +227,8 @@ static bool __cdecl ac_io_panb_update_control_status_buffer() {
                 games::nost::Analogs::Key27, games::nost::Analogs::Key28,
         };
 
+        const auto touch_key_state = games::nost::touch_mode::piano_key_state();
+
         // iterate pairs of keys
         for (size_t key_pair = 0; key_pair < 28 / 2; key_pair++) {
 
@@ -257,6 +260,9 @@ static bool __cdecl ac_io_panb_update_control_status_buffer() {
             if (button0 > 0) {
                 state0 = button0;
             }
+            if ((touch_key_state & (UINT32_C(1) << (key_pair * 2))) && state0 < 11) {
+                state0 = 11;
+            }
 
             const auto button1 = panb_get_button_velocity(
                 buttons.at(button_mapping[key_pair * 2 + 1]),
@@ -266,6 +272,9 @@ static bool __cdecl ac_io_panb_update_control_status_buffer() {
             );
             if (button1 > 0) {
                 state1 = button1;
+            }
+            if ((touch_key_state & (UINT32_C(1) << (key_pair * 2 + 1))) && state1 < 11) {
+                state1 = 11;
             }
 
             // build value

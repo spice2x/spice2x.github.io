@@ -297,6 +297,7 @@ namespace launcher {
             DDRP4IOBufferMode,
             InputRequiresFocus,
             NostalgiaPoke,
+            NostalgiaTouchMode,
             ForceBackBufferCount,
             SDVXWindowedSubscreenSize,
             SDVXWindowedSubscreenPosition,

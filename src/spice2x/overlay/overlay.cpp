@@ -5,6 +5,7 @@
 #include "games/io.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
+#include "games/nost/nost.h"
 #include "games/popn/popn.h"
 #include "games/rb/touch_debug.h"
 #include "hooks/graphics/graphics.h"
@@ -51,6 +52,7 @@
 #include "windows/sdvx_sub.h"
 #include "windows/keypad.h"
 #include "windows/log.h"
+#include "windows/nostalgia_touch_piano.h"
 #include "windows/obs.h"
 #include "windows/patch_manager.h"
 #include "windows/exitprompt.cpp"
@@ -404,6 +406,12 @@ void overlay::SpiceOverlay::init() {
         window_fps->set_active(true);
     }
 
+    if (!cfg::CONFIGURATOR_STANDALONE &&
+        avs::game::is_model("PAN") && games::nost::ENABLE_TOUCH_MODE) {
+        window_nostalgia_touch_piano =
+            std::make_unique<overlay::windows::NostalgiaTouchPiano>(this);
+    }
+
     // owned separately from `windows` so it is not part of the overlay window layer
     window_main_menu = std::make_unique<overlay::windows::ExitPrompt>(this);
 
@@ -556,13 +564,18 @@ void overlay::SpiceOverlay::new_frame() {
     const bool draw_fps_persistent = this->renderer != OverlayRenderer::SOFTWARE
         && this->window_fps->get_active();
 
+    const bool draw_nostalgia_touch_piano = this->renderer != OverlayRenderer::SOFTWARE
+        && this->window_nostalgia_touch_piano
+        && this->window_nostalgia_touch_piano->get_active();
+
     // draw RB touch diagnostics
     const bool draw_rb_touch_debug = this->renderer != OverlayRenderer::SOFTWARE
         && games::rb::touch_debug_overlay_enabled();
 
     // check if there is nothing to draw
     this->has_pending_frame = false;
-    if (!this->active && !draw_notifications && !draw_fps_persistent && !draw_rb_touch_debug) {
+    if (!this->active && !draw_notifications && !draw_fps_persistent &&
+        !draw_nostalgia_touch_piano && !draw_rb_touch_debug) {
         return;
     }
 
@@ -596,7 +609,13 @@ void overlay::SpiceOverlay::new_frame() {
         for (auto &window : this->windows) {
             window->build();
         }
+    }
 
+    if (draw_nostalgia_touch_piano) {
+        this->window_nostalgia_touch_piano->build();
+    }
+
+    if (this->active) {
         // draw the main menu on top of the overlay windows
         this->window_main_menu->build();
 
@@ -818,6 +837,10 @@ void overlay::SpiceOverlay::update() {
 
     // FPS window
     this->window_fps->update();
+
+    if (this->window_nostalgia_touch_piano) {
+        this->window_nostalgia_touch_piano->update();
+    }
 
     // main menu (owned separately from the overlay window layer)
     this->window_main_menu->update();
