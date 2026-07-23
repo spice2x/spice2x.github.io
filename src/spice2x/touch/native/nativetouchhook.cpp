@@ -190,8 +190,19 @@ namespace nativetouch {
             }
 
             const auto filter = touch_input_filter.load(std::memory_order_acquire);
-            if (point->dwFlags != 0 && filter != nullptr && filter(*point, synthetic)) {
-                point->dwFlags = 0;
+            if (point->dwFlags != 0 && filter != nullptr) {
+                const NativeTouchEvent event {
+                    .id = point->dwID,
+                    .x = point->x / 100,
+                    .y = point->y / 100,
+                    .down = (point->dwFlags & TOUCHEVENTF_DOWN) != 0,
+                    .move = (point->dwFlags & TOUCHEVENTF_MOVE) != 0,
+                    .up = (point->dwFlags & TOUCHEVENTF_UP) != 0,
+                    .synthetic = synthetic,
+                };
+                if (filter(event)) {
+                    point->dwFlags = 0;
+                }
             }
         }
         

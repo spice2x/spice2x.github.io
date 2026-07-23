@@ -17,6 +17,7 @@ using namespace GameAPI;
 // static stuff
 static uint8_t STATUS_BUFFER[277];
 static bool STATUS_BUFFER_FREEZE = false;
+static constexpr uint8_t NOST_TOUCH_PIANO_VELOCITY = 11;
 
 /*
  * Implementations
@@ -260,8 +261,9 @@ static bool __cdecl ac_io_panb_update_control_status_buffer() {
             if (button0 > 0) {
                 state0 = button0;
             }
-            if ((touch_key_state & (UINT32_C(1) << (key_pair * 2))) && state0 < 11) {
-                state0 = 11;
+            if ((touch_key_state & (UINT32_C(1) << (key_pair * 2))) &&
+                state0 < NOST_TOUCH_PIANO_VELOCITY) {
+                state0 = NOST_TOUCH_PIANO_VELOCITY;
             }
 
             const auto button1 = panb_get_button_velocity(
@@ -273,8 +275,9 @@ static bool __cdecl ac_io_panb_update_control_status_buffer() {
             if (button1 > 0) {
                 state1 = button1;
             }
-            if ((touch_key_state & (UINT32_C(1) << (key_pair * 2 + 1))) && state1 < 11) {
-                state1 = 11;
+            if ((touch_key_state & (UINT32_C(1) << (key_pair * 2 + 1))) &&
+                state1 < NOST_TOUCH_PIANO_VELOCITY) {
+                state1 = NOST_TOUCH_PIANO_VELOCITY;
             }
 
             // build value

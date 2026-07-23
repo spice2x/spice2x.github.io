@@ -1785,7 +1785,7 @@ int main_implementation(int argc, char *argv[]) {
             games::iidx::poke::enable();
         }
         if (options[launcher::Options::NostalgiaPoke].is_active()) {
-            games::nost::ENABLE_POKE = TRUE;
+            games::nost::ENABLE_POKE = true;
         }
         if (options[launcher::Options::NostalgiaTouchMode].is_active()) {
             if (overlay::ENABLED) {

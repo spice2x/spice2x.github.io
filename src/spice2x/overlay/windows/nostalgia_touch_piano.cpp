@@ -11,6 +11,64 @@ namespace overlay::windows {
     static constexpr float BUTTON_HEIGHT = 40.f;
     static constexpr float WINDOW_PADDING = 4.f;
     static constexpr float EDGE_MARGIN = 4.f;
+    static constexpr float PIANO_HEIGHT_RATIO = 0.08f;
+    static constexpr float PIANO_LEFT_GAP = 11.f;
+    static constexpr float PIANO_RIGHT_GAP = 10.f;
+    static constexpr uint32_t PIANO_KEY_COUNT = 28;
+
+    static constexpr ImU32 PIANO_KEY_COLOR = IM_COL32(255, 255, 255, 50);
+    static constexpr ImU32 PIANO_KEY_ACTIVE_COLOR = IM_COL32(255, 48, 48, 160);
+    static constexpr ImU32 PIANO_KEY_BORDER_COLOR = IM_COL32(0, 0, 0, 100);
+
+    struct ButtonPalette {
+        ImVec4 normal;
+        ImVec4 hovered;
+        ImVec4 active;
+    };
+
+    static const ButtonPalette NAV_MODE_PALETTE {
+        ImVec4(0.10f, 0.45f, 0.28f, 0.72f),
+        ImVec4(0.14f, 0.58f, 0.36f, 0.82f),
+        ImVec4(0.08f, 0.34f, 0.21f, 0.90f),
+    };
+    static const ButtonPalette PIANO_MODE_PALETTE {
+        ImVec4(0.15f, 0.32f, 0.62f, 0.72f),
+        ImVec4(0.20f, 0.42f, 0.78f, 0.82f),
+        ImVec4(0.10f, 0.24f, 0.50f, 0.90f),
+    };
+
+    static void draw_piano_keys(
+        const ImVec2 &display_size,
+        LONG client_width,
+        uint32_t key_state) {
+
+        if (display_size.x <= 0.f || display_size.y <= 0.f || client_width <= 0) {
+            return;
+        }
+
+        // this is only a visual guide; native touch routing owns the actual input
+        const float left_gap = PIANO_LEFT_GAP * display_size.x / client_width;
+        const float right_gap = PIANO_RIGHT_GAP * display_size.x / client_width;
+        const float piano_width = display_size.x - left_gap - right_gap;
+        if (piano_width <= 0.f) {
+            return;
+        }
+
+        const float key_width = piano_width / PIANO_KEY_COUNT;
+        const float key_top = display_size.y * (1.f - PIANO_HEIGHT_RATIO);
+        auto *draw_list = ImGui::GetBackgroundDrawList();
+
+        for (uint32_t key = 0; key < PIANO_KEY_COUNT; key++) {
+            const ImVec2 key_min(left_gap + key * key_width, key_top);
+            const ImVec2 key_max(left_gap + (key + 1) * key_width, display_size.y);
+            const bool active = (key_state & (UINT32_C(1) << key)) != 0;
+            draw_list->AddRectFilled(
+                key_min,
+                key_max,
+                active ? PIANO_KEY_ACTIVE_COLOR : PIANO_KEY_COLOR);
+            draw_list->AddRect(key_min, key_max, PIANO_KEY_BORDER_COLOR);
+        }
+    }
 
     NostalgiaTouchPiano::NostalgiaTouchPiano(SpiceOverlay *overlay) : Window(overlay) {
         this->title = "Nostalgia Touch Piano";
@@ -19,6 +77,7 @@ namespace overlay::windows {
             | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoMove
             | ImGuiWindowFlags_NoDocking
+            | ImGuiWindowFlags_NoBackground
             | ImGuiWindowFlags_NoSavedSettings
             | ImGuiWindowFlags_NoNav
             | ImGuiWindowFlags_NoBringToFrontOnFocus;
@@ -47,25 +106,15 @@ namespace overlay::windows {
             ImGui::BringWindowToDisplayFront(mode_window);
         }
 
-        const auto mode = games::nost::touch_mode::current_mode();
-        const char *label = mode == games::nost::touch_mode::Mode::Touch
-            ? "Nav Mode"
-            : "Piano Mode";
+        const bool nav_mode =
+            games::nost::touch_mode::current_mode() == games::nost::touch_mode::Mode::Touch;
+        const char *label = nav_mode ? "Nav Mode" : "Piano Mode";
 
         // make the active routing mode recognizable without reading the label
-        const bool touch_mode = mode == games::nost::touch_mode::Mode::Touch;
-        const ImVec4 button_color = touch_mode
-            ? ImVec4(0.10f, 0.45f, 0.28f, 1.f)
-            : ImVec4(0.15f, 0.32f, 0.62f, 1.f);
-        const ImVec4 hovered_color = touch_mode
-            ? ImVec4(0.14f, 0.58f, 0.36f, 1.f)
-            : ImVec4(0.20f, 0.42f, 0.78f, 1.f);
-        const ImVec4 active_color = touch_mode
-            ? ImVec4(0.08f, 0.34f, 0.21f, 1.f)
-            : ImVec4(0.10f, 0.24f, 0.50f, 1.f);
-        ImGui::PushStyleColor(ImGuiCol_Button, button_color);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered_color);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, active_color);
+        const auto &palette = nav_mode ? NAV_MODE_PALETTE : PIANO_MODE_PALETTE;
+        ImGui::PushStyleColor(ImGuiCol_Button, palette.normal);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, palette.hovered);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, palette.active);
         ImGui::Button(label, overlay::apply_scaling_to_vector(BUTTON_WIDTH, BUTTON_HEIGHT));
         ImGui::PopStyleColor(3);
 
@@ -80,6 +129,13 @@ namespace overlay::windows {
             const auto item_max = ImGui::GetItemRectMax();
             const auto client_width = client_rect.right - client_rect.left;
             const auto client_height = client_rect.bottom - client_rect.top;
+            if (!nav_mode) {
+                draw_piano_keys(
+                    io.DisplaySize,
+                    client_width,
+                    games::nost::touch_mode::piano_key_state());
+            }
+
             RECT button_bounds {
                 static_cast<LONG>(std::lround(item_min.x * client_width / io.DisplaySize.x)),
                 static_cast<LONG>(std::lround(item_min.y * client_height / io.DisplaySize.y)),
@@ -88,12 +144,6 @@ namespace overlay::windows {
             };
             games::nost::touch_mode::publish_button_bounds(
                 this->overlay->get_window(), button_bounds);
-        }
-
-        const bool mode_button_activated =
-            games::nost::touch_mode::consume_mode_button_activation();
-        if (mode_button_activated) {
-            games::nost::touch_mode::toggle();
         }
     }
 }

@@ -421,8 +421,7 @@ void ImGui_ImplSpice_NewFrame() {
     // only process new input from devices if window is in focus
     // (when not in focus, all mouse/keyboard events are treated as released)
     const auto overlay_visible = overlay::OVERLAY && overlay::OVERLAY->get_active();
-    const auto accept_new_input =
-        superexit::has_focus() && !rawinput::OS_WINDOW_ACTIVE && overlay_visible;
+    const auto accept_new_input = superexit::has_focus() && !rawinput::OS_WINDOW_ACTIVE && overlay_visible;
 
     // when running as standalone spicecfg.exe the configurator window proc feeds
     // ImGui directly via WM_KEY*/WM_MOUSE*/WM_MOUSEWHEEL messages. The per-frame

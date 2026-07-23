@@ -1,7 +1,19 @@
+#pragma once
+
 #include <windows.h>
 
 namespace nativetouch {
-    using TouchInputFilter = bool (*)(const TOUCHINPUT &point, bool synthetic);
+    struct NativeTouchEvent {
+        DWORD id;
+        LONG x;
+        LONG y;
+        bool down;
+        bool move;
+        bool up;
+        bool synthetic;
+    };
+
+    using TouchInputFilter = bool (*)(const NativeTouchEvent &event);
 
     void hook(HMODULE module);
     void refresh_contact_lifetime();
