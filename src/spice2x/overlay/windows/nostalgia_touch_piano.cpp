@@ -107,7 +107,7 @@ namespace overlay::windows {
         }
 
         const bool nav_mode =
-            games::nost::touch_mode::current_mode() == games::nost::touch_mode::Mode::Touch;
+            games::nost::touch_mode::current_mode() == games::nost::touch_mode::Mode::Nav;
         const char *label = nav_mode ? "Nav Mode" : "Piano Mode";
 
         // make the active routing mode recognizable without reading the label

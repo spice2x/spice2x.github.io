@@ -7,9 +7,9 @@
 
 namespace games::nost::touch_mode {
 
-    // touch mode forwards contacts to the game; piano mode converts them into piano keys
+    // nav mode forwards contacts to the game; piano mode converts them into piano keys
     enum class Mode {
-        Touch,
+        Nav,
         Piano,
     };
 
