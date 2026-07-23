@@ -5,6 +5,7 @@
 namespace games::nost {
 
     extern bool ENABLE_POKE;
+    extern bool ENABLE_TOUCH_MODE;
 
     class NostGame : public games::Game {
     public:

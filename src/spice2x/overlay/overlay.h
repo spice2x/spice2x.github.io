@@ -83,6 +83,7 @@ namespace overlay {
         // not part of `windows`: drawn/updated on the persistent layer (like
         // notifications), independent of the overlay's active state and input gates.
         std::unique_ptr<Window> window_fps;
+        std::unique_ptr<Window> window_nostalgia_touch_piano;
 
         // not part of `windows`: the main menu / launcher. owned and drawn
         // separately from the overlay window layer; it drives the overlay's
@@ -137,6 +138,9 @@ namespace overlay {
 #endif
         inline IDirect3DDevice9 *get_device() {
             return this->device;
+        }
+        inline HWND get_window() {
+            return this->hWnd;
         }
 
         bool can_transform_touch_input() {

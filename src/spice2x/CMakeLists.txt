@@ -417,6 +417,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/nost/nost.cpp
         games/nost/io.cpp
         games/nost/poke.cpp
+        games/nost/touch_mode.cpp
         games/gitadora/gitadora.cpp
         games/gitadora/asio.cpp
         games/gitadora/io.cpp
@@ -610,6 +611,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         overlay/windows/keypad.cpp
         overlay/windows/log.cpp
         overlay/windows/midi.cpp
+        overlay/windows/nostalgia_touch_piano.cpp
         overlay/windows/obs.cpp
         overlay/windows/obs_websocket.cpp
         overlay/windows/patch_manager.cpp
