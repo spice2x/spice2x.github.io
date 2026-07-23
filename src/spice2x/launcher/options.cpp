@@ -3157,8 +3157,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "nosttouch",
         .desc =
             "Allows you to play the piano by touching the screen instead of a controller. "
-            "Use the mode switch button to toggle between interacting with the menu and playing the piano. "
-            "Velocity sensitivity is not supported.",
+            "Use the mode switch button to toggle between interacting with the menu and playing the piano.\n\n"
+            "Velocity sensitivity is not supported. Touches will accurately align with the judgement line.",
         .type = OptionType::Bool,
         .game_name = "Nostalgia",
         .category = "Game Options",

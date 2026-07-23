@@ -2,18 +2,17 @@
 
 #include <atomic>
 #include <mutex>
+#include <unordered_map>
 #include <unordered_set>
-#include <vector>
 
 #include "touch/native/nativetouchhook.h"
-#include "touch/touch.h"
 #include "util/logging.h"
 
 namespace games::nost::touch_mode {
 
-    // hardware events follow two paths: mirrored client-space points feed piano input,
-    // while native events reach the game in touch mode and are suppressed in piano mode.
-    // mode-button contacts are always suppressed and change that routing after release.
+    // native contact positions feed piano input directly. native events reach the game
+    // in touch mode and are suppressed in piano mode. mode-button contacts are always
+    // suppressed and change that routing after release.
     static constexpr LONG PIANO_LEFT_GAP = 11;
     static constexpr LONG PIANO_RIGHT_GAP = 10;
     static constexpr uint32_t PIANO_KEY_COUNT = 28;
@@ -29,6 +28,11 @@ namespace games::nost::touch_mode {
         }
     };
 
+    struct HardwareContact {
+        POINT position {};
+        bool has_position = false;
+    };
+
     static std::atomic_bool enabled_state { false };
     static std::atomic<Mode> current_mode_state { Mode::Touch };
     static std::mutex state_mutex;
@@ -37,9 +41,8 @@ namespace games::nost::touch_mode {
     // contacts that begin on the mode button remain overlay-owned until their up event
     static std::unordered_set<DWORD> suppressed_button_contacts;
 
-    // mode changes wait for this set to empty so a contact cannot begin in one mode
-    // and have its move or up event routed according to the other mode
-    static std::unordered_set<DWORD> active_hardware_contacts;
+    // native contacts are kept by ID so each contact contributes exactly one position
+    static std::unordered_map<DWORD, HardwareContact> active_hardware_contacts;
 
     // a hardware button release requests one change after all contacts are released
     static bool mode_change_pending = false;
@@ -50,45 +53,6 @@ namespace games::nost::touch_mode {
         suppressed_button_contacts.clear();
         active_hardware_contacts.clear();
         mode_change_pending = false;
-    }
-
-    // mirror PAN's hardware contacts into the shared client-space touch list so
-    // the overlay button and piano input consume the same contact lifecycle
-    static void publish_native_touch(const nativetouch::NativeTouchEvent &event) {
-        // synthetic contacts originate from the shared list and need no mirror
-        if (event.synthetic) {
-            return;
-        }
-
-        if (event.up) {
-            std::vector<DWORD> ids { event.id };
-            touch_remove_points(&ids);
-            return;
-        }
-        if (!event.down && !event.move) {
-            return;
-        }
-
-        HWND window = nullptr;
-        {
-            std::lock_guard<std::mutex> lock(state_mutex);
-            window = touch_geometry.window;
-        }
-        if (window == nullptr) {
-            return;
-        }
-
-        POINT position { event.x, event.y };
-        if (!ScreenToClient(window, &position)) {
-            return;
-        }
-
-        TouchPoint touch_point {};
-        touch_point.id = event.id;
-        touch_point.x = position.x;
-        touch_point.y = position.y;
-        std::vector<TouchPoint> touch_points { touch_point };
-        touch_write_points(&touch_points);
     }
 
     // hardware contacts arrive in screen coordinates, while synthetic contacts
@@ -108,9 +72,15 @@ namespace games::nost::touch_mode {
     static bool update_touch_state(const nativetouch::NativeTouchEvent &event) {
         std::lock_guard<std::mutex> lock(state_mutex);
 
-        // track every hardware contact, including contacts outside the mode button
-        if (!event.synthetic && event.down) {
-            active_hardware_contacts.insert(event.id);
+        // track every native hardware contact and its latest client-space position
+        if (!event.synthetic && (event.down || event.move)) {
+            auto contact = active_hardware_contacts.try_emplace(event.id).first;
+            POINT position { event.x, event.y };
+            if (touch_geometry.window != nullptr &&
+                ScreenToClient(touch_geometry.window, &position)) {
+                contact->second.position = position;
+                contact->second.has_position = true;
+            }
         }
 
         // contacts beginning on the mode button remain overlay-owned through
@@ -146,19 +116,6 @@ namespace games::nost::touch_mode {
         return suppress;
     }
 
-    // remove mirrored contacts so disabling cannot leave active points in the shared list
-    static void clear_published_contacts() {
-        std::vector<TouchPoint> touch_points;
-        touch_get_points(touch_points, true);
-
-        std::vector<DWORD> touch_point_ids;
-        touch_point_ids.reserve(touch_points.size());
-        for (const auto &point : touch_points) {
-            touch_point_ids.push_back(point.id);
-        }
-        touch_remove_points(&touch_point_ids);
-    }
-
     // install the Nostalgia-specific native touch interception
     void enable() {
         if (enabled_state.exchange(true, std::memory_order_acq_rel)) {
@@ -180,7 +137,6 @@ namespace games::nost::touch_mode {
         }
 
         nativetouch::set_input_filter(nullptr);
-        clear_published_contacts();
 
         std::lock_guard<std::mutex> lock(state_mutex);
         reset_state_locked();
@@ -216,17 +172,18 @@ namespace games::nost::touch_mode {
             return 0;
         }
 
-        std::vector<TouchPoint> available_touch_points;
-        touch_get_points(available_touch_points);
-
         std::lock_guard<std::mutex> lock(state_mutex);
         if (current_mode() != Mode::Piano || !touch_geometry.valid()) {
             return 0;
         }
 
         uint32_t state = 0;
-        for (const auto &point : available_touch_points) {
-            POINT position { point.x, point.y };
+        for (const auto &contact : active_hardware_contacts) {
+            if (!contact.second.has_position) {
+                continue;
+            }
+
+            const auto &position = contact.second.position;
             if (position.x < 0 || position.x >= touch_geometry.client_width ||
                 position.y < 0 || position.y >= touch_geometry.client_height ||
                 PtInRect(&touch_geometry.mode_button, position)) {
@@ -256,11 +213,9 @@ namespace games::nost::touch_mode {
             return false;
         }
 
-        // update_touch_state may switch modes on the final up event. route that event
-        // using the mode that owned its down, and remove its mirrored point before
-        // making the new mode visible to piano input.
+        // update_touch_state may switch modes on the final up event, so route that
+        // event using the mode that owned its down
         const bool piano_mode = current_mode() == Mode::Piano;
-        publish_native_touch(event);
         return update_touch_state(event) || piano_mode;
     }
 }
