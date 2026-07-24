@@ -3,6 +3,21 @@ cmake_policy(SET CMP0069 NEW)
 project(spicetools)
 include(CheckIPOSupported)
 
+string(TIMESTAMP SPICE_VERSION "%y-%m-%d")
+string(TIMESTAMP SPICE_VERSION_YEAR "%y")
+string(TIMESTAMP SPICE_VERSION_MONTH "%m")
+string(TIMESTAMP SPICE_VERSION_DAY "%d")
+string(TIMESTAMP SPICE_VERSION_TIME "%H%M")
+math(EXPR SPICE_VERSION_YEAR "1${SPICE_VERSION_YEAR} - 100")
+math(EXPR SPICE_VERSION_MONTH "1${SPICE_VERSION_MONTH} - 100")
+math(EXPR SPICE_VERSION_DAY "1${SPICE_VERSION_DAY} - 100")
+math(EXPR SPICE_VERSION_TIME "1${SPICE_VERSION_TIME} - 10000")
+configure_file(
+        build/version_resource.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/version_resource.h
+        @ONLY)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
+
 # set language level
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
