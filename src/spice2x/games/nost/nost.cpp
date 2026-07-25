@@ -2,6 +2,7 @@
 #include "poke.h"
 #include "touch_mode.h"
 #include "hooks/setupapihook.h"
+#include "misc/wintouchemu.h"
 #include "touch/native/nativetouchhook.h"
 #include "avs/game.h"
 
@@ -41,9 +42,15 @@ namespace games::nost {
         setupapihook_init(avs::game::DLL_INSTANCE);
         setupapihook_add(touch_settings);
 
-        nativetouch::hook(avs::game::DLL_INSTANCE);
-        if (ENABLE_TOUCH_MODE) {
-            touch_mode::enable();
+        const auto native_touch_ready = !wintouchemu::FORCE &&
+            nativetouch::hook(avs::game::DLL_INSTANCE);
+        if (!native_touch_ready) {
+            wintouchemu::FORCE = true;
+            wintouchemu::hook("nostalgia", avs::game::DLL_INSTANCE);
+        } else {
+            if (ENABLE_TOUCH_MODE) {
+                touch_mode::enable();
+            }
         }
     }
 

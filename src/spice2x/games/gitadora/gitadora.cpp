@@ -11,6 +11,7 @@
 #include "hooks/audio/audio.h"
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
+#include "misc/wintouchemu.h"
 #include "overlay/overlay.h"
 #include "touch/native/nativetouchhook.h"
 #include "util/cpuutils.h"
@@ -653,7 +654,13 @@ namespace games::gitadora {
             // monitor/touch hooks (windowed or full screen)
             if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                 // enable touch hook for subscreen overlay
-                nativetouch::hook(avs::game::DLL_INSTANCE);
+                const auto native_touch_ready = !wintouchemu::FORCE &&
+                    nativetouch::hook(avs::game::DLL_INSTANCE);
+                if (!native_touch_ready) {
+                    wintouchemu::FORCE = true;
+                    wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
+                    wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);
+                }
 
 #if !SPICE_XP
 

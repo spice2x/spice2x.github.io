@@ -1791,10 +1791,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Touch Parameters",
     },
     {
-        .title = "Force Touch Emulation",
+        .title = "Force Legacy Touch Emulation",
         .name = "touchemuforce",
         .desc = "Force enable hook for GetTouchInputInfo API and inject WM_TOUCH events. "
-                "This is automatically enabled when needed and is typically not required. Do not enable this unless you have trouble.",
+            "Do not enable this unless you have trouble with using a mouse to emulate touch input.",
         .type = OptionType::Bool,
         .category = "Touch Parameters",
     },

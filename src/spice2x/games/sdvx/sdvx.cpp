@@ -26,6 +26,7 @@
 #include "util/libutils.h"
 #include "util/sysutils.h"
 #include "misc/eamuse.h"
+#include "misc/wintouchemu.h"
 #include "touch/native/nativetouchhook.h"
 #include "bi2x_hook.h"
 #include "camera.h"
@@ -453,7 +454,18 @@ namespace games::sdvx {
             }
 
             if (is_valkyrie_model()) {
-                nativetouch::hook(avs::game::DLL_INSTANCE);
+                const auto native_touch_ready = !wintouchemu::FORCE &&
+                    nativetouch::hook(avs::game::DLL_INSTANCE);
+                if (!native_touch_ready) {
+                    wintouchemu::FORCE = true;
+                    if (!GRAPHICS_WINDOWED) {
+                        wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
+                        wintouchemu::hook_title_ends(
+                            "SOUND VOLTEX",
+                            "Main Screen",
+                            avs::game::DLL_INSTANCE);
+                    }
+                }
 
                 // insert BI2X hooks
                 bi2x_hook_init();

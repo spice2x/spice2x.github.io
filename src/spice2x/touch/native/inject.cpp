@@ -433,17 +433,26 @@ namespace nativetouch::inject {
             }
 
             // load all APIs from user32 without adding static imports
+            //
+            // note that these are expected to be present in Windows 8 and above;
+            // however, on WINE, touch implementation remains in Windows 7 era
+            // and therefore the hooks below will fail, hence the fallback to
+            // legacy wintouchemu code
             const auto user32 = libutils::load_library("user32.dll");
             InitializeTouchInjection_ptr = libutils::try_proc<decltype(InitializeTouchInjection_ptr)>(
                 user32, "InitializeTouchInjection");
+            if (InitializeTouchInjection_ptr == nullptr) {
+                log_warning(
+                    "touch::native", "InitializeTouchInjection unavailable; mouse touch injection disabled");
+                return;
+            }
+
             InjectTouchInput_ptr = libutils::try_proc<decltype(InjectTouchInput_ptr)>(
                 user32, "InjectTouchInput");
-
-            if (InitializeTouchInjection_ptr == nullptr ||
-                InjectTouchInput_ptr == nullptr) {
+            if (InjectTouchInput_ptr == nullptr) {
                 clear_touch_injection_functions();
                 log_warning(
-                    "touch::native", "touch injection API unavailable; mouse touch injection disabled");
+                    "touch::native", "InjectTouchInput unavailable; mouse touch injection disabled");
                 return;
             }
 
@@ -460,17 +469,13 @@ namespace nativetouch::inject {
     }
 
     bool touch_injection_available() {
-        return InjectTouchInput_ptr != nullptr;
+        return InitializeTouchInjection_ptr != nullptr && InjectTouchInput_ptr != nullptr;
     }
 
     // install injection support for touch windows registered by the game module
-    void hook(HMODULE module) {
-        initialize_touch_injection();
-
+    bool hook(HMODULE module) {
         RegisterTouchWindow_orig = detour::iat_try(
             "RegisterTouchWindow", RegisterTouchWindowHook, module);
-        if (RegisterTouchWindow_orig != nullptr) {
-            log_misc("touch::native", "RegisterTouchWindow hooked");
-        }
+        return RegisterTouchWindow_orig != nullptr;
     }
 }

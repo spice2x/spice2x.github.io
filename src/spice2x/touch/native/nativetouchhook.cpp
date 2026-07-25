@@ -223,25 +223,39 @@ namespace nativetouch {
         }
     }
 
-    void hook(HMODULE module) {
-        initialize_game_settings();
+    bool hook(HMODULE module) {
+        native_touch_hooked = false;
 
-        inject::hook(module);
+        const auto emulate_digitizer = avs::game::is_model("PAN");
+        inject::initialize_touch_injection();
+        if (!inject::touch_injection_available()) {
+            return false;
+        }
 
-        native_touch_hooked = true;
+        const auto register_touch_window_hooked = inject::hook(module);
 
-        if (settings::EMULATE_DIGITIZER) {
+        if (emulate_digitizer) {
             GetSystemMetrics_orig = detour::iat_try(
                 "GetSystemMetrics", GetSystemMetricsHook, module);
-            if (GetSystemMetrics_orig != nullptr) {
-                log_misc("touch::native", "GetSystemMetrics hooked");
-            }
         }
 
         GetTouchInputInfo_orig = detour::iat_try("GetTouchInputInfo", GetTouchInputInfoHook, module);
-        if (GetTouchInputInfo_orig != nullptr) {
-            log_misc("touch::native", "GetTouchInputInfo hooked");
+
+        if (!register_touch_window_hooked ||
+            GetTouchInputInfo_orig == nullptr ||
+            (emulate_digitizer && GetSystemMetrics_orig == nullptr)) {
+            log_warning("touch::native", "failed to establish native touch hooks");
+            return false;
         }
+
+        initialize_game_settings();
+        log_misc("touch::native", "RegisterTouchWindow hooked");
+        if (emulate_digitizer) {
+            log_misc("touch::native", "GetSystemMetrics hooked");
+        }
+        log_misc("touch::native", "GetTouchInputInfo hooked");
+        native_touch_hooked = true;
+        return true;
     }
 
 }

@@ -22,6 +22,7 @@ namespace games::popn {
 #endif
 
     extern bool SHOW_PIKA_MONITOR_WARNING;
+    extern bool NATIVE_TOUCH;
 
     class POPNGame : public games::Game {
     public:
