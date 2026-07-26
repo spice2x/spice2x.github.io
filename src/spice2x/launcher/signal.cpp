@@ -77,6 +77,59 @@ static std::string exception_code(struct _EXCEPTION_RECORD *ExceptionRecord) {
 
 #undef V
 
+static const char *access_operation(ULONG_PTR operation) {
+    switch (operation) {
+        case 0:
+            return "read";
+        case 1:
+            return "write";
+        case 8:
+            return "execute";
+        default:
+            return "unknown";
+    }
+}
+
+static void log_exception_context(struct _EXCEPTION_POINTERS *ExceptionInfo) {
+    const auto *record = ExceptionInfo->ExceptionRecord;
+    const auto *context = ExceptionInfo->ContextRecord;
+
+    log_warning("signal", "exception address: {}", fmt::ptr(record->ExceptionAddress));
+
+    if ((record->ExceptionCode == EXCEPTION_ACCESS_VIOLATION ||
+         record->ExceptionCode == EXCEPTION_IN_PAGE_ERROR) &&
+        record->NumberParameters >= 2) {
+        const auto operation = record->ExceptionInformation[0];
+        const auto address = reinterpret_cast<const void *>(record->ExceptionInformation[1]);
+        log_warning("signal", "invalid memory access: {} at {}",
+                access_operation(operation), fmt::ptr(address));
+    }
+
+    if (context == nullptr) {
+        return;
+    }
+
+#ifdef _WIN64
+    log_warning("signal", "registers: rax={:016x} rbx={:016x} rcx={:016x} rdx={:016x}",
+            context->Rax, context->Rbx, context->Rcx, context->Rdx);
+    log_warning("signal", "registers: rsi={:016x} rdi={:016x} rbp={:016x} rsp={:016x}",
+            context->Rsi, context->Rdi, context->Rbp, context->Rsp);
+    log_warning("signal", "registers: r8={:016x} r9={:016x} r10={:016x} r11={:016x}",
+            context->R8, context->R9, context->R10, context->R11);
+    log_warning("signal", "registers: r12={:016x} r13={:016x} r14={:016x} r15={:016x}",
+            context->R12, context->R13, context->R14, context->R15);
+    log_warning("signal", "registers: rip={:016x} eflags={:08x}",
+            context->Rip, context->EFlags);
+#else
+    log_warning("signal", "registers: eax={:08x} ebx={:08x} ecx={:08x} edx={:08x}",
+            context->Eax, context->Ebx, context->Ecx, context->Edx);
+    log_warning("signal", "registers: esi={:08x} edi={:08x} ebp={:08x} esp={:08x}",
+            context->Esi, context->Edi, context->Ebp, context->Esp);
+    log_warning("signal", "registers: eip={:08x} eflags={:08x}",
+            context->Eip, context->EFlags);
+#endif
+}
+
 static BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
     log_info("signal", "console ctrl handler called: {}", control_code(dwCtrlType));
 
@@ -99,6 +152,7 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
 
         // print signal
         log_warning("signal", "exception raised: {}", exception_code(ExceptionRecord));
+        log_exception_context(ExceptionInfo);
 
         switch (ExceptionRecord->ExceptionCode) {
             case EXCEPTION_ILLEGAL_INSTRUCTION:
@@ -158,7 +212,7 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
                 ExceptionParam.ExceptionPointers = ExceptionInfo;
                 ExceptionParam.ClientPointers = FALSE;
 
-                MiniDumpWriteDump_local(
+                const auto minidump_written = MiniDumpWriteDump_local(
                     GetCurrentProcess(),
                     GetCurrentProcessId(),
                     minidump_file,
@@ -167,7 +221,15 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
                     nullptr,
                     nullptr);
 
+                const auto minidump_error = minidump_written ? ERROR_SUCCESS : GetLastError();
                 CloseHandle(minidump_file);
+
+                if (minidump_written) {
+                    log_info("signal", "wrote minidump to 'minidump.dmp'");
+                } else {
+                    log_warning("signal", "failed to write 'minidump.dmp': 0x{:08x}",
+                            minidump_error);
+                }
             } else {
                 log_warning("signal", "failed to create 'minidump.dmp' for minidump: 0x{:08x}",
                     GetLastError());
