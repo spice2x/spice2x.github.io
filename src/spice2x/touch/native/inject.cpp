@@ -338,9 +338,7 @@ namespace nativetouch::inject {
 
     // attach mouse injection without replacing the window's existing procedure
     static void attach_window_impl(HWND window, bool register_touch) {
-        initialize_touch_injection();
-
-        if (!touch_injection_available()) {
+        if (!initialize_touch_injection()) {
             if (register_touch) {
                 log_warning(
                     "touch::native",
@@ -422,7 +420,7 @@ namespace nativetouch::inject {
     }
 
     // load and initialize Windows 8 touch injection without a static API dependency
-    void initialize_touch_injection() {
+    bool initialize_touch_injection() {
         std::call_once(initialization_once, [] {
             initialize_synthetic_touch();
             contact_refresh_message =
@@ -433,17 +431,26 @@ namespace nativetouch::inject {
             }
 
             // load all APIs from user32 without adding static imports
+            //
+            // note that these are expected to be present in Windows 8 and above;
+            // however, on WINE, touch implementation remains in Windows 7 era
+            // and therefore the hooks below will fail, hence the fallback to
+            // legacy wintouchemu code
             const auto user32 = libutils::load_library("user32.dll");
             InitializeTouchInjection_ptr = libutils::try_proc<decltype(InitializeTouchInjection_ptr)>(
                 user32, "InitializeTouchInjection");
+            if (InitializeTouchInjection_ptr == nullptr) {
+                log_warning(
+                    "touch::native", "InitializeTouchInjection unavailable; mouse touch injection disabled");
+                return;
+            }
+
             InjectTouchInput_ptr = libutils::try_proc<decltype(InjectTouchInput_ptr)>(
                 user32, "InjectTouchInput");
-
-            if (InitializeTouchInjection_ptr == nullptr ||
-                InjectTouchInput_ptr == nullptr) {
+            if (InjectTouchInput_ptr == nullptr) {
                 clear_touch_injection_functions();
                 log_warning(
-                    "touch::native", "touch injection API unavailable; mouse touch injection disabled");
+                    "touch::native", "InjectTouchInput unavailable; mouse touch injection disabled");
                 return;
             }
 
@@ -457,20 +464,31 @@ namespace nativetouch::inject {
 
             log_misc("touch::native", "mouse touch injection initialized");
         });
-    }
-
-    bool touch_injection_available() {
-        return InjectTouchInput_ptr != nullptr;
+        return InitializeTouchInjection_ptr != nullptr && InjectTouchInput_ptr != nullptr;
     }
 
     // install injection support for touch windows registered by the game module
-    void hook(HMODULE module) {
-        initialize_touch_injection();
+    bool hook_available(HMODULE module) {
+        if (detour::iat_find("RegisterTouchWindow", module) == nullptr) {
+            log_warning("touch::native", "RegisterTouchWindow unavailable");
+            return false;
+        }
+        return true;
+    }
+
+    bool hook(HMODULE module) {
+        if (!initialize_touch_injection()) {
+            return false;
+        }
 
         RegisterTouchWindow_orig = detour::iat_try(
             "RegisterTouchWindow", RegisterTouchWindowHook, module);
-        if (RegisterTouchWindow_orig != nullptr) {
-            log_misc("touch::native", "RegisterTouchWindow hooked");
+        if (RegisterTouchWindow_orig == nullptr) {
+            log_warning("touch::native", "failed to hook RegisterTouchWindow");
+            return false;
         }
+
+        log_misc("touch::native", "RegisterTouchWindow hooked");
+        return true;
     }
 }

@@ -22,6 +22,7 @@
 #include "touch/touch.h"
 #include "touch/native/nativetouchhook.h"
 #include "misc/eamuse.h"
+#include "misc/wintouchemu.h"
 #include "util/detour.h"
 #include "util/deferlog.h"
 #include "util/fileutils.h"
@@ -40,6 +41,7 @@
 #include "bi2x_hook.h"
 #include "ezusb.h"
 #include "io.h"
+#include "poke.h"
 
 static decltype(RegCloseKey) *RegCloseKey_orig = nullptr;
 static decltype(RegEnumKeyA) *RegEnumKeyA_orig = nullptr;
@@ -62,6 +64,8 @@ namespace games::iidx {
     bool TDJ_MODE = false;
     bool FORCE_720P = false;
     bool DISABLE_ESPEC_IO = false;
+    bool NATIVE_TOUCH = true;
+    bool ENABLE_POKE = false;
     std::optional<std::string> SOUND_OUTPUT_DEVICE = std::nullopt;
     std::optional<std::string> SOUND_OUTPUT_DEVICE_IN_EFFECT = std::nullopt;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
@@ -348,7 +352,16 @@ namespace games::iidx {
                 // need to hook `avs2-core.dll` so AVS win32fs operations go through rom hook
                 devicehook_init(avs::core::DLL_INSTANCE);
 
-                nativetouch::hook(avs::game::DLL_INSTANCE);
+                NATIVE_TOUCH = !wintouchemu::FORCE &&
+                    nativetouch::hook(avs::game::DLL_INSTANCE);
+                if (!NATIVE_TOUCH) {
+                    wintouchemu::FORCE = true;
+                    wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
+                    wintouchemu::hook_title_ends(
+                        "beatmania IIDX",
+                        "main",
+                        avs::game::DLL_INSTANCE);
+                }
             }
 
             // insert BI2X hooks
@@ -522,6 +535,12 @@ namespace games::iidx {
             } else if (options->at(launcher::Options::IIDXDigitalTTSocd).value_text() == "first") {
                 socd::ALGORITHM = socd::SocdAlgorithm::PreferFirst;
             }
+        }
+    }
+
+    void IIDXGame::post_attach() {
+        if (ENABLE_POKE) {
+            poke::enable();
         }
     }
 

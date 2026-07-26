@@ -15,7 +15,7 @@ namespace nativetouch {
 
     using TouchInputFilter = bool (*)(const NativeTouchEvent &event);
 
-    void hook(HMODULE module);
+    bool hook(HMODULE module);
     void refresh_contact_lifetime();
     void set_input_filter(TouchInputFilter filter);
 

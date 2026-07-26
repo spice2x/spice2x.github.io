@@ -28,6 +28,7 @@
 #include "util/logging.h"
 #include "util/fileutils.h"
 #include "util/utils.h"
+#include "misc/wintouchemu.h"
 #include "touch/native/inject.h"
 #include "util/time.h"
 #include "rawinput/rawinput.h"
@@ -304,6 +305,22 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
             }
             default:
                 break;
+        }
+    }
+
+    if (wintouchemu::INJECT_MOUSE_AS_WM_TOUCH) {
+        // drop mouse inputs since only wintouches should be used
+        switch (uMsg) {
+            case WM_MOUSEMOVE:
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP:
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONUP:
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONUP:
+            case WM_XBUTTONDOWN:
+            case WM_XBUTTONUP:
+                return true;
         }
     }
 
@@ -786,7 +803,11 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
             nWidth = rect.right - rect.left;
             nHeight = rect.bottom - rect.top;
 
-            nativetouch::inject::register_and_attach_window(TDJ_SUBSCREEN_WINDOW);
+            if (games::iidx::NATIVE_TOUCH) {
+                nativetouch::inject::register_and_attach_window(TDJ_SUBSCREEN_WINDOW);
+            } else {
+                touch_attach_wnd(TDJ_SUBSCREEN_WINDOW);
+            }
         } else {
             // Existing behaviour: suppress subscreen window and prompt user to use overlay instead
              log_info(
@@ -1160,8 +1181,9 @@ void graphics_hook_window(HWND hWnd, D3DPRESENT_PARAMETERS *pPresentationParamet
         SetWindowLongPtrA(hWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(WindowProc));
 
         const bool native_touch_overlay =
-            (games::iidx::TDJ_MODE && !GRAPHICS_IIDX_WSUB) ||
-            (games::popn::is_pikapika_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS);
+            (games::iidx::NATIVE_TOUCH && games::iidx::TDJ_MODE && !GRAPHICS_IIDX_WSUB) ||
+            (games::popn::NATIVE_TOUCH &&
+             games::popn::is_pikapika_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS);
         if (native_touch_overlay) {
             nativetouch::inject::register_and_attach_window(hWnd);
         }
