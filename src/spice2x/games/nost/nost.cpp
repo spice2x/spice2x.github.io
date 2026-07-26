@@ -46,7 +46,7 @@ namespace games::nost {
             nativetouch::hook(avs::game::DLL_INSTANCE);
         if (!native_touch_ready) {
             wintouchemu::FORCE = true;
-            wintouchemu::hook("nostalgia", avs::game::DLL_INSTANCE);
+            wintouchemu::hook("nostalgia", avs::game::DLL_INSTANCE, 20);
         } else {
             if (ENABLE_TOUCH_MODE) {
                 touch_mode::enable();
