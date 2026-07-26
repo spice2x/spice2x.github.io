@@ -719,7 +719,7 @@ namespace games::popn {
             nativetouch::hook(avs::game::DLL_INSTANCE);
         if (!NATIVE_TOUCH) {
             wintouchemu::FORCE = true;
-            if (!GRAPHICS_WINDOWED) {
+            if (!GRAPHICS_WINDOWED || GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                 wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
                 wintouchemu::hook_title_ends(
                     "",

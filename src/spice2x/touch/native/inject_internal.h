@@ -10,9 +10,8 @@ namespace nativetouch::inject {
         Synthetic,
     };
 
-    void initialize_touch_injection();
+    bool initialize_touch_injection();
     void initialize_synthetic_touch();
-    bool touch_injection_available();
     void refresh_contact_lifetime();
 
     bool contact_is_active();

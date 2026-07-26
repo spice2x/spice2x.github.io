@@ -38,10 +38,10 @@
 #include "games/gitadora/gitadora.h"
 #include "games/hpm/hpm.h"
 #include "games/iidx/iidx.h"
+#include "games/iidx/poke.h"
 #ifdef SPICE64
 #include "games/iidx/camera.h"
 #endif
-#include "games/iidx/poke.h"
 #include "games/jb/jb.h"
 #include "games/mga/mga.h"
 #include "games/nost/nost.h"
@@ -1783,7 +1783,7 @@ int main_implementation(int argc, char *argv[]) {
 
         // enable subscreen touch emulation
         if (options[launcher::Options::spice2x_IIDXEmulateSubscreenKeypadTouch].is_active()) {
-            games::iidx::poke::enable();
+            games::iidx::ENABLE_POKE = true;
         }
         if (options[launcher::Options::NostalgiaPoke].is_active()) {
             games::nost::ENABLE_POKE = true;

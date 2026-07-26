@@ -4,6 +4,7 @@
 
 #include "windows.h"
 #include "games/io.h"
+#include "games/iidx/iidx.h"
 #include "hooks/graphics/graphics.h"
 #include "launcher/shutdown.h"
 #include "misc/eamuse.h"
@@ -115,6 +116,11 @@ namespace games::iidx::poke {
         // check if already running
         if (THREAD)
             return;
+
+        if (!games::iidx::NATIVE_TOUCH) {
+            log_warning("poke", "keypad touch emulation requires native touch; disabled");
+            return;
+        }
 
         // create new thread
         THREAD_RUNNING = true;

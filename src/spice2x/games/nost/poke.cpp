@@ -9,6 +9,7 @@
 #include "rawinput/rawinput.h"
 #include "misc/eamuse.h"
 #include "touch/native/inject.h"
+#include "touch/native/nativetouchhook.h"
 #include "util/logging.h"
 #include "util/precise_timer.h"
 
@@ -56,6 +57,11 @@ namespace games::nost::poke {
     void enable() {
         // check if already running
         if (THREAD) {
+            return;
+        }
+
+        if (!nativetouch::is_hooked()) {
+            log_warning("poke", "Nostalgia poke requires native touch; disabled");
             return;
         }
 

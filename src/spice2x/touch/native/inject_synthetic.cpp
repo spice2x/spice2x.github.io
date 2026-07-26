@@ -113,11 +113,12 @@ namespace nativetouch::inject {
     }
 
     static HWND prepare_synthetic_touch() {
-        initialize_touch_injection();
+        if (!initialize_touch_injection()) {
+            return nullptr;
+        }
 
         const auto window = get_injection_window();
-        if (!touch_injection_available() || window == nullptr ||
-            synthetic_touch_message == 0) {
+        if (window == nullptr || synthetic_touch_message == 0) {
             return nullptr;
         }
         return window;

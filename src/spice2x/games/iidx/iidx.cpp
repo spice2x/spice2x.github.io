@@ -41,6 +41,7 @@
 #include "bi2x_hook.h"
 #include "ezusb.h"
 #include "io.h"
+#include "poke.h"
 
 static decltype(RegCloseKey) *RegCloseKey_orig = nullptr;
 static decltype(RegEnumKeyA) *RegEnumKeyA_orig = nullptr;
@@ -64,6 +65,7 @@ namespace games::iidx {
     bool FORCE_720P = false;
     bool DISABLE_ESPEC_IO = false;
     bool NATIVE_TOUCH = true;
+    bool ENABLE_POKE = false;
     std::optional<std::string> SOUND_OUTPUT_DEVICE = std::nullopt;
     std::optional<std::string> SOUND_OUTPUT_DEVICE_IN_EFFECT = std::nullopt;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
@@ -533,6 +535,12 @@ namespace games::iidx {
             } else if (options->at(launcher::Options::IIDXDigitalTTSocd).value_text() == "first") {
                 socd::ALGORITHM = socd::SocdAlgorithm::PreferFirst;
             }
+        }
+    }
+
+    void IIDXGame::post_attach() {
+        if (ENABLE_POKE) {
+            poke::enable();
         }
     }
 

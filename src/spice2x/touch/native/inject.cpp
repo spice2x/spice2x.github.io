@@ -338,9 +338,7 @@ namespace nativetouch::inject {
 
     // attach mouse injection without replacing the window's existing procedure
     static void attach_window_impl(HWND window, bool register_touch) {
-        initialize_touch_injection();
-
-        if (!touch_injection_available()) {
+        if (!initialize_touch_injection()) {
             if (register_touch) {
                 log_warning(
                     "touch::native",
@@ -422,7 +420,7 @@ namespace nativetouch::inject {
     }
 
     // load and initialize Windows 8 touch injection without a static API dependency
-    void initialize_touch_injection() {
+    bool initialize_touch_injection() {
         std::call_once(initialization_once, [] {
             initialize_synthetic_touch();
             contact_refresh_message =
@@ -466,9 +464,6 @@ namespace nativetouch::inject {
 
             log_misc("touch::native", "mouse touch injection initialized");
         });
-    }
-
-    bool touch_injection_available() {
         return InitializeTouchInjection_ptr != nullptr && InjectTouchInput_ptr != nullptr;
     }
 
@@ -476,6 +471,12 @@ namespace nativetouch::inject {
     bool hook(HMODULE module) {
         RegisterTouchWindow_orig = detour::iat_try(
             "RegisterTouchWindow", RegisterTouchWindowHook, module);
-        return RegisterTouchWindow_orig != nullptr;
+        if (RegisterTouchWindow_orig == nullptr) {
+            log_warning("touch::native", "failed to hook RegisterTouchWindow");
+            return false;
+        }
+
+        log_misc("touch::native", "RegisterTouchWindow hooked");
+        return true;
     }
 }

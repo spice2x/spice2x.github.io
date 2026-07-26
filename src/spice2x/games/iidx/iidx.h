@@ -29,6 +29,7 @@ namespace games::iidx {
     extern bool FORCE_720P;
     extern bool DISABLE_ESPEC_IO;
     extern bool NATIVE_TOUCH;
+    extern bool ENABLE_POKE;
     extern std::optional<std::string> SOUND_OUTPUT_DEVICE;
     extern std::optional<std::string> ASIO_DRIVER;
     extern uint8_t DIGITAL_TT_SENS;
@@ -53,6 +54,7 @@ namespace games::iidx {
 
         virtual void attach() override;
         virtual void pre_attach() override;
+        virtual void post_attach() override;
         virtual void detach() override;
 
     private:
