@@ -468,7 +468,19 @@ namespace nativetouch::inject {
     }
 
     // install injection support for touch windows registered by the game module
+    bool hook_available(HMODULE module) {
+        if (detour::iat_find("RegisterTouchWindow", module) == nullptr) {
+            log_warning("touch::native", "RegisterTouchWindow unavailable");
+            return false;
+        }
+        return true;
+    }
+
     bool hook(HMODULE module) {
+        if (!initialize_touch_injection()) {
+            return false;
+        }
+
         RegisterTouchWindow_orig = detour::iat_try(
             "RegisterTouchWindow", RegisterTouchWindowHook, module);
         if (RegisterTouchWindow_orig == nullptr) {

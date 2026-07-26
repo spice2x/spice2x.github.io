@@ -223,14 +223,38 @@ namespace nativetouch {
         }
     }
 
+    static bool hook_prerequisites_available(HMODULE module) {
+        if (detour::iat_find("GetTouchInputInfo", module) == nullptr) {
+            log_warning("touch::native", "GetTouchInputInfo unavailable");
+            return false;
+        }
+        if (settings::EMULATE_DIGITIZER &&
+            detour::iat_find("GetSystemMetrics", module) == nullptr) {
+            log_warning("touch::native", "GetSystemMetrics unavailable");
+            return false;
+        }
+        return true;
+    }
+
     bool hook(HMODULE module) {
         native_touch_hooked = false;
         initialize_game_settings();
 
-        if (!inject::initialize_touch_injection() || !inject::hook(module)) {
+        // check if the OS supports touch API (Win7+) and injection API (requires Win8+)
+        if (!hook_prerequisites_available(module)) {
+            return false;
+        }
+        if (!inject::hook_available(module)) {
             return false;
         }
 
+        // try hooking injection API first since they require the highest OS level
+        // (WINE specifically did not implement this in 2026)
+        if (!inject::hook(module)) {
+            return false;
+        }
+
+        // GetSystemMetrics
         if (settings::EMULATE_DIGITIZER) {
             GetSystemMetrics_orig = detour::iat_try(
                 "GetSystemMetrics", GetSystemMetricsHook, module);
@@ -241,13 +265,14 @@ namespace nativetouch {
             log_misc("touch::native", "GetSystemMetrics hooked");
         }
 
+        // GetTouchInputInfo
         GetTouchInputInfo_orig = detour::iat_try("GetTouchInputInfo", GetTouchInputInfoHook, module);
         if (GetTouchInputInfo_orig == nullptr) {
             log_warning("touch::native", "failed to hook GetTouchInputInfo");
             return false;
         }
         log_misc("touch::native", "GetTouchInputInfo hooked");
-
+        
         native_touch_hooked = true;
         return true;
     }
