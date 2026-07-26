@@ -1924,7 +1924,7 @@ namespace avs {
 #if !SPICE64
             // sdvx4 bad log config fix
             if (avs::game::DLL_NAME == "soundvoltex.dll" &&  // it's too early for avs::game::is_model
-                property_search_safe(config, config_node, "/log/enable_console")) {
+                property_search(config, config_node, "/log/enable_console")) {
                 log_info("avs-core", "applying SDVX4 avs-config.xml fix for <log><enable_console>");
                 property_search_remove_safe(config, config_node, "/log/enable_console");
             }
