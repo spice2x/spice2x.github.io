@@ -49,7 +49,7 @@ static std::string control_code(DWORD dwCtrlType) {
     }
 }
 
-static std::string exception_code(struct _EXCEPTION_RECORD *ExceptionRecord) {
+static std::string exception_code(const struct _EXCEPTION_RECORD *ExceptionRecord) {
     switch (ExceptionRecord->ExceptionCode) {
         V(EXCEPTION_ACCESS_VIOLATION);
         V(EXCEPTION_ARRAY_BOUNDS_EXCEEDED);
@@ -163,14 +163,7 @@ static bool query_memory(const void *address, MEMORY_BASIC_INFORMATION *memory) 
     return VirtualQuery(address, memory, sizeof(*memory)) == sizeof(*memory);
 }
 
-static void log_memory_region(const char *label, const void *address) {
-    MEMORY_BASIC_INFORMATION memory {};
-    if (!query_memory(address, &memory)) {
-        log_warning("signal", "{}: VirtualQuery failed for {}: 0x{:08x}",
-                label, fmt::ptr(address), GetLastError());
-        return;
-    }
-
+static void log_memory_information(const char *label, const MEMORY_BASIC_INFORMATION &memory) {
     log_warning("signal",
             "{}: base={}, size=0x{:x}, allocation_base={}, state={} (0x{:x}), "
             "protect={} (0x{:x}), type={} (0x{:x})",
@@ -184,6 +177,40 @@ static void log_memory_region(const char *label, const void *address) {
             memory.Protect,
             memory_type(memory.Type),
             memory.Type);
+}
+
+static void log_memory_region(const char *label, const void *address) {
+    MEMORY_BASIC_INFORMATION memory {};
+    if (!query_memory(address, &memory)) {
+        log_warning("signal", "{}: VirtualQuery failed for {}: 0x{:08x}",
+                label, fmt::ptr(address), GetLastError());
+        return;
+    }
+
+    log_memory_information(label, memory);
+}
+
+static void log_adjacent_memory_regions(const void *address) {
+    MEMORY_BASIC_INFORMATION current {};
+    if (!query_memory(address, &current)) {
+        return;
+    }
+
+    const auto current_base = reinterpret_cast<uintptr_t>(current.BaseAddress);
+    if (current_base > 0) {
+        MEMORY_BASIC_INFORMATION previous {};
+        if (query_memory(reinterpret_cast<const void *>(current_base - 1), &previous)) {
+            log_memory_information("fault memory previous", previous);
+        }
+    }
+
+    const auto current_end = current_base + current.RegionSize;
+    if (current_end > current_base) {
+        MEMORY_BASIC_INFORMATION next {};
+        if (query_memory(reinterpret_cast<const void *>(current_end), &next)) {
+            log_memory_information("fault memory next", next);
+        }
+    }
 }
 
 static void log_exception_module(const void *address) {
@@ -243,11 +270,32 @@ static void log_instruction_bytes(const void *address) {
     log_warning("signal", "instruction bytes: {}", byte_string);
 }
 
-static void log_exception_context(struct _EXCEPTION_POINTERS *ExceptionInfo) {
+static void log_stack_context(const CONTEXT *context) {
+    const auto *tib = reinterpret_cast<const NT_TIB *>(NtCurrentTeb());
+    const auto stack_base = reinterpret_cast<uintptr_t>(tib->StackBase);
+    const auto stack_limit = reinterpret_cast<uintptr_t>(tib->StackLimit);
+#ifdef _WIN64
+    const auto stack_pointer = static_cast<uintptr_t>(context->Rsp);
+#else
+    const auto stack_pointer = static_cast<uintptr_t>(context->Esp);
+#endif
+    const auto stack_used = stack_base > stack_pointer ? stack_base - stack_pointer : 0;
+    const auto stack_remaining = stack_pointer > stack_limit ? stack_pointer - stack_limit : 0;
+
+    log_warning("signal", "stack: base={}, limit={}, pointer={}, used=0x{:x}, remaining=0x{:x}",
+            fmt::ptr(tib->StackBase),
+            fmt::ptr(tib->StackLimit),
+            fmt::ptr(reinterpret_cast<const void *>(stack_pointer)),
+            stack_used,
+            stack_remaining);
+}
+
+static void log_exception_context(struct _EXCEPTION_POINTERS *ExceptionInfo, DWORD last_error) {
     const auto *record = ExceptionInfo->ExceptionRecord;
     const auto *context = ExceptionInfo->ContextRecord;
 
     log_warning("signal", "thread id: {}", GetCurrentThreadId());
+    log_warning("signal", "thread last error (GetLastError()) at exception: 0x{:08x}", last_error);
     log_warning("signal", "exception address: {}", fmt::ptr(record->ExceptionAddress));
     log_exception_module(record->ExceptionAddress);
     log_instruction_bytes(record->ExceptionAddress);
@@ -261,11 +309,19 @@ static void log_exception_context(struct _EXCEPTION_POINTERS *ExceptionInfo) {
         log_warning("signal", "invalid memory access: {} at {}",
                 access_operation(operation), fmt::ptr(address));
         log_memory_region("fault memory", address);
+        log_adjacent_memory_regions(address);
+    }
+
+    if (record->ExceptionCode == EXCEPTION_IN_PAGE_ERROR && record->NumberParameters >= 3) {
+        log_warning("signal", "in-page error status: 0x{:08x}",
+                static_cast<DWORD>(record->ExceptionInformation[2]));
     }
 
     if (context == nullptr) {
         return;
     }
+
+    log_stack_context(context);
 
 #ifdef _WIN64
     log_warning("signal", "registers: rax={:016x} rbx={:016x} rcx={:016x} rdx={:016x}",
@@ -355,13 +411,53 @@ static void write_minidump(struct _EXCEPTION_POINTERS *ExceptionInfo) {
         }
     }
 
+    LARGE_INTEGER minidump_size {};
+    const auto minidump_size_available = minidump_written &&
+            GetFileSizeEx(minidump_file, &minidump_size);
     CloseHandle(minidump_file);
 
     if (minidump_written) {
-        log_info("signal", "wrote minidump to 'minidump.dmp' (type=0x{:08x})",
-                static_cast<unsigned>(written_type));
+        if (minidump_size_available) {
+            log_info("signal", "wrote minidump to 'minidump.dmp' (type=0x{:08x}, size={} bytes)",
+                    static_cast<unsigned>(written_type), minidump_size.QuadPart);
+        } else {
+            log_info("signal", "wrote minidump to 'minidump.dmp' (type=0x{:08x})",
+                    static_cast<unsigned>(written_type));
+        }
     } else {
         log_warning("signal", "failed to write 'minidump.dmp': 0x{:08x}", minidump_error);
+    }
+}
+
+static void log_exception_chain(const struct _EXCEPTION_RECORD *record) {
+    constexpr size_t max_exception_chain_depth = 8;
+    auto *record_cause = record->ExceptionRecord;
+    size_t depth = 0;
+
+    while (record_cause != nullptr && depth < max_exception_chain_depth) {
+        struct _EXCEPTION_RECORD cause {};
+        SIZE_T bytes_read = 0;
+        if (!ReadProcessMemory(
+                GetCurrentProcess(),
+                record_cause,
+                &cause,
+                sizeof(cause),
+                &bytes_read) ||
+            bytes_read != sizeof(cause)) {
+            log_warning("signal", "failed to read exception chain record {} at {}: 0x{:08x}",
+                    depth, fmt::ptr(record_cause), GetLastError());
+            return;
+        }
+
+        log_warning("signal", "caused by: {} at {}",
+                exception_code(&cause), fmt::ptr(cause.ExceptionAddress));
+        log_exception_parameters(&cause);
+        record_cause = cause.ExceptionRecord;
+        depth++;
+    }
+
+    if (record_cause != nullptr) {
+        log_warning("signal", "exception chain truncated after {} records", max_exception_chain_depth);
     }
 }
 
@@ -378,6 +474,7 @@ static BOOL WINAPI HandlerRoutine(DWORD dwCtrlType) {
 }
 
 static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *ExceptionInfo) {
+    const auto last_error = GetLastError();
 
     // ignore signal if disabled or no exception info provided
     if (!launcher::signal::DISABLE &&
@@ -390,7 +487,10 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
 
         // print signal
         log_warning("signal", "exception raised: {}", exception_code(ExceptionRecord));
-        log_exception_context(ExceptionInfo);
+        log_exception_context(ExceptionInfo, last_error);
+
+        // write the minidump before other diagnostics inspect potentially damaged state
+        write_minidump(ExceptionInfo);
 
         switch (ExceptionRecord->ExceptionCode) {
             case EXCEPTION_ILLEGAL_INSTRUCTION:
@@ -420,17 +520,11 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
         // (e.g., ACIO init hang due to RTSS)
         deferredlogs::dump_to_logger(true);
 
-        // walk the exception chain
-        struct _EXCEPTION_RECORD *record_cause = ExceptionRecord->ExceptionRecord;
-        while (record_cause != nullptr) {
-            log_warning("signal", "caused by: {} at {}",
-                    exception_code(record_cause), fmt::ptr(record_cause->ExceptionAddress));
-            log_exception_parameters(record_cause);
-            record_cause = record_cause->ExceptionRecord;
-        }
+        // dump memory information before inspecting potentially damaged exception and stack data
+        memutils::show_available_memory();
 
-        // write the minidump before stack walking, which may hang on a damaged stack
-        write_minidump(ExceptionInfo);
+        // walk the exception chain with bounded, checked reads
+        log_exception_chain(ExceptionRecord);
 
         // print stacktrace
         StackWalker sw;
@@ -438,9 +532,6 @@ static LONG WINAPI TopLevelExceptionFilter(struct _EXCEPTION_POINTERS *Exception
         if (!sw.ShowCallstack(GetCurrentThread(), ExceptionInfo->ContextRecord)) {
             log_warning("signal", "failed to print callstack");
         }
-
-        // dump memory information
-        memutils::show_available_memory();
 
         // this will stall all UI threads for this process
         show_popup_for_crash();
