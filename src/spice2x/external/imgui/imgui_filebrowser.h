@@ -878,7 +878,15 @@ inline void ImGui::FileBrowser::UpdateFileRecords()
 
 inline void ImGui::FileBrowser::SetPwdUncatched(const std::filesystem::path &pwd)
 {
-    pwd_ = absolute(pwd);
+    // spice2x
+    // avoid MinGW std::filesystem::absolute() duplicating UNC server/share
+    // prefixes, which makes directory_iterator() throw during startup
+    // spice2x
+    const auto &nativePwd = pwd.native();
+    const bool hasUncPrefix = nativePwd.size() >= 2 &&
+        (nativePwd[0] == '\\' || nativePwd[0] == '/') &&
+        (nativePwd[1] == '\\' || nativePwd[1] == '/');
+    pwd_ = hasUncPrefix ? pwd : absolute(pwd);
     UpdateFileRecords();
     selectedFilenames_.clear();
     (*inputNameBuf_)[0] = '\0';
