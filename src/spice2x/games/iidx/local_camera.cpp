@@ -2,6 +2,7 @@
 
 #if SPICE64 && !SPICE_XP
 
+#include <algorithm>
 #include <condition_variable>
 
 #include "util/logging.h"
@@ -1290,28 +1291,23 @@ namespace games::iidx {
             }
 
             if (SUCCEEDED(hr)) {
-                BYTE* pSrc = (BYTE*)srcLockedRect.pBits;
-                BYTE* pDest = (BYTE*)destLockedRect.pBits;
-                const int pixelSize = 4;
-
-                if (flip_v) {
-                    pDest += destLockedRect.Pitch * (TARGET_SURFACE_HEIGHT - 1);
-                }
-
+                const auto *srcBase = static_cast<const BYTE *>(srcLockedRect.pBits);
+                auto *destBase = static_cast<BYTE *>(destLockedRect.pBits);
+                const size_t rowBytes = TARGET_SURFACE_WIDTH * sizeof(uint32_t);
                 for (int y = 0; y < TARGET_SURFACE_HEIGHT; y++) {
-                    for (int x = 0; x < TARGET_SURFACE_WIDTH; x++) {
-                        memcpy(
-                            pDest + x * pixelSize,
-                            pSrc + (flip_h ? (TARGET_SURFACE_WIDTH - x - 1) : x) * pixelSize,
-                            pixelSize
+                    const auto *srcRow = srcBase + y * srcLockedRect.Pitch;
+                    const int destY = flip_v ? TARGET_SURFACE_HEIGHT - y - 1 : y;
+                    auto *destRow = destBase + destY * destLockedRect.Pitch;
+                    if (flip_h) {
+                        const auto *srcPixels = reinterpret_cast<const uint32_t *>(srcRow);
+                        auto *destPixels = reinterpret_cast<uint32_t *>(destRow);
+                        std::reverse_copy(
+                            srcPixels,
+                            srcPixels + TARGET_SURFACE_WIDTH,
+                            destPixels
                         );
-                    }
-
-                    pSrc += srcLockedRect.Pitch;
-                    if (flip_v) {
-                        pDest -= destLockedRect.Pitch;
                     } else {
-                        pDest += destLockedRect.Pitch;
+                        memcpy(destRow, srcRow, rowBytes);
                     }
                 }
             }
