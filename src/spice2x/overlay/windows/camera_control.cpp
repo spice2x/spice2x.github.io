@@ -82,8 +82,13 @@ namespace overlay::windows {
         ImGui::Text("Rendering");
 
         // Media Type Selector
-        int selectedMediaTypeIndex = selectedCamera->m_selectedMediaTypeIndex;
+        int selectedMediaTypeIndex = selectedCamera->GetSelectedMediaTypeIndex();
         auto numMediaTypes = selectedCamera->m_mediaTypeInfos.size();
+
+        if (numMediaTypes == 0) {
+            ImGui::TextColored(ImVec4(1.f, 1.f, 0.f, 1.f), "%s", "No supported media types");
+            return;
+        }
 
         auto selectedMediaTypeIndexChanged = ImGui::BeginCombo(
             "Media Type", selectedCamera->m_mediaTypeInfos.at(selectedMediaTypeIndex).description.c_str()
@@ -103,9 +108,9 @@ namespace overlay::windows {
             ImGui::EndCombo();
         }
 
-        if (selectedMediaTypeIndexChanged && selectedMediaTypeIndex != selectedCamera->m_selectedMediaTypeIndex) {
+        if (selectedMediaTypeIndexChanged && selectedMediaTypeIndex != selectedCamera->GetSelectedMediaTypeIndex()) {
             selectedCamera->m_useAutoMediaType = false;
-            selectedCamera->ChangeMediaType(selectedCamera->m_mediaTypeInfos.at(selectedMediaTypeIndex).p_mediaType);
+            selectedCamera->RequestMediaType(selectedCamera->m_mediaTypeInfos.at(selectedMediaTypeIndex).p_mediaType);
         }
 
         // Auto media type
@@ -114,13 +119,14 @@ namespace overlay::windows {
         if (ImGui::Checkbox("Auto##MediaType", &isAutoMediaType)) {
             selectedCamera->m_useAutoMediaType = isAutoMediaType;
             if (isAutoMediaType) {
-                selectedCamera->ChangeMediaType(selectedCamera->m_pAutoMediaType);
+                selectedCamera->RequestMediaType(selectedCamera->m_pAutoMediaType);
             }
         }
 
         // Draw mode
-        int selectedDrawModeIndex = selectedCamera->m_drawMode;
-        if (ImGui::BeginCombo("Draw Mode", DRAW_MODE_LABELS[selectedCamera->m_drawMode].c_str())) {
+        const auto drawMode = selectedCamera->m_drawMode.load();
+        int selectedDrawModeIndex = drawMode;
+        if (ImGui::BeginCombo("Draw Mode", DRAW_MODE_LABELS[drawMode].c_str())) {
             for (size_t i = 0; i < DRAW_MODE_SIZE; i++) {
                 const bool is_selected = (selectedDrawModeIndex == (int) i);
                 if (ImGui::Selectable(DRAW_MODE_LABELS[i].c_str(), is_selected)) {
@@ -142,15 +148,21 @@ namespace overlay::windows {
             "Letterbox to 4:3: Like Letterbox, but target 4:3"
             );
 
-        if (selectedDrawModeIndex != selectedCamera->m_drawMode) {
-            selectedCamera->m_drawMode = (LocalCameraDrawMode)selectedDrawModeIndex;
+        if (selectedDrawModeIndex != selectedCamera->m_drawMode.load()) {
+            selectedCamera->m_drawMode.store((LocalCameraDrawMode)selectedDrawModeIndex);
             selectedCamera->UpdateDrawRect();
         }
 
         ImGui::AlignTextToFramePadding();
-        ImGui::Checkbox("Horizontal Flip", &selectedCamera->m_flipHorizontal);
+        bool flipHorizontal = selectedCamera->m_flipHorizontal.load();
+        if (ImGui::Checkbox("Horizontal Flip", &flipHorizontal)) {
+            selectedCamera->m_flipHorizontal.store(flipHorizontal);
+        }
         ImGui::SameLine();
-        ImGui::Checkbox("Vertical Flip", &selectedCamera->m_flipVertical);
+        bool flipVertical = selectedCamera->m_flipVertical.load();
+        if (ImGui::Checkbox("Vertical Flip", &flipVertical)) {
+            selectedCamera->m_flipVertical.store(flipVertical);
+        }
 
         // Camera control parameters
         ImGui::Separator();

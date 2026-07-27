@@ -2,6 +2,7 @@
 
 #if SPICE64 && !SPICE_XP
 
+#include <atomic>
 #include <d3d9.h>
 #include <dxva2api.h>
 #include <mutex>
@@ -66,6 +67,8 @@ extern std::string CAMERA_CONTROL_LABELS[];
 extern std::string DRAW_MODE_LABELS[];
 
 namespace games::iidx {
+    class IIDXCameraSourceReaderCallback;
+
     namespace Camera {
         struct PlayVideoCamera {
             IDirect3DTexture9** d3d9_texture(const uintptr_t offset) {
@@ -87,7 +90,7 @@ namespace games::iidx {
 
     class IIDXLocalCamera {
     protected:
-        virtual ~IIDXLocalCamera() {};
+        virtual ~IIDXLocalCamera();
 
         LONG m_nRefCount;
         CRITICAL_SECTION m_critsec;
@@ -101,6 +104,12 @@ namespace games::iidx {
         // For reading frames from Camera
         IMFMediaSource *m_pSource = nullptr;
         IMFSourceReader *m_pSourceReader = nullptr;
+        IMFSourceReaderEx *m_pSourceReaderEx = nullptr;
+        IIDXCameraSourceReaderCallback *m_pSourceReaderCallback = nullptr;
+        std::mutex m_mediaTypeMutex;
+        IMFMediaType *m_pendingMediaType = nullptr;
+        int m_selectedMediaTypeIndex = 0;
+        std::string m_selectedMediaTypeDescription = "";
 
         // Camera Format information
         double                  m_frameRate = 0;
@@ -129,6 +138,12 @@ namespace games::iidx {
         LPDIRECT3DTEXTURE9 m_conversionTexture = nullptr;
         IDirect3DSurface9 *m_pConversionSurf = nullptr;
 
+        // upload surface for decoded camera frames returned in system memory
+        IDirect3DSurface9 *m_pDecodedSurf = nullptr;
+        GUID m_decodedSubtype = GUID_NULL;
+        GUID m_outputSubtype = GUID_NULL;
+        bool m_drawErrorLogged = false;
+
         // Texture for custom transform (e.g. horizontal flip)
         LPDIRECT3DTEXTURE9 m_transformTexture = nullptr;
         IDirect3DSurface9 *m_pTransformSurf = nullptr;
@@ -153,21 +168,19 @@ namespace games::iidx {
         BOOL m_initialized = false;
 
         // True if all the setup steps succeeded
-        BOOL m_active = false;
+        std::atomic_bool m_active = false;
 
         // Media type select
         std::vector<MediaTypeInfo> m_mediaTypeInfos = {};
-        int m_selectedMediaTypeIndex = 0;
         bool m_useAutoMediaType = true;
         IMFMediaType *m_pAutoMediaType = nullptr;
-        std::string m_selectedMediaTypeDescription = "";
         bool m_allowManualControl = false;
 
-        LocalCameraDrawMode m_drawMode = DrawModeCrop4_3;
+        std::atomic<LocalCameraDrawMode> m_drawMode = DrawModeCrop4_3;
 
         // Render processing
-        bool m_flipHorizontal = false;
-        bool m_flipVertical = false;
+        std::atomic_bool m_flipHorizontal = false;
+        std::atomic_bool m_flipVertical = false;
 
         IIDXLocalCamera(
             std::string name,
@@ -184,11 +197,14 @@ namespace games::iidx {
         HRESULT GetCameraControlProp(int index, CameraControlProp *pProp);
         HRESULT SetCameraControlProp(int index, long value, long flags);
         HRESULT ResetCameraControlProps();
-        HRESULT FlushDrawCommands();
         std::string GetName();
         std::string GetFriendlyName();
         std::string GetSymLink();
+        int GetSelectedMediaTypeIndex();
+        std::string GetSelectedMediaTypeDescription();
+        void SetSelectedMediaTypeDescription(const std::string &description);
         HRESULT ChangeMediaType(IMFMediaType *pType);
+        void RequestMediaType(IMFMediaType *pType);
         HRESULT StartCapture();
         void UpdateDrawRect();
 
@@ -200,6 +216,10 @@ namespace games::iidx {
         HRESULT TryMediaType(IMFMediaType *pType, UINT32 *pBestWidth, double *pBestFrameRate);
         HRESULT InitTargetTexture();
         HRESULT InitCameraControl();
+        void SetSelectedMediaType(int index, const std::string &description);
+        bool HasPendingMediaType();
+        HRESULT ApplyPendingMediaType();
+        HRESULT UploadDecodedSample(IMFMediaBuffer *pSrcBuffer);
         HRESULT DrawSample(IMFMediaBuffer *pSrcBuffer);
         HRESULT ReadSample();
         LPDIRECT3DTEXTURE9 Render();
