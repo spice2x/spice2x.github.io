@@ -12,6 +12,9 @@ namespace games::iidx {
         _Out_ IMFAttributes** ppMFAttributes,
         _In_ UINT32 cInitialSize);
 
+    HRESULT WrappedMFCreateMediaType (
+        _Out_ IMFMediaType** ppMFType);
+
     HRESULT WrappedMFEnumDeviceSources (
         _In_ IMFAttributes* pAttributes,
         _Outptr_result_buffer_(*pcSourceActivate) IMFActivate*** pppSourceActivate,

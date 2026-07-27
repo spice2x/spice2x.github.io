@@ -534,7 +534,7 @@ namespace games::iidx {
                         if (mediaTypePointer && mediaTypePointer->IsString()) {
                             std::string mediaType = mediaTypePointer->GetString();
                             if (mediaType.length() > 0) {
-                                camera->m_selectedMediaTypeDescription = mediaType;
+                                camera->SetSelectedMediaTypeDescription(mediaType);
                                 camera->m_useAutoMediaType = false;
                             } else {
                                 camera->m_useAutoMediaType = true;
@@ -547,7 +547,7 @@ namespace games::iidx {
                             std::string drawModeString = drawModePointer->GetString();
                             for (int j = 0; j < DRAW_MODE_SIZE; j++) {
                                 if (DRAW_MODE_LABELS[j].compare(drawModeString) == 0) {
-                                    camera->m_drawMode = (LocalCameraDrawMode) j;
+                                    camera->m_drawMode.store((LocalCameraDrawMode) j);
                                     break;
                                 }
                             }
@@ -556,12 +556,12 @@ namespace games::iidx {
                         // Flip
                         auto flipHorizontalPointer = rapidjson::Pointer(root + "/" + symLink + "/FlipHorizontal").Get(doc);
                         if (flipHorizontalPointer && flipHorizontalPointer->IsBool()) {
-                            camera->m_flipHorizontal = flipHorizontalPointer->GetBool();
+                            camera->m_flipHorizontal.store(flipHorizontalPointer->GetBool());
                         }
 
                         auto flipVerticalPointer = rapidjson::Pointer(root + "/" + symLink + "/FlipVertical").Get(doc);
                         if (flipVerticalPointer && flipVerticalPointer->IsBool()) {
-                            camera->m_flipVertical = flipVerticalPointer->GetBool();
+                            camera->m_flipVertical.store(flipVerticalPointer->GetBool());
                         }
 
                         // Allow manual control
@@ -625,15 +625,17 @@ namespace games::iidx {
             if (camera->m_useAutoMediaType) {
                 rapidjson::Pointer(root + "MediaType").Set(doc, "");
             } else {
-                rapidjson::Pointer(root + "MediaType").Set(doc, camera->m_selectedMediaTypeDescription);
+                const auto mediaTypeDescription = camera->GetSelectedMediaTypeDescription();
+                rapidjson::Pointer(root + "MediaType").Set(doc, mediaTypeDescription);
             }
 
             // Draw Mode
-            rapidjson::Pointer(root + "DrawMode").Set(doc, DRAW_MODE_LABELS[camera->m_drawMode]);
+            const auto drawMode = camera->m_drawMode.load();
+            rapidjson::Pointer(root + "DrawMode").Set(doc, DRAW_MODE_LABELS[drawMode]);
 
             // Flip
-            rapidjson::Pointer(root + "FlipHorizontal").Set(doc, camera->m_flipHorizontal);
-            rapidjson::Pointer(root + "FlipVertical").Set(doc, camera->m_flipVertical);
+            rapidjson::Pointer(root + "FlipHorizontal").Set(doc, camera->m_flipHorizontal.load());
+            rapidjson::Pointer(root + "FlipVertical").Set(doc, camera->m_flipVertical.load());
 
             // Manual control
             rapidjson::Pointer(root + "AllowManualControl").Set(doc, camera->m_allowManualControl);

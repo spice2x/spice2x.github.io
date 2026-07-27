@@ -15,6 +15,10 @@ namespace games::iidx {
         _In_ UINT32 cInitialSize
         );
 
+    typedef HRESULT (__stdcall * MFCreateMediaType_t)(
+        _Out_ IMFMediaType** ppMFType
+        );
+
     typedef HRESULT (__stdcall * MFEnumDeviceSources_t)(
         _In_ IMFAttributes* pAttributes,
         _Outptr_result_buffer_(*pcSourceActivate) IMFActivate*** pppSourceActivate,
@@ -35,6 +39,7 @@ namespace games::iidx {
         );
 
     static MFCreateAttributes_t MFCreateAttributes = nullptr;
+    static MFCreateMediaType_t MFCreateMediaType = nullptr;
     static MFEnumDeviceSources_t MFEnumDeviceSources = nullptr;
     static MFCreateSourceReaderFromMediaSource_t MFCreateSourceReaderFromMediaSource = nullptr;
     static MFGetService_t MFGetService = nullptr;
@@ -66,6 +71,12 @@ namespace games::iidx {
             log_fatal("mf_wrappers", "MFCreateAttributes failed to hook");
         }
 
+        MFCreateMediaType = (MFCreateMediaType_t)
+            libutils::get_proc(mfplat_dll, "MFCreateMediaType");
+        if (!MFCreateMediaType) {
+            log_fatal("mf_wrappers", "MFCreateMediaType failed to hook");
+        }
+
         MFEnumDeviceSources = (MFEnumDeviceSources_t)
             libutils::get_proc(mf_dll, "MFEnumDeviceSources");
         if (!MFEnumDeviceSources) {
@@ -90,6 +101,11 @@ namespace games::iidx {
         _Out_ IMFAttributes** ppMFAttributes,
         _In_ UINT32 cInitialSize) {
         return MFCreateAttributes(ppMFAttributes, cInitialSize);
+    }
+
+    HRESULT WrappedMFCreateMediaType (
+        _Out_ IMFMediaType** ppMFType) {
+        return MFCreateMediaType(ppMFType);
     }
 
     HRESULT WrappedMFEnumDeviceSources (

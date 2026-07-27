@@ -2,8 +2,10 @@
 
 #if SPICE64 && !SPICE_XP
 
+#include <algorithm>
+#include <condition_variable>
+
 #include "util/logging.h"
-#include "util/precise_timer.h"
 #include "util/utils.h"
 #include "mf_wrappers.h"
 
@@ -40,6 +42,160 @@ double RATIO_16_9 = 16.0 / 9.0;
 double RATIO_4_3 = 4.0 / 3.0;
 
 namespace games::iidx {
+
+    // async reads keep mode changes and shutdown interruptible without blocking the UI thread
+    class IIDXCameraSourceReaderCallback final : public IMFSourceReaderCallback {
+    public:
+        HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **object) override {
+            if (!object) {
+                return E_POINTER;
+            }
+            if (riid == IID_IUnknown || riid == IID_IMFSourceReaderCallback) {
+                *object = static_cast<IMFSourceReaderCallback *>(this);
+                AddRef();
+                return S_OK;
+            }
+            *object = nullptr;
+            return E_NOINTERFACE;
+        }
+
+        ULONG STDMETHODCALLTYPE AddRef() override {
+            return InterlockedIncrement(&m_refCount);
+        }
+
+        ULONG STDMETHODCALLTYPE Release() override {
+            const ULONG refCount = InterlockedDecrement(&m_refCount);
+            if (refCount == 0) {
+                delete this;
+            }
+            return refCount;
+        }
+
+        HRESULT STDMETHODCALLTYPE OnReadSample(
+                HRESULT status,
+                DWORD,
+                DWORD,
+                LONGLONG,
+                IMFSample *sample) override {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            SafeRelease(&m_sample);
+            m_status = status;
+            m_sample = sample;
+            if (m_sample) {
+                m_sample->AddRef();
+            }
+            m_readComplete = true;
+            m_condition.notify_all();
+            return S_OK;
+        }
+
+        HRESULT STDMETHODCALLTYPE OnFlush(DWORD) override {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_flushPending) {
+                m_flushComplete = true;
+                m_condition.notify_all();
+            }
+            return S_OK;
+        }
+
+        HRESULT STDMETHODCALLTYPE OnEvent(DWORD, IMFMediaEvent *) override {
+            return S_OK;
+        }
+
+        void PrepareRead() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            SafeRelease(&m_sample);
+            m_status = S_OK;
+            m_readComplete = false;
+            m_interrupted = false;
+        }
+
+        HRESULT WaitForRead(IMFSample **sample) {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_condition.wait(lock, [this] {
+                return m_readComplete || m_interrupted || m_shutdown;
+            });
+            if (m_shutdown) {
+                return MF_E_SHUTDOWN;
+            }
+            if (m_interrupted) {
+                return S_FALSE;
+            }
+            const HRESULT status = m_status;
+            *sample = m_sample;
+            m_sample = nullptr;
+            return status;
+        }
+
+        void InterruptRead() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            m_interrupted = true;
+            m_condition.notify_all();
+        }
+
+        void BeginShutdown() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            m_shutdown = true;
+            m_interrupted = true;
+            m_condition.notify_all();
+        }
+
+        bool IsShutdown() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            return m_shutdown;
+        }
+
+        bool BeginFlush() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_flushPending) {
+                return false;
+            }
+            m_flushPending = true;
+            m_flushComplete = false;
+            return true;
+        }
+
+        void CancelFlush() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            m_flushPending = false;
+            m_flushComplete = false;
+        }
+
+        HRESULT WaitForFlush() {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            if (!m_condition.wait_for(lock, std::chrono::seconds(2), [this] {
+                    return m_flushComplete || m_shutdown;
+                })) {
+                return HRESULT_FROM_WIN32(ERROR_TIMEOUT);
+            }
+            if (m_shutdown) {
+                return MF_E_SHUTDOWN;
+            }
+            m_flushPending = false;
+            m_flushComplete = false;
+            return S_OK;
+        }
+
+    private:
+        ~IIDXCameraSourceReaderCallback() {
+            SafeRelease(&m_sample);
+        }
+
+        LONG m_refCount = 1;
+        std::mutex m_mutex;
+        std::condition_variable m_condition;
+        IMFSample *m_sample = nullptr;
+        HRESULT m_status = S_OK;
+        bool m_readComplete = false;
+        bool m_flushPending = false;
+        bool m_flushComplete = false;
+        bool m_interrupted = false;
+        bool m_shutdown = false;
+    };
+
+    IIDXLocalCamera::~IIDXLocalCamera() {
+        DeleteCriticalSection(&m_critsec);
+    }
 
     IIDXLocalCamera::IIDXLocalCamera(
         std::string name,
@@ -83,7 +239,7 @@ namespace games::iidx {
             pwszFriendlyName = nullptr;
         }
 
-        // Retrive symlink of Camera for control configurations
+        // retrieve the camera symlink for control configuration
         hr = pActivate->GetAllocatedString(
             MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK,
             &m_pwszSymbolicLink,
@@ -103,36 +259,49 @@ namespace games::iidx {
             goto done;
         }
 
-        // Retain reference to the camera
-        m_pSource->AddRef();
         log_misc("iidx:camhook", "[{}] Activated", m_name);
 
         // Create an attribute store to hold initialization settings.
-        hr = WrappedMFCreateAttributes(&pAttributes, 2);
+        hr = WrappedMFCreateAttributes(&pAttributes, 5);
         if (FAILED(hr)) {
             log_warning("iidx:camhook", "[{}] MFCreateAttributes failed with {:#x}", m_name, (ULONG)hr);
             goto done;
         }
 
+        // provide the D3D9 device used to allocate decoded video surfaces
         hr = pAttributes->SetUnknown(MF_SOURCE_READER_D3D_MANAGER, pD3DManager);
         if (FAILED(hr)) {
             log_warning("iidx:camhook", "[{}] SetUnknown(MF_SOURCE_READER_D3D_MANAGER) failed with {:#x}", m_name, (ULONG)hr);
             goto done;
         }
 
+        // allow hardware-accelerated video decoding through DXVA
         hr = pAttributes->SetUINT32(MF_SOURCE_READER_DISABLE_DXVA, FALSE);
         if (FAILED(hr)) {
             log_warning("iidx:camhook", "[{}] SetUINT32(MF_SOURCE_READER_DISABLE_DXVA) failed with {:#x}", m_name, (ULONG)hr);
             goto done;
         }
 
-        // TODO: Color space conversion
-        // if (SUCCEEDED(hr)) {
-        //     hr = pAttributes->SetUINT32(MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, TRUE);
-        // }
-        // if (SUCCEEDED(hr)) {
-		// 	hr = pAttributes->SetUINT32(MF_READWRITE_DISABLE_CONVERTERS, FALSE);
-        // }
+        // allow decoders and format converters in the Source Reader pipeline
+        hr = pAttributes->SetUINT32(MF_READWRITE_DISABLE_CONVERTERS, FALSE);
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] SetUINT32(MF_READWRITE_DISABLE_CONVERTERS) failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
+
+        // enable video processing such as MJPG-to-RGB32 color conversion
+        hr = pAttributes->SetUINT32(MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING, TRUE);
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] SetUINT32(MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING) failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
+
+        m_pSourceReaderCallback = new IIDXCameraSourceReaderCallback();
+        hr = pAttributes->SetUnknown(MF_SOURCE_READER_ASYNC_CALLBACK, m_pSourceReaderCallback);
+        if (FAILED(hr)) {
+            log_warning("iidx:camhook", "[{}] SetUnknown(MF_SOURCE_READER_ASYNC_CALLBACK) failed with {:#x}", m_name, (ULONG)hr);
+            goto done;
+        }
 
         // Create the source reader.
         hr = WrappedMFCreateSourceReaderFromMediaSource(
@@ -143,6 +312,14 @@ namespace games::iidx {
         if (FAILED(hr)) {
             log_warning("iidx:camhook", "[{}] MFCreateSourceReaderFromMediaSource failed with {:#x}", m_name, (ULONG)hr);
             goto done;
+        }
+
+        if (FAILED(m_pSourceReader->QueryInterface(IID_PPV_ARGS(&m_pSourceReaderEx)))) {
+            log_misc(
+                "iidx:camhook",
+                "[{}] IMFSourceReaderEx unavailable; using legacy media type selection",
+                m_name
+            );
         }
 
         log_misc("iidx:camhook", "[{}] Created source reader", m_name);
@@ -167,6 +344,101 @@ namespace games::iidx {
         LeaveCriticalSection(&m_critsec);
     }
 
+    bool IIDXLocalCamera::CompareMediaTypes(const MediaTypeInfo &a, const MediaTypeInfo &b) {
+        if (a.width != b.width) {
+            return a.width > b.width;
+        }
+        if (a.height != b.height) {
+            return a.height > b.height;
+        }
+        if (a.frameRate != b.frameRate) {
+            return (int)a.frameRate > (int)b.frameRate;
+        }
+        return a.subtype.Data1 > b.subtype.Data1;
+    }
+
+    bool IIDXLocalCamera::MatchesPreferredAspect(const MediaTypeInfo &info) const {
+        const double aspectRatio = m_prefer_16_by_9 ? RATIO_16_9 : RATIO_4_3;
+        return fabs(info.height * aspectRatio - info.width) <= 0.01;
+    }
+
+    bool IIDXLocalCamera::IsBetterAutoType(
+            const MediaTypeInfo &candidate,
+            const MediaTypeInfo &current) {
+        const bool candidateExact =
+            candidate.width == (UINT32)TARGET_SURFACE_WIDTH &&
+            candidate.height == (UINT32)TARGET_SURFACE_HEIGHT;
+        const bool currentExact =
+            current.width == (UINT32)TARGET_SURFACE_WIDTH &&
+            current.height == (UINT32)TARGET_SURFACE_HEIGHT;
+        if (candidateExact != currentExact) {
+            return candidateExact;
+        }
+
+        const bool candidateMeetsTarget =
+            candidate.width >= (UINT32)TARGET_SURFACE_WIDTH &&
+            candidate.height >= (UINT32)TARGET_SURFACE_HEIGHT;
+        const bool currentMeetsTarget =
+            current.width >= (UINT32)TARGET_SURFACE_WIDTH &&
+            current.height >= (UINT32)TARGET_SURFACE_HEIGHT;
+        if (candidateMeetsTarget != currentMeetsTarget) {
+            return candidateMeetsTarget;
+        }
+
+        const uint64_t candidatePixels = (uint64_t)candidate.width * candidate.height;
+        const uint64_t currentPixels = (uint64_t)current.width * current.height;
+        if (candidatePixels != currentPixels) {
+            return candidateMeetsTarget
+                ? candidatePixels < currentPixels
+                : candidatePixels > currentPixels;
+        }
+        if (candidate.frameRate != current.frameRate) {
+            return candidate.frameRate > current.frameRate;
+        }
+        if (candidate.subtype == current.subtype) {
+            return false;
+        }
+        if (candidate.subtype == MFVideoFormat_NV12) {
+            return true;
+        }
+        if (current.subtype == MFVideoFormat_NV12) {
+            return false;
+        }
+        return candidate.subtype == MFVideoFormat_YUY2;
+    }
+
+    IMFMediaType *IIDXLocalCamera::FindBestNativeAutoType(bool requirePreferredAspect) const {
+        const MediaTypeInfo *best = nullptr;
+        for (const auto &info : m_mediaTypeInfos) {
+            const bool isNative =
+                info.subtype == MFVideoFormat_NV12 ||
+                info.subtype == MFVideoFormat_YUY2;
+            if (!isNative || (requirePreferredAspect && !MatchesPreferredAspect(info))) {
+                continue;
+            }
+            if (!best || IsBetterAutoType(info, *best)) {
+                best = &info;
+            }
+        }
+        return best ? best->p_mediaType : nullptr;
+    }
+
+    IMFMediaType *IIDXLocalCamera::FindBestAutoType(
+            const GUID &subtype,
+            bool requirePreferredAspect) const {
+        const MediaTypeInfo *best = nullptr;
+        for (const auto &info : m_mediaTypeInfos) {
+            if ((subtype != GUID_NULL && info.subtype != subtype) ||
+                (requirePreferredAspect && !MatchesPreferredAspect(info))) {
+                continue;
+            }
+            if (!best || IsBetterAutoType(info, *best)) {
+                best = &info;
+            }
+        }
+        return best ? best->p_mediaType : nullptr;
+    }
+
     HRESULT IIDXLocalCamera::StartCapture() {
         HRESULT hr = S_OK;
         IMFMediaType *pType = nullptr;
@@ -178,8 +450,6 @@ namespace games::iidx {
 
         // Try to find a suitable output type.
         log_misc("iidx:camhook", "[{}] Find best media type", m_name);
-        UINT32 bestWidth = 0;
-        double bestFrameRate = 0;
 
         // The loop should terminate by MF_E_NO_MORE_TYPES
         // Adding a hard limit just in case
@@ -197,13 +467,10 @@ namespace games::iidx {
                 break;
             }
 
-            hr = TryMediaType(pType, &bestWidth, &bestFrameRate);
+            hr = ValidateMediaType(pType);
             if (SUCCEEDED(hr)) {
                 MediaTypeInfo info = GetMediaTypeInfo(pType);
                 m_mediaTypeInfos.push_back(info);
-                if (hr == S_OK) {
-                    m_pAutoMediaType = pType;
-                }
             } else {
                 // Invalid media type (e.g. no conversion function)
                 SafeRelease(&pType);
@@ -211,30 +478,30 @@ namespace games::iidx {
         }
 
         // Sort available media types
-        std::sort(m_mediaTypeInfos.begin(), m_mediaTypeInfos.end(), [](const MediaTypeInfo &a, const MediaTypeInfo &b) {
-            if (a.width != b.width) {
-                return a.width > b.width;
-            }
-            if (a.height != b.height) {
-                return a.height > b.height;
-            }
-            if (a.frameRate != b.frameRate) {
-                return (int)a.frameRate > (int)b.frameRate;
-            }
-            return a.subtype.Data1 > b.subtype.Data1;
-        });
+        std::sort(m_mediaTypeInfos.begin(), m_mediaTypeInfos.end(), CompareMediaTypes);
 
+        if (m_mediaTypeInfos.empty()) {
+            log_warning("iidx:camhook", "[{}] No supported media types", m_name);
+            return MF_E_INVALIDMEDIATYPE;
+        }
+
+        // rank native formats by target fit and FPS, preferring NV12 only when otherwise equal
+        m_pAutoMediaType = FindBestNativeAutoType(true);
         if (!m_pAutoMediaType) {
-            m_pAutoMediaType = m_mediaTypeInfos.front().p_mediaType;
+            m_pAutoMediaType = FindBestAutoType(MFVideoFormat_MJPG, true);
+        }
+        if (!m_pAutoMediaType) {
+            m_pAutoMediaType = FindBestAutoType(GUID_NULL, false);
         }
 
         IMFMediaType *pSelectedMediaType = nullptr;
 
         // Find media type specified by user configurations
-        if (!m_useAutoMediaType && m_selectedMediaTypeDescription.length() > 0) {
-            log_info("iidx:camhook", "[{}] Use media type from config {}", m_name, m_selectedMediaTypeDescription);
-            auto it = std::find_if(m_mediaTypeInfos.begin(), m_mediaTypeInfos.end(), [this](const MediaTypeInfo &item){
-                return item.description.compare(this->m_selectedMediaTypeDescription) == 0;
+        const auto selectedMediaTypeDescription = GetSelectedMediaTypeDescription();
+        if (!m_useAutoMediaType && !selectedMediaTypeDescription.empty()) {
+            log_info("iidx:camhook", "[{}] Use media type from config {}", m_name, selectedMediaTypeDescription);
+            auto it = std::find_if(m_mediaTypeInfos.begin(), m_mediaTypeInfos.end(), [&selectedMediaTypeDescription](const MediaTypeInfo &item){
+                return item.description == selectedMediaTypeDescription;
             });
             if (it != m_mediaTypeInfos.end()) {
                 pSelectedMediaType = (*it).p_mediaType;
@@ -247,9 +514,7 @@ namespace games::iidx {
             pSelectedMediaType = m_pAutoMediaType;
         }
 
-        if (SUCCEEDED(hr)) {
-            hr = ChangeMediaType(pSelectedMediaType);
-        }
+        hr = ChangeMediaType(pSelectedMediaType);
 
         if (SUCCEEDED(hr)) {
             log_info("iidx:camhook", "[{}] Creating thread", m_name);
@@ -259,17 +524,45 @@ namespace games::iidx {
     }
 
     HRESULT IIDXLocalCamera::ChangeMediaType(IMFMediaType *pType) {
+        if (!pType) {
+            return E_POINTER;
+        }
+
         HRESULT hr = S_OK;
-        MediaTypeInfo info = GetMediaTypeInfo(pType);
-        log_info("iidx:camhook", "[{}] Changing media type: {}", m_name, info.description);
+        IMFMediaType *pDecodedType = nullptr;
+        GUID subtype = GUID_NULL;
+        DWORD streamFlags = 0;
 
         auto it = std::find_if(m_mediaTypeInfos.begin(), m_mediaTypeInfos.end(), [pType](const MediaTypeInfo &item) {
             return item.p_mediaType == pType;
         });
-        m_selectedMediaTypeIndex = it - m_mediaTypeInfos.begin();
-        m_selectedMediaTypeDescription = info.description;
+        if (it == m_mediaTypeInfos.end()) {
+            log_warning("iidx:camhook", "[{}] Requested unknown media type", m_name);
+            return E_INVALIDARG;
+        }
+
+        MediaTypeInfo info = GetMediaTypeInfo(pType);
+        log_info("iidx:camhook", "[{}] Changing media type: {}", m_name, info.description);
 
         if (SUCCEEDED(hr)) {
+            hr = pType->GetGUID(MF_MT_SUBTYPE, &subtype);
+        }
+
+        if (SUCCEEDED(hr) && m_pSourceReaderEx) {
+            hr = m_pSourceReaderEx->SetNativeMediaType(
+                (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+                pType,
+                &streamFlags
+            );
+            if (SUCCEEDED(hr)) {
+                log_info(
+                    "iidx:camhook",
+                    "[{}] Native media type applied, flags={:#x}",
+                    m_name,
+                    streamFlags
+                );
+            }
+        } else if (SUCCEEDED(hr)) {
             hr = m_pSourceReader->SetCurrentMediaType(
                 (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
                 NULL,
@@ -277,22 +570,217 @@ namespace games::iidx {
                 );
         }
 
-        if (SUCCEEDED(hr)) {
-            m_cameraWidth = info.width;
-            m_cameraHeight = info.height;
-            UpdateDrawRect();
+        if (SUCCEEDED(hr) && subtype == MFVideoFormat_MJPG) {
+            hr = WrappedMFCreateMediaType(&pDecodedType);
+            if (SUCCEEDED(hr)) {
+                hr = pDecodedType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+            }
+
+            const GUID uint64Attributes[] = {
+                MF_MT_FRAME_SIZE,
+                MF_MT_FRAME_RATE,
+                MF_MT_PIXEL_ASPECT_RATIO,
+            };
+            for (const auto &attribute : uint64Attributes) {
+                UINT64 value = 0;
+                if (SUCCEEDED(pType->GetUINT64(attribute, &value))) {
+                    hr = pDecodedType->SetUINT64(attribute, value);
+                    if (FAILED(hr)) {
+                        break;
+                    }
+                }
+            }
+
+            UINT32 interlaceMode = MFVideoInterlace_Progressive;
+            if (SUCCEEDED(hr) && SUCCEEDED(pType->GetUINT32(MF_MT_INTERLACE_MODE, &interlaceMode))) {
+                hr = pDecodedType->SetUINT32(MF_MT_INTERLACE_MODE, interlaceMode);
+            }
+
+            const GUID decodedSubtypes[] = {
+                MFVideoFormat_RGB32,
+                MFVideoFormat_YUY2,
+                MFVideoFormat_NV12,
+            };
+            if (SUCCEEDED(hr)) {
+                for (const auto &decodedSubtype : decodedSubtypes) {
+                    hr = pDecodedType->SetGUID(MF_MT_SUBTYPE, decodedSubtype);
+                    if (SUCCEEDED(hr)) {
+                        hr = m_pSourceReader->SetCurrentMediaType(
+                            (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+                            NULL,
+                            pDecodedType
+                            );
+                    }
+                    if (SUCCEEDED(hr)) {
+                        log_info(
+                            "iidx:camhook",
+                            "[{}] Decoding MJPG as {} ({}x{} @{}FPS)",
+                            m_name,
+                            GetVideoFormatName(decodedSubtype),
+                            info.width,
+                            info.height,
+                            (int)info.frameRate
+                        );
+                        m_decodedSubtype = decodedSubtype;
+                        break;
+                    }
+                }
+            }
+
+            if (SUCCEEDED(hr)) {
+                auto decodedFormat = D3DFMT_X8R8G8B8;
+                if (m_decodedSubtype == MFVideoFormat_YUY2) {
+                    decodedFormat = D3DFMT_YUY2;
+                } else if (m_decodedSubtype == MFVideoFormat_NV12) {
+                    decodedFormat = static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2'));
+                }
+                SafeRelease(&m_pDecodedSurf);
+                const HRESULT surfaceHr = m_device->CreateOffscreenPlainSurface(
+                    info.width,
+                    info.height,
+                    decodedFormat,
+                    D3DPOOL_DEFAULT,
+                    &m_pDecodedSurf,
+                    NULL
+                );
+                if (FAILED(surfaceHr)) {
+                    log_warning(
+                        "iidx:camhook",
+                        "[{}] Failed to create {} upload surface: {:#x}",
+                        m_name,
+                        GetVideoFormatName(m_decodedSubtype),
+                        (ULONG)surfaceHr
+                    );
+                }
+            }
         }
 
+        if (SUCCEEDED(hr) && subtype != MFVideoFormat_MJPG && m_pSourceReaderEx) {
+            hr = m_pSourceReader->SetCurrentMediaType(
+                (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
+                NULL,
+                pType
+            );
+        }
+
+        if (SUCCEEDED(hr) && subtype != MFVideoFormat_MJPG) {
+            SafeRelease(&m_pDecodedSurf);
+            m_decodedSubtype = GUID_NULL;
+        }
+
+        if (SUCCEEDED(hr)) {
+            SetSelectedMediaType(it - m_mediaTypeInfos.begin(), info.description);
+            EnterCriticalSection(&m_critsec);
+            m_outputSubtype = subtype == MFVideoFormat_MJPG
+                ? m_decodedSubtype
+                : subtype;
+            m_cameraWidth = info.width;
+            m_cameraHeight = info.height;
+            LeaveCriticalSection(&m_critsec);
+            UpdateDrawRect();
+            m_drawErrorLogged = false;
+        }
+
+        SafeRelease(&pDecodedType);
+        return hr;
+    }
+
+    void IIDXLocalCamera::RequestMediaType(IMFMediaType *pType) {
+        if (!pType || !m_active || !m_pSourceReaderCallback) {
+            return;
+        }
+
+        const auto info = GetMediaTypeInfo(pType);
+        log_info(
+            "iidx:camhook",
+            "[{}] Requested media type: {}",
+            m_name,
+            info.description
+        );
+
+        {
+            const std::lock_guard<std::mutex> lock(m_mediaTypeMutex);
+            m_pendingMediaType = pType;
+        }
+        m_pSourceReaderCallback->InterruptRead();
+    }
+
+    int IIDXLocalCamera::GetSelectedMediaTypeIndex() {
+        const std::lock_guard<std::mutex> lock(m_mediaTypeMutex);
+        return m_selectedMediaTypeIndex;
+    }
+
+    std::string IIDXLocalCamera::GetSelectedMediaTypeDescription() {
+        const std::lock_guard<std::mutex> lock(m_mediaTypeMutex);
+        return m_selectedMediaTypeDescription;
+    }
+
+    void IIDXLocalCamera::SetSelectedMediaTypeDescription(const std::string &description) {
+        const std::lock_guard<std::mutex> lock(m_mediaTypeMutex);
+        m_selectedMediaTypeDescription = description;
+    }
+
+    void IIDXLocalCamera::SetSelectedMediaType(int index, const std::string &description) {
+        const std::lock_guard<std::mutex> lock(m_mediaTypeMutex);
+        m_selectedMediaTypeIndex = index;
+        m_selectedMediaTypeDescription = description;
+    }
+
+    bool IIDXLocalCamera::HasPendingMediaType() {
+        const std::lock_guard<std::mutex> lock(m_mediaTypeMutex);
+        return m_pendingMediaType != nullptr;
+    }
+
+    HRESULT IIDXLocalCamera::ApplyPendingMediaType() {
+        if (!HasPendingMediaType()) {
+            return S_FALSE;
+        }
+
+        const bool startFlush = m_pSourceReaderCallback->BeginFlush();
+        HRESULT hr = S_OK;
+        if (startFlush) {
+            hr = m_pSourceReader->Flush(MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+            if (FAILED(hr)) {
+                m_pSourceReaderCallback->CancelFlush();
+            }
+        }
+        if (SUCCEEDED(hr)) {
+            hr = m_pSourceReaderCallback->WaitForFlush();
+        }
+
+        IMFMediaType *pType = nullptr;
+        if (SUCCEEDED(hr)) {
+            const std::lock_guard<std::mutex> lock(m_mediaTypeMutex);
+            pType = m_pendingMediaType;
+            m_pendingMediaType = nullptr;
+        }
+        if (SUCCEEDED(hr) && !m_active) {
+            return S_FALSE;
+        }
+        if (SUCCEEDED(hr) && pType) {
+            hr = ChangeMediaType(pType);
+        }
+        if (FAILED(hr)) {
+            log_warning(
+                "iidx:camhook",
+                "[{}] Failed to apply requested media type: {:#x}",
+                m_name,
+                (ULONG)hr
+            );
+        }
         return hr;
     }
 
     void IIDXLocalCamera::UpdateDrawRect() {
+        EnterCriticalSection(&m_critsec);
+
         double cameraRatio = (double)m_cameraWidth / m_cameraHeight;
+        const auto drawMode = m_drawMode.load();
 
         RECT cameraRect = {0, 0, m_cameraWidth, m_cameraHeight};
         RECT targetRect = {0, 0, TARGET_SURFACE_WIDTH, TARGET_SURFACE_HEIGHT};
 
-        switch (m_drawMode) {
+        switch (drawMode) {
             case DrawModeStretch: {
                 CopyRect(&m_rcSource, &cameraRect);
                 CopyRect(&m_rcDest, &targetRect);
@@ -376,6 +864,15 @@ namespace games::iidx {
             }
         }
 
+        if (m_outputSubtype == MFVideoFormat_YUY2 || m_outputSubtype == MFVideoFormat_NV12) {
+            m_rcSource.left &= ~1L;
+            m_rcSource.right = (m_rcSource.right + 1) & ~1L;
+        }
+        if (m_outputSubtype == MFVideoFormat_NV12) {
+            m_rcSource.top &= ~1L;
+            m_rcSource.bottom = (m_rcSource.bottom + 1) & ~1L;
+        }
+
         // ensure the rects are valid
         IntersectRect(&m_rcSource, &m_rcSource, &cameraRect);
         IntersectRect(&m_rcDest, &m_rcDest, &targetRect);
@@ -383,7 +880,7 @@ namespace games::iidx {
         log_info(
             "iidx:camhook", "[{}] Update draw rect mode={} src=({}, {}, {}, {}) dest=({}, {}, {}, {})",
             m_name,
-            DRAW_MODE_LABELS[m_drawMode],
+            DRAW_MODE_LABELS[drawMode],
             m_rcSource.left,
             m_rcSource.top,
             m_rcSource.right,
@@ -395,26 +892,28 @@ namespace games::iidx {
         );
 
         m_device->ColorFill(m_pDestSurf, &targetRect, D3DCOLOR_XRGB(0, 0, 0));
+        LeaveCriticalSection(&m_critsec);
     }
 
     void IIDXLocalCamera::CreateThread() {
         // Create thread
         m_drawThread = new std::thread([this]() {
-            timeutils::PreciseSleepTimer timer;
             SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 
-            double accumulator = 0.0;
+            // successful reads are paced by camera callbacks; only failures need a retry delay
+            auto retryDelay = std::chrono::milliseconds(10);
+            const auto maxRetryDelay = std::chrono::milliseconds(250);
             while (this->m_active) {
-                this->Render();
-                double frameTimeMicroSec = (1000000.0 / this->m_frameRate);
-                int floorFrameTimeMicroSec = floor(frameTimeMicroSec);
-                // This maybe an overkill but who knows
-                accumulator += (frameTimeMicroSec - floorFrameTimeMicroSec);
-                if (accumulator > 1.0) {
-                    accumulator -= 1.0;
-                    floorFrameTimeMicroSec += 1;
+                const HRESULT hr = this->Render();
+                if (hr == S_OK) {
+                    retryDelay = std::chrono::milliseconds(10);
+                } else if (this->m_active) {
+                    std::this_thread::sleep_for(retryDelay);
+                    retryDelay *= 2;
+                    if (retryDelay > maxRetryDelay) {
+                        retryDelay = maxRetryDelay;
+                    }
                 }
-                timer.sleep(std::chrono::microseconds(floorFrameTimeMicroSec));
             }
         });
     }
@@ -605,16 +1104,14 @@ namespace games::iidx {
             return "MJPG";
         }
 
+        if (subtype == MFVideoFormat_RGB32) {
+            return "RGB32";
+        }
+
         return "Unknown";
     }
 
-    /**
-     * Return values:
-     *   S_OK:      this is a "better" media type than the existing one
-     *   S_FALSE:   valid media type, but not "better"
-     *   E_*:       invalid media type
-     */
-    HRESULT IIDXLocalCamera::TryMediaType(IMFMediaType *pType, UINT32 *pBestWidth, double *pBestFrameRate) {
+    HRESULT IIDXLocalCamera::ValidateMediaType(IMFMediaType *pType) {
         HRESULT hr = S_OK;
         UINT32 width = 0, height = 0;
         GUID subtype = { 0, 0, 0, 0 };
@@ -633,9 +1130,8 @@ namespace games::iidx {
             return hr;
         }
 
-        // Only support format with converters
-        // TODO: verify conversion support with DXVA
-        if (subtype != MFVideoFormat_YUY2 && subtype != MFVideoFormat_NV12) {
+        // accept native D3D formats and MJPG decoded by the Source Reader
+        if (subtype != MFVideoFormat_YUY2 && subtype != MFVideoFormat_NV12 && subtype != MFVideoFormat_MJPG) {
             return E_FAIL;
         }
 
@@ -650,38 +1146,7 @@ namespace games::iidx {
             log_warning("iidx:camhook", "[{}] Failed to get frame rate: {:#x}", m_name, (ULONG)hr);
             return hr;
         }
-        double frameRateValue = frameRate.Numerator / frameRate.Denominator;
-
-        // Filter by aspect ratio
-        auto aspect_ratio = 4.f / 3.f;
-        if (m_prefer_16_by_9) {
-            aspect_ratio = 16.f / 9.f;
-        }
-        if (fabs((height * aspect_ratio) - width) > 0.01f) {
-            return S_FALSE;
-        }
-
-        // If we have 1280x720 already, only try for better frame rate
-        if ((*pBestWidth >= (UINT32)TARGET_SURFACE_WIDTH) && (width > *pBestWidth) && (frameRateValue < *pBestFrameRate)) {
-            return S_FALSE;
-        }
-
-        // Check if this format has better resolution / frame rate
-        if ((width > *pBestWidth) || (width >= (UINT32)TARGET_SURFACE_WIDTH && frameRateValue >= *pBestFrameRate)) {
-            // log_misc(
-            //     "iidx:camhook", "Better media type {} ({}x{}) @({} FPS)",
-            //     GetVideoFormatName(subtype),
-            //     width,
-            //     height,
-            //     (int)frameRateValue
-            // );
-
-            *pBestWidth = width;
-            *pBestFrameRate = frameRateValue;
-            return S_OK;
-        }
-
-        return S_FALSE;
+        return S_OK;
     }
 
     HRESULT IIDXLocalCamera::InitTargetTexture() {
@@ -700,24 +1165,6 @@ namespace games::iidx {
         *m_preview_texture_target = m_texture;
         m_active = TRUE;
 
-        // Create texture for colour conversion
-        hr = m_device->CreateTexture(TARGET_SURFACE_WIDTH, TARGET_SURFACE_HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_X8R8G8B8, D3DPOOL_DEFAULT, &m_conversionTexture, NULL);
-        if (FAILED(hr)) { goto done; }
-        hr = m_conversionTexture->GetSurfaceLevel(0, &m_pConversionSurf);
-        if (FAILED(hr)) { goto done; }
-
-        // Create texture for transformation
-        hr = m_device->CreateTexture(TARGET_SURFACE_WIDTH, TARGET_SURFACE_HEIGHT, 1, D3DUSAGE_DYNAMIC, D3DFMT_X8R8G8B8, D3DPOOL_DEFAULT, &m_transformTexture, NULL);
-        if (FAILED(hr)) { goto done; }
-        hr = m_transformTexture->GetSurfaceLevel(0, &m_pTransformSurf);
-        if (FAILED(hr)) { goto done; }
-
-        // Create texture for transformation result so that we don't have to screw our brain doing in-memory flipping
-        hr = m_device->CreateTexture(TARGET_SURFACE_WIDTH, TARGET_SURFACE_HEIGHT, 1, D3DUSAGE_DYNAMIC, D3DFMT_X8R8G8B8, D3DPOOL_DEFAULT, &m_transformResultTexture, NULL);
-        if (FAILED(hr)) { goto done; }
-        hr = m_transformResultTexture->GetSurfaceLevel(0, &m_pTransformResultSurf);
-        if (FAILED(hr)) { goto done; }
-
         // printTextureLevelDesc(m_texture);
         // printTextureLevelDesc(m_texture_original);
 
@@ -730,19 +1177,145 @@ namespace games::iidx {
         return hr;
     }
 
-    HRESULT IIDXLocalCamera::FlushDrawCommands() {
-        IDirect3DQuery9* pEventQuery = nullptr;
-        // It is necessary to flush the command queue
-        // or the data is not ready for the receiver to read.
-        // Adapted from : https://msdn.microsoft.com/en-us/library/windows/desktop/bb172234%28v=vs.85%29.aspx
-        // Also see : http://www.ogre3d.org/forums/viewtopic.php?f=5&t=50486
-        m_device->CreateQuery(D3DQUERYTYPE_EVENT, &pEventQuery);
-        if (pEventQuery) {
-            pEventQuery->Issue(D3DISSUE_END);
-            while (S_FALSE == pEventQuery->GetData(NULL, 0, D3DGETDATA_FLUSH));
-            pEventQuery->Release(); // Must be released or causes a leak and reference count increment
+    HRESULT IIDXLocalCamera::EnsureTransformTextures() {
+        HRESULT hr = S_OK;
+
+        if (!m_conversionTexture) {
+            hr = m_device->CreateTexture(
+                TARGET_SURFACE_WIDTH,
+                TARGET_SURFACE_HEIGHT,
+                1,
+                D3DUSAGE_RENDERTARGET,
+                D3DFMT_X8R8G8B8,
+                D3DPOOL_DEFAULT,
+                &m_conversionTexture,
+                NULL
+            );
         }
-        return S_OK;
+        if (SUCCEEDED(hr) && !m_pConversionSurf) {
+            hr = m_conversionTexture->GetSurfaceLevel(0, &m_pConversionSurf);
+        }
+
+        if (SUCCEEDED(hr) && !m_transformTexture) {
+            hr = m_device->CreateTexture(
+                TARGET_SURFACE_WIDTH,
+                TARGET_SURFACE_HEIGHT,
+                1,
+                D3DUSAGE_DYNAMIC,
+                D3DFMT_X8R8G8B8,
+                D3DPOOL_DEFAULT,
+                &m_transformTexture,
+                NULL
+            );
+        }
+        if (SUCCEEDED(hr) && !m_pTransformSurf) {
+            hr = m_transformTexture->GetSurfaceLevel(0, &m_pTransformSurf);
+        }
+
+        if (SUCCEEDED(hr) && !m_transformResultTexture) {
+            hr = m_device->CreateTexture(
+                TARGET_SURFACE_WIDTH,
+                TARGET_SURFACE_HEIGHT,
+                1,
+                D3DUSAGE_DYNAMIC,
+                D3DFMT_X8R8G8B8,
+                D3DPOOL_DEFAULT,
+                &m_transformResultTexture,
+                NULL
+            );
+        }
+        if (SUCCEEDED(hr) && !m_pTransformResultSurf) {
+            hr = m_transformResultTexture->GetSurfaceLevel(0, &m_pTransformResultSurf);
+        }
+
+        return hr;
+    }
+
+    HRESULT IIDXLocalCamera::UploadDecodedSample(IMFMediaBuffer *pSrcBuffer) {
+        if (!m_pDecodedSurf || m_decodedSubtype == GUID_NULL) {
+            return E_UNEXPECTED;
+        }
+
+        IMF2DBuffer *p2DBuffer = nullptr;
+        BYTE *pSrc = nullptr;
+        LONG srcPitch = 0;
+        DWORD maxLength = 0;
+        DWORD currentLength = 0;
+        bool locked2D = false;
+        D3DLOCKED_RECT destLockedRect = {};
+
+        LONG rowBytes = m_cameraWidth * 4;
+        LONG rowCount = m_cameraHeight;
+        if (m_decodedSubtype == MFVideoFormat_YUY2) {
+            rowBytes = m_cameraWidth * 2;
+        } else if (m_decodedSubtype == MFVideoFormat_NV12) {
+            rowBytes = m_cameraWidth;
+            rowCount += m_cameraHeight / 2;
+        }
+        if (rowBytes <= 0 || rowCount <= 0) {
+            return MF_E_INVALIDMEDIATYPE;
+        }
+
+        const DWORD rowBytesValue = static_cast<DWORD>(rowBytes);
+        const DWORD rowCountValue = static_cast<DWORD>(rowCount);
+        const ULONGLONG minimumLength =
+            static_cast<ULONGLONG>(rowBytesValue) * rowCountValue;
+
+        HRESULT hr = pSrcBuffer->QueryInterface(IID_PPV_ARGS(&p2DBuffer));
+        if (SUCCEEDED(hr)) {
+            hr = p2DBuffer->Lock2D(&pSrc, &srcPitch);
+            locked2D = SUCCEEDED(hr);
+        }
+
+        if (!locked2D) {
+            SafeRelease(&p2DBuffer);
+            hr = pSrcBuffer->Lock(&pSrc, &maxLength, &currentLength);
+            if (SUCCEEDED(hr)) {
+                if (currentLength < minimumLength) {
+                    hr = MF_E_BUFFERTOOSMALL;
+                } else {
+                    const DWORD inferredPitch = currentLength % rowCountValue == 0
+                        ? currentLength / rowCountValue
+                        : rowBytesValue;
+                    if (inferredPitch > LONG_MAX) {
+                        hr = MF_E_INVALIDMEDIATYPE;
+                    } else {
+                        srcPitch = static_cast<LONG>(inferredPitch);
+                    }
+                }
+            }
+        }
+
+        if (SUCCEEDED(hr) && std::abs(static_cast<int64_t>(srcPitch)) < rowBytes) {
+            hr = MF_E_INVALIDMEDIATYPE;
+        }
+
+        if (SUCCEEDED(hr)) {
+            hr = m_pDecodedSurf->LockRect(&destLockedRect, NULL, D3DLOCK_NOSYSLOCK);
+        }
+
+        if (SUCCEEDED(hr)) {
+            auto *pDest = static_cast<BYTE *>(destLockedRect.pBits);
+            if (srcPitch == rowBytes && destLockedRect.Pitch == rowBytes) {
+                memcpy(pDest, pSrc, static_cast<size_t>(minimumLength));
+            } else {
+                for (LONG row = 0; row < rowCount; row++) {
+                    memcpy(pDest, pSrc, rowBytesValue);
+                    pSrc += srcPitch;
+                    pDest += destLockedRect.Pitch;
+                }
+            }
+            m_pDecodedSurf->UnlockRect();
+        }
+
+        if (locked2D) {
+            p2DBuffer->Unlock2D();
+            SafeRelease(&p2DBuffer);
+        } else if (pSrc) {
+            pSrcBuffer->Unlock();
+        }
+
+        return hr;
     }
 
     HRESULT IIDXLocalCamera::DrawSample(IMFMediaBuffer *pSrcBuffer) {
@@ -751,8 +1324,8 @@ namespace games::iidx {
         }
 
         // snap variables now so they don't change while inside the critical section
-        const auto flip_h = m_flipHorizontal;
-        const auto flip_v = m_flipVertical;
+        const auto flip_h = m_flipHorizontal.load();
+        const auto flip_v = m_flipVertical.load();
 
         EnterCriticalSection(&m_critsec);
 
@@ -760,61 +1333,94 @@ namespace games::iidx {
         IDirect3DSurface9 *pCameraSurf = NULL;
 
         hr = WrappedMFGetService(pSrcBuffer, MR_BUFFER_SERVICE, IID_PPV_ARGS(&pCameraSurf));
+        if (FAILED(hr) && m_pDecodedSurf) {
+            hr = UploadDecodedSample(pSrcBuffer);
+            if (SUCCEEDED(hr)) {
+                pCameraSurf = m_pDecodedSurf;
+                pCameraSurf->AddRef();
+            }
+        }
+
+        if (FAILED(hr)) {
+            log_warning(
+                "iidx:camhook",
+                "[{}] Failed to access decoded frame: {:#x}",
+                m_name,
+                (ULONG)hr
+            );
+            LeaveCriticalSection(&m_critsec);
+            return hr;
+        }
 
         if (flip_h || flip_v) {
+            hr = EnsureTransformTextures();
 
             // Stretch Camera content to texture and perform color space conversion
-            hr = m_device->StretchRect(pCameraSurf, &m_rcSource, m_pConversionSurf, &m_rcDest, D3DTEXF_LINEAR);
+            if (SUCCEEDED(hr)) {
+                hr = m_device->StretchRect(pCameraSurf, &m_rcSource, m_pConversionSurf, &m_rcDest, D3DTEXF_LINEAR);
+            }
 
             // Copy converted camera content to dynamic texture for vertical/horizontal flipping
-            hr = m_device->StretchRect(m_pConversionSurf, NULL, m_pTransformSurf, NULL, D3DTEXF_NONE);
+            if (SUCCEEDED(hr)) {
+                hr = m_device->StretchRect(m_pConversionSurf, NULL, m_pTransformSurf, NULL, D3DTEXF_NONE);
+            }
 
             // Transform
-            D3DLOCKED_RECT srcLockedRect;
-            hr = m_pTransformSurf->LockRect(&srcLockedRect, NULL, D3DLOCK_NOSYSLOCK | D3DLOCK_READONLY);
-            D3DLOCKED_RECT destLockedRect;
-            hr = m_pTransformResultSurf->LockRect(&destLockedRect, NULL, D3DLOCK_NOSYSLOCK);
-
-            BYTE* pSrc = (BYTE*)srcLockedRect.pBits;
-            BYTE* pDest = (BYTE*)destLockedRect.pBits;
-            const int pixelSize = 4;
-
-            if (flip_v) {
-                pDest += destLockedRect.Pitch * (TARGET_SURFACE_HEIGHT - 1);
+            D3DLOCKED_RECT srcLockedRect = {};
+            D3DLOCKED_RECT destLockedRect = {};
+            bool srcLocked = false;
+            bool destLocked = false;
+            if (SUCCEEDED(hr)) {
+                hr = m_pTransformSurf->LockRect(&srcLockedRect, NULL, D3DLOCK_NOSYSLOCK | D3DLOCK_READONLY);
+                srcLocked = SUCCEEDED(hr);
+            }
+            if (SUCCEEDED(hr)) {
+                hr = m_pTransformResultSurf->LockRect(&destLockedRect, NULL, D3DLOCK_NOSYSLOCK);
+                destLocked = SUCCEEDED(hr);
             }
 
-            for (int y = 0; y < TARGET_SURFACE_HEIGHT; y++) {
-                for (int x = 0; x < TARGET_SURFACE_WIDTH; x++) {
-                    memcpy(
-                        pDest + x * pixelSize,
-                        pSrc + (flip_h ? (TARGET_SURFACE_WIDTH - x - 1) : x) * pixelSize,
-                        pixelSize
-                    );
-                }
-
-                pSrc += srcLockedRect.Pitch;
-                if (flip_v) {
-                    pDest -= destLockedRect.Pitch;
-                } else {
-                    pDest += destLockedRect.Pitch;
+            if (SUCCEEDED(hr)) {
+                const auto *srcBase = static_cast<const BYTE *>(srcLockedRect.pBits);
+                auto *destBase = static_cast<BYTE *>(destLockedRect.pBits);
+                const size_t rowBytes = TARGET_SURFACE_WIDTH * sizeof(uint32_t);
+                for (int y = 0; y < TARGET_SURFACE_HEIGHT; y++) {
+                    const auto *srcRow = srcBase + y * srcLockedRect.Pitch;
+                    const int destY = flip_v ? TARGET_SURFACE_HEIGHT - y - 1 : y;
+                    auto *destRow = destBase + destY * destLockedRect.Pitch;
+                    if (flip_h) {
+                        const auto *srcPixels = reinterpret_cast<const uint32_t *>(srcRow);
+                        auto *destPixels = reinterpret_cast<uint32_t *>(destRow);
+                        std::reverse_copy(
+                            srcPixels,
+                            srcPixels + TARGET_SURFACE_WIDTH,
+                            destPixels
+                        );
+                    } else {
+                        memcpy(destRow, srcRow, rowBytes);
+                    }
                 }
             }
 
-            m_pTransformSurf->UnlockRect();
-            m_pTransformResultSurf->UnlockRect();
+            if (destLocked) {
+                m_pTransformResultSurf->UnlockRect();
+            }
+            if (srcLocked) {
+                m_pTransformSurf->UnlockRect();
+            }
 
             // Stretch camera texture to transform surface
-            hr = m_device->StretchRect(m_pTransformResultSurf, NULL, m_pDestSurf, NULL, D3DTEXF_NONE);
+            if (SUCCEEDED(hr)) {
+                hr = m_device->StretchRect(m_pTransformResultSurf, NULL, m_pDestSurf, NULL, D3DTEXF_NONE);
+            }
 
         } else {
             // No transformation needed, stretch to destination texture directly
             hr = m_device->StretchRect(pCameraSurf, &m_rcSource, m_pDestSurf, &m_rcDest, D3DTEXF_LINEAR);
         }
 
-        FlushDrawCommands();
-
-        if (FAILED(hr)) {
+        if (FAILED(hr) && !m_drawErrorLogged) {
             log_warning("iidx:camhook", "Error in DrawSample {:#x}", (ULONG)hr);
+            m_drawErrorLogged = true;
         }
         SafeRelease(&pCameraSurf);
         LeaveCriticalSection(&m_critsec);
@@ -822,25 +1428,34 @@ namespace games::iidx {
     }
 
     HRESULT IIDXLocalCamera::ReadSample() {
-        HRESULT hr;
-        DWORD streamIndex, flags;
-        LONGLONG llTimeStamp;
         IMFSample *pSample = nullptr;
         IMFMediaBuffer *pBuffer = nullptr;
 
-        hr = m_pSourceReader->ReadSample(
+        m_pSourceReaderCallback->PrepareRead();
+        if (!m_active || m_pSourceReaderCallback->IsShutdown() || HasPendingMediaType()) {
+            return S_FALSE;
+        }
+
+        HRESULT hr = m_pSourceReader->ReadSample(
             MF_SOURCE_READER_FIRST_VIDEO_STREAM,
             0,
-            &streamIndex,
-            &flags,
-            &llTimeStamp,
-            &pSample
+            nullptr,
+            nullptr,
+            nullptr,
+            nullptr
         );
+        if (SUCCEEDED(hr)) {
+            hr = m_pSourceReaderCallback->WaitForRead(&pSample);
+        }
 
-        if (pSample) {
+        if (SUCCEEDED(hr) && pSample) {
             // Draw to D3D
-            pSample->GetBufferByIndex(0, &pBuffer);
-            hr = DrawSample(pBuffer);
+            hr = pSample->GetBufferByIndex(0, &pBuffer);
+            if (SUCCEEDED(hr)) {
+                hr = DrawSample(pBuffer);
+            }
+        } else if (hr == S_OK) {
+            hr = S_FALSE;
         }
 
         SafeRelease(&pBuffer);
@@ -849,20 +1464,32 @@ namespace games::iidx {
         return hr;
     }
 
-    LPDIRECT3DTEXTURE9 IIDXLocalCamera::Render() {
+    HRESULT IIDXLocalCamera::Render() {
         if (!m_active) {
-            return nullptr;
+            return S_FALSE;
         }
-        HRESULT hr = ReadSample();
+        HRESULT hr = ApplyPendingMediaType();
         if (FAILED(hr)) {
-            return nullptr;
+            return hr;
         }
-        return m_texture;
+        return ReadSample();
     }
 
     ULONG IIDXLocalCamera::Release() {
         log_info("iidx:camhook", "[{}] Release camera", m_name);
         m_active = false;
+
+        if (m_pSourceReaderCallback) {
+            m_pSourceReaderCallback->BeginShutdown();
+        }
+        if (m_pSourceReader) {
+            m_pSourceReader->Flush(MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+        }
+        if (m_drawThread) {
+            m_drawThread->join();
+            delete m_drawThread;
+            m_drawThread = nullptr;
+        }
 
         ULONG uCount = InterlockedDecrement(&m_nRefCount);
 
@@ -876,11 +1503,15 @@ namespace games::iidx {
         SafeRelease(&m_pDestSurf);
         SafeRelease(&m_pTransformSurf);
         SafeRelease(&m_pConversionSurf);
+        SafeRelease(&m_pDecodedSurf);
         SafeRelease(&m_pTransformResultSurf);
         SafeRelease(&m_texture);
         SafeRelease(&m_conversionTexture);
         SafeRelease(&m_transformTexture);
         SafeRelease(&m_transformResultTexture);
+        SafeRelease(&m_pSourceReaderEx);
+        SafeRelease(&m_pSourceReader);
+        SafeRelease(&m_pSourceReaderCallback);
 
         if (m_pSource) {
             m_pSource->Shutdown();
