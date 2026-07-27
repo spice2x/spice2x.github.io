@@ -163,6 +163,9 @@ namespace overlay::windows {
         if (ImGui::Checkbox("Vertical Flip", &flipVertical)) {
             selectedCamera->m_flipVertical.store(flipVertical);
         }
+        ImGui::HelpMarker(
+            "Flips are done by the CPU and can be very expensive, potentially causing frame drops! "
+            "Prefer to use camera's built-in flip if available.");
 
         // Camera control parameters
         ImGui::Separator();

@@ -358,6 +358,12 @@ namespace games::iidx {
         log_misc("iidx:camhook", "[{}] Find best media type", m_name);
         UINT32 bestWidth = 0;
         double bestFrameRate = 0;
+        UINT32 bestNV12Width = 0;
+        double bestNV12FrameRate = 0;
+        IMFMediaType *pAutoNV12Type = nullptr;
+        UINT32 bestYUY2Width = 0;
+        double bestYUY2FrameRate = 0;
+        IMFMediaType *pAutoYUY2Type = nullptr;
 
         // The loop should terminate by MF_E_NO_MORE_TYPES
         // Adding a hard limit just in case
@@ -381,6 +387,14 @@ namespace games::iidx {
                 m_mediaTypeInfos.push_back(info);
                 if (hr == S_OK) {
                     m_pAutoMediaType = pType;
+                }
+                if (info.subtype == MFVideoFormat_NV12 &&
+                    TryMediaType(pType, &bestNV12Width, &bestNV12FrameRate) == S_OK) {
+                    pAutoNV12Type = pType;
+                }
+                if (info.subtype == MFVideoFormat_YUY2 &&
+                    TryMediaType(pType, &bestYUY2Width, &bestYUY2FrameRate) == S_OK) {
+                    pAutoYUY2Type = pType;
                 }
             } else {
                 // Invalid media type (e.g. no conversion function)
@@ -407,7 +421,12 @@ namespace games::iidx {
             return MF_E_INVALIDMEDIATYPE;
         }
 
-        if (!m_pAutoMediaType) {
+        // prefer native GPU-ready formats to avoid MJPG decoding; NV12 uses less bandwidth than YUY2
+        if (pAutoNV12Type) {
+            m_pAutoMediaType = pAutoNV12Type;
+        } else if (pAutoYUY2Type) {
+            m_pAutoMediaType = pAutoYUY2Type;
+        } else if (!m_pAutoMediaType) {
             m_pAutoMediaType = m_mediaTypeInfos.front().p_mediaType;
         }
 
