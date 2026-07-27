@@ -112,7 +112,6 @@ namespace games::iidx {
         std::string m_selectedMediaTypeDescription = "";
 
         // Camera Format information
-        double                  m_frameRate = 0;
         LONG                    m_cameraWidth;
         LONG                    m_cameraHeight;
 
@@ -213,8 +212,14 @@ namespace games::iidx {
         void CreateThread();
         MediaTypeInfo GetMediaTypeInfo(IMFMediaType *pType);
         std::string GetVideoFormatName(GUID subtype);
-        HRESULT TryMediaType(IMFMediaType *pType, UINT32 *pBestWidth, double *pBestFrameRate);
+        static bool CompareMediaTypes(const MediaTypeInfo &a, const MediaTypeInfo &b);
+        bool MatchesPreferredAspect(const MediaTypeInfo &info) const;
+        static bool IsBetterAutoType(const MediaTypeInfo &candidate, const MediaTypeInfo &current);
+        IMFMediaType *FindBestNativeAutoType(bool requirePreferredAspect) const;
+        IMFMediaType *FindBestAutoType(const GUID &subtype, bool requirePreferredAspect) const;
+        HRESULT ValidateMediaType(IMFMediaType *pType);
         HRESULT InitTargetTexture();
+        HRESULT EnsureTransformTextures();
         HRESULT InitCameraControl();
         void SetSelectedMediaType(int index, const std::string &description);
         bool HasPendingMediaType();
@@ -222,7 +227,7 @@ namespace games::iidx {
         HRESULT UploadDecodedSample(IMFMediaBuffer *pSrcBuffer);
         HRESULT DrawSample(IMFMediaBuffer *pSrcBuffer);
         HRESULT ReadSample();
-        LPDIRECT3DTEXTURE9 Render();
+        HRESULT Render();
     };
 }
 

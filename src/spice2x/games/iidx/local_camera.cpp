@@ -6,7 +6,6 @@
 #include <condition_variable>
 
 #include "util/logging.h"
-#include "util/precise_timer.h"
 #include "util/utils.h"
 #include "mf_wrappers.h"
 
@@ -345,6 +344,101 @@ namespace games::iidx {
         LeaveCriticalSection(&m_critsec);
     }
 
+    bool IIDXLocalCamera::CompareMediaTypes(const MediaTypeInfo &a, const MediaTypeInfo &b) {
+        if (a.width != b.width) {
+            return a.width > b.width;
+        }
+        if (a.height != b.height) {
+            return a.height > b.height;
+        }
+        if (a.frameRate != b.frameRate) {
+            return (int)a.frameRate > (int)b.frameRate;
+        }
+        return a.subtype.Data1 > b.subtype.Data1;
+    }
+
+    bool IIDXLocalCamera::MatchesPreferredAspect(const MediaTypeInfo &info) const {
+        const double aspectRatio = m_prefer_16_by_9 ? RATIO_16_9 : RATIO_4_3;
+        return fabs(info.height * aspectRatio - info.width) <= 0.01;
+    }
+
+    bool IIDXLocalCamera::IsBetterAutoType(
+            const MediaTypeInfo &candidate,
+            const MediaTypeInfo &current) {
+        const bool candidateExact =
+            candidate.width == (UINT32)TARGET_SURFACE_WIDTH &&
+            candidate.height == (UINT32)TARGET_SURFACE_HEIGHT;
+        const bool currentExact =
+            current.width == (UINT32)TARGET_SURFACE_WIDTH &&
+            current.height == (UINT32)TARGET_SURFACE_HEIGHT;
+        if (candidateExact != currentExact) {
+            return candidateExact;
+        }
+
+        const bool candidateMeetsTarget =
+            candidate.width >= (UINT32)TARGET_SURFACE_WIDTH &&
+            candidate.height >= (UINT32)TARGET_SURFACE_HEIGHT;
+        const bool currentMeetsTarget =
+            current.width >= (UINT32)TARGET_SURFACE_WIDTH &&
+            current.height >= (UINT32)TARGET_SURFACE_HEIGHT;
+        if (candidateMeetsTarget != currentMeetsTarget) {
+            return candidateMeetsTarget;
+        }
+
+        const uint64_t candidatePixels = (uint64_t)candidate.width * candidate.height;
+        const uint64_t currentPixels = (uint64_t)current.width * current.height;
+        if (candidatePixels != currentPixels) {
+            return candidateMeetsTarget
+                ? candidatePixels < currentPixels
+                : candidatePixels > currentPixels;
+        }
+        if (candidate.frameRate != current.frameRate) {
+            return candidate.frameRate > current.frameRate;
+        }
+        if (candidate.subtype == current.subtype) {
+            return false;
+        }
+        if (candidate.subtype == MFVideoFormat_NV12) {
+            return true;
+        }
+        if (current.subtype == MFVideoFormat_NV12) {
+            return false;
+        }
+        return candidate.subtype == MFVideoFormat_YUY2;
+    }
+
+    IMFMediaType *IIDXLocalCamera::FindBestNativeAutoType(bool requirePreferredAspect) const {
+        const MediaTypeInfo *best = nullptr;
+        for (const auto &info : m_mediaTypeInfos) {
+            const bool isNative =
+                info.subtype == MFVideoFormat_NV12 ||
+                info.subtype == MFVideoFormat_YUY2;
+            if (!isNative || (requirePreferredAspect && !MatchesPreferredAspect(info))) {
+                continue;
+            }
+            if (!best || IsBetterAutoType(info, *best)) {
+                best = &info;
+            }
+        }
+        return best ? best->p_mediaType : nullptr;
+    }
+
+    IMFMediaType *IIDXLocalCamera::FindBestAutoType(
+            const GUID &subtype,
+            bool requirePreferredAspect) const {
+        const MediaTypeInfo *best = nullptr;
+        for (const auto &info : m_mediaTypeInfos) {
+            if ((subtype != GUID_NULL && info.subtype != subtype) ||
+                (requirePreferredAspect && !MatchesPreferredAspect(info))) {
+                continue;
+            }
+            if (!best || IsBetterAutoType(info, *best)) {
+                best = &info;
+            }
+        }
+        return best ? best->p_mediaType : nullptr;
+    }
+
     HRESULT IIDXLocalCamera::StartCapture() {
         HRESULT hr = S_OK;
         IMFMediaType *pType = nullptr;
@@ -356,14 +450,6 @@ namespace games::iidx {
 
         // Try to find a suitable output type.
         log_misc("iidx:camhook", "[{}] Find best media type", m_name);
-        UINT32 bestWidth = 0;
-        double bestFrameRate = 0;
-        UINT32 bestNV12Width = 0;
-        double bestNV12FrameRate = 0;
-        IMFMediaType *pAutoNV12Type = nullptr;
-        UINT32 bestYUY2Width = 0;
-        double bestYUY2FrameRate = 0;
-        IMFMediaType *pAutoYUY2Type = nullptr;
 
         // The loop should terminate by MF_E_NO_MORE_TYPES
         // Adding a hard limit just in case
@@ -381,21 +467,10 @@ namespace games::iidx {
                 break;
             }
 
-            hr = TryMediaType(pType, &bestWidth, &bestFrameRate);
+            hr = ValidateMediaType(pType);
             if (SUCCEEDED(hr)) {
                 MediaTypeInfo info = GetMediaTypeInfo(pType);
                 m_mediaTypeInfos.push_back(info);
-                if (hr == S_OK) {
-                    m_pAutoMediaType = pType;
-                }
-                if (info.subtype == MFVideoFormat_NV12 &&
-                    TryMediaType(pType, &bestNV12Width, &bestNV12FrameRate) == S_OK) {
-                    pAutoNV12Type = pType;
-                }
-                if (info.subtype == MFVideoFormat_YUY2 &&
-                    TryMediaType(pType, &bestYUY2Width, &bestYUY2FrameRate) == S_OK) {
-                    pAutoYUY2Type = pType;
-                }
             } else {
                 // Invalid media type (e.g. no conversion function)
                 SafeRelease(&pType);
@@ -403,31 +478,20 @@ namespace games::iidx {
         }
 
         // Sort available media types
-        std::sort(m_mediaTypeInfos.begin(), m_mediaTypeInfos.end(), [](const MediaTypeInfo &a, const MediaTypeInfo &b) {
-            if (a.width != b.width) {
-                return a.width > b.width;
-            }
-            if (a.height != b.height) {
-                return a.height > b.height;
-            }
-            if (a.frameRate != b.frameRate) {
-                return (int)a.frameRate > (int)b.frameRate;
-            }
-            return a.subtype.Data1 > b.subtype.Data1;
-        });
+        std::sort(m_mediaTypeInfos.begin(), m_mediaTypeInfos.end(), CompareMediaTypes);
 
         if (m_mediaTypeInfos.empty()) {
             log_warning("iidx:camhook", "[{}] No supported media types", m_name);
             return MF_E_INVALIDMEDIATYPE;
         }
 
-        // prefer native GPU-ready formats to avoid MJPG decoding; NV12 uses less bandwidth than YUY2
-        if (pAutoNV12Type) {
-            m_pAutoMediaType = pAutoNV12Type;
-        } else if (pAutoYUY2Type) {
-            m_pAutoMediaType = pAutoYUY2Type;
-        } else if (!m_pAutoMediaType) {
-            m_pAutoMediaType = m_mediaTypeInfos.front().p_mediaType;
+        // rank native formats by target fit and FPS, preferring NV12 only when otherwise equal
+        m_pAutoMediaType = FindBestNativeAutoType(true);
+        if (!m_pAutoMediaType) {
+            m_pAutoMediaType = FindBestAutoType(MFVideoFormat_MJPG, true);
+        }
+        if (!m_pAutoMediaType) {
+            m_pAutoMediaType = FindBestAutoType(GUID_NULL, false);
         }
 
         IMFMediaType *pSelectedMediaType = nullptr;
@@ -612,7 +676,6 @@ namespace games::iidx {
                 : subtype;
             m_cameraWidth = info.width;
             m_cameraHeight = info.height;
-            m_frameRate = info.frameRate;
             LeaveCriticalSection(&m_critsec);
             UpdateDrawRect();
             m_drawErrorLogged = false;
@@ -835,21 +898,22 @@ namespace games::iidx {
     void IIDXLocalCamera::CreateThread() {
         // Create thread
         m_drawThread = new std::thread([this]() {
-            timeutils::PreciseSleepTimer timer;
             SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
 
-            double accumulator = 0.0;
+            // successful reads are paced by camera callbacks; only failures need a retry delay
+            auto retryDelay = std::chrono::milliseconds(10);
+            const auto maxRetryDelay = std::chrono::milliseconds(250);
             while (this->m_active) {
-                this->Render();
-                double frameTimeMicroSec = (1000000.0 / this->m_frameRate);
-                int floorFrameTimeMicroSec = floor(frameTimeMicroSec);
-                // This maybe an overkill but who knows
-                accumulator += (frameTimeMicroSec - floorFrameTimeMicroSec);
-                if (accumulator > 1.0) {
-                    accumulator -= 1.0;
-                    floorFrameTimeMicroSec += 1;
+                const HRESULT hr = this->Render();
+                if (hr == S_OK) {
+                    retryDelay = std::chrono::milliseconds(10);
+                } else if (this->m_active) {
+                    std::this_thread::sleep_for(retryDelay);
+                    retryDelay *= 2;
+                    if (retryDelay > maxRetryDelay) {
+                        retryDelay = maxRetryDelay;
+                    }
                 }
-                timer.sleep(std::chrono::microseconds(floorFrameTimeMicroSec));
             }
         });
     }
@@ -1047,13 +1111,7 @@ namespace games::iidx {
         return "Unknown";
     }
 
-    /**
-     * Return values:
-     *   S_OK:      this is a "better" media type than the existing one
-     *   S_FALSE:   valid media type, but not "better"
-     *   E_*:       invalid media type
-     */
-    HRESULT IIDXLocalCamera::TryMediaType(IMFMediaType *pType, UINT32 *pBestWidth, double *pBestFrameRate) {
+    HRESULT IIDXLocalCamera::ValidateMediaType(IMFMediaType *pType) {
         HRESULT hr = S_OK;
         UINT32 width = 0, height = 0;
         GUID subtype = { 0, 0, 0, 0 };
@@ -1088,38 +1146,7 @@ namespace games::iidx {
             log_warning("iidx:camhook", "[{}] Failed to get frame rate: {:#x}", m_name, (ULONG)hr);
             return hr;
         }
-        double frameRateValue = frameRate.Numerator / frameRate.Denominator;
-
-        // Filter by aspect ratio
-        auto aspect_ratio = 4.f / 3.f;
-        if (m_prefer_16_by_9) {
-            aspect_ratio = 16.f / 9.f;
-        }
-        if (fabs((height * aspect_ratio) - width) > 0.01f) {
-            return S_FALSE;
-        }
-
-        // If we have 1280x720 already, only try for better frame rate
-        if ((*pBestWidth >= (UINT32)TARGET_SURFACE_WIDTH) && (width > *pBestWidth) && (frameRateValue < *pBestFrameRate)) {
-            return S_FALSE;
-        }
-
-        // Check if this format has better resolution / frame rate
-        if ((width > *pBestWidth) || (width >= (UINT32)TARGET_SURFACE_WIDTH && frameRateValue >= *pBestFrameRate)) {
-            // log_misc(
-            //     "iidx:camhook", "Better media type {} ({}x{}) @({} FPS)",
-            //     GetVideoFormatName(subtype),
-            //     width,
-            //     height,
-            //     (int)frameRateValue
-            // );
-
-            *pBestWidth = width;
-            *pBestFrameRate = frameRateValue;
-            return S_OK;
-        }
-
-        return S_FALSE;
+        return S_OK;
     }
 
     HRESULT IIDXLocalCamera::InitTargetTexture() {
@@ -1138,24 +1165,6 @@ namespace games::iidx {
         *m_preview_texture_target = m_texture;
         m_active = TRUE;
 
-        // Create texture for colour conversion
-        hr = m_device->CreateTexture(TARGET_SURFACE_WIDTH, TARGET_SURFACE_HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_X8R8G8B8, D3DPOOL_DEFAULT, &m_conversionTexture, NULL);
-        if (FAILED(hr)) { goto done; }
-        hr = m_conversionTexture->GetSurfaceLevel(0, &m_pConversionSurf);
-        if (FAILED(hr)) { goto done; }
-
-        // Create texture for transformation
-        hr = m_device->CreateTexture(TARGET_SURFACE_WIDTH, TARGET_SURFACE_HEIGHT, 1, D3DUSAGE_DYNAMIC, D3DFMT_X8R8G8B8, D3DPOOL_DEFAULT, &m_transformTexture, NULL);
-        if (FAILED(hr)) { goto done; }
-        hr = m_transformTexture->GetSurfaceLevel(0, &m_pTransformSurf);
-        if (FAILED(hr)) { goto done; }
-
-        // Create texture for transformation result so that we don't have to screw our brain doing in-memory flipping
-        hr = m_device->CreateTexture(TARGET_SURFACE_WIDTH, TARGET_SURFACE_HEIGHT, 1, D3DUSAGE_DYNAMIC, D3DFMT_X8R8G8B8, D3DPOOL_DEFAULT, &m_transformResultTexture, NULL);
-        if (FAILED(hr)) { goto done; }
-        hr = m_transformResultTexture->GetSurfaceLevel(0, &m_pTransformResultSurf);
-        if (FAILED(hr)) { goto done; }
-
         // printTextureLevelDesc(m_texture);
         // printTextureLevelDesc(m_texture_original);
 
@@ -1165,6 +1174,60 @@ namespace games::iidx {
         } else {
             log_warning("iidx:camhook", "[{}] Failed to create texture: {:#x}", m_name, (ULONG)hr);
         }
+        return hr;
+    }
+
+    HRESULT IIDXLocalCamera::EnsureTransformTextures() {
+        HRESULT hr = S_OK;
+
+        if (!m_conversionTexture) {
+            hr = m_device->CreateTexture(
+                TARGET_SURFACE_WIDTH,
+                TARGET_SURFACE_HEIGHT,
+                1,
+                D3DUSAGE_RENDERTARGET,
+                D3DFMT_X8R8G8B8,
+                D3DPOOL_DEFAULT,
+                &m_conversionTexture,
+                NULL
+            );
+        }
+        if (SUCCEEDED(hr) && !m_pConversionSurf) {
+            hr = m_conversionTexture->GetSurfaceLevel(0, &m_pConversionSurf);
+        }
+
+        if (SUCCEEDED(hr) && !m_transformTexture) {
+            hr = m_device->CreateTexture(
+                TARGET_SURFACE_WIDTH,
+                TARGET_SURFACE_HEIGHT,
+                1,
+                D3DUSAGE_DYNAMIC,
+                D3DFMT_X8R8G8B8,
+                D3DPOOL_DEFAULT,
+                &m_transformTexture,
+                NULL
+            );
+        }
+        if (SUCCEEDED(hr) && !m_pTransformSurf) {
+            hr = m_transformTexture->GetSurfaceLevel(0, &m_pTransformSurf);
+        }
+
+        if (SUCCEEDED(hr) && !m_transformResultTexture) {
+            hr = m_device->CreateTexture(
+                TARGET_SURFACE_WIDTH,
+                TARGET_SURFACE_HEIGHT,
+                1,
+                D3DUSAGE_DYNAMIC,
+                D3DFMT_X8R8G8B8,
+                D3DPOOL_DEFAULT,
+                &m_transformResultTexture,
+                NULL
+            );
+        }
+        if (SUCCEEDED(hr) && !m_pTransformResultSurf) {
+            hr = m_transformResultTexture->GetSurfaceLevel(0, &m_pTransformResultSurf);
+        }
+
         return hr;
     }
 
@@ -1233,10 +1296,14 @@ namespace games::iidx {
 
         if (SUCCEEDED(hr)) {
             auto *pDest = static_cast<BYTE *>(destLockedRect.pBits);
-            for (LONG row = 0; row < rowCount; row++) {
-                memcpy(pDest, pSrc, rowBytes);
-                pSrc += srcPitch;
-                pDest += destLockedRect.Pitch;
+            if (srcPitch == rowBytes && destLockedRect.Pitch == rowBytes) {
+                memcpy(pDest, pSrc, static_cast<size_t>(minimumLength));
+            } else {
+                for (LONG row = 0; row < rowCount; row++) {
+                    memcpy(pDest, pSrc, rowBytesValue);
+                    pSrc += srcPitch;
+                    pDest += destLockedRect.Pitch;
+                }
             }
             m_pDecodedSurf->UnlockRect();
         }
@@ -1286,9 +1353,12 @@ namespace games::iidx {
         }
 
         if (flip_h || flip_v) {
+            hr = EnsureTransformTextures();
 
             // Stretch Camera content to texture and perform color space conversion
-            hr = m_device->StretchRect(pCameraSurf, &m_rcSource, m_pConversionSurf, &m_rcDest, D3DTEXF_LINEAR);
+            if (SUCCEEDED(hr)) {
+                hr = m_device->StretchRect(pCameraSurf, &m_rcSource, m_pConversionSurf, &m_rcDest, D3DTEXF_LINEAR);
+            }
 
             // Copy converted camera content to dynamic texture for vertical/horizontal flipping
             if (SUCCEEDED(hr)) {
@@ -1384,6 +1454,8 @@ namespace games::iidx {
             if (SUCCEEDED(hr)) {
                 hr = DrawSample(pBuffer);
             }
+        } else if (hr == S_OK) {
+            hr = S_FALSE;
         }
 
         SafeRelease(&pBuffer);
@@ -1392,19 +1464,15 @@ namespace games::iidx {
         return hr;
     }
 
-    LPDIRECT3DTEXTURE9 IIDXLocalCamera::Render() {
+    HRESULT IIDXLocalCamera::Render() {
         if (!m_active) {
-            return nullptr;
+            return S_FALSE;
         }
         HRESULT hr = ApplyPendingMediaType();
         if (FAILED(hr)) {
-            return nullptr;
+            return hr;
         }
-        hr = ReadSample();
-        if (FAILED(hr)) {
-            return nullptr;
-        }
-        return m_texture;
+        return ReadSample();
     }
 
     ULONG IIDXLocalCamera::Release() {
