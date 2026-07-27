@@ -43,6 +43,7 @@ double RATIO_4_3 = 4.0 / 3.0;
 
 namespace games::iidx {
 
+    // async reads keep mode changes and shutdown interruptible without blocking the UI thread
     class IIDXCameraSourceReaderCallback final : public IMFSourceReaderCallback {
     public:
         HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **object) override {
@@ -90,8 +91,10 @@ namespace games::iidx {
 
         HRESULT STDMETHODCALLTYPE OnFlush(DWORD) override {
             const std::lock_guard<std::mutex> lock(m_mutex);
-            m_flushComplete = true;
-            m_condition.notify_all();
+            if (m_flushPending) {
+                m_flushComplete = true;
+                m_condition.notify_all();
+            }
             return S_OK;
         }
 
@@ -110,8 +113,11 @@ namespace games::iidx {
         HRESULT WaitForRead(IMFSample **sample) {
             std::unique_lock<std::mutex> lock(m_mutex);
             m_condition.wait(lock, [this] {
-                return m_readComplete || m_interrupted;
+                return m_readComplete || m_interrupted || m_shutdown;
             });
+            if (m_shutdown) {
+                return MF_E_SHUTDOWN;
+            }
             if (m_interrupted) {
                 return S_FALSE;
             }
@@ -127,18 +133,46 @@ namespace games::iidx {
             m_condition.notify_all();
         }
 
-        void PrepareFlush() {
+        void BeginShutdown() {
             const std::lock_guard<std::mutex> lock(m_mutex);
+            m_shutdown = true;
+            m_interrupted = true;
+            m_condition.notify_all();
+        }
+
+        bool IsShutdown() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            return m_shutdown;
+        }
+
+        bool BeginFlush() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_flushPending) {
+                return false;
+            }
+            m_flushPending = true;
+            m_flushComplete = false;
+            return true;
+        }
+
+        void CancelFlush() {
+            const std::lock_guard<std::mutex> lock(m_mutex);
+            m_flushPending = false;
             m_flushComplete = false;
         }
 
         HRESULT WaitForFlush() {
             std::unique_lock<std::mutex> lock(m_mutex);
             if (!m_condition.wait_for(lock, std::chrono::seconds(2), [this] {
-                    return m_flushComplete;
+                    return m_flushComplete || m_shutdown;
                 })) {
                 return HRESULT_FROM_WIN32(ERROR_TIMEOUT);
             }
+            if (m_shutdown) {
+                return MF_E_SHUTDOWN;
+            }
+            m_flushPending = false;
+            m_flushComplete = false;
             return S_OK;
         }
 
@@ -153,8 +187,10 @@ namespace games::iidx {
         IMFSample *m_sample = nullptr;
         HRESULT m_status = S_OK;
         bool m_readComplete = false;
+        bool m_flushPending = false;
         bool m_flushComplete = false;
         bool m_interrupted = false;
+        bool m_shutdown = false;
     };
 
     IIDXLocalCamera::~IIDXLocalCamera() {
@@ -404,16 +440,25 @@ namespace games::iidx {
     }
 
     HRESULT IIDXLocalCamera::ChangeMediaType(IMFMediaType *pType) {
+        if (!pType) {
+            return E_POINTER;
+        }
+
         HRESULT hr = S_OK;
         IMFMediaType *pDecodedType = nullptr;
         GUID subtype = GUID_NULL;
         DWORD streamFlags = 0;
-        MediaTypeInfo info = GetMediaTypeInfo(pType);
-        log_info("iidx:camhook", "[{}] Changing media type: {}", m_name, info.description);
 
         auto it = std::find_if(m_mediaTypeInfos.begin(), m_mediaTypeInfos.end(), [pType](const MediaTypeInfo &item) {
             return item.p_mediaType == pType;
         });
+        if (it == m_mediaTypeInfos.end()) {
+            log_warning("iidx:camhook", "[{}] Requested unknown media type", m_name);
+            return E_INVALIDARG;
+        }
+
+        MediaTypeInfo info = GetMediaTypeInfo(pType);
+        log_info("iidx:camhook", "[{}] Changing media type: {}", m_name, info.description);
 
         if (SUCCEEDED(hr)) {
             hr = pType->GetGUID(MF_MT_SUBTYPE, &subtype);
@@ -558,6 +603,10 @@ namespace games::iidx {
     }
 
     void IIDXLocalCamera::RequestMediaType(IMFMediaType *pType) {
+        if (!pType || !m_active || !m_pSourceReaderCallback) {
+            return;
+        }
+
         const auto info = GetMediaTypeInfo(pType);
         log_info(
             "iidx:camhook",
@@ -604,8 +653,14 @@ namespace games::iidx {
             return S_FALSE;
         }
 
-        m_pSourceReaderCallback->PrepareFlush();
-        HRESULT hr = m_pSourceReader->Flush(MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+        const bool startFlush = m_pSourceReaderCallback->BeginFlush();
+        HRESULT hr = S_OK;
+        if (startFlush) {
+            hr = m_pSourceReader->Flush(MF_SOURCE_READER_FIRST_VIDEO_STREAM);
+            if (FAILED(hr)) {
+                m_pSourceReaderCallback->CancelFlush();
+            }
+        }
         if (SUCCEEDED(hr)) {
             hr = m_pSourceReaderCallback->WaitForFlush();
         }
@@ -615,6 +670,9 @@ namespace games::iidx {
             const std::lock_guard<std::mutex> lock(m_mediaTypeMutex);
             pType = m_pendingMediaType;
             m_pendingMediaType = nullptr;
+        }
+        if (SUCCEEDED(hr) && !m_active) {
+            return S_FALSE;
         }
         if (SUCCEEDED(hr) && pType) {
             hr = ChangeMediaType(pType);
@@ -1111,6 +1169,14 @@ namespace games::iidx {
             rowBytes = m_cameraWidth;
             rowCount += m_cameraHeight / 2;
         }
+        if (rowBytes <= 0 || rowCount <= 0) {
+            return MF_E_INVALIDMEDIATYPE;
+        }
+
+        const DWORD rowBytesValue = static_cast<DWORD>(rowBytes);
+        const DWORD rowCountValue = static_cast<DWORD>(rowCount);
+        const ULONGLONG minimumLength =
+            static_cast<ULONGLONG>(rowBytesValue) * rowCountValue;
 
         HRESULT hr = pSrcBuffer->QueryInterface(IID_PPV_ARGS(&p2DBuffer));
         if (SUCCEEDED(hr)) {
@@ -1122,17 +1188,22 @@ namespace games::iidx {
             SafeRelease(&p2DBuffer);
             hr = pSrcBuffer->Lock(&pSrc, &maxLength, &currentLength);
             if (SUCCEEDED(hr)) {
-                if (currentLength < static_cast<DWORD>(rowBytes * rowCount)) {
+                if (currentLength < minimumLength) {
                     hr = MF_E_BUFFERTOOSMALL;
                 } else {
-                    srcPitch = currentLength % rowCount == 0
-                        ? currentLength / rowCount
-                        : rowBytes;
+                    const DWORD inferredPitch = currentLength % rowCountValue == 0
+                        ? currentLength / rowCountValue
+                        : rowBytesValue;
+                    if (inferredPitch > LONG_MAX) {
+                        hr = MF_E_INVALIDMEDIATYPE;
+                    } else {
+                        srcPitch = static_cast<LONG>(inferredPitch);
+                    }
                 }
             }
         }
 
-        if (SUCCEEDED(hr) && std::abs(srcPitch) < rowBytes) {
+        if (SUCCEEDED(hr) && std::abs(static_cast<int64_t>(srcPitch)) < rowBytes) {
             hr = MF_E_INVALIDMEDIATYPE;
         }
 
@@ -1276,7 +1347,7 @@ namespace games::iidx {
         IMFMediaBuffer *pBuffer = nullptr;
 
         m_pSourceReaderCallback->PrepareRead();
-        if (HasPendingMediaType()) {
+        if (!m_active || m_pSourceReaderCallback->IsShutdown() || HasPendingMediaType()) {
             return S_FALSE;
         }
 
@@ -1310,8 +1381,11 @@ namespace games::iidx {
         if (!m_active) {
             return nullptr;
         }
-        ApplyPendingMediaType();
-        HRESULT hr = ReadSample();
+        HRESULT hr = ApplyPendingMediaType();
+        if (FAILED(hr)) {
+            return nullptr;
+        }
+        hr = ReadSample();
         if (FAILED(hr)) {
             return nullptr;
         }
@@ -1323,7 +1397,7 @@ namespace games::iidx {
         m_active = false;
 
         if (m_pSourceReaderCallback) {
-            m_pSourceReaderCallback->InterruptRead();
+            m_pSourceReaderCallback->BeginShutdown();
         }
         if (m_pSourceReader) {
             m_pSourceReader->Flush(MF_SOURCE_READER_FIRST_VIDEO_STREAM);
