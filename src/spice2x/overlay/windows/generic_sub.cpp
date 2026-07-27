@@ -42,7 +42,7 @@ namespace overlay::windows {
         this->texture_width = 0;
         this->texture_height = 0;
 
-        overlay->set_subscreen_mouse_handler([this](LONG *x, LONG *y) -> bool {
+        overlay->set_subscreen_touch_transform([this](LONG *x, LONG *y) -> bool {
             // convert to normalized form (relative window coordinates 0.f-1.f)
             ImVec2 xy;
 

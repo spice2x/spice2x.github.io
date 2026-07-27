@@ -41,7 +41,7 @@ namespace nativetouch::inject {
         }
 
         POINT transformed = *position;
-        return transform::screen_to_game(window, &transformed);
+        return transform::mouse_to_game(window, &transformed);
     }
 
     // release the active injected contact and its window capture
@@ -108,7 +108,7 @@ namespace nativetouch::inject {
         }
 
         POINT transformed = position;
-        if (!transform::screen_to_game(window, &transformed)) {
+        if (!transform::mouse_to_game(window, &transformed)) {
             end_mouse_contact(window);
             return;
         }

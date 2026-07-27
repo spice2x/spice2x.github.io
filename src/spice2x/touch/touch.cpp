@@ -944,7 +944,7 @@ void touch_get_points(std::vector<TouchPoint> &touch_points, bool overlay) {
     if (!overlay &&
         overlay::OVERLAY &&
         overlay::OVERLAY->get_active() &&
-        !overlay::OVERLAY->can_transform_touch_input() &&
+        !overlay::OVERLAY->has_subscreen_touch_transform() &&
         ImGui::GetIO().WantCaptureMouse) {
 
         return;
@@ -971,7 +971,7 @@ void touch_get_events(std::vector<TouchEvent> &touch_events, bool overlay) {
     if (!overlay &&
         overlay::OVERLAY &&
         overlay::OVERLAY->get_active() &&
-        !overlay::OVERLAY->can_transform_touch_input() &&
+        !overlay::OVERLAY->has_subscreen_touch_transform() &&
         ImGui::GetIO().WantCaptureMouse) {
 
         TOUCH_EVENTS.reset();

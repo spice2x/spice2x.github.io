@@ -106,10 +106,16 @@ void overlay::Window::build() {
         // top spot. suppress that so only an explicit focus request (see below)
         // decides what comes to the front.
         const std::string window_id = this->title + "###" + to_string(this);
-        if (ImGui::Begin(
+        const bool build_contents = ImGui::Begin(
                 window_id.c_str(),
                 &this->active,
-                this->flags | ImGuiWindowFlags_NoFocusOnAppearing)) {
+                this->flags | ImGuiWindowFlags_NoFocusOnAppearing);
+
+        // cache whether this window is the topmost mouse target
+        this->mouse_input_accepted =
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+
+        if (build_contents) {
 
             // window attributes - init_pos / init_size are only honored once
             // (ImGuiCond_Once), so compute them a single time instead of every frame
@@ -200,4 +206,8 @@ bool overlay::Window::get_active() {
 
     // now it depends on us
     return this->active;
+}
+
+bool overlay::Window::accepts_mouse_input() {
+    return this->active && this->mouse_input_accepted;
 }

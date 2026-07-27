@@ -908,6 +908,13 @@ bool overlay::SpiceOverlay::get_active() {
     return this->active;
 }
 
+bool overlay::SpiceOverlay::is_subscreen_overlay_visible() {
+    return this->get_active() &&
+        this->window_sub != nullptr &&
+        this->window_sub->get_active() &&
+        this->window_sub->accepts_mouse_input();
+}
+
 bool overlay::SpiceOverlay::has_focus() {
     return this->get_active() && ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow);
 }

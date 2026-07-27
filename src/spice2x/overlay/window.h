@@ -24,6 +24,7 @@ namespace overlay {
         void toggle_active();
         void set_active(bool active);
         bool get_active();
+        bool accepts_mouse_input();
 
         // raise this window to the top of the z-order on its next build. only
         // call in response to an explicit user action (keyboard toggle, UI
@@ -37,6 +38,7 @@ namespace overlay {
         // set when the window transitions to visible so build() raises it to the
         // top of the z-order on the next frame
         bool request_focus = false;
+        bool mouse_input_accepted = false;
         std::vector<Window*> children;
 
         // settings
