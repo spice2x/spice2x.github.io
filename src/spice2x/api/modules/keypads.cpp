@@ -1,13 +1,14 @@
 #include "keypads.h"
 
+#include <chrono>
 #include <functional>
+#include <thread>
 
 #include <windows.h>
 
 #include "avs/game.h"
 #include "external/rapidjson/document.h"
 #include "misc/eamuse.h"
-#include "util/precise_timer.h"
 
 using namespace std::placeholders;
 using namespace rapidjson;
@@ -59,7 +60,6 @@ namespace api::modules {
         // get params
         auto keypad = req.params[0].GetUint();
         auto input = std::string(req.params[1].GetString());
-        timeutils::PreciseSleepTimer timer;
 
         // process all chars
         for (auto c : input) {
@@ -93,11 +93,11 @@ namespace api::modules {
 
             // set
             eamuse_set_keypad_overrides(keypad, state);
-            timer.sleep(sleep_time);
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
 
             // unset
             eamuse_set_keypad_overrides(keypad, 0);
-            timer.sleep(sleep_time);
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
         }
     }
 

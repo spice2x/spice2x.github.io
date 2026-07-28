@@ -1,6 +1,8 @@
 #include "rawinput.h"
 
+#include <chrono>
 #include <cstdarg>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -9,7 +11,6 @@
 
 #include "util/logging.h"
 #include "external/robin_hood.h"
-#include "util/precise_timer.h"
 #include "util/time.h"
 #include "util/utils.h"
 
@@ -169,9 +170,8 @@ void rawinput::RawInputManager::input_hwnd_create() {
     });
 
     // wait for window creation being done
-    timeutils::PreciseSleepTimer timer;
     while (!this->input_hwnd) {
-        timer.sleep(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 

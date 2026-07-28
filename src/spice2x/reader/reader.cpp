@@ -1,13 +1,13 @@
 #include "reader.h"
 
+#include <chrono>
+#include <cstring>
 #include <filesystem>
 #include <thread>
-#include <cstring>
 #include <vector>
 
 #include "util/logging.h"
 #include "misc/eamuse.h"
-#include "util/precise_timer.h"
 #include "util/utils.h"
 #include "structuredmessage.h"
 
@@ -218,8 +218,6 @@ bool Reader::set_comm_state(DWORD BaudRate) {
 }
 
 bool Reader::wait_for_handshake() {
-    timeutils::PreciseSleepTimer timer;
-
     // baud rates
     DWORD baud_rates[] = { CBR_57600, CBR_38400, CBR_19200, CBR_9600 };
 
@@ -270,7 +268,7 @@ bool Reader::wait_for_handshake() {
             }
 
             // sleep
-            timer.sleep(50);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
 
         log_warning("reader", "{}: no handshake received for {} baud", this->port, baud_rates[i]);
@@ -407,7 +405,6 @@ void start_reader_thread(const std::string &port, int id) {
     READER_THREAD_RUNNING = true;
     READER_THREADS.push_back(new std::thread([port, id]() {
         log_info("reader", "{}: starting reader thread", port);
-        timeutils::PreciseSleepTimer timer;
 
         while (READER_THREAD_RUNNING) {
 
@@ -445,22 +442,21 @@ void start_reader_thread(const std::string &port, int id) {
                     }
 
                     if (did_read_card) {
-                        timer.sleep(2500);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(2500));
                     }
 
-                    timer.sleep(20);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
                 }
             }
 
             // sleep between reader connection retries
             if (READER_THREAD_RUNNING)
-                timer.sleep(5000);
+                std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         }
     }));
 
     // wait for thread to start
-    timeutils::PreciseSleepTimer timer;
-    timer.sleep(10);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 void stop_reader_thread() {

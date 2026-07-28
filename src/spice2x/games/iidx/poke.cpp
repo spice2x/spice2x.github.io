@@ -1,5 +1,6 @@
 #include "poke.h"
 
+#include <chrono>
 #include <thread>
 
 #include "windows.h"
@@ -11,7 +12,6 @@
 #include "touch/native/inject.h"
 #include "touch/touch.h"
 #include "util/logging.h"
-#include "util/precise_timer.h"
 
 namespace games::iidx::poke {
 
@@ -125,8 +125,6 @@ namespace games::iidx::poke {
         // create new thread
         THREAD_RUNNING = true;
         THREAD = new std::thread([] {
-            timeutils::PreciseSleepTimer timer;
-
             // log
             log_info("poke", "enabled");
 
@@ -198,7 +196,7 @@ namespace games::iidx::poke {
                 }
 
                 // slow down
-                timer.sleep(50);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
 
             if (!touch_points.empty()) {

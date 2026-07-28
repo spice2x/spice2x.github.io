@@ -1,6 +1,7 @@
 #include "poke.h"
 
 #include <atomic>
+#include <chrono>
 #include <optional>
 #include <thread>
 
@@ -11,7 +12,6 @@
 #include "touch/native/inject.h"
 #include "touch/native/nativetouchhook.h"
 #include "util/logging.h"
-#include "util/precise_timer.h"
 
 namespace games::nost::poke {
 
@@ -68,8 +68,6 @@ namespace games::nost::poke {
         // create new thread
         THREAD_RUNNING = true;
         THREAD = new std::thread([] {
-            timeutils::PreciseSleepTimer timer;
-
             const int swipe_anim_total_frames = 6;
             const int swipe_anim_y = 300;
 
@@ -194,7 +192,7 @@ namespace games::nost::poke {
                 }
 
                 // slow down
-                timer.sleep(30);
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
             }
 
             if (contact_active) {

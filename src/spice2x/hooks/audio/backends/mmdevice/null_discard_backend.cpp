@@ -2,10 +2,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <thread>
 
 #include "hooks/audio/util.h"
 #include "util/logging.h"
-#include "util/precise_timer.h"
 
 NullDiscardBackend::~NullDiscardBackend() {
     this->running = false;
@@ -125,8 +125,6 @@ HRESULT NullDiscardBackend::on_release_buffer(uint32_t, DWORD) {
 void NullDiscardBackend::pace_loop() {
     using namespace std::chrono;
 
-    timeutils::PreciseSleepTimer timer;
-
     // audio is discarded, so timing precision and drift do not matter; just wake the
     // game once per buffer period to keep its render thread from blocking on the event.
     const auto period = duration_cast<steady_clock::duration>(
@@ -136,6 +134,6 @@ void NullDiscardBackend::pace_loop() {
         if (this->relay_handle) {
             SetEvent(this->relay_handle);
         }
-        timer.sleep(period);
+        std::this_thread::sleep_for(period);
     }
 }
