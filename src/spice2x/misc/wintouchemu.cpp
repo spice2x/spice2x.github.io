@@ -495,6 +495,14 @@ namespace wintouchemu {
         if (hWnd != nullptr && USE_MOUSE) {
             bool button_pressed = get_async_primary_mouse();
 
+            // while the subscreen overlay cannot accept the mouse, treat the button as
+            // released; this ends any active touch and prevents new mouse touch contacts
+            if (overlay::OVERLAY &&
+                overlay::OVERLAY->has_subscreen_touch_transform() &&
+                !overlay::OVERLAY->accepts_subscreen_mouse_input()) {
+                button_pressed = false;
+            }
+
             // if there was a touch event in the last 500 ms, don't insert new button presses
             if (button_pressed && (now - last_touch_event) < 500) {
                 button_pressed = false;

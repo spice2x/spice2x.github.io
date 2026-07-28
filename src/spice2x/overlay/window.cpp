@@ -69,6 +69,7 @@ void overlay::Window::build() {
 
     // check if active
     if (!this->active) {
+        this->mouse_hovered = false;
         return;
     }
 
@@ -106,10 +107,18 @@ void overlay::Window::build() {
         // top spot. suppress that so only an explicit focus request (see below)
         // decides what comes to the front.
         const std::string window_id = this->title + "###" + to_string(this);
-        if (ImGui::Begin(
+        const bool build_contents = ImGui::Begin(
                 window_id.c_str(),
                 &this->active,
-                this->flags | ImGuiWindowFlags_NoFocusOnAppearing)) {
+                this->flags | ImGuiWindowFlags_NoFocusOnAppearing);
+
+        // keep the window hovered while its invisible input button is held during a drag
+        this->mouse_hovered =
+            ImGui::IsWindowHovered(
+                ImGuiHoveredFlags_RootAndChildWindows |
+                ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+
+        if (build_contents) {
 
             // window attributes - init_pos / init_size are only honored once
             // (ImGuiCond_Once), so compute them a single time instead of every frame
@@ -153,6 +162,9 @@ void overlay::Window::build() {
         }
 
     } else {
+
+        // raw content does not have an ImGui window to hover
+        this->mouse_hovered = false;
 
         // add raw content
         this->build_content();
@@ -200,4 +212,8 @@ bool overlay::Window::get_active() {
 
     // now it depends on us
     return this->active;
+}
+
+bool overlay::Window::is_mouse_hovered() {
+    return this->mouse_hovered;
 }

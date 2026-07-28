@@ -68,7 +68,7 @@ namespace nativetouch::transform {
     static bool has_active_overlay_transform() {
         return overlay::OVERLAY != nullptr &&
             overlay::OVERLAY->get_active() &&
-            overlay::OVERLAY->can_transform_touch_input();
+            overlay::OVERLAY->has_subscreen_touch_transform();
     }
 
     static bool transform_overlay_touch_position(POINT *position) {
@@ -118,6 +118,25 @@ namespace nativetouch::transform {
 
         // ask the overlay to transform the touch point into game coordinates
         return transform_overlay_touch_position(position);
+    }
+
+    bool mouse_to_game(HWND window, POINT *position) {
+
+        // exception: iidx tdj dedicated subscreen window is allowed
+        if (is_tdj_dedicated_subscreen(window)) {
+            return screen_to_game(window, position);
+        }
+
+        // if this game has a subscreen overlay that can transform touch input
+        // but the window is hidden or not under the cursor, reject mouse-as-touch
+        // (e.g., iidx/sdvx are rejected here, but nostalgia is allowed)
+        if (overlay::OVERLAY != nullptr &&
+            overlay::OVERLAY->has_subscreen_touch_transform() &&
+            !overlay::OVERLAY->accepts_subscreen_mouse_input()) {
+            return false;
+        }
+
+        return screen_to_game(window, position);
     }
 
     // route hardware screen coordinates through dedicated or overlay mapping and report the result

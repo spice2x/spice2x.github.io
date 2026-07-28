@@ -109,6 +109,7 @@ namespace overlay {
         void show_main_menu();
         void set_active(bool active);
         bool get_active();
+        bool accepts_subscreen_mouse_input();
         bool has_focus();
         bool hotkeys_triggered();
 
@@ -143,20 +144,20 @@ namespace overlay {
             return this->hWnd;
         }
 
-        bool can_transform_touch_input() {
-            return (this->subscreen_mouse_handler != nullptr);
+        bool has_subscreen_touch_transform() {
+            return (this->subscreen_touch_transform != nullptr);
         }
 
         bool transform_touch_point(LONG *x, LONG *y) {
-            if (this->get_active() && this->subscreen_mouse_handler) {
-                return this->subscreen_mouse_handler(x, y);
+            if (this->get_active() && this->subscreen_touch_transform) {
+                return this->subscreen_touch_transform(x, y);
             } else {
                 return true;
             }
         }
 
-        void set_subscreen_mouse_handler(const std::function<bool(LONG *, LONG *)> &f) {
-            this->subscreen_mouse_handler = f;
+        void set_subscreen_touch_transform(const std::function<bool(LONG *, LONG *)> &f) {
+            this->subscreen_touch_transform = f;
         }
 
         // renderer
@@ -203,7 +204,7 @@ namespace overlay {
 
         std::vector<std::unique_ptr<Window>> windows;
 
-        std::function<bool(LONG *, LONG *)> subscreen_mouse_handler = nullptr;
+        std::function<bool(LONG *, LONG *)> subscreen_touch_transform = nullptr;
 
         bool active = false;
         bool toggle_down = false;
@@ -216,6 +217,7 @@ namespace overlay {
         // so render() never runs without a matching NewFrame.
         bool has_pending_frame = false;
 
+        bool is_subscreen_overlay_visible();
         void init();
         void add_font(const char* font, ImFontConfig* config, const ImWchar* glyphs);
     };
