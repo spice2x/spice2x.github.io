@@ -112,9 +112,11 @@ void overlay::Window::build() {
                 &this->active,
                 this->flags | ImGuiWindowFlags_NoFocusOnAppearing);
 
-        // cache whether this window is the topmost mouse target
+        // keep the window hovered while its invisible input button is held during a drag
         this->mouse_hovered =
-            ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+            ImGui::IsWindowHovered(
+                ImGuiHoveredFlags_RootAndChildWindows |
+                ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
 
         if (build_contents) {
 
