@@ -67,7 +67,7 @@ namespace nativetouch::transform {
 
     static bool has_active_overlay_transform() {
         return overlay::OVERLAY != nullptr &&
-            overlay::OVERLAY->is_subscreen_overlay_visible() &&
+            overlay::OVERLAY->get_active() &&
             overlay::OVERLAY->has_subscreen_touch_transform();
     }
 
@@ -128,11 +128,11 @@ namespace nativetouch::transform {
         }
 
         // if this game has a subscreen overlay that can transform touch input
-        // but the window is not visible, reject mouse-as-touch
+        // but the window is hidden or not under the cursor, reject mouse-as-touch
         // (e.g., iidx/sdvx are rejected here, but nostalgia is allowed)
         if (overlay::OVERLAY != nullptr &&
             overlay::OVERLAY->has_subscreen_touch_transform() &&
-            !overlay::OVERLAY->is_subscreen_overlay_visible()) {
+            !overlay::OVERLAY->accepts_subscreen_mouse_input()) {
             return false;
         }
 

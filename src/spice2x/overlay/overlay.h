@@ -110,6 +110,7 @@ namespace overlay {
         void set_active(bool active);
         bool get_active();
         bool is_subscreen_overlay_visible();
+        bool accepts_subscreen_mouse_input();
         bool has_focus();
         bool hotkeys_triggered();
 
@@ -149,7 +150,7 @@ namespace overlay {
         }
 
         bool transform_touch_point(LONG *x, LONG *y) {
-            if (this->is_subscreen_overlay_visible() && this->subscreen_touch_transform) {
+            if (this->get_active() && this->subscreen_touch_transform) {
                 return this->subscreen_touch_transform(x, y);
             } else {
                 return true;

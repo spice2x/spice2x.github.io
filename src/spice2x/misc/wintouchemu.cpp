@@ -495,11 +495,11 @@ namespace wintouchemu {
         if (hWnd != nullptr && USE_MOUSE) {
             bool button_pressed = get_async_primary_mouse();
 
-            // while the subscreen overlay is hidden, treat the mouse button as released;
-            // this ends any active mouse touch and prevents new mouse touch contacts
+            // while the subscreen overlay cannot accept the mouse, treat the button as
+            // released; this ends any active touch and prevents new mouse touch contacts
             if (overlay::OVERLAY &&
                 overlay::OVERLAY->has_subscreen_touch_transform() &&
-                !overlay::OVERLAY->is_subscreen_overlay_visible()) {
+                !overlay::OVERLAY->accepts_subscreen_mouse_input()) {
                 button_pressed = false;
             }
 

@@ -69,6 +69,7 @@ void overlay::Window::build() {
 
     // check if active
     if (!this->active) {
+        this->mouse_hovered = false;
         return;
     }
 
@@ -112,7 +113,7 @@ void overlay::Window::build() {
                 this->flags | ImGuiWindowFlags_NoFocusOnAppearing);
 
         // cache whether this window is the topmost mouse target
-        this->mouse_input_accepted =
+        this->mouse_hovered =
             ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
 
         if (build_contents) {
@@ -159,6 +160,9 @@ void overlay::Window::build() {
         }
 
     } else {
+
+        // raw content does not have an ImGui window to hover
+        this->mouse_hovered = false;
 
         // add raw content
         this->build_content();
@@ -208,6 +212,6 @@ bool overlay::Window::get_active() {
     return this->active;
 }
 
-bool overlay::Window::accepts_mouse_input() {
-    return this->active && this->mouse_input_accepted;
+bool overlay::Window::is_mouse_hovered() {
+    return this->mouse_hovered;
 }
