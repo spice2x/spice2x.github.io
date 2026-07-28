@@ -109,7 +109,6 @@ namespace overlay {
         void show_main_menu();
         void set_active(bool active);
         bool get_active();
-        bool is_subscreen_overlay_visible();
         bool accepts_subscreen_mouse_input();
         bool has_focus();
         bool hotkeys_triggered();
@@ -218,6 +217,7 @@ namespace overlay {
         // so render() never runs without a matching NewFrame.
         bool has_pending_frame = false;
 
+        bool is_subscreen_overlay_visible();
         void init();
         void add_font(const char* font, ImFontConfig* config, const ImWchar* glyphs);
     };
