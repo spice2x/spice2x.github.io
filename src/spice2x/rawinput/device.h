@@ -4,7 +4,6 @@
 #include <thread>
 #include <mutex>
 #include <vector>
-#include <map>
 
 #include <windows.h>
 
@@ -103,6 +102,13 @@ namespace rawinput {
         std::vector<HIDTouchPoint> touch_points;
     };
 
+    struct HIDButtonInputGroup {
+        USAGE usage_page;
+        USHORT link_collection;
+        std::vector<size_t> cap_indices;
+        std::vector<USAGE> usages;
+    };
+
     struct DeviceHIDInfo {
         HANDLE handle;
         _HIDP_CAPS caps;
@@ -125,11 +131,12 @@ namespace rawinput {
 
         std::vector<std::vector<bool>> button_states;
         std::vector<std::vector<double>> button_up, button_down;
+        std::vector<std::vector<uint8_t>> button_report_states;
         std::vector<std::vector<bool>> button_output_states;
-
-        // key: usage page, link collection
-        // value: number of buttons for that key (combine ranges and nonranges)
-        std::map<std::pair<USAGE, ULONG>, ULONG> button_usage_pages;
+        std::vector<HIDButtonInputGroup> button_input_groups;
+        std::vector<CHAR> output_report;
+        std::vector<USAGE> button_output_usages;
+        std::vector<USAGE> button_output_usages_off;
 
         std::vector<float> value_states;
         std::vector<LONG> value_states_raw;

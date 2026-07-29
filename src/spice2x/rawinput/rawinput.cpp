@@ -1,6 +1,10 @@
 #include "rawinput.h"
 
+#include <algorithm>
+#include <chrono>
 #include <cstdarg>
+#include <map>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -9,7 +13,6 @@
 
 #include "util/logging.h"
 #include "external/robin_hood.h"
-#include "util/precise_timer.h"
 #include "util/time.h"
 #include "util/utils.h"
 
@@ -169,9 +172,8 @@ void rawinput::RawInputManager::input_hwnd_create() {
     });
 
     // wait for window creation being done
-    timeutils::PreciseSleepTimer timer;
     while (!this->input_hwnd) {
-        timer.sleep(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -439,7 +441,9 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
             std::vector<std::string> button_caps_names;
             std::vector<std::vector<bool>> button_states;
             std::vector<std::vector<double>> button_up, button_down;
-            std::map<std::pair<USAGE, ULONG>, ULONG> button_usage_pages;
+            std::vector<std::vector<uint8_t>> button_report_states;
+            std::vector<HIDButtonInputGroup> button_input_groups;
+            std::map<std::pair<USAGE, ULONG>, size_t> button_input_group_indices;
             for (int button_cap_num = 0; button_cap_num < button_cap_length; button_cap_num++) {
                 auto &button_caps = button_cap_data[button_cap_num];
 
@@ -458,7 +462,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
                 int button_count = button_caps.Range.UsageMax - button_caps.Range.UsageMin + 1;
 
                 // ignore bad ranges reported by bad devices
-                if (button_count >= 0xffff) {
+                if (button_count <= 0 || button_count >= 0xffff) {
                     log_warning("rawinput", "skipping bad button cap range for device {}, range [{}, {}]",
                         device_name,
                         button_caps.Range.UsageMin,
@@ -467,11 +471,30 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
                 }
 
                 // fill vectors
+                const size_t cap_index = button_caps_list.size();
                 button_caps_list.emplace_back(button_caps);
                 button_states.emplace_back(std::vector<bool>(static_cast<unsigned int>(button_count), false));
                 button_up.emplace_back(std::vector<double>(static_cast<unsigned int>(button_count), 0.0));
                 button_down.emplace_back(std::vector<double>(static_cast<unsigned int>(button_count), 0.0));
-                button_usage_pages[std::make_pair(button_caps.UsagePage, button_caps.LinkCollection)] += button_count;
+                button_report_states.emplace_back(static_cast<size_t>(button_count), 0);
+
+                const auto group_key = std::make_pair(
+                        button_caps.UsagePage,
+                        static_cast<ULONG>(button_caps.LinkCollection));
+                auto [group_it, inserted] = button_input_group_indices.try_emplace(
+                        group_key,
+                        button_input_groups.size());
+                if (inserted) {
+                    button_input_groups.emplace_back(HIDButtonInputGroup {
+                        .usage_page = button_caps.UsagePage,
+                        .link_collection = button_caps.LinkCollection,
+                        .cap_indices = {},
+                        .usages = {},
+                    });
+                }
+                auto &input_group = button_input_groups[group_it->second];
+                input_group.cap_indices.push_back(cap_index);
+                input_group.usages.resize(input_group.usages.size() + button_count);
 
                 // names
                 for (USAGE usg = button_caps.Range.UsageMin; usg <= button_caps.Range.UsageMax; usg++) {
@@ -512,7 +535,7 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
                 int button_count = button_caps.Range.UsageMax - button_caps.Range.UsageMin + 1;
 
                 // ignore bad ranges reported by bad devices
-                if (button_count >= 0xffff) {
+                if (button_count <= 0 || button_count >= 0xffff) {
                     log_warning("rawinput", "skipping bad button output cap range for device {}, range [{}, {}]",
                         device_name,
                         button_caps.Range.UsageMin,
@@ -800,8 +823,18 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
             new_device.hidInfo->button_states = std::move(button_states);
             new_device.hidInfo->button_up = std::move(button_up);
             new_device.hidInfo->button_down = std::move(button_down);
+            new_device.hidInfo->button_report_states = std::move(button_report_states);
             new_device.hidInfo->button_output_states = std::move(button_output_states);
-            new_device.hidInfo->button_usage_pages = std::move(button_usage_pages);
+            new_device.hidInfo->button_input_groups = std::move(button_input_groups);
+            new_device.hidInfo->output_report.resize(caps.OutputReportByteLength);
+            size_t max_button_output_count = 0;
+            for (const auto &button_output_state : new_device.hidInfo->button_output_states) {
+                if (button_output_state.size() > max_button_output_count) {
+                    max_button_output_count = button_output_state.size();
+                }
+            }
+            new_device.hidInfo->button_output_usages.reserve(max_button_output_count);
+            new_device.hidInfo->button_output_usages_off.reserve(max_button_output_count);
             new_device.hidInfo->value_states = std::move(value_states);
             new_device.hidInfo->value_states_raw = std::move(value_states_raw);
             new_device.hidInfo->value_output_states = std::move(value_output_states);
@@ -1573,11 +1606,17 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
             if (!data_size) {
                 break;
             }
-            std::shared_ptr<RAWINPUT> data((RAWINPUT *) new char[data_size]{});
+            thread_local std::vector<RAWINPUT> data_buffer;
+            const size_t data_count =
+                (data_size + sizeof(RAWINPUT) - 1) / sizeof(RAWINPUT);
+            if (data_buffer.size() < data_count) {
+                data_buffer.resize(data_count);
+            }
+            auto data = data_buffer.data();
             if (GetRawInputData(
                     (HRAWINPUT) lParam,
                     RID_INPUT,
-                    data.get(),
+                    data,
                     &data_size,
                     sizeof(RAWINPUTHEADER)) != data_size) {
                 break;
@@ -1791,17 +1830,13 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                                     + (size_t) hid_report_index * data_hid.dwSizeHid;
 
                             // parse reports
-                            for (const auto &pair : device.hidInfo->button_usage_pages) {
-                                const auto usage_page = pair.first.first;
-                                const auto link_collection = pair.first.second;
-                                const auto button_count = pair.second;
-
-                                ULONG usages_length = button_count;
-                                std::vector<USAGE> usages(static_cast<size_t>(usages_length));
+                            for (auto &input_group : device.hidInfo->button_input_groups) {
+                                auto &usages = input_group.usages;
+                                ULONG usages_length = static_cast<ULONG>(usages.size());
                                 if (HidP_GetUsages(
                                         HidP_Input,
-                                        usage_page,
-                                        link_collection,
+                                        input_group.usage_page,
+                                        input_group.link_collection,
                                         usages.data(),
                                         &usages_length,
                                         reinterpret_cast<PHIDP_PREPARSED_DATA>(device.hidInfo->preparsed_data.get()),
@@ -1819,29 +1854,22 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
                                 // log_info(
                                 //     "rawinput",
                                 //     "processing HID input for device {}, usage page {:x} and link collection {:x} with {} buttons, got {} reports",
-                                //     device.desc,
-                                //     usage_page, link_collection, button_count, usages_length);
+                                //     device.desc, input_group.usage_page,
+                                //     input_group.link_collection, usages.size(), usages_length);
 
                                 // buttons
-                                for (size_t cap_num = 0; cap_num < device.hidInfo->button_caps_list.size(); cap_num++) {
+                                for (const size_t cap_num : input_group.cap_indices) {
                                     auto &button_caps = device.hidInfo->button_caps_list[cap_num];
                                     auto &button_states = device.hidInfo->button_states[cap_num];
                                     auto &button_down = device.hidInfo->button_down[cap_num];
                                     auto &button_up = device.hidInfo->button_up[cap_num];
-
-                                    // is this the right usage page and link collection?
-                                    if (button_caps.UsagePage != usage_page || button_caps.LinkCollection != link_collection) {
-                                        continue;
-                                    }
+                                    auto &new_states = device.hidInfo->button_report_states[cap_num];
 
                                     // get button count
                                     int button_count = button_caps.Range.UsageMax - button_caps.Range.UsageMin + 1;
-                                    if (button_count <= 0) {
-                                        continue;
-                                    }
 
                                     // update buttons
-                                    std::vector<bool> new_states(button_count);
+                                    std::fill(new_states.begin(), new_states.end(), 0);
                                     for (ULONG usage_num = 0; usage_num < usages_length; usage_num++) {
                                         if (usages[usage_num] < button_caps.Range.UsageMin ||
                                             usages[usage_num] > button_caps.Range.UsageMax) {
@@ -1852,17 +1880,18 @@ LRESULT CALLBACK rawinput::RawInputManager::input_wnd_proc(
 
                                         // guard against some buggy device sending an event for a usage below UsageMin
                                         if (usage < button_count) {
-                                            new_states[usage] = true;
+                                            new_states[usage] = 1;
                                         }
                                     }
                                     for (int button_num = 0; button_num < button_count; button_num++) {
-                                        if (!new_states[button_num] && button_states[button_num]) {
+                                        const bool new_state = new_states[button_num] != 0;
+                                        if (!new_state && button_states[button_num]) {
                                             device.updated = true;
-                                            button_states[button_num] = new_states[button_num];
+                                            button_states[button_num] = new_state;
                                             button_down[button_num] = input_time;
-                                        } else if (new_states[button_num] && !button_states[button_num]) {
+                                        } else if (new_state && !button_states[button_num]) {
                                             device.updated = true;
-                                            button_states[button_num] = new_states[button_num];
+                                            button_states[button_num] = new_state;
                                             button_up[button_num] = input_time;
                                         }
                                     }
@@ -2017,8 +2046,10 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
             switch (hid->driver) {
                 case HIDDriver::Default: {
 
-                    // allocate report
-                    CHAR *report_data = new CHAR[hid->caps.OutputReportByteLength] {};
+                    auto &report_data = hid->output_report;
+                    auto &usage_list = hid->button_output_usages;
+                    auto &usage_off_list = hid->button_output_usages_off;
+                    std::fill(report_data.begin(), report_data.end(), 0);
 
                     // set buttons
                     for (size_t cap_no = 0; cap_no < hid->button_output_caps_list.size(); cap_no++) {
@@ -2026,10 +2057,8 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
                         auto &button_state_list = hid->button_output_states[cap_no];
 
                         // determine which buttons to turn on
-                        std::vector<USAGE> usage_list;
-                        std::vector<USAGE> usage_off_list;
-                        usage_list.reserve(button_state_list.size());
-                        usage_off_list.reserve(button_state_list.size());
+                        usage_list.clear();
+                        usage_off_list.clear();
                         for (size_t state_no = 0; state_no < button_state_list.size(); state_no++) {
                             if (button_state_list[state_no]) {
                                 usage_list.push_back(button_cap.Range.UsageMin + (USAGE) state_no);
@@ -2044,15 +2073,18 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
                                        HidP_Output,
                                        button_cap.UsagePage,
                                        button_cap.LinkCollection,
-                                       &usage_list[0],
+                                       usage_list.data(),
                                        &usage_list_length,
                                        reinterpret_cast<PHIDP_PREPARSED_DATA>(hid->preparsed_data.get()),
-                                       report_data,
+                                       report_data.data(),
                                        hid->caps.OutputReportByteLength) == HIDP_STATUS_INCOMPATIBLE_REPORT_ID) {
 
                             // flush report
-                            HidD_SetOutputReport(hid->handle, report_data, hid->caps.OutputReportByteLength);
-                            memset(report_data, 0, hid->caps.OutputReportByteLength);
+                            HidD_SetOutputReport(
+                                    hid->handle,
+                                    report_data.data(),
+                                    hid->caps.OutputReportByteLength);
+                            std::fill(report_data.begin(), report_data.end(), 0);
                         }
 
                         // clear the buttons
@@ -2061,22 +2093,22 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
                                        HidP_Output,
                                        button_cap.UsagePage,
                                        button_cap.LinkCollection,
-                                       &usage_off_list[0],
+                                       usage_off_list.data(),
                                        &usage_off_list_length,
                                        reinterpret_cast<PHIDP_PREPARSED_DATA>(hid->preparsed_data.get()),
-                                       report_data,
+                                       report_data.data(),
                                        hid->caps.OutputReportByteLength) == HIDP_STATUS_INCOMPATIBLE_REPORT_ID) {
 
                             // flush report
                             DWORD written_bytes = 0;
                             WriteFile(
                                     hid->handle,
-                                    reinterpret_cast<void *>(report_data),
+                                    report_data.data(),
                                     hid->caps.OutputReportByteLength,
                                     &written_bytes,
                                     nullptr
                             );
-                            memset(report_data, 0, hid->caps.OutputReportByteLength);
+                            std::fill(report_data.begin(), report_data.end(), 0);
                         }
                     }
 
@@ -2105,19 +2137,19 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
                                 value_cap.NotRange.Usage,
                                 static_cast<ULONG>(usage_value),
                                 reinterpret_cast<PHIDP_PREPARSED_DATA>(hid->preparsed_data.get()),
-                                report_data,
+                                report_data.data(),
                                 hid->caps.OutputReportByteLength) == HIDP_STATUS_INCOMPATIBLE_REPORT_ID) {
 
                             // flush report
                             DWORD written_bytes = 0;
                             WriteFile(
                                     hid->handle,
-                                    reinterpret_cast<void *>(report_data),
+                                    report_data.data(),
                                     hid->caps.OutputReportByteLength,
                                     &written_bytes,
                                     nullptr
                             );
-                            memset(report_data, 0, hid->caps.OutputReportByteLength);
+                            std::fill(report_data.begin(), report_data.end(), 0);
                         }
                     }
 
@@ -2151,14 +2183,11 @@ void rawinput::RawInputManager::device_write_output(Device *device, bool only_up
                     DWORD written_bytes = 0;
                     WriteFile(
                             hid->handle,
-                            reinterpret_cast<void *>(report_data),
+                            report_data.data(),
                             hid->caps.OutputReportByteLength,
                             &written_bytes,
                             nullptr
                     );
-
-                    // delete report
-                    delete[] report_data;
 
                     break;
                 }

@@ -1,11 +1,12 @@
 #include "controller.h"
 #include "serial.h"
 
+#include <chrono>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include "util/logging.h"
-#include "util/precise_timer.h"
 #include "util/utils.h"
 
 
@@ -17,7 +18,6 @@ namespace api {
         controller->init_state(this->state);
         this->thread = new std::thread([this] () {
             log_warning("api::serial", "listening on {} (baud: {})", this->port, this->baud);
-            timeutils::PreciseSleepTimer timer;
 
             // read buffer
             uint8_t read_buffer[16*1024];
@@ -162,7 +162,7 @@ namespace api {
 
                 // slow down on reconnect
                 if (this->running) {
-                    timer.sleep(retry_time);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(retry_time));
                 }
             }
         });

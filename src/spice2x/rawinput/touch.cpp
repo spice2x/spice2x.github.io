@@ -319,7 +319,8 @@ namespace rawinput::touch {
         }
 
         // iterate all input data and get touch points
-        std::vector<HIDTouchPoint> touch_points;
+        thread_local std::vector<HIDTouchPoint> touch_points;
+        touch_points.clear();
         touch_points.reserve(touch.elements_x.size());
         for (size_t i = 0; i < touch.elements_x.size(); i++) {
 
@@ -424,9 +425,15 @@ namespace rawinput::touch {
         }
 
         // process touch points
-        std::vector<DWORD> touch_removes;
-        std::vector<TouchPoint> touch_writes;
-        std::vector<DWORD> touch_modifications;
+        thread_local std::vector<DWORD> touch_removes;
+        thread_local std::vector<TouchPoint> touch_writes;
+        thread_local std::vector<DWORD> touch_modifications;
+        touch_removes.clear();
+        touch_writes.clear();
+        touch_modifications.clear();
+        touch_removes.reserve(touch.touch_points.size() + touch_points.size());
+        touch_writes.reserve(touch_points.size());
+        touch_modifications.reserve(touch_points.size());
 
         // drop every touch point with the given id (marking it as released)
         auto remove_touch_point = [&] (DWORD id) {
@@ -581,7 +588,9 @@ namespace rawinput::touch {
         auto deadline = get_system_milliseconds() - 50;
 
         // check touch points
-        std::vector<DWORD> touch_removes;
+        thread_local std::vector<DWORD> touch_removes;
+        touch_removes.clear();
+        touch_removes.reserve(touch.touch_points.size());
         auto touch_it = touch.touch_points.begin();
         while (touch_it != touch.touch_points.end()) {
             auto &hid_tp = *touch_it;

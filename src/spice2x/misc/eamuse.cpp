@@ -1,6 +1,7 @@
 #include "eamuse.h"
 
 #include <atomic>
+#include <chrono>
 #include <fstream>
 #include <thread>
 
@@ -10,7 +11,6 @@
 #include "rawinput/rawinput.h"
 #include "games/sdvx/sdvx.h"
 #include "util/logging.h"
-#include "util/precise_timer.h"
 #include "util/time.h"
 #include "util/utils.h"
 #include "overlay/overlay.h"
@@ -335,7 +335,6 @@ void eamuse_coin_start_thread() {
     COIN_INPUT_THREAD = new std::thread([]() {
         auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
         static bool COIN_INPUT_KEY_STATE = false;
-        timeutils::PreciseSleepTimer timer;
         while (COIN_INPUT_THREAD_ACTIVE) {
 
             // check input key
@@ -355,7 +354,7 @@ void eamuse_coin_start_thread() {
             }
 
             // once every two frames
-            timer.sleep(1000 / 30);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000 / 30));
         }
     });
 }
@@ -409,7 +408,6 @@ void eamuse_pin_macro_start_thread() {
         size_t pin_index[2] = {PIN_MACRO_VALUES[0].length(), PIN_MACRO_VALUES[1].length()};
 
         std::optional<uint8_t> active_unit = std::nullopt;
-        timeutils::PreciseSleepTimer timer;
 
         while (PIN_MACRO_THREAD_ACTIVE) {
             // wait for key press or auto-trigger
@@ -438,7 +436,7 @@ void eamuse_pin_macro_start_thread() {
                 }
 
                 if (!active_unit.has_value()) {
-                    timer.sleep(20);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(20));
                     continue;
                 }
             }
@@ -454,22 +452,22 @@ void eamuse_pin_macro_start_thread() {
                     eamuse_set_keypad_overrides(unit, keypad_overrides[char_index]);
                 }
                 pin_index[unit]++;
-                timer.sleep(100);
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
                 // clear
                 eamuse_set_keypad_overrides(unit, 0);
-                timer.sleep(50);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
                 // end of PIN
                 if (pin_index[unit] == PIN_MACRO_VALUES[unit].length()) {
                     active_unit = std::nullopt;
-                    timer.sleep(120);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(120));
                 }
 
                 continue;
             }
 
-            timer.sleep(200);
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
     });
 }
