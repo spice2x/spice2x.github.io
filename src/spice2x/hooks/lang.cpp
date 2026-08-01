@@ -296,8 +296,9 @@ void hooks::lang::early_init() {
             &GetLocaleInfoA_orig);
     }
 
-    // for TDJ subscreen search keyboard
-    if (avs::game::is_model("LDJ") && games::iidx::TDJ_MODE) {
+    // for TDJ subscreen search keyboard and T44 narrow-string handling
+    if ((avs::game::is_model("LDJ") && games::iidx::TDJ_MODE) ||
+        avs::game::is_model("T44")) {
         log_info("hooks::lang", "hooking IsDBCSLeadByte");
         detour::trampoline_try(
             "kernel32.dll",
@@ -306,7 +307,7 @@ void hooks::lang::early_init() {
             &IsDBCSLeadByte_orig);
     }
 
-    if (games::gitadora::is_arena_model()) {
+    if (games::gitadora::is_arena_model() || avs::game::is_model("T44")) {
         log_info("hooks::lang", "hooking WideCharToMultiByte");
         detour::trampoline_try(
             "kernel32.dll",
