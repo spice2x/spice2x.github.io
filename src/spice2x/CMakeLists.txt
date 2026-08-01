@@ -411,6 +411,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/sdvx/sdvx_live2d.cpp
         games/sdvx/io.cpp
         games/sdvx/camera.cpp
+        games/jb/bi2x_hook.cpp
         games/jb/jb.cpp
         games/jb/jb_touch.cpp
         games/jb/io.cpp

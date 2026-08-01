@@ -1114,6 +1114,7 @@ namespace avs {
 #endif
             // jubeat
             {"jubeat.dll", 0x2000000},
+            {"jubeat2019.dll", 0x10000000},
 
             // MUSECA
             {"museca.dll", 0xC000000},

@@ -239,7 +239,7 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
             // SDVX Old cabinet mode
             if (avs::game::is_model("KFC") && avs::game::SPEC[0] != 'G' && avs::game::SPEC[0] != 'H')
                 answer_type = 1;
-            if (avs::game::is_model("L44"))
+            if (avs::game::is_model({ "L44", "T44" }))
                 answer_type = 2;
 
             // check answer type

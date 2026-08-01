@@ -20,6 +20,8 @@
 // (6, 8) in landscape.
 #define JB_BUTTON_SIZE 160
 #define JB_MAX_BUTTON_GAP 38
+#define JB_T44_BUTTON_SIZE 224
+#define JB_T44_BUTTON_GAP 33
 
 // improved and plus modes use this reach around each button. must be >= the
 // diagonal half of the widest gap (~27px) so the grid centre still reaches a button.
@@ -41,6 +43,7 @@ namespace games::jb {
     static std::atomic_bool TOUCH_ENABLE = false;
     static bool TOUCH_ATTACHED = false;
     static bool IS_PORTRAIT = true;
+    static bool IS_T44 = false;
     static std::atomic_uint16_t TOUCH_STATE = 0;
 
     // fixed-size contact view used by the debug overlay
@@ -85,35 +88,45 @@ namespace games::jb {
     // --- touch geometry ------------------------------------------------------
     // gaps between the four buttons along one axis (the middle gap is 1px wider)
     static const int JB_BUTTON_GAPS[3] = { 37, JB_MAX_BUTTON_GAP, 37 };
+    static const int JB_T44_BUTTON_GAPS[3] = {
+        JB_T44_BUTTON_GAP,
+        JB_T44_BUTTON_GAP,
+        JB_T44_BUTTON_GAP,
+    };
 
     struct AxisGeometry {
+        int size;
         int button[4]; // left/top edge of each button
     };
 
     // left/top edges of the four buttons along one axis, starting at `first`
-    static AxisGeometry axis_geometry(int first) {
+    static AxisGeometry axis_geometry(int first, int size, const int gaps[3]) {
         AxisGeometry g {};
+        g.size = size;
         g.button[0] = first;
         for (int i = 1; i < 4; i++) {
-            g.button[i] = g.button[i - 1] + JB_BUTTON_SIZE + JB_BUTTON_GAPS[i - 1];
+            g.button[i] = g.button[i - 1] + size + gaps[i - 1];
         }
         return g;
     }
 
     // button edges for the current orientation
     static void touch_geometry(AxisGeometry &gx, AxisGeometry &gy) {
-        if (IS_PORTRAIT) {
-            gx = axis_geometry(8);
-            gy = axis_geometry(602);
+        if (IS_T44) {
+            gx = axis_geometry(37, JB_T44_BUTTON_SIZE, JB_T44_BUTTON_GAPS);
+            gy = axis_geometry(864, JB_T44_BUTTON_SIZE, JB_T44_BUTTON_GAPS);
+        } else if (IS_PORTRAIT) {
+            gx = axis_geometry(8, JB_BUTTON_SIZE, JB_BUTTON_GAPS);
+            gy = axis_geometry(602, JB_BUTTON_SIZE, JB_BUTTON_GAPS);
         } else {
-            gx = axis_geometry(6);
-            gy = axis_geometry(8);
+            gx = axis_geometry(6, JB_BUTTON_SIZE, JB_BUTTON_GAPS);
+            gy = axis_geometry(8, JB_BUTTON_SIZE, JB_BUTTON_GAPS);
         }
     }
 
     // distance from `p` to a button along one axis (0 when inside)
-    static int axis_distance(int p, int button) {
-        int end = button + JB_BUTTON_SIZE - 1;
+    static int axis_distance(int p, int button, int size) {
+        int end = button + size - 1;
         if (p < button) {
             return button - p;
         }
@@ -131,8 +144,8 @@ namespace games::jb {
         int best_dist = 0;
         for (int r = 0; r < 4; r++) {
             for (int c = 0; c < 4; c++) {
-                int dx = axis_distance(px, gx.button[c]);
-                int dy = axis_distance(py, gy.button[r]);
+                int dx = axis_distance(px, gx.button[c], gx.size);
+                int dy = axis_distance(py, gy.button[r], gy.size);
                 int dist = dx * dx + dy * dy;
                 if (dist <= radius * radius && (best_index < 0 || dist < best_dist)) {
                     best_dist = dist;
@@ -145,7 +158,8 @@ namespace games::jb {
 
     // detection reach for the current algorithm (0 = register only inside a button)
     static int touch_radius() {
-        return TOUCH_ALGORITHM == AcAccurate ? 0 : JB_TOUCH_RADIUS;
+        return TOUCH_ALGORITHM == AcAccurate || (IS_T44 && TOUCH_ALGORITHM == Legacy) ?
+            0 : JB_TOUCH_RADIUS;
     }
 
     // mark the buttons a touch at (px, py) hits: only the nearest within `radius`, or
@@ -162,8 +176,8 @@ namespace games::jb {
         }
         for (int r = 0; r < 4; r++) {
             for (int c = 0; c < 4; c++) {
-                int dx = axis_distance(px, gx.button[c]);
-                int dy = axis_distance(py, gy.button[r]);
+                int dx = axis_distance(px, gx.button[c], gx.size);
+                int dy = axis_distance(py, gy.button[r], gy.size);
                 if (dx * dx + dy * dy <= radius * radius) {
                     state |= uint16_t(1) << (r * 4 + c);
                 }
@@ -184,11 +198,15 @@ namespace games::jb {
         // one-time touch window attach
         if (!TOUCH_ATTACHED) {
 
+            IS_T44 = avs::game::is_model("T44");
+            IS_PORTRAIT = IS_T44 || avs::game::is_model("L44");
+
             // find the game window: prefer the foreground window, else search by
-            // title (the model name prefixes the window title in every version)
+            // title (T44 uses a fixed title instead of the model prefix)
+            const char *window_title = IS_T44 ? "jubeat 10 main" : avs::game::MODEL;
             HWND wnd = GetForegroundWindow();
-            if (!string_begins_with(GetActiveWindowTitle(), avs::game::MODEL)) {
-                wnd = FindWindowBeginsWith(avs::game::MODEL);
+            if (!string_begins_with(GetActiveWindowTitle(), window_title)) {
+                wnd = FindWindowBeginsWith(window_title);
             }
             if (!wnd) {
                 log_warning("jubeat", "could not find window handle for touch");
@@ -196,10 +214,6 @@ namespace games::jb {
                 TOUCH_STATE.store(0, std::memory_order_release);
                 return;
             }
-
-            // only the L44 model runs in portrait; set this before starting the
-            // touch-window thread so the renderer only observes the final value
-            IS_PORTRAIT = avs::game::is_model("L44");
 
             log_info("jubeat", "using window handle for touch: {}", fmt::ptr(wnd));
 
@@ -232,7 +246,7 @@ namespace games::jb {
             return !touch_matured(tp, now_ms, threshold_ms);
         });
 
-        if (TOUCH_ALGORITHM == Legacy) {
+        if (TOUCH_ALGORITHM == Legacy && !IS_T44) {
 
             // legacy: evenly divide the play area into a 4x4 grid
             auto offset = IS_PORTRAIT ? 580 : 0;
@@ -311,7 +325,7 @@ namespace games::jb {
                 for (int c = 0; c < 4; c++) {
                     cells[r * 4 + c] = {
                         gx.button[c], gy.button[r],
-                        gx.button[c] + JB_BUTTON_SIZE, gy.button[r] + JB_BUTTON_SIZE
+                        gx.button[c] + gx.size, gy.button[r] + gy.size
                     };
                 }
             }
@@ -352,8 +366,8 @@ namespace games::jb {
                              const AxisGeometry &gx, const AxisGeometry &gy, int arc_radius) {
         int c = index % 4;
         int r = index / 4;
-        double mid = std::atan2((gy.button[r] + JB_BUTTON_SIZE / 2) - py,
-                                (gx.button[c] + JB_BUTTON_SIZE / 2) - px);
+        double mid = std::atan2((gy.button[r] + gy.size / 2) - py,
+                    (gx.button[c] + gx.size / 2) - px);
         const double quarter = 3.14159265358979323846 / 2.0;
         const int segments = 16;
         POINT arc[segments + 1];
@@ -425,7 +439,7 @@ namespace games::jb {
         }
 
         // legacy divides the field evenly; the other algorithms use button squares
-        bool legacy = (TOUCH_ALGORITHM == Legacy);
+        bool legacy = TOUCH_ALGORITHM == Legacy && !IS_T44;
         AxisGeometry gx {}, gy {};
         if (!legacy) {
             touch_geometry(gx, gy);

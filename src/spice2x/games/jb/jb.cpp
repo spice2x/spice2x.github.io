@@ -3,12 +3,16 @@
 #include <windows.h>
 #include <filesystem>
 
+#include "avs/game.h"
+#include "bi2x_hook.h"
 #include "cfg/configurator.h"
 #include "util/logging.h"
 #include "util/detour.h"
 #include "util/libutils.h"
 
 namespace games::jb {
+
+#if !SPICE64
 
     // fixes "IP ADDR CHANGE" errors with unusual network setups (e.g. a VPN)
     static BOOL __stdcall network_addr_is_changed() {
@@ -30,6 +34,8 @@ namespace games::jb {
 
         return 0;
     }
+
+#endif
 
     JBGame::JBGame() : Game("Jubeat") {
     }
@@ -60,8 +66,18 @@ namespace games::jb {
     void JBGame::attach() {
         Game::attach();
 
+#if SPICE64
+        if (avs::game::DLL_NAME == "jubeat2019.dll") {
+            libutils::load_library("libaio.dll");
+            libutils::load_library("libaio-iob.dll");
+            libutils::load_library("libaio-iob2_video.dll");
+            bi2x_hook_init();
+        }
+#endif
+
         touch_attach();
 
+#if !SPICE64
         // enable debug logging of gftools
         HMODULE gftools = libutils::try_module("gftools.dll");
         detour::inline_hook((void *) GFDbgSetReportFunc, libutils::try_proc(
@@ -75,6 +91,8 @@ namespace games::jb {
                 network, "network_get_network_check_info"));
         detour::inline_hook((void *) network_get_dhcp_result, libutils::try_proc(
                 network, "network_get_dhcp_result"));
+#endif
+
     }
 
     void JBGame::detach() {
