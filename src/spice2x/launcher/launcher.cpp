@@ -1855,6 +1855,13 @@ int main_implementation(int argc, char *argv[]) {
                 break;
             }
 
+            if (check_dll("jubeat2019.dll")) {
+                avs::game::DLL_NAME = "jubeat2019.dll";
+                attach_io = true;
+                attach_jb = true;
+                break;
+            }
+
             // RB
             if (check_dll("reflecbeat.dll")) {
                 avs::game::DLL_NAME = "reflecbeat.dll";
@@ -2283,7 +2290,7 @@ int main_implementation(int argc, char *argv[]) {
         games.push_back(new games::sdvx::SDVXGame());
     }
     if (attach_jb) {
-        avs::core::set_default_heap_size("jubeat.dll");
+        avs::core::set_default_heap_size(avs::game::DLL_NAME);
         games.push_back(new games::jb::JBGame());
     }
     if (attach_nostalgia) {

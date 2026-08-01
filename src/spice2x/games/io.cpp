@@ -133,6 +133,7 @@ namespace games {
         buttons_help.insert({ jb, jb::get_buttons_help() });
         lights.insert({ jb, jb::get_lights() });
         file_hints[jb].push_back({"jubeat.dll"});
+        file_hints[jb].push_back({"jubeat2019.dll"});
 
         // mga
         const std::string mga("Metal Gear");

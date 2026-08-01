@@ -591,6 +591,7 @@ namespace avs {
             // for proper reporting of Omnimix and other song packs
             if (_stricmp(EA3_MODEL, "LDJ") == 0 ||
                 _stricmp(EA3_MODEL, "L44") == 0 ||
+                _stricmp(EA3_MODEL, "T44") == 0 ||
                 _stricmp(EA3_MODEL, "M39") == 0 ||
                 _stricmp(EA3_MODEL, "KFC") == 0)
             {

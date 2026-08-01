@@ -673,7 +673,8 @@ void eamuse_autodetect_game() {
         eamuse_set_game("Beatmania IIDX");
     else if (avs::game::is_model("J44") ||
              avs::game::is_model("K44") ||
-             avs::game::is_model("L44"))
+             avs::game::is_model("L44") ||
+             avs::game::is_model("T44"))
         eamuse_set_game("Jubeat");
     else if (avs::game::is_model("KDM"))
         eamuse_set_game("Dance Evolution");
