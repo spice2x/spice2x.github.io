@@ -644,6 +644,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::LoadGitaDoraModule].value_bool()) {
         attach_gitadora = true;
     }
+    if (options[launcher::Options::GitaDoraDisableFrameLimiter].value_bool()) {
+        games::gitadora::DISABLE_FRAME_LIMITER = true;
+    }
     if (options[launcher::Options::GitaDoraCabinetType].is_active()) {
         games::gitadora::CAB_TYPE = options[launcher::Options::GitaDoraCabinetType].value_uint32();
     }

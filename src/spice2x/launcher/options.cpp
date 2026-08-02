@@ -1203,6 +1203,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .quick_setting_category = "Game",
     },
     {
+        .title = "GitaDora Disable Frame Limiter (EXPERIMENTAL)",
+        .name = "gdnoframelimiter",
+        .desc = "Only for GITADORA to GALAXY WAVE; not for XG series or Arena Model.\n\n"
+            "This disables game engine's built-in frame limiter, which can result in unstable frame pacing "
+            "(around 56-58 FPS) on modern Windows. Turning this on forces the game to rely on V-Sync "
+            "instead, resulting in stable FPS. Ensure your monitors are set to 60Hz.",
+        .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+        .quick_setting_category = "Game",
+    },
+    {
         .title = "GitaDora Cabinet Type",
         .name = "gdcabtype",
         .desc = "Select cabinet type. DX has more input and lights. Pick SD2 for single player guitar mode on white cab.",
