@@ -95,6 +95,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
             hDestWindowOverride,
             pDirtyRegion,
             dwFlags);
+
+    // Some drivers report S_PRESENT_MODE_CHANGED after Windows moves the portrait SMALL
+    // head into the requested exclusive mode, leaving both group heads black. Toggle SMALL
+    // through another supported mode and restore it once, then retry the interrupted MAIN
+    // present. Recovery is restricted to the creation thread and consumes its armed state,
+    // so subsequent presents cannot repeat the mode switch.
     if (pDev->is_gfdm_two_head_exclusive()
             && native_group_head == NativeGroupHead::Main
             && result == S_PRESENT_MODE_CHANGED)

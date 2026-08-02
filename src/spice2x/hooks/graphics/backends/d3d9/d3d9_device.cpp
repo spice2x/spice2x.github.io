@@ -41,9 +41,6 @@
 constexpr bool CUSTOM_RESET = false;
 
 constexpr D3DFORMAT D3DFMT_DF24 = static_cast<D3DFORMAT>(MAKEFOURCC('D', 'F', '2', '4'));
-constexpr UINT GFDM_LOGICAL_HEAD_COUNT = 4;
-constexpr UINT GFDM_NATIVE_SMALL_SWAPCHAIN = 1;
-
 auto format_as(D3DPOOL f) {
     return fmt::underlying(f);
 }
@@ -520,218 +517,10 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
     return n;
 }
 
-bool WrappedIDirect3DDevice9::is_gfdm_two_head_exclusive() const {
-    return games::gitadora::is_arena_model()
-            && games::gitadora::ARENA_TWO_HEAD_EXCLUSIVE
-            && !GRAPHICS_WINDOWED;
-}
-
-bool WrappedIDirect3DDevice9::is_gfdm_logical_small_swapchain(
-        UINT swapchain) const
-{
-    return swapchain == gfdm_logical_small_swapchain;
-}
-
-bool WrappedIDirect3DDevice9::is_gfdm_logical_side_swapchain(
-        UINT swapchain) const
-{
-    return swapchain > 0
-            && swapchain < GFDM_LOGICAL_HEAD_COUNT
-            && swapchain != gfdm_logical_small_swapchain;
-}
-
-size_t WrappedIDirect3DDevice9::gfdm_hidden_side_swapchain_slot(
-        UINT swapchain) const
-{
-    assert(is_gfdm_logical_side_swapchain(swapchain));
-    return swapchain < gfdm_logical_small_swapchain
-            ? swapchain
-            : swapchain - 1;
-}
-
-void WrappedIDirect3DDevice9::set_gfdm_logical_group_parameters(
-        const D3DPRESENT_PARAMETERS *presentation_parameters)
-{
-    if (presentation_parameters == nullptr) {
-        gfdm_logical_group_parameters_valid = false;
-        return;
-    }
-    std::copy_n(
-            presentation_parameters,
-            gfdm_logical_group_parameters.size(),
-            gfdm_logical_group_parameters.begin());
-    gfdm_logical_group_parameters_valid = true;
-}
-
-FakeIDirect3DSwapChain9 *
-WrappedIDirect3DDevice9::ensure_gfdm_hidden_side_swapchain(UINT iSwapChain) {
-    assert(is_gfdm_logical_side_swapchain(iSwapChain));
-
-    const size_t index = gfdm_hidden_side_swapchain_slot(iSwapChain);
-    if (fake_sub_swapchain[index] == nullptr) {
-        D3DPRESENT_PARAMETERS params {};
-        if (gfdm_logical_group_parameters_valid) {
-            params = gfdm_logical_group_parameters[iSwapChain];
-        } else {
-            params.BackBufferWidth = 1080;
-            params.BackBufferHeight = 1920;
-            params.BackBufferFormat = D3DFMT_X8R8G8B8;
-            params.BackBufferCount = 1;
-            params.MultiSampleType = D3DMULTISAMPLE_NONE;
-            params.SwapEffect = D3DSWAPEFFECT_DISCARD;
-            params.Windowed = FALSE;
-            params.FullScreen_RefreshRateInHz = 60;
-            params.EnableAutoDepthStencil = FALSE;
-            params.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-        }
-        fake_sub_swapchain[index] = new FakeIDirect3DSwapChain9(
-                this,
-                &params,
-                is_d3d9ex,
-                true);
-    }
-    return fake_sub_swapchain[index];
-}
-
-void WrappedIDirect3DDevice9::release_gfdm_hidden_side_swapchains() {
-    for (UINT i = 1; i < GFDM_LOGICAL_HEAD_COUNT; i++) {
-        if (!is_gfdm_logical_side_swapchain(i)) {
-            continue;
-        }
-        const size_t index = gfdm_hidden_side_swapchain_slot(i);
-        if (fake_sub_swapchain[index] != nullptr) {
-            fake_sub_swapchain[index]->Release();
-            fake_sub_swapchain[index] = nullptr;
-        }
-    }
-}
-
-void WrappedIDirect3DDevice9::gfdm_disarm_present_mode_recovery() {
-    std::lock_guard<std::mutex> lock(gfdm_recovery_mutex);
-    gfdm_recovery_armed = false;
-    gfdm_recovery_consumed.store(true, std::memory_order_release);
-}
-
-void WrappedIDirect3DDevice9::gfdm_arm_present_mode_recovery(
-        const D3DPRESENT_PARAMETERS *native_presentation_parameters,
-        const D3DDISPLAYMODEEX *native_fullscreen_display_modes)
-{
-    if (native_presentation_parameters == nullptr
-            || native_fullscreen_display_modes == nullptr)
-    {
-        return;
-    }
-
-    std::lock_guard<std::mutex> lock(gfdm_recovery_mutex);
-    gfdm_recovery_parameters[0] = native_presentation_parameters[0];
-    gfdm_recovery_parameters[1] = native_presentation_parameters[1];
-    gfdm_recovery_modes[0] = native_fullscreen_display_modes[0];
-    gfdm_recovery_modes[1] = native_fullscreen_display_modes[1];
-    if (gfdm_recovery_modes[0].Size == 0) {
-        gfdm_recovery_modes[0].Size = sizeof(D3DDISPLAYMODEEX);
-    }
-    if (gfdm_recovery_modes[1].Size == 0) {
-        gfdm_recovery_modes[1].Size = sizeof(D3DDISPLAYMODEEX);
-    }
-    gfdm_recovery_armed =
-            !gfdm_recovery_parameters[0].Windowed
-            && !gfdm_recovery_parameters[1].Windowed
-            && IsWindow(gfdm_recovery_parameters[1].hDeviceWindow);
-    gfdm_recovery_consumed.store(
-            !gfdm_recovery_armed,
-            std::memory_order_release);
-}
-
-WrappedIDirect3DDevice9::GfdmPresentModeRecoveryResult
-WrappedIDirect3DDevice9::gfdm_recover_present_mode_change(
-        HRESULT *failure_result)
-{
-    if (failure_result != nullptr) {
-        *failure_result = D3D_OK;
-    }
-    if (!is_gfdm_two_head_exclusive() || !is_d3d9ex
-            || gfdm_recovery_consumed.exchange(
-                    true,
-                    std::memory_order_acq_rel))
-    {
-        return GfdmPresentModeRecoveryResult::NotAttempted;
-    }
-    if (GetCurrentThreadId() != gfdm_device_creation_thread_id) {
-        if (failure_result != nullptr) {
-            *failure_result = D3DERR_INVALIDCALL;
-        }
-        return GfdmPresentModeRecoveryResult::Failed;
-    }
-
-    std::array<D3DPRESENT_PARAMETERS, 2> parameters {};
-    std::array<D3DDISPLAYMODEEX, 2> modes {};
-    {
-        std::lock_guard<std::mutex> lock(gfdm_recovery_mutex);
-        if (!gfdm_recovery_armed) {
-            return GfdmPresentModeRecoveryResult::NotAttempted;
-        }
-        parameters = gfdm_recovery_parameters;
-        modes = gfdm_recovery_modes;
-    }
-
-    IDirect3D9 *raw_d3d = nullptr;
-    HRESULT result = pReal->GetDirect3D(&raw_d3d);
-    IDirect3D9Ex *raw_d3d_ex = nullptr;
-    if (SUCCEEDED(result)) {
-        result = raw_d3d != nullptr
-                ? raw_d3d->QueryInterface(IID_PPV_ARGS(&raw_d3d_ex))
-                : E_FAIL;
-    }
-    D3DDEVICE_CREATION_PARAMETERS creation {};
-    if (SUCCEEDED(result)) {
-        result = pReal->GetCreationParameters(&creation);
-    }
-    if (FAILED(result) || raw_d3d_ex == nullptr) {
-        if (raw_d3d_ex != nullptr) {
-            raw_d3d_ex->Release();
-        }
-        if (raw_d3d != nullptr) {
-            raw_d3d->Release();
-        }
-        if (failure_result != nullptr) {
-            *failure_result = result;
-        }
-        return GfdmPresentModeRecoveryResult::Failed;
-    }
-
-    result = graphics_d3d9_gfdm_recover_two_head_present_mode(
-            raw_d3d_ex,
-            static_cast<IDirect3DDevice9Ex *>(pReal),
-            creation.AdapterOrdinal,
-            parameters.data(),
-            modes.data());
-    raw_d3d_ex->Release();
-    raw_d3d->Release();
-
-    if (result == D3DERR_NOTAVAILABLE) {
-        return GfdmPresentModeRecoveryResult::NotAttempted;
-    }
-    if (FAILED(result)) {
-        if (failure_result != nullptr) {
-            *failure_result = result;
-        }
-        return GfdmPresentModeRecoveryResult::Failed;
-    }
-    return GfdmPresentModeRecoveryResult::ReadyToRetry;
-}
-
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         D3DPRESENT_PARAMETERS *pPresentationParameters)
 {
     log_misc("graphics::d3d9", "WrappedIDirect3DDevice9::Reset");
-
-    if (is_gfdm_two_head_exclusive()) {
-        gfdm_disarm_present_mode_recovery();
-        if (pPresentationParameters == nullptr) {
-            return D3DERR_INVALIDCALL;
-        }
-        release_gfdm_hidden_side_swapchains();
-    }
 
     if (pPresentationParameters) {
         if (GRAPHICS_WINDOWED) {
@@ -742,61 +531,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         }
     }
 
-    D3DPRESENT_PARAMETERS native_presentation_parameters_storage[2] {};
-    D3DPRESENT_PARAMETERS *native_presentation_parameters = pPresentationParameters;
-    UINT logical_small_swapchain = gfdm_logical_small_swapchain;
-    if (is_gfdm_two_head_exclusive()) {
-        HRESULT result = graphics_d3d9_gfdm_select_two_head_group_parameters(
-                pPresentationParameters,
-                nullptr,
-                native_presentation_parameters_storage,
-                nullptr,
-                &logical_small_swapchain,
-                "Reset");
-        if (FAILED(result)) {
-            return result;
-        }
-        set_gfdm_logical_group_parameters(pPresentationParameters);
-        if (native_presentation_parameters_storage[0].Windowed
-                || native_presentation_parameters_storage[1].Windowed)
-        {
-            return D3DERR_INVALIDCALL;
-        }
-        if (GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
-            native_presentation_parameters_storage[1].FullScreen_RefreshRateInHz =
-                    GRAPHICS_FORCE_REFRESH_SUB.value();
-        }
-        result = graphics_d3d9_gfdm_remap_two_head_group_parameters(
-                native_presentation_parameters_storage,
-                nullptr,
-                "Reset");
-        if (FAILED(result)) {
-            return result;
-        }
-        if (!graphics_gitadora_prepare_two_head_device_window(
-                    native_presentation_parameters_storage[1].hDeviceWindow,
-                    nullptr,
-                    native_presentation_parameters_storage[1].BackBufferWidth,
-                    native_presentation_parameters_storage[1].BackBufferHeight))
-        {
-            return D3DERR_INVALIDCALL;
-        }
-        native_presentation_parameters = native_presentation_parameters_storage;
-    }
-
     // reset overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal)) {
         overlay::OVERLAY->reset_invalidate();
     }
 
-    HRESULT res = pReal->Reset(native_presentation_parameters);
-
-    if (SUCCEEDED(res) && is_gfdm_two_head_exclusive()) {
-        gfdm_logical_small_swapchain = logical_small_swapchain;
-        pPresentationParameters[0] = native_presentation_parameters[0];
-        pPresentationParameters[logical_small_swapchain] =
-                native_presentation_parameters[1];
-    }
+    HRESULT res = pReal->Reset(pPresentationParameters);
 
     // recreate overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal) && SUCCEEDED(res)) {
@@ -2368,60 +2108,55 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
         }
     }
 
-    D3DPRESENT_PARAMETERS native_presentation_parameters_storage[2] {};
-    D3DDISPLAYMODEEX native_fullscreen_display_modes_storage[2] {};
-    D3DPRESENT_PARAMETERS *native_presentation_parameters = pPresentationParameters;
-    D3DDISPLAYMODEEX *native_fullscreen_display_modes = pFullscreenDisplayMode;
-    D3DPRESENT_PARAMETERS recovery_parameters[2] {};
-    D3DDISPLAYMODEEX recovery_modes[2] {};
-    bool recovery_candidate = false;
-    UINT logical_small_swapchain = gfdm_logical_small_swapchain;
+    GfdmTwoHeadDeviceState gfdm_parameters(
+            pPresentationParameters,
+            pFullscreenDisplayMode,
+            gfdm_logical_small_swapchain);
     if (is_gfdm_two_head_exclusive()) {
         HRESULT result = graphics_d3d9_gfdm_select_two_head_group_parameters(
                 pPresentationParameters,
                 pFullscreenDisplayMode,
-                native_presentation_parameters_storage,
+                gfdm_parameters.native_presentation_parameters.data(),
                 pFullscreenDisplayMode != nullptr
-                        ? native_fullscreen_display_modes_storage
+                        ? gfdm_parameters.native_fullscreen_display_modes.data()
                         : nullptr,
-                &logical_small_swapchain,
+                &gfdm_parameters.logical_small_swapchain,
                 "ResetEx");
         if (FAILED(result)) {
             return result;
         }
         set_gfdm_logical_group_parameters(pPresentationParameters);
-        if (native_presentation_parameters_storage[0].Windowed
-                || native_presentation_parameters_storage[1].Windowed)
+        gfdm_parameters.use_native_parameters();
+        if (gfdm_parameters.native_presentation_parameters[0].Windowed
+                || gfdm_parameters.native_presentation_parameters[1].Windowed)
         {
             return D3DERR_INVALIDCALL;
         }
-        if (pFullscreenDisplayMode != nullptr) {
-            native_fullscreen_display_modes = native_fullscreen_display_modes_storage;
-        }
         if (GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
-            native_presentation_parameters_storage[1].FullScreen_RefreshRateInHz =
+            gfdm_parameters.native_presentation_parameters[1]
+                    .FullScreen_RefreshRateInHz =
                     GRAPHICS_FORCE_REFRESH_SUB.value();
-            if (native_fullscreen_display_modes != nullptr) {
-                native_fullscreen_display_modes[1].RefreshRate =
+            if (gfdm_parameters.fullscreen_display_modes != nullptr) {
+                gfdm_parameters.fullscreen_display_modes[1].RefreshRate =
                         GRAPHICS_FORCE_REFRESH_SUB.value();
             }
         }
         result = graphics_d3d9_gfdm_remap_two_head_group_parameters(
-                native_presentation_parameters_storage,
-                native_fullscreen_display_modes,
+                gfdm_parameters.native_presentation_parameters.data(),
+                gfdm_parameters.fullscreen_display_modes,
                 "ResetEx");
         if (FAILED(result)) {
             return result;
         }
         if (!graphics_gitadora_prepare_two_head_device_window(
-                    native_presentation_parameters_storage[1].hDeviceWindow,
+                    gfdm_parameters.native_presentation_parameters[1].hDeviceWindow,
                     nullptr,
-                    native_presentation_parameters_storage[1].BackBufferWidth,
-                    native_presentation_parameters_storage[1].BackBufferHeight))
+                    gfdm_parameters.native_presentation_parameters[1].BackBufferWidth,
+                    gfdm_parameters.native_presentation_parameters[1].BackBufferHeight))
         {
             return D3DERR_INVALIDCALL;
         }
-        if (native_fullscreen_display_modes != nullptr) {
+        if (gfdm_parameters.fullscreen_display_modes != nullptr) {
             IDirect3D9 *raw_d3d = nullptr;
             IDirect3D9Ex *raw_d3d_ex = nullptr;
             D3DDEVICE_CREATION_PARAMETERS creation {};
@@ -2436,8 +2171,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
                 graphics_d3d9_gfdm_align_two_head_refresh_to_desktop(
                         raw_d3d_ex,
                         creation.AdapterOrdinal,
-                        native_presentation_parameters_storage,
-                        native_fullscreen_display_modes,
+                        gfdm_parameters.native_presentation_parameters.data(),
+                        gfdm_parameters.fullscreen_display_modes,
                         "ResetEx");
             }
             if (raw_d3d_ex != nullptr) {
@@ -2446,13 +2181,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
             if (raw_d3d != nullptr) {
                 raw_d3d->Release();
             }
-            recovery_parameters[0] = native_presentation_parameters_storage[0];
-            recovery_parameters[1] = native_presentation_parameters_storage[1];
-            recovery_modes[0] = native_fullscreen_display_modes[0];
-            recovery_modes[1] = native_fullscreen_display_modes[1];
-            recovery_candidate = true;
+            gfdm_parameters.recovery_parameters =
+                    gfdm_parameters.native_presentation_parameters;
+            gfdm_parameters.recovery_modes =
+                    gfdm_parameters.native_fullscreen_display_modes;
+            gfdm_parameters.recovery_candidate = true;
         }
-        native_presentation_parameters = native_presentation_parameters_storage;
     }
 
     // reset overlay
@@ -2461,20 +2195,26 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
     }
 
     HRESULT res = static_cast<IDirect3DDevice9Ex *>(pReal)->ResetEx(
-            native_presentation_parameters, native_fullscreen_display_modes);
+            gfdm_parameters.presentation_parameters,
+            gfdm_parameters.fullscreen_display_modes);
 
-    if (is_gfdm_two_head_exclusive() && SUCCEEDED(res) && recovery_candidate) {
-        gfdm_arm_present_mode_recovery(recovery_parameters, recovery_modes);
+    if (is_gfdm_two_head_exclusive()
+            && SUCCEEDED(res)
+            && gfdm_parameters.recovery_candidate)
+    {
+        gfdm_arm_present_mode_recovery(
+                gfdm_parameters.recovery_parameters.data(),
+                gfdm_parameters.recovery_modes.data());
     }
     if (is_gfdm_two_head_exclusive() && SUCCEEDED(res)) {
-        gfdm_logical_small_swapchain = logical_small_swapchain;
-        pPresentationParameters[0] = native_presentation_parameters[0];
-        pPresentationParameters[logical_small_swapchain] =
-                native_presentation_parameters[1];
+        gfdm_logical_small_swapchain = gfdm_parameters.logical_small_swapchain;
+        pPresentationParameters[0] = gfdm_parameters.presentation_parameters[0];
+        pPresentationParameters[gfdm_parameters.logical_small_swapchain] =
+                gfdm_parameters.presentation_parameters[1];
         if (pFullscreenDisplayMode != nullptr) {
-            pFullscreenDisplayMode[0] = native_fullscreen_display_modes[0];
-            pFullscreenDisplayMode[logical_small_swapchain] =
-                    native_fullscreen_display_modes[1];
+            pFullscreenDisplayMode[0] = gfdm_parameters.fullscreen_display_modes[0];
+            pFullscreenDisplayMode[gfdm_parameters.logical_small_swapchain] =
+                    gfdm_parameters.fullscreen_display_modes[1];
         }
     }
 

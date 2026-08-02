@@ -2,6 +2,7 @@
 #include "asio.h"
 #include "handle.h"
 #include "bi2x_hook.h"
+#include <span>
 #include <unordered_map>
 
 #include "cfg/configurator.h"
@@ -287,10 +288,7 @@ namespace games::gitadora {
                         } else {
                             log_info(
                                 "gitadora",
-                                "arena model: two-window mode uses borderless windowed rendering");
-                            if (!GRAPHICS_WINDOW_STYLE.has_value()) {
-                                GRAPHICS_WINDOW_STYLE = cfg::WindowDecorationMode::Borderless;
-                            }
+                                "arena model: two-window mode uses windowed rendering");
                         }
                         log_info("gitadora", "arena model: two-window mode");
                         GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
@@ -365,13 +363,11 @@ namespace games::gitadora {
         { 3, 1080, 1920, -300000, -300000, 1 }, // right (DP connector instance 1)
     };
 
-    static const FakeMonitor *get_fake_monitors(UINT32 &count) {
+    static std::span<const FakeMonitor> get_fake_monitors() {
         if (is_two_head_exclusive()) {
-            count = static_cast<UINT32>(std::size(FAKE_MONITORS_TWO_HEAD));
             return FAKE_MONITORS_TWO_HEAD;
         }
 
-        count = static_cast<UINT32>(std::size(FAKE_MONITORS_SINGLE_HEAD));
         return FAKE_MONITORS_SINGLE_HEAD;
     }
 
@@ -478,8 +474,8 @@ namespace games::gitadora {
         static std::once_flag populate_once;
         std::call_once(populate_once, cache_primary_monitor_info);
 
-        UINT32 fake_count = 0;
-        get_fake_monitors(fake_count);
+        const auto fake_monitors = get_fake_monitors();
+        const auto fake_count = static_cast<UINT32>(fake_monitors.size());
         const UINT32 real_count = real_monitor_count();
         *pNumPathArrayElements = real_count + fake_count;
         *pNumModeInfoArrayElements = (real_count + fake_count) * 2;
@@ -575,8 +571,8 @@ namespace games::gitadora {
             modeInfoArray[3] = real_small_modes[1];
         }
 
-        UINT32 fake_count = 0;
-        const FakeMonitor *fake_monitors = get_fake_monitors(fake_count);
+        const auto fake_monitors = get_fake_monitors();
+        const auto fake_count = static_cast<UINT32>(fake_monitors.size());
         const UINT32 real_count = real_monitor_count();
         *numPathArrayElements = real_count + fake_count;
         *numModeInfoArrayElements = (real_count + fake_count) * 2;
@@ -624,10 +620,8 @@ namespace games::gitadora {
                 const auto targetName = reinterpret_cast<DISPLAYCONFIG_TARGET_DEVICE_NAME*>(requestPacket);
                 const LONG fake_id = -id;
                 UINT32 conn_inst = 0xff;
-                UINT32 fake_count = 0;
-                const FakeMonitor *fake_monitors = get_fake_monitors(fake_count);
-                for (UINT32 i = 0; i < fake_count; i++) {
-                    const auto &f = fake_monitors[i];
+                const auto fake_monitors = get_fake_monitors();
+                for (const auto &f : fake_monitors) {
                     if (f.id == fake_id) {
                         conn_inst = f.connector_instance;
                         break;

@@ -222,517 +222,6 @@ static std::string presentation_interval2s(UINT presentation_interval) {
 
 static void update_backbuffer_dimensions(D3DPRESENT_PARAMETERS *params);
 
-static bool gfdm_two_head_exclusive() {
-    return games::gitadora::is_arena_model()
-            && games::gitadora::ARENA_TWO_HEAD_EXCLUSIVE
-            && !GRAPHICS_WINDOWED;
-}
-
-static constexpr UINT GFDM_SIDE_WIDTH = 1080;
-static constexpr UINT GFDM_SIDE_HEIGHT = 1920;
-static constexpr UINT GFDM_SMALL_WIDTH = 800;
-static constexpr UINT GFDM_SMALL_HEIGHT = 1280;
-static constexpr UINT GFDM_LOGICAL_HEAD_COUNT = 4;
-
-HRESULT graphics_d3d9_gfdm_select_two_head_group_parameters(
-        const D3DPRESENT_PARAMETERS *logical_presentation_parameters,
-        const D3DDISPLAYMODEEX *logical_fullscreen_display_modes,
-        D3DPRESENT_PARAMETERS *native_presentation_parameters,
-        D3DDISPLAYMODEEX *native_fullscreen_display_modes,
-        UINT *logical_small_swapchain,
-        const char *operation)
-{
-    if (!gfdm_two_head_exclusive()
-            || logical_presentation_parameters == nullptr
-            || native_presentation_parameters == nullptr
-            || logical_small_swapchain == nullptr)
-    {
-        return D3DERR_INVALIDCALL;
-    }
-
-    UINT small_slot = GFDM_LOGICAL_HEAD_COUNT;
-    for (UINT i = 1; i < GFDM_LOGICAL_HEAD_COUNT; i++) {
-        const auto &params = logical_presentation_parameters[i];
-        if (params.BackBufferWidth != GFDM_SMALL_WIDTH
-                || params.BackBufferHeight != GFDM_SMALL_HEIGHT)
-        {
-            continue;
-        }
-        if (small_slot != GFDM_LOGICAL_HEAD_COUNT) {
-            log_warning(
-                    "graphics::d3d9",
-                    "two-head exclusive: {} found multiple SMALL slots: {} and {}",
-                    operation,
-                    small_slot,
-                    i);
-            return D3DERR_INVALIDCALL;
-        }
-        small_slot = i;
-    }
-
-    if (small_slot == GFDM_LOGICAL_HEAD_COUNT) {
-        log_warning(
-                "graphics::d3d9",
-                "two-head exclusive: {} could not find an 800x1280 logical SMALL descriptor",
-                operation);
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (logical_fullscreen_display_modes != nullptr
-            && (logical_fullscreen_display_modes[small_slot].Width != GFDM_SMALL_WIDTH
-                    || logical_fullscreen_display_modes[small_slot].Height != GFDM_SMALL_HEIGHT))
-    {
-        log_warning(
-                "graphics::d3d9",
-                "two-head exclusive: {} SMALL slot {} mode is {}x{}, expected {}x{}",
-                operation,
-                small_slot,
-                logical_fullscreen_display_modes[small_slot].Width,
-                logical_fullscreen_display_modes[small_slot].Height,
-                GFDM_SMALL_WIDTH,
-                GFDM_SMALL_HEIGHT);
-        return D3DERR_INVALIDCALL;
-    }
-
-    native_presentation_parameters[0] = logical_presentation_parameters[0];
-    native_presentation_parameters[1] = logical_presentation_parameters[small_slot];
-    if (logical_fullscreen_display_modes != nullptr
-            && native_fullscreen_display_modes != nullptr)
-    {
-        native_fullscreen_display_modes[0] = logical_fullscreen_display_modes[0];
-        native_fullscreen_display_modes[1] = logical_fullscreen_display_modes[small_slot];
-    }
-
-    log_info(
-            "graphics::d3d9",
-            "two-head exclusive: {} selected logical SMALL slot {} -> native group head 1{}",
-            operation,
-            small_slot,
-            logical_presentation_parameters[small_slot].hDeviceWindow == GFDM_SUBSCREEN_WINDOW
-                    ? " (named SMALL host)"
-                    : "");
-    *logical_small_swapchain = small_slot;
-    return D3D_OK;
-}
-
-static bool is_fake_subscreen_adapter(UINT adapter) {
-    // MAIN and SMALL remain native D3D heads; LEFT/RIGHT are virtual.
-    if (gfdm_two_head_exclusive()) {
-        return adapter >= 2 && adapter < GFDM_LOGICAL_HEAD_COUNT;
-    }
-
-    return FAKE_SUBSCREEN_ADAPTER && adapter > 0;
-}
-
-static void get_fake_subscreen_display_mode(
-        UINT adapter,
-        D3DDISPLAYMODE *mode)
-{
-    (void) adapter;
-    if (gfdm_two_head_exclusive()) {
-        mode->Width = GFDM_SIDE_WIDTH;
-        mode->Height = GFDM_SIDE_HEIGHT;
-    } else {
-        mode->Width = 1280;
-        mode->Height = 800;
-    }
-    mode->RefreshRate = 60;
-    mode->Format = D3DFMT_X8R8G8B8;
-}
-
-static void get_fake_subscreen_display_mode_ex(
-        UINT adapter,
-        D3DDISPLAYMODEEX *mode)
-{
-    D3DDISPLAYMODE legacy_mode {};
-    get_fake_subscreen_display_mode(adapter, &legacy_mode);
-
-    mode->Size = sizeof(*mode);
-    mode->Width = legacy_mode.Width;
-    mode->Height = legacy_mode.Height;
-    mode->RefreshRate = legacy_mode.RefreshRate;
-    mode->Format = legacy_mode.Format;
-    mode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
-}
-
-HRESULT graphics_d3d9_gfdm_remap_two_head_group_parameters(
-        D3DPRESENT_PARAMETERS *presentation_parameters,
-        D3DDISPLAYMODEEX *fullscreen_display_modes,
-        const char *operation)
-{
-    if (!gfdm_two_head_exclusive()) {
-        return D3D_OK;
-    }
-    if (presentation_parameters == nullptr) {
-        return D3DERR_INVALIDCALL;
-    }
-
-    auto &secondary = presentation_parameters[1];
-    if (secondary.BackBufferWidth != GFDM_SMALL_WIDTH
-            || secondary.BackBufferHeight != GFDM_SMALL_HEIGHT)
-    {
-        log_warning(
-                "graphics::d3d9",
-                "two-head exclusive: {} expected physical SMALL {}x{} at group slot 1, got {}x{}",
-                operation,
-                GFDM_SMALL_WIDTH,
-                GFDM_SMALL_HEIGHT,
-                secondary.BackBufferWidth,
-                secondary.BackBufferHeight);
-        return D3DERR_INVALIDCALL;
-    }
-
-    if (GFDM_SUBSCREEN_WINDOW == nullptr || !IsWindow(GFDM_SUBSCREEN_WINDOW)) {
-        log_warning(
-                "graphics::d3d9",
-                "two-head exclusive: {} cannot use the named SMALL window as physical group head 1",
-                operation);
-        return D3DERR_INVALIDCALL;
-    }
-    secondary.hDeviceWindow = GFDM_SUBSCREEN_WINDOW;
-
-    if (fullscreen_display_modes != nullptr
-            && (fullscreen_display_modes[1].Width != GFDM_SMALL_WIDTH
-                    || fullscreen_display_modes[1].Height != GFDM_SMALL_HEIGHT))
-    {
-        log_warning(
-                "graphics::d3d9",
-                "two-head exclusive: {} SMALL head mode is {}x{}, expected 800x1280",
-                operation,
-                fullscreen_display_modes[1].Width,
-                fullscreen_display_modes[1].Height);
-        return D3DERR_INVALIDCALL;
-    }
-
-    return D3D_OK;
-}
-
-void graphics_d3d9_gfdm_align_two_head_refresh_to_desktop(
-        IDirect3D9Ex *d3d,
-        UINT master_adapter,
-        D3DPRESENT_PARAMETERS *presentation_parameters,
-        D3DDISPLAYMODEEX *fullscreen_display_modes,
-        const char *operation)
-{
-    if (d3d == nullptr
-            || presentation_parameters == nullptr
-            || fullscreen_display_modes == nullptr)
-    {
-        return;
-    }
-
-    for (UINT head = 0; head < 2; head++) {
-        const bool explicitly_forced =
-                (head == 0 && GRAPHICS_FORCE_REFRESH > 0)
-                || (head == 1 && GRAPHICS_FORCE_REFRESH_SUB.has_value());
-        if (explicitly_forced) {
-            continue;
-        }
-
-        D3DDISPLAYMODEEX desktop_mode {};
-        desktop_mode.Size = sizeof(desktop_mode);
-        D3DDISPLAYROTATION rotation = D3DDISPLAYROTATION_IDENTITY;
-        const HRESULT result = d3d->GetAdapterDisplayModeEx(
-                master_adapter + head,
-                &desktop_mode,
-                &rotation);
-        if (FAILED(result)) {
-            log_warning(
-                    "graphics::d3d9",
-                    "two-head exclusive: {} could not query native head {} desktop refresh, hr={}",
-                    operation,
-                    head,
-                    FMT_HRESULT(result));
-            continue;
-        }
-
-        const auto &parameters = presentation_parameters[head];
-        if (desktop_mode.Width != parameters.BackBufferWidth
-                || desktop_mode.Height != parameters.BackBufferHeight
-                || desktop_mode.Format != parameters.BackBufferFormat
-                || desktop_mode.RefreshRate == 0)
-        {
-            log_warning(
-                    "graphics::d3d9",
-                    "two-head exclusive: {} head {} mode differs from the desktop",
-                    operation,
-                    head);
-            continue;
-        }
-
-        if (parameters.FullScreen_RefreshRateInHz != desktop_mode.RefreshRate
-                || fullscreen_display_modes[head].RefreshRate != desktop_mode.RefreshRate)
-        {
-            log_info(
-                    "graphics::d3d9",
-                    "two-head exclusive: {} head {} refresh {} / {} -> {} (rotation {})",
-                    operation,
-                    head,
-                    parameters.FullScreen_RefreshRateInHz,
-                    fullscreen_display_modes[head].RefreshRate,
-                    desktop_mode.RefreshRate,
-                    static_cast<UINT>(rotation));
-            presentation_parameters[head].FullScreen_RefreshRateInHz =
-                    desktop_mode.RefreshRate;
-            fullscreen_display_modes[head].RefreshRate =
-                    desktop_mode.RefreshRate;
-        }
-    }
-}
-
-static HRESULT validate_gfdm_two_head_exclusive(
-        IDirect3D9 *d3d,
-        UINT adapter,
-        D3DDEVTYPE device_type,
-        DWORD behavior_flags,
-        const D3DPRESENT_PARAMETERS *presentation_parameters)
-{
-    if (!(behavior_flags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
-        log_warning(
-                "graphics::d3d9",
-                "two-head mode requires D3DCREATE_ADAPTERGROUP_DEVICE");
-        return D3DERR_NOTAVAILABLE;
-    }
-    if (adapter != 0) {
-        log_warning(
-                "graphics::d3d9",
-                "two-head exclusive mode currently requires master adapter 0, game requested {}",
-                adapter);
-        return D3DERR_NOTAVAILABLE;
-    }
-    if (presentation_parameters == nullptr) {
-        return D3DERR_INVALIDCALL;
-    }
-    const UINT native_adapter_count = d3d->GetAdapterCount();
-    if (native_adapter_count != 2) {
-        log_warning(
-                "graphics::d3d9",
-                "two-head mode requires two native D3D9 adapters; found {}",
-                native_adapter_count);
-        return D3DERR_NOTAVAILABLE;
-    }
-
-    D3DCAPS9 caps {};
-    const HRESULT caps_result = d3d->GetDeviceCaps(adapter, device_type, &caps);
-    if (FAILED(caps_result)) {
-        log_warning(
-                "graphics::d3d9",
-                "two-head exclusive mode could not query native adapter caps, hr={}",
-                FMT_HRESULT(caps_result));
-        return caps_result;
-    }
-    if (caps.MasterAdapterOrdinal != adapter
-            || caps.AdapterOrdinalInGroup != 0
-            || caps.NumberOfAdaptersInGroup != 2)
-    {
-        log_warning(
-                "graphics::d3d9",
-                "invalid adapter group: master={}, index={}, size={}",
-                caps.MasterAdapterOrdinal,
-                caps.AdapterOrdinalInGroup,
-                caps.NumberOfAdaptersInGroup);
-        return D3DERR_NOTAVAILABLE;
-    }
-
-    const auto &main = presentation_parameters[0];
-    const auto &small_params = presentation_parameters[1];
-    if (main.Windowed || small_params.Windowed) {
-        log_warning(
-                "graphics::d3d9",
-                "two-head exclusive mode requires both group heads to be fullscreen");
-        return D3DERR_INVALIDCALL;
-    }
-    if (small_params.BackBufferWidth != GFDM_SMALL_WIDTH
-            || small_params.BackBufferHeight != GFDM_SMALL_HEIGHT)
-    {
-        log_warning(
-                "graphics::d3d9",
-                "SMALL head must be {}x{}; got {}x{}",
-                GFDM_SMALL_WIDTH,
-                GFDM_SMALL_HEIGHT,
-                small_params.BackBufferWidth,
-                small_params.BackBufferHeight);
-        return D3DERR_INVALIDCALL;
-    }
-    if (main.EnableAutoDepthStencil != small_params.EnableAutoDepthStencil) {
-        log_warning(
-                "graphics::d3d9",
-                "two-head mode requires matching automatic depth-stencil settings");
-        return D3DERR_INVALIDCALL;
-    }
-    if (main.EnableAutoDepthStencil
-            && (main.AutoDepthStencilFormat != small_params.AutoDepthStencilFormat
-                    || main.BackBufferWidth != small_params.BackBufferWidth
-                    || main.BackBufferHeight != small_params.BackBufferHeight
-                    || main.BackBufferFormat != small_params.BackBufferFormat))
-    {
-        log_warning(
-                "graphics::d3d9",
-                "two-head mode cannot use unequal sizes with automatic depth-stencil");
-        return D3DERR_INVALIDCALL;
-    }
-
-    return D3D_OK;
-}
-
-static bool gfdm_find_alternate_small_mode(
-        IDirect3D9Ex *d3d,
-        UINT adapter,
-        const D3DDISPLAYMODEEX &desired,
-        D3DDISPLAYMODEEX *alternate)
-{
-    if (d3d == nullptr || alternate == nullptr) {
-        return false;
-    }
-
-    D3DDISPLAYMODEFILTER filter {};
-    filter.Size = sizeof(filter);
-    filter.Format = desired.Format;
-    filter.ScanLineOrdering = D3DSCANLINEORDERING_UNKNOWN;
-    const UINT count = d3d->GetAdapterModeCountEx(adapter, &filter);
-    const bool portrait = desired.Width < desired.Height;
-
-    for (UINT index = 0; index < count; index++) {
-        D3DDISPLAYMODEEX mode {};
-        mode.Size = sizeof(mode);
-        if (FAILED(d3d->EnumAdapterModesEx(adapter, &filter, index, &mode))
-                || mode.Width != desired.Width
-                || mode.Height != desired.Height
-                || mode.Format != desired.Format
-                || (mode.RefreshRate == desired.RefreshRate
-                        && mode.ScanLineOrdering == desired.ScanLineOrdering))
-        {
-            continue;
-        }
-        *alternate = mode;
-        return true;
-    }
-
-    for (int preserve_orientation = 1; preserve_orientation >= 0; preserve_orientation--) {
-        for (int preserve_refresh = 1; preserve_refresh >= 0; preserve_refresh--) {
-            for (UINT index = 0; index < count; index++) {
-                D3DDISPLAYMODEEX mode {};
-                mode.Size = sizeof(mode);
-                if (FAILED(d3d->EnumAdapterModesEx(adapter, &filter, index, &mode))
-                        || (mode.Width == desired.Width && mode.Height == desired.Height)
-                        || mode.Format != desired.Format)
-                {
-                    continue;
-                }
-                if (preserve_orientation && (mode.Width < mode.Height) != portrait) {
-                    continue;
-                }
-                if (preserve_refresh && mode.RefreshRate != desired.RefreshRate) {
-                    continue;
-                }
-                *alternate = mode;
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-static bool gfdm_wait_for_small_mode(
-        HWND window,
-        const D3DDISPLAYMODEEX &expected)
-{
-    const HMONITOR monitor =
-            window != nullptr ? MonitorFromWindow(window, MONITOR_DEFAULTTONULL) : nullptr;
-    MONITORINFOEXA monitor_info {};
-    monitor_info.cbSize = sizeof(monitor_info);
-    if (monitor == nullptr || !GetMonitorInfoA(monitor, &monitor_info)) {
-        return false;
-    }
-
-    for (UINT poll = 0; poll < 50; poll++) {
-        DEVMODEA current {};
-        current.dmSize = sizeof(current);
-        if (EnumDisplaySettingsExA(
-                    monitor_info.szDevice,
-                    ENUM_CURRENT_SETTINGS,
-                    &current,
-                    0)
-                && current.dmPelsWidth == expected.Width
-                && current.dmPelsHeight == expected.Height
-                && (expected.RefreshRate == 0
-                        || current.dmDisplayFrequency == expected.RefreshRate))
-        {
-            return true;
-        }
-        Sleep(10);
-    }
-    return false;
-}
-
-HRESULT graphics_d3d9_gfdm_recover_two_head_present_mode(
-        IDirect3D9Ex *d3d,
-        IDirect3DDevice9Ex *device,
-        UINT master_adapter,
-        const D3DPRESENT_PARAMETERS *desired_parameters,
-        const D3DDISPLAYMODEEX *desired_modes)
-{
-    if (d3d == nullptr
-            || device == nullptr
-            || desired_parameters == nullptr
-            || desired_modes == nullptr)
-    {
-        return D3DERR_INVALIDCALL;
-    }
-
-    D3DDISPLAYMODEEX alternate_small {};
-    if (!gfdm_find_alternate_small_mode(
-                d3d,
-                master_adapter + 1,
-                desired_modes[1],
-                &alternate_small))
-    {
-        log_warning("graphics::d3d9", "no alternate SMALL mode is available for recovery");
-        return D3DERR_NOTAVAILABLE;
-    }
-
-    D3DPRESENT_PARAMETERS temporary_parameters[2] {
-            desired_parameters[0],
-            desired_parameters[1]};
-    D3DDISPLAYMODEEX temporary_modes[2] {
-            desired_modes[0],
-            desired_modes[1]};
-    temporary_parameters[1].BackBufferWidth = alternate_small.Width;
-    temporary_parameters[1].BackBufferHeight = alternate_small.Height;
-    temporary_parameters[1].BackBufferFormat = alternate_small.Format;
-    temporary_parameters[1].FullScreen_RefreshRateInHz = alternate_small.RefreshRate;
-    temporary_modes[1] = alternate_small;
-
-    HRESULT temporary_result = device->ResetEx(temporary_parameters, temporary_modes);
-    const bool temporary_settled =
-            temporary_result == D3D_OK
-            && gfdm_wait_for_small_mode(desired_parameters[1].hDeviceWindow, alternate_small);
-
-    D3DPRESENT_PARAMETERS restore_parameters[2] {
-            desired_parameters[0],
-            desired_parameters[1]};
-    D3DDISPLAYMODEEX restore_modes[2] {
-            desired_modes[0],
-            desired_modes[1]};
-    HRESULT restore_result = device->ResetEx(restore_parameters, restore_modes);
-    const bool restore_settled =
-            restore_result == D3D_OK
-            && gfdm_wait_for_small_mode(desired_parameters[1].hDeviceWindow, desired_modes[1]);
-
-    if (temporary_result != D3D_OK) {
-        return temporary_result;
-    }
-    if (restore_result != D3D_OK) {
-        return restore_result;
-    }
-    if (!temporary_settled || !restore_settled) {
-        return D3DERR_NOTAVAILABLE;
-    }
-    return device->CheckDeviceState(desired_parameters[0].hDeviceWindow) == D3D_OK
-            ? D3D_OK
-            : D3DERR_NOTAVAILABLE;
-}
-
 static void log_create_device_failure(HRESULT hresult) {
     // only print once since some games will try CreateDevice multiple times on failure
     static std::once_flag printed;
@@ -1360,9 +849,6 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
         if (SUCCEEDED(this->pReal->GetDeviceCaps(Adapter, DeviceType, &device_caps))) {
             num_adapters = device_caps.NumberOfAdaptersInGroup;
         }
-        if (gfdm_two_head_exclusive()) {
-            num_adapters = GFDM_LOGICAL_HEAD_COUNT;
-        }
     }
 
     // dump presentation parameters
@@ -1433,8 +919,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
             "either use -graphics-force-refresh option or change the desktop resolution beforehand.");
     }
 
-    if (!GRAPHICS_WINDOWED && !gfdm_two_head_exclusive()
-            && num_adapters >= 2 && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+    if (!GRAPHICS_WINDOWED && num_adapters >= 2
+            && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
         log_info("graphics::d3d9", "force sub refresh rate: {} => {} Hz (-graphics-force-refresh-sub option)",
                 pPresentationParameters[1].FullScreen_RefreshRateInHz,
                 GRAPHICS_FORCE_REFRESH_SUB.value());
@@ -1457,80 +943,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
         pPresentationParameters->BackBufferCount = GRAPHICS_FORCE_VSYNC_BUFFER.value();
     }
 
-    D3DPRESENT_PARAMETERS native_presentation_parameters_storage[2] {};
-    D3DPRESENT_PARAMETERS *native_presentation_parameters = pPresentationParameters;
-    UINT logical_small_swapchain = 2;
-    if (gfdm_two_head_exclusive()) {
-        if (!(BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
-            log_warning(
-                    "graphics::d3d9",
-                    "CreateDevice did not request an adapter-group device");
-            return D3DERR_NOTAVAILABLE;
-        }
-        if (GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
-            log_warning(
-                    "graphics::d3d9",
-                    "-forceressub is unavailable; SMALL must remain {}x{}",
-                    GFDM_SMALL_WIDTH,
-                    GFDM_SMALL_HEIGHT);
-            return D3DERR_INVALIDCALL;
-        }
-
-        HRESULT result = graphics_d3d9_gfdm_select_two_head_group_parameters(
-                pPresentationParameters,
-                nullptr,
-                native_presentation_parameters_storage,
-                nullptr,
-                &logical_small_swapchain,
-                "CreateDevice");
-        if (FAILED(result)) {
-            return result;
-        }
-        if (GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
-            native_presentation_parameters_storage[1].FullScreen_RefreshRateInHz =
-                    GRAPHICS_FORCE_REFRESH_SUB.value();
-        }
-        result = graphics_d3d9_gfdm_remap_two_head_group_parameters(
-                native_presentation_parameters_storage,
-                nullptr,
-                "CreateDevice");
-        if (FAILED(result)) {
-            return result;
-        }
-        if (!graphics_gitadora_prepare_two_head_device_window(
-                    native_presentation_parameters_storage[1].hDeviceWindow,
-                    this->pReal->GetAdapterMonitor(Adapter + 1),
-                    native_presentation_parameters_storage[1].BackBufferWidth,
-                    native_presentation_parameters_storage[1].BackBufferHeight))
-        {
-            return D3DERR_INVALIDCALL;
-        }
-        result = validate_gfdm_two_head_exclusive(
-                this->pReal,
-                Adapter,
-                DeviceType,
-                BehaviorFlags,
-                native_presentation_parameters_storage);
-        if (FAILED(result)) {
-            return result;
-        }
-        native_presentation_parameters = native_presentation_parameters_storage;
-    }
-
     // call original
     HRESULT ret = this->pReal->CreateDevice(
             Adapter,
             DeviceType,
             hFocusWindow,
             BehaviorFlags,
-            native_presentation_parameters,
+            pPresentationParameters,
             ppReturnedDeviceInterface);
-
-    if (SUCCEEDED(ret) && gfdm_two_head_exclusive()) {
-        pPresentationParameters[0] = native_presentation_parameters[0];
-        pPresentationParameters[logical_small_swapchain] =
-                native_presentation_parameters[1];
-    }
 
     // check for error
     if (ret != D3D_OK) {
@@ -1543,10 +963,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
 
         *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(
                 hFocusWindow,
-                *ppReturnedDeviceInterface,
-                logical_small_swapchain,
-                gfdm_two_head_exclusive() ? static_cast<IDirect3D9 *>(this) : nullptr,
-                gfdm_two_head_exclusive() ? pPresentationParameters : nullptr);
+                *ppReturnedDeviceInterface);
     }
 
     // return result
@@ -1810,11 +1227,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         pPresentationParameters->BackBufferCount = GRAPHICS_FORCE_VSYNC_BUFFER.value();
     }
 
-    D3DPRESENT_PARAMETERS native_presentation_parameters_storage[2] {};
-    D3DDISPLAYMODEEX native_fullscreen_display_modes_storage[2] {};
-    D3DPRESENT_PARAMETERS *native_presentation_parameters = pPresentationParameters;
-    D3DDISPLAYMODEEX *native_fullscreen_display_modes = pFullscreenDisplayMode;
-    UINT logical_small_swapchain = 2;
+    GfdmTwoHeadDeviceState gfdm_parameters(
+            pPresentationParameters,
+            pFullscreenDisplayMode);
     if (gfdm_two_head_exclusive()) {
         if (!(BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
             log_warning(
@@ -1825,25 +1240,26 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         HRESULT select = graphics_d3d9_gfdm_select_two_head_group_parameters(
                 pPresentationParameters,
                 pFullscreenDisplayMode,
-                native_presentation_parameters_storage,
-                native_fullscreen_display_modes_storage,
-                &logical_small_swapchain,
+                gfdm_parameters.native_presentation_parameters.data(),
+                gfdm_parameters.native_fullscreen_display_modes.data(),
+                &gfdm_parameters.logical_small_swapchain,
                 "CreateDeviceEx");
         if (FAILED(select)) {
             return select;
         }
         if (GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
-            native_presentation_parameters_storage[1].FullScreen_RefreshRateInHz =
+            gfdm_parameters.native_presentation_parameters[1]
+                    .FullScreen_RefreshRateInHz =
                     GRAPHICS_FORCE_REFRESH_SUB.value();
             if (pFullscreenDisplayMode != nullptr) {
-                native_fullscreen_display_modes_storage[1].RefreshRate =
+                gfdm_parameters.native_fullscreen_display_modes[1].RefreshRate =
                         GRAPHICS_FORCE_REFRESH_SUB.value();
             }
         }
         HRESULT remap = graphics_d3d9_gfdm_remap_two_head_group_parameters(
-                native_presentation_parameters_storage,
+                gfdm_parameters.native_presentation_parameters.data(),
                 pFullscreenDisplayMode != nullptr
-                        ? native_fullscreen_display_modes_storage
+                        ? gfdm_parameters.native_fullscreen_display_modes.data()
                         : nullptr,
                 "CreateDeviceEx");
         if (FAILED(remap)) {
@@ -1853,15 +1269,15 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
             graphics_d3d9_gfdm_align_two_head_refresh_to_desktop(
                     static_cast<IDirect3D9Ex *>(this->pReal),
                     Adapter,
-                    native_presentation_parameters_storage,
-                    native_fullscreen_display_modes_storage,
+                    gfdm_parameters.native_presentation_parameters.data(),
+                    gfdm_parameters.native_fullscreen_display_modes.data(),
                     "CreateDeviceEx");
         }
         if (!graphics_gitadora_prepare_two_head_device_window(
-                    native_presentation_parameters_storage[1].hDeviceWindow,
+                    gfdm_parameters.native_presentation_parameters[1].hDeviceWindow,
                     this->pReal->GetAdapterMonitor(Adapter + 1),
-                    native_presentation_parameters_storage[1].BackBufferWidth,
-                    native_presentation_parameters_storage[1].BackBufferHeight))
+                    gfdm_parameters.native_presentation_parameters[1].BackBufferWidth,
+                    gfdm_parameters.native_presentation_parameters[1].BackBufferHeight))
         {
             return D3DERR_INVALIDCALL;
         }
@@ -1870,15 +1286,11 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
                 Adapter,
                 DeviceType,
                 BehaviorFlags,
-                native_presentation_parameters_storage);
+                gfdm_parameters.native_presentation_parameters.data());
         if (FAILED(validation)) {
             return validation;
         }
-        native_presentation_parameters = native_presentation_parameters_storage;
-        native_fullscreen_display_modes =
-                pFullscreenDisplayMode != nullptr
-                        ? native_fullscreen_display_modes_storage
-                        : nullptr;
+        gfdm_parameters.use_native_parameters();
     }
 
     // call original
@@ -1887,18 +1299,18 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
             DeviceType,
             hFocusWindow,
             BehaviorFlags,
-            native_presentation_parameters,
-            native_fullscreen_display_modes,
+            gfdm_parameters.presentation_parameters,
+            gfdm_parameters.fullscreen_display_modes,
             ppReturnedDeviceInterface);
 
     if (SUCCEEDED(result) && gfdm_two_head_exclusive()) {
-        pPresentationParameters[0] = native_presentation_parameters[0];
-        pPresentationParameters[logical_small_swapchain] =
-                native_presentation_parameters[1];
+        pPresentationParameters[0] = gfdm_parameters.presentation_parameters[0];
+        pPresentationParameters[gfdm_parameters.logical_small_swapchain] =
+                gfdm_parameters.presentation_parameters[1];
         if (pFullscreenDisplayMode != nullptr) {
-            pFullscreenDisplayMode[0] = native_fullscreen_display_modes[0];
-            pFullscreenDisplayMode[logical_small_swapchain] =
-                    native_fullscreen_display_modes[1];
+            pFullscreenDisplayMode[0] = gfdm_parameters.fullscreen_display_modes[0];
+            pFullscreenDisplayMode[gfdm_parameters.logical_small_swapchain] =
+                    gfdm_parameters.fullscreen_display_modes[1];
         }
     }
 
@@ -1915,7 +1327,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(
                 hFocusWindow,
                 *ppReturnedDeviceInterface,
-                logical_small_swapchain,
+                gfdm_parameters.logical_small_swapchain,
                 gfdm_two_head_exclusive() ? static_cast<IDirect3D9 *>(this) : nullptr,
                 gfdm_two_head_exclusive() ? pPresentationParameters : nullptr);
 
@@ -1924,11 +1336,11 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
             (orig_behavior_flags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
 
             UINT i = games::gitadora::is_arena_model()
-                    ? logical_small_swapchain
+                    ? gfdm_parameters.logical_small_swapchain
                     : 1;
             D3DPRESENT_PARAMETERS *subscreen_parameters =
                     gfdm_two_head_exclusive()
-                    ? &native_presentation_parameters[1]
+                    ? &gfdm_parameters.presentation_parameters[1]
                     : &pPresentationParameters[i];
             graphics_d3d9_ldj_init_sub_screen(
                     *ppReturnedDeviceInterface,
