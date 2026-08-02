@@ -17,6 +17,7 @@
 #include "games/ddr/ddr.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
+#include "games/sdvx/sdvx.h"
 #include "games/popn/popn.h"
 #include "hooks/graphics/backends/d3d9/d3d9_backend.h"
 #include "hooks/graphics/backends/d3d11/d3d11_backend.h"
@@ -1098,6 +1099,9 @@ static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
         log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
         return true;
     }
+
+    // note: doing the same for SDVX_SUBSCREEN_WINDOW seems to make the main
+    // screen stop drawing occasionally
 
     // call original
     return ShowWindow_orig(hWnd, nCmdShow);

@@ -1239,7 +1239,36 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetViewport(
         D3DVIEWPORT9 *pViewport)
 {
     WRAP_DEBUG;
-    CHECK_RESULT(pReal->GetViewport(pViewport));
+    const auto result = pReal->GetViewport(pViewport);
+
+    // SDVX landscape mode
+    // without this, the game calculates the camera angle incorrectly and
+    // ends up with zoomed out view of the lanes
+    const auto landscape_width = GRAPHICS_FS_CUSTOM_RESOLUTION.has_value() ?
+        GRAPHICS_FS_CUSTOM_RESOLUTION.value().first : GRAPHICS_FS_ORIGINAL_HEIGHT;
+    const auto landscape_height = GRAPHICS_FS_CUSTOM_RESOLUTION.has_value() ?
+        GRAPHICS_FS_CUSTOM_RESOLUTION.value().second : GRAPHICS_FS_ORIGINAL_WIDTH;
+    if (SUCCEEDED(result) &&
+        GRAPHICS_FS_ORIENTATION_SWAP &&
+        avs::game::is_model("KFC") &&
+        pViewport != nullptr &&
+        pViewport->Width == landscape_width &&
+        pViewport->Height == landscape_height) {
+
+        static std::once_flag log_once;
+        std::call_once(log_once, [pViewport]() {
+            log_info(
+                "graphics::d3d9",
+                "SDVX landscape viewport fix: {}x{} => {}x{}",
+                pViewport->Width,
+                pViewport->Height,
+                pViewport->Height,
+                pViewport->Width);
+        });
+        std::swap(pViewport->Width, pViewport->Height);
+    }
+
+    return result;
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetMaterial(
