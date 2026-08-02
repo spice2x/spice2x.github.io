@@ -3013,7 +3013,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // SDVXFullscreenLandscape
-        .title = "SDVX Full Screen Landscape Mode (SDVX5+)",
+        .title = "SDVX Full Screen Landscape Mode (SDVX5+, EXPERIMENTAL)",
         .name = "sdvxlandscape",
         .desc =
             "Allows you to play in landscape by transposing resolution and applying image scaling.\n\n"
