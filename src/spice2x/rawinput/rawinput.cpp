@@ -660,7 +660,8 @@ void rawinput::RawInputManager::devices_scan_rawinput(RAWINPUTDEVICELIST *device
                     if (logical_max > field_max) {
                         log_info(
                             "rawinput",
-                            "value cap {} LogicalMax exceeds bit width, fixing it up: {} -> {}",
+                            "device {}: value cap {} LogicalMax exceeds bit width, fixing it up: {} -> {}",
+                            new_device.name,
                             value_cap_num,
                             value_caps.LogicalMax,
                             field_max
