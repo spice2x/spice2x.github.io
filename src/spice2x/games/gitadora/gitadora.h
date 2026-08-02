@@ -13,6 +13,7 @@ namespace games::gitadora {
 
     // settings
     extern bool TWOCHANNEL;
+    extern bool DISABLE_FRAME_LIMITER;
     extern std::optional<unsigned int> CAB_TYPE;
     extern bool P1_LEFTY;
     extern bool P2_LEFTY;

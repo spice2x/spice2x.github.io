@@ -31,6 +31,7 @@ namespace games::gitadora {
 
     // settings
     bool TWOCHANNEL = false;
+    bool DISABLE_FRAME_LIMITER = false;
     std::optional<unsigned int> CAB_TYPE = std::nullopt;
     bool P1_LEFTY = false;
     bool P2_LEFTY = false;
@@ -64,6 +65,46 @@ namespace games::gitadora {
         }
 
         return CreateDirectoryA(lpPathName, lpSecurityAttributes);
+    }
+
+    // libshare-pj paces mainloop with separate 12 ms and 16 ms waits. these waits
+    // interfere with the game's normal display synchronization on modern Windows
+    // and can hold a nominal 60 FPS game near 58 FPS. locate the instruction
+    // sequences at runtime so the fix does not depend on per-version file offsets.
+    static void disable_mainloop_frame_limiter(HMODULE sharepj_module) {
+        if (!sharepj_module) {
+            return;
+        }
+
+        // both limiters have the same shape, only the millisecond target xx differs
+        // (0Ch for the 12 ms limiter, 10h for the 16 ms one):
+        //
+        // 48 83 F8 xx:     cmp rax, xx;   compare elapsed frame time with the target
+        // 73 10:           jae +10h;      skip the wait once the target has elapsed
+        // B9 xx 00 00 00:  mov ecx, xx;   load the target
+        // 48 2B C8:        sub rcx, rax;  calculate the remaining wait time
+        // 74 06:           je +6h;        skip the following six-byte Sleep call if no wait remains
+        //
+        // changing jae (73h) to jmp (EBh) makes each block always take its existing
+        // skip path, which bypasses only the associated Sleep call and leaves the 10h
+        // branch displacement and every other wait untouched.
+        const auto limiter_12ms_disabled = replace_pattern(
+                sharepj_module,
+                "4883F80C7310B90C000000482BC87406",
+                "????????EB??????????????????????", 0, 0);
+        const auto limiter_16ms_disabled = replace_pattern(
+                sharepj_module,
+                "4883F8107310B910000000482BC87406",
+                "????????EB??????????????????????", 0, 0);
+
+        if (!limiter_12ms_disabled || !limiter_16ms_disabled) {
+            log_fatal(
+                "gitadora",
+                "failed to disable libshare-pj mainloop frame limiter (-gdnoframelimiter), ensure patch is not already applied");
+            return;
+        }
+
+        log_info("gitadora", "successfully disabled libshare-pj mainloop frame limiter (-gdnoframelimiter)");
     }
 #endif
 
@@ -687,6 +728,12 @@ namespace games::gitadora {
         HMODULE system_module = libutils::try_module("libsystem.dll");
 
         // patches
+#ifdef SPICE64
+        if (DISABLE_FRAME_LIMITER && !is_arena_model()) {
+            disable_mainloop_frame_limiter(sharepj_module);
+        }
+#endif
+
         detour::inline_hook((void *) eam_network_detected_ip_change, libutils::try_proc(
                 sharepj_module, "eam_network_detected_ip_change"));
         detour::inline_hook((void *) eam_network_settings_conflict, libutils::try_proc(

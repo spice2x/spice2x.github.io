@@ -114,6 +114,7 @@ namespace launcher {
             LoadHelloPopnMusicModule,
             LoadGitaDoraModule,
             GitaDoraTwoChannelAudio,
+            GitaDoraDisableFrameLimiter,
             GitaDoraCabinetType,
             GitaDoraLefty,
             GitaDoraWailHold,
