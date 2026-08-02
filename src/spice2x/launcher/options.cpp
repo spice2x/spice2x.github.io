@@ -330,9 +330,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc =
             "Allows you to play portrait games in landscape (and vice versa) by transposing resolution and applying image scaling.\n\n"
             "Works great for some games, but can COMPLETELY BREAK other games - YMMV!\n\n"
-            "Strongly consider combining this with -forceres option to render at monitor native resolution\n\n"
-            "WARNING: for SDVX, this messes with camera angle for note lanes, causing it to be zoomed out, and causes performance issues "
-            "with Live2D!",
+            "Strongly consider combining this with -forceres option to render at monitor native resolution.\n\n"
+            "For SDVX, use the dedicated -sdvxlandscape option.",
         .type = OptionType::Bool,
         .hidden = true,
         .category = "Full Screen Settings"
@@ -3014,17 +3013,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // SDVXFullscreenLandscape
-        .title = "(DISABLED) SDVX Landscape Mode (SDVX5+)",
+        .title = "SDVX Full Screen Landscape Mode (SDVX5+)",
         .name = "sdvxlandscape",
         .desc =
-            "Option HIDDEN and DISABLED due to it affecting in-game camera angle for displaying lanes.\n\n"
             "Allows you to play in landscape by transposing resolution and applying image scaling.\n\n"
-            "Works only for SDVX5 and above! This is identical to -forceresswap.\n\n"
+            "Corrects the in-game perspective camera for the transposed display aspect ratio.\n\n"
+            "Works only for SDVX5 and above.\n\n"
             "Will launch at 1080p by default; strongly consider combining this with -forceres option to render at monitor native resolution.",
         .type = OptionType::Bool,
-        .hidden = true,
         .game_name = "Sound Voltex",
         .category = "Game Options",
+        .quick_setting_category = "Game",
     },
     {
         // spice2x_EnableSMXStage

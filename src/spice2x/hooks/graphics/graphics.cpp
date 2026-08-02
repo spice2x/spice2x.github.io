@@ -17,6 +17,7 @@
 #include "games/ddr/ddr.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
+#include "games/sdvx/sdvx.h"
 #include "games/popn/popn.h"
 #include "hooks/graphics/backends/d3d9/d3d9_backend.h"
 #include "hooks/graphics/backends/d3d11/d3d11_backend.h"
