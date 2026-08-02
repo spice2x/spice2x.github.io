@@ -15,6 +15,36 @@ void graphics_d3d9_on_present(
 
 IDirect3DSurface9 *graphics_d3d9_ldj_get_sub_screen();
 
+// Collapse Arena's logical four-output contract into the two physical heads of
+// a D3D9 adapter group. MAIN stays at native slot 0 and the logical SMALL
+// descriptor becomes native slot 1; LEFT/RIGHT remain virtual.
+HRESULT graphics_d3d9_gfdm_select_two_head_group_parameters(
+        const D3DPRESENT_PARAMETERS *logical_presentation_parameters,
+        const D3DDISPLAYMODEEX *logical_fullscreen_display_modes,
+        D3DPRESENT_PARAMETERS *native_presentation_parameters,
+        D3DDISPLAYMODEEX *native_fullscreen_display_modes,
+        UINT *logical_small_swapchain,
+        const char *operation);
+
+HRESULT graphics_d3d9_gfdm_remap_two_head_group_parameters(
+        D3DPRESENT_PARAMETERS *presentation_parameters,
+        D3DDISPLAYMODEEX *fullscreen_display_modes,
+        const char *operation);
+
+void graphics_d3d9_gfdm_align_two_head_refresh_to_desktop(
+        IDirect3D9Ex *d3d,
+        UINT master_adapter,
+        D3DPRESENT_PARAMETERS *presentation_parameters,
+        D3DDISPLAYMODEEX *fullscreen_display_modes,
+        const char *operation);
+
+HRESULT graphics_d3d9_gfdm_recover_two_head_present_mode(
+        IDirect3D9Ex *d3d,
+        IDirect3DDevice9Ex *device,
+        UINT master_adapter,
+        const D3DPRESENT_PARAMETERS *desired_parameters,
+        const D3DDISPLAYMODEEX *desired_modes);
+
 struct WrappedIDirect3D9 : IDirect3D9Ex {
     explicit WrappedIDirect3D9(IDirect3D9 *orig) : pReal(orig), is_d3d9ex(false) {}
 

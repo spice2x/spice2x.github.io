@@ -26,7 +26,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::QueryInterface(REFIID riid
         return E_POINTER;
     }
 
-    if (//riid == __uuidof(IUnknown) || Ignore IUnknown, it's often queried to test object equality between different interfaces
+    if ((riid == IID_IUnknown && pDev->is_gfdm_two_head_exclusive()) ||
         riid == IID_IDirect3DSwapChain9 ||
         riid == IID_IDirect3DSwapChain9Ex)
     {
@@ -89,7 +89,36 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
         graphics_d3d9_on_present(pDev->hFocusWindow, pDev->pReal, pDev);
     }
 
-    CHECK_RESULT(pReal->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags));
+    HRESULT result = pReal->Present(
+            pSourceRect,
+            pDestRect,
+            hDestWindowOverride,
+            pDirtyRegion,
+            dwFlags);
+    if (pDev->is_gfdm_two_head_exclusive()
+            && native_group_head == NativeGroupHead::Main
+            && result == S_PRESENT_MODE_CHANGED)
+    {
+        HRESULT recovery_failure = D3D_OK;
+        const auto recovery = pDev->gfdm_recover_present_mode_change(
+                &recovery_failure);
+        if (recovery
+                == WrappedIDirect3DDevice9::GfdmPresentModeRecoveryResult::ReadyToRetry)
+        {
+            result = pReal->Present(
+                    pSourceRect,
+                    pDestRect,
+                    hDestWindowOverride,
+                    pDirtyRegion,
+                    dwFlags);
+        } else if (recovery
+                        == WrappedIDirect3DDevice9::GfdmPresentModeRecoveryResult::Failed
+                && FAILED(recovery_failure))
+        {
+            result = recovery_failure;
+        }
+    }
+    CHECK_RESULT(result);
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetFrontBufferData(IDirect3DSurface9 *pDestSurface) {
     CHECK_RESULT(pReal->GetFrontBufferData(pDestSurface));

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <atomic>
+#include <mutex>
 
 #include <initguid.h>
 #include <d3d9.h>
@@ -40,23 +42,54 @@ static const GUID IID_WrappedIDirect3DDevice9 = {
 void SurfaceHook(IDirect3DDevice9 *pReal);
 
 struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
-    explicit WrappedIDirect3DDevice9(HWND hFocusWindow, IDirect3DDevice9 *orig)
-        : hFocusWindow(hFocusWindow), pReal(orig), is_d3d9ex(false) {
+    explicit WrappedIDirect3DDevice9(
+            HWND hFocusWindow,
+            IDirect3DDevice9 *orig,
+            UINT gfdm_logical_small_swapchain = 2,
+            IDirect3D9 *gfdm_parent_d3d = nullptr,
+            const D3DPRESENT_PARAMETERS *gfdm_logical_group_parameters = nullptr)
+        : hFocusWindow(hFocusWindow),
+          pReal(orig),
+          is_d3d9ex(false),
+          gfdm_logical_small_swapchain(gfdm_logical_small_swapchain),
+          gfdm_parent_d3d(gfdm_parent_d3d) {
+        if (this->gfdm_parent_d3d != nullptr) {
+            this->gfdm_parent_d3d->AddRef();
+        }
         IDirect3DDevice9Ex *device = nullptr;
 
         // attempt to upgrade handle
         if (SUCCEEDED(this->QueryInterface(IID_PPV_ARGS(&device))) && device != nullptr) {
             device->Release();
         }
+        set_gfdm_logical_group_parameters(gfdm_logical_group_parameters);
     }
 
-    explicit WrappedIDirect3DDevice9(HWND hFocusWindow, IDirect3DDevice9Ex *orig)
-        : hFocusWindow(hFocusWindow), pReal(orig), is_d3d9ex(true) {}
+    explicit WrappedIDirect3DDevice9(
+            HWND hFocusWindow,
+            IDirect3DDevice9Ex *orig,
+            UINT gfdm_logical_small_swapchain = 2,
+            IDirect3D9 *gfdm_parent_d3d = nullptr,
+            const D3DPRESENT_PARAMETERS *gfdm_logical_group_parameters = nullptr)
+        : hFocusWindow(hFocusWindow),
+          pReal(orig),
+          is_d3d9ex(true),
+          gfdm_logical_small_swapchain(gfdm_logical_small_swapchain),
+          gfdm_parent_d3d(gfdm_parent_d3d) {
+        if (this->gfdm_parent_d3d != nullptr) {
+            this->gfdm_parent_d3d->AddRef();
+        }
+        set_gfdm_logical_group_parameters(gfdm_logical_group_parameters);
+    }
 
     WrappedIDirect3DDevice9(const WrappedIDirect3DDevice9 &) = delete;
     WrappedIDirect3DDevice9 &operator=(const WrappedIDirect3DDevice9 &) = delete;
 
-    virtual ~WrappedIDirect3DDevice9() = default;
+    virtual ~WrappedIDirect3DDevice9() {
+        if (gfdm_parent_d3d != nullptr) {
+            gfdm_parent_d3d->Release();
+        }
+    }
 
 #pragma region IUnknown
     virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObj) override;
@@ -201,6 +234,27 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     virtual HRESULT STDMETHODCALLTYPE GetDisplayModeEx(UINT iSwapChain, D3DDISPLAYMODEEX *pMode, D3DDISPLAYROTATION *pRotation) override;
 #pragma endregion
 
+    bool is_gfdm_two_head_exclusive() const;
+    bool is_gfdm_logical_small_swapchain(UINT swapchain) const;
+    bool is_gfdm_logical_side_swapchain(UINT swapchain) const;
+    size_t gfdm_hidden_side_swapchain_slot(UINT swapchain) const;
+    void set_gfdm_logical_group_parameters(
+            const D3DPRESENT_PARAMETERS *presentation_parameters);
+    FakeIDirect3DSwapChain9 *ensure_gfdm_hidden_side_swapchain(UINT iSwapChain);
+    void release_gfdm_hidden_side_swapchains();
+
+    enum class GfdmPresentModeRecoveryResult {
+        NotAttempted,
+        ReadyToRetry,
+        Failed,
+    };
+    void gfdm_disarm_present_mode_recovery();
+    void gfdm_arm_present_mode_recovery(
+            const D3DPRESENT_PARAMETERS *native_presentation_parameters,
+            const D3DDISPLAYMODEEX *native_fullscreen_display_modes);
+    GfdmPresentModeRecoveryResult gfdm_recover_present_mode_change(
+            HRESULT *failure_result);
+
     HWND const hFocusWindow;
     IDirect3DDevice9 *pReal;
     bool is_d3d9ex = false;
@@ -210,6 +264,18 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     WrappedIDirect3DSwapChain9 *main_swapchain = nullptr;
     WrappedIDirect3DSwapChain9 *sub_swapchain[3] = { nullptr, nullptr, nullptr };
     FakeIDirect3DSwapChain9 *fake_sub_swapchain[3] = { nullptr, nullptr, nullptr };
+
+    UINT gfdm_logical_small_swapchain = 2;
+    std::array<D3DPRESENT_PARAMETERS, 4> gfdm_logical_group_parameters {};
+    bool gfdm_logical_group_parameters_valid = false;
+    IDirect3D9 *gfdm_parent_d3d = nullptr;
+
+    std::mutex gfdm_recovery_mutex;
+    std::array<D3DPRESENT_PARAMETERS, 2> gfdm_recovery_parameters {};
+    std::array<D3DDISPLAYMODEEX, 2> gfdm_recovery_modes {};
+    bool gfdm_recovery_armed = false;
+    std::atomic_bool gfdm_recovery_consumed {false};
+    const DWORD gfdm_device_creation_thread_id = GetCurrentThreadId();
 
     IDirect3DVertexShader9 *vertex_shader = nullptr;
 };

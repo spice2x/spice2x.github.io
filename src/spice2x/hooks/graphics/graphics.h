@@ -119,6 +119,15 @@ extern bool D3D9_DEVICE_HOOK_DISABLE;
 
 void graphics_init();
 void graphics_hook_window(HWND hWnd, D3DPRESENT_PARAMETERS *pPresentationParameters);
+// The native GITADORA two-head D3D9 group uses the game's named SMALL
+// device window for the native physical SMALL head. The game requests
+// D3DCREATE_NOWINDOWCHANGES, so this host must be made borderless and sized
+// to the requested native SMALL mode before the native fullscreen device is
+// created. During the adapter-group startup warmup, the monitor can briefly
+// report a different mode; preserve its origin but not that temporary size.
+bool graphics_gitadora_prepare_two_head_device_window(
+    HWND hWnd, HMONITOR target_monitor = nullptr, UINT desired_width = 0,
+    UINT desired_height = 0);
 void graphics_add_wnd_proc(WNDPROC wndProc);
 void graphics_remove_wnd_proc(WNDPROC wndProc);
 void graphics_hook_subscreen_window(HWND hWnd);

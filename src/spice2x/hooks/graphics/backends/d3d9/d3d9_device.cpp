@@ -41,6 +41,8 @@
 constexpr bool CUSTOM_RESET = false;
 
 constexpr D3DFORMAT D3DFMT_DF24 = static_cast<D3DFORMAT>(MAKEFOURCC('D', 'F', '2', '4'));
+constexpr UINT GFDM_LOGICAL_HEAD_COUNT = 4;
+constexpr UINT GFDM_NATIVE_SMALL_SWAPCHAIN = 1;
 
 auto format_as(D3DPOOL f) {
     return fmt::underlying(f);
@@ -85,7 +87,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::QueryInterface(
         return E_POINTER;
     }
 
-    if (riid == IID_WrappedIDirect3DDevice9 ||
+    if ((riid == IID_IUnknown && is_gfdm_two_head_exclusive()) ||
+        riid == IID_WrappedIDirect3DDevice9 ||
         riid == IID_IDirect3DDevice9 ||
         riid == IID_IDirect3DDevice9Ex)
     {
@@ -202,6 +205,15 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDirect3D(
         IDirect3D9 **ppD3D9)
 {
     WRAP_VERBOSE;
+    if (is_gfdm_two_head_exclusive() && gfdm_parent_d3d != nullptr) {
+        if (ppD3D9 == nullptr) {
+            return D3DERR_INVALIDCALL;
+        }
+        gfdm_parent_d3d->AddRef();
+        *ppD3D9 = gfdm_parent_d3d;
+        return D3D_OK;
+    }
+
     CHECK_RESULT(pReal->GetDirect3D(ppD3D9));
 }
 
@@ -209,7 +221,13 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDeviceCaps(
         D3DCAPS9 *pCaps)
 {
     WRAP_VERBOSE;
-    CHECK_RESULT(pReal->GetDeviceCaps(pCaps));
+    HRESULT result = pReal->GetDeviceCaps(pCaps);
+    if (SUCCEEDED(result) && is_gfdm_two_head_exclusive() && pCaps != nullptr) {
+        pCaps->NumberOfAdaptersInGroup = GFDM_LOGICAL_HEAD_COUNT;
+        pCaps->MasterAdapterOrdinal = 0;
+        pCaps->AdapterOrdinalInGroup = 0;
+    }
+    CHECK_RESULT(result);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDisplayMode(
@@ -217,6 +235,17 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDisplayMode(
         D3DDISPLAYMODE *pMode)
 {
     WRAP_VERBOSE;
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_side_swapchain(iSwapChain))
+    {
+        return ensure_gfdm_hidden_side_swapchain(iSwapChain)->GetDisplayMode(pMode);
+    }
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_small_swapchain(iSwapChain))
+    {
+        CHECK_RESULT(pReal->GetDisplayMode(GFDM_NATIVE_SMALL_SWAPCHAIN, pMode));
+    }
+
     CHECK_RESULT(pReal->GetDisplayMode(iSwapChain, pMode));
 }
 
@@ -258,6 +287,51 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
 {
     WRAP_VERBOSE;
 
+    if (pPresentationParameters == nullptr || ppSwapChain == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    if (is_gfdm_two_head_exclusive()) {
+        if (pPresentationParameters->BackBufferWidth == 800) {
+            return GetSwapChain(gfdm_logical_small_swapchain, ppSwapChain);
+        }
+        if (pPresentationParameters->BackBufferWidth != 1080) {
+            log_warning(
+                    "graphics::d3d9",
+                    "two-head exclusive: rejecting unexpected additional swap chain {}x{}",
+                    pPresentationParameters->BackBufferWidth,
+                    pPresentationParameters->BackBufferHeight);
+            return D3DERR_INVALIDCALL;
+        }
+
+        size_t index = 3;
+        for (UINT logical_swapchain = 1;
+                logical_swapchain < GFDM_LOGICAL_HEAD_COUNT;
+                logical_swapchain++)
+        {
+            if (!is_gfdm_logical_side_swapchain(logical_swapchain)) {
+                continue;
+            }
+            const size_t candidate =
+                    gfdm_hidden_side_swapchain_slot(logical_swapchain);
+            if (fake_sub_swapchain[candidate] == nullptr) {
+                index = candidate;
+                break;
+            }
+        }
+        if (index == 3) {
+            return D3DERR_OUTOFVIDEOMEMORY;
+        }
+        fake_sub_swapchain[index] = new FakeIDirect3DSwapChain9(
+                this,
+                pPresentationParameters,
+                is_d3d9ex,
+                true);
+        fake_sub_swapchain[index]->AddRef();
+        *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(fake_sub_swapchain[index]);
+        return D3D_OK;
+    }
+
     int index = 0;
     bool create_swap_chain = false;
     bool create_fake_swap_chain = false;
@@ -271,6 +345,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
             // SMALL (subscreen)
             create_swap_chain = true;
             index = 0;
+
         } else if (pPresentationParameters->BackBufferWidth == 1080) {
             // LEFT/RIGHT
             create_swap_chain = true;
@@ -335,6 +410,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
 {
     WRAP_VERBOSE_FMT("GetSwapChain({})", iSwapChain);
 
+    if (ppSwapChain == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
     if (iSwapChain == 0) {
         if (!main_swapchain) {
             HRESULT ret = pReal->GetSwapChain(iSwapChain, ppSwapChain);
@@ -344,7 +423,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
                 return ret;
             }
 
-            main_swapchain = new WrappedIDirect3DSwapChain9(this, *ppSwapChain);
+            main_swapchain = new WrappedIDirect3DSwapChain9(
+                    this,
+                    *ppSwapChain,
+                    is_gfdm_two_head_exclusive()
+                            ? WrappedIDirect3DSwapChain9::NativeGroupHead::Main
+                            : WrappedIDirect3DSwapChain9::NativeGroupHead::Unknown);
         }
 
         main_swapchain->AddRef();
@@ -352,6 +436,39 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
 
         graphics_screens_register(iSwapChain);
         return D3D_OK;
+    }
+
+    if (is_gfdm_two_head_exclusive()) {
+        if (is_gfdm_logical_small_swapchain(iSwapChain)) {
+            if (!sub_swapchain[0]) {
+                IDirect3DSwapChain9 *real_swapchain = nullptr;
+                HRESULT ret = pReal->GetSwapChain(
+                        GFDM_NATIVE_SMALL_SWAPCHAIN,
+                        &real_swapchain);
+                if (FAILED(ret)) {
+                    return ret;
+                }
+                sub_swapchain[0] = new WrappedIDirect3DSwapChain9(
+                        this,
+                        real_swapchain,
+                        WrappedIDirect3DSwapChain9::NativeGroupHead::Small);
+                sub_swapchain[0]->should_run_hooks = false;
+            }
+
+            sub_swapchain[0]->AddRef();
+            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(sub_swapchain[0]);
+            graphics_screens_register(iSwapChain);
+            return D3D_OK;
+        }
+        if (is_gfdm_logical_side_swapchain(iSwapChain)) {
+            FakeIDirect3DSwapChain9 *swapchain =
+                    ensure_gfdm_hidden_side_swapchain(iSwapChain);
+            swapchain->AddRef();
+            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(swapchain);
+            graphics_screens_register(iSwapChain);
+            return D3D_OK;
+        }
+        return D3DERR_INVALIDCALL;
     }
 
     bool swap = false;
@@ -390,6 +507,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
 UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
     WRAP_VERBOSE;
 
+    if (is_gfdm_two_head_exclusive()) {
+        return GFDM_LOGICAL_HEAD_COUNT;
+    }
+
     UINT n = pReal->GetNumberOfSwapChains();
 
     if (sub_swapchain[0] && avs::game::is_model({"LDJ", "KFC", "M39"})) {
@@ -399,10 +520,218 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
     return n;
 }
 
+bool WrappedIDirect3DDevice9::is_gfdm_two_head_exclusive() const {
+    return games::gitadora::is_arena_model()
+            && games::gitadora::ARENA_TWO_HEAD_EXCLUSIVE
+            && !GRAPHICS_WINDOWED;
+}
+
+bool WrappedIDirect3DDevice9::is_gfdm_logical_small_swapchain(
+        UINT swapchain) const
+{
+    return swapchain == gfdm_logical_small_swapchain;
+}
+
+bool WrappedIDirect3DDevice9::is_gfdm_logical_side_swapchain(
+        UINT swapchain) const
+{
+    return swapchain > 0
+            && swapchain < GFDM_LOGICAL_HEAD_COUNT
+            && swapchain != gfdm_logical_small_swapchain;
+}
+
+size_t WrappedIDirect3DDevice9::gfdm_hidden_side_swapchain_slot(
+        UINT swapchain) const
+{
+    assert(is_gfdm_logical_side_swapchain(swapchain));
+    return swapchain < gfdm_logical_small_swapchain
+            ? swapchain
+            : swapchain - 1;
+}
+
+void WrappedIDirect3DDevice9::set_gfdm_logical_group_parameters(
+        const D3DPRESENT_PARAMETERS *presentation_parameters)
+{
+    if (presentation_parameters == nullptr) {
+        gfdm_logical_group_parameters_valid = false;
+        return;
+    }
+    std::copy_n(
+            presentation_parameters,
+            gfdm_logical_group_parameters.size(),
+            gfdm_logical_group_parameters.begin());
+    gfdm_logical_group_parameters_valid = true;
+}
+
+FakeIDirect3DSwapChain9 *
+WrappedIDirect3DDevice9::ensure_gfdm_hidden_side_swapchain(UINT iSwapChain) {
+    assert(is_gfdm_logical_side_swapchain(iSwapChain));
+
+    const size_t index = gfdm_hidden_side_swapchain_slot(iSwapChain);
+    if (fake_sub_swapchain[index] == nullptr) {
+        D3DPRESENT_PARAMETERS params {};
+        if (gfdm_logical_group_parameters_valid) {
+            params = gfdm_logical_group_parameters[iSwapChain];
+        } else {
+            params.BackBufferWidth = 1080;
+            params.BackBufferHeight = 1920;
+            params.BackBufferFormat = D3DFMT_X8R8G8B8;
+            params.BackBufferCount = 1;
+            params.MultiSampleType = D3DMULTISAMPLE_NONE;
+            params.SwapEffect = D3DSWAPEFFECT_DISCARD;
+            params.Windowed = FALSE;
+            params.FullScreen_RefreshRateInHz = 60;
+            params.EnableAutoDepthStencil = FALSE;
+            params.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+        }
+        fake_sub_swapchain[index] = new FakeIDirect3DSwapChain9(
+                this,
+                &params,
+                is_d3d9ex,
+                true);
+    }
+    return fake_sub_swapchain[index];
+}
+
+void WrappedIDirect3DDevice9::release_gfdm_hidden_side_swapchains() {
+    for (UINT i = 1; i < GFDM_LOGICAL_HEAD_COUNT; i++) {
+        if (!is_gfdm_logical_side_swapchain(i)) {
+            continue;
+        }
+        const size_t index = gfdm_hidden_side_swapchain_slot(i);
+        if (fake_sub_swapchain[index] != nullptr) {
+            fake_sub_swapchain[index]->Release();
+            fake_sub_swapchain[index] = nullptr;
+        }
+    }
+}
+
+void WrappedIDirect3DDevice9::gfdm_disarm_present_mode_recovery() {
+    std::lock_guard<std::mutex> lock(gfdm_recovery_mutex);
+    gfdm_recovery_armed = false;
+    gfdm_recovery_consumed.store(true, std::memory_order_release);
+}
+
+void WrappedIDirect3DDevice9::gfdm_arm_present_mode_recovery(
+        const D3DPRESENT_PARAMETERS *native_presentation_parameters,
+        const D3DDISPLAYMODEEX *native_fullscreen_display_modes)
+{
+    if (native_presentation_parameters == nullptr
+            || native_fullscreen_display_modes == nullptr)
+    {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(gfdm_recovery_mutex);
+    gfdm_recovery_parameters[0] = native_presentation_parameters[0];
+    gfdm_recovery_parameters[1] = native_presentation_parameters[1];
+    gfdm_recovery_modes[0] = native_fullscreen_display_modes[0];
+    gfdm_recovery_modes[1] = native_fullscreen_display_modes[1];
+    if (gfdm_recovery_modes[0].Size == 0) {
+        gfdm_recovery_modes[0].Size = sizeof(D3DDISPLAYMODEEX);
+    }
+    if (gfdm_recovery_modes[1].Size == 0) {
+        gfdm_recovery_modes[1].Size = sizeof(D3DDISPLAYMODEEX);
+    }
+    gfdm_recovery_armed =
+            !gfdm_recovery_parameters[0].Windowed
+            && !gfdm_recovery_parameters[1].Windowed
+            && IsWindow(gfdm_recovery_parameters[1].hDeviceWindow);
+    gfdm_recovery_consumed.store(
+            !gfdm_recovery_armed,
+            std::memory_order_release);
+}
+
+WrappedIDirect3DDevice9::GfdmPresentModeRecoveryResult
+WrappedIDirect3DDevice9::gfdm_recover_present_mode_change(
+        HRESULT *failure_result)
+{
+    if (failure_result != nullptr) {
+        *failure_result = D3D_OK;
+    }
+    if (!is_gfdm_two_head_exclusive() || !is_d3d9ex
+            || gfdm_recovery_consumed.exchange(
+                    true,
+                    std::memory_order_acq_rel))
+    {
+        return GfdmPresentModeRecoveryResult::NotAttempted;
+    }
+    if (GetCurrentThreadId() != gfdm_device_creation_thread_id) {
+        if (failure_result != nullptr) {
+            *failure_result = D3DERR_INVALIDCALL;
+        }
+        return GfdmPresentModeRecoveryResult::Failed;
+    }
+
+    std::array<D3DPRESENT_PARAMETERS, 2> parameters {};
+    std::array<D3DDISPLAYMODEEX, 2> modes {};
+    {
+        std::lock_guard<std::mutex> lock(gfdm_recovery_mutex);
+        if (!gfdm_recovery_armed) {
+            return GfdmPresentModeRecoveryResult::NotAttempted;
+        }
+        parameters = gfdm_recovery_parameters;
+        modes = gfdm_recovery_modes;
+    }
+
+    IDirect3D9 *raw_d3d = nullptr;
+    HRESULT result = pReal->GetDirect3D(&raw_d3d);
+    IDirect3D9Ex *raw_d3d_ex = nullptr;
+    if (SUCCEEDED(result)) {
+        result = raw_d3d != nullptr
+                ? raw_d3d->QueryInterface(IID_PPV_ARGS(&raw_d3d_ex))
+                : E_FAIL;
+    }
+    D3DDEVICE_CREATION_PARAMETERS creation {};
+    if (SUCCEEDED(result)) {
+        result = pReal->GetCreationParameters(&creation);
+    }
+    if (FAILED(result) || raw_d3d_ex == nullptr) {
+        if (raw_d3d_ex != nullptr) {
+            raw_d3d_ex->Release();
+        }
+        if (raw_d3d != nullptr) {
+            raw_d3d->Release();
+        }
+        if (failure_result != nullptr) {
+            *failure_result = result;
+        }
+        return GfdmPresentModeRecoveryResult::Failed;
+    }
+
+    result = graphics_d3d9_gfdm_recover_two_head_present_mode(
+            raw_d3d_ex,
+            static_cast<IDirect3DDevice9Ex *>(pReal),
+            creation.AdapterOrdinal,
+            parameters.data(),
+            modes.data());
+    raw_d3d_ex->Release();
+    raw_d3d->Release();
+
+    if (result == D3DERR_NOTAVAILABLE) {
+        return GfdmPresentModeRecoveryResult::NotAttempted;
+    }
+    if (FAILED(result)) {
+        if (failure_result != nullptr) {
+            *failure_result = result;
+        }
+        return GfdmPresentModeRecoveryResult::Failed;
+    }
+    return GfdmPresentModeRecoveryResult::ReadyToRetry;
+}
+
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         D3DPRESENT_PARAMETERS *pPresentationParameters)
 {
     log_misc("graphics::d3d9", "WrappedIDirect3DDevice9::Reset");
+
+    if (is_gfdm_two_head_exclusive()) {
+        gfdm_disarm_present_mode_recovery();
+        if (pPresentationParameters == nullptr) {
+            return D3DERR_INVALIDCALL;
+        }
+        release_gfdm_hidden_side_swapchains();
+    }
 
     if (pPresentationParameters) {
         if (GRAPHICS_WINDOWED) {
@@ -413,12 +742,61 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         }
     }
 
+    D3DPRESENT_PARAMETERS native_presentation_parameters_storage[2] {};
+    D3DPRESENT_PARAMETERS *native_presentation_parameters = pPresentationParameters;
+    UINT logical_small_swapchain = gfdm_logical_small_swapchain;
+    if (is_gfdm_two_head_exclusive()) {
+        HRESULT result = graphics_d3d9_gfdm_select_two_head_group_parameters(
+                pPresentationParameters,
+                nullptr,
+                native_presentation_parameters_storage,
+                nullptr,
+                &logical_small_swapchain,
+                "Reset");
+        if (FAILED(result)) {
+            return result;
+        }
+        set_gfdm_logical_group_parameters(pPresentationParameters);
+        if (native_presentation_parameters_storage[0].Windowed
+                || native_presentation_parameters_storage[1].Windowed)
+        {
+            return D3DERR_INVALIDCALL;
+        }
+        if (GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+            native_presentation_parameters_storage[1].FullScreen_RefreshRateInHz =
+                    GRAPHICS_FORCE_REFRESH_SUB.value();
+        }
+        result = graphics_d3d9_gfdm_remap_two_head_group_parameters(
+                native_presentation_parameters_storage,
+                nullptr,
+                "Reset");
+        if (FAILED(result)) {
+            return result;
+        }
+        if (!graphics_gitadora_prepare_two_head_device_window(
+                    native_presentation_parameters_storage[1].hDeviceWindow,
+                    nullptr,
+                    native_presentation_parameters_storage[1].BackBufferWidth,
+                    native_presentation_parameters_storage[1].BackBufferHeight))
+        {
+            return D3DERR_INVALIDCALL;
+        }
+        native_presentation_parameters = native_presentation_parameters_storage;
+    }
+
     // reset overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal)) {
         overlay::OVERLAY->reset_invalidate();
     }
 
-    HRESULT res = pReal->Reset(pPresentationParameters);
+    HRESULT res = pReal->Reset(native_presentation_parameters);
+
+    if (SUCCEEDED(res) && is_gfdm_two_head_exclusive()) {
+        gfdm_logical_small_swapchain = logical_small_swapchain;
+        pPresentationParameters[0] = native_presentation_parameters[0];
+        pPresentationParameters[logical_small_swapchain] =
+                native_presentation_parameters[1];
+    }
 
     // recreate overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal) && SUCCEEDED(res)) {
@@ -453,6 +831,24 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetBackBuffer(
         IDirect3DSurface9 **ppBackBuffer)
 {
     WRAP_VERBOSE;
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_side_swapchain(iSwapChain))
+    {
+        return ensure_gfdm_hidden_side_swapchain(iSwapChain)->GetBackBuffer(
+                iBackBuffer,
+                Type,
+                ppBackBuffer);
+    }
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_small_swapchain(iSwapChain))
+    {
+        CHECK_RESULT(pReal->GetBackBuffer(
+                GFDM_NATIVE_SMALL_SWAPCHAIN,
+                iBackBuffer,
+                Type,
+                ppBackBuffer));
+    }
+
     CHECK_RESULT(pReal->GetBackBuffer(iSwapChain, iBackBuffer, Type, ppBackBuffer));
 }
 
@@ -461,6 +857,20 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetRasterStatus(
         D3DRASTER_STATUS *pRasterStatus)
 {
     WRAP_DEBUG;
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_side_swapchain(iSwapChain))
+    {
+        return ensure_gfdm_hidden_side_swapchain(iSwapChain)->GetRasterStatus(
+                pRasterStatus);
+    }
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_small_swapchain(iSwapChain))
+    {
+        CHECK_RESULT(pReal->GetRasterStatus(
+                GFDM_NATIVE_SMALL_SWAPCHAIN,
+                pRasterStatus));
+    }
+
     CHECK_RESULT(pReal->GetRasterStatus(iSwapChain, pRasterStatus));
 }
 
@@ -477,6 +887,18 @@ void STDMETHODCALLTYPE WrappedIDirect3DDevice9::SetGammaRamp(
         const D3DGAMMARAMP *pRamp)
 {
     WRAP_DEBUG;
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_side_swapchain(iSwapChain))
+    {
+        return;
+    }
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_small_swapchain(iSwapChain))
+    {
+        pReal->SetGammaRamp(GFDM_NATIVE_SMALL_SWAPCHAIN, Flags, pRamp);
+        return;
+    }
+
     pReal->SetGammaRamp(iSwapChain, Flags, pRamp);
 }
 
@@ -485,6 +907,21 @@ void STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetGammaRamp(
         D3DGAMMARAMP *pRamp)
 {
     WRAP_DEBUG;
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_side_swapchain(iSwapChain))
+    {
+        if (pRamp != nullptr) {
+            *pRamp = {};
+        }
+        return;
+    }
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_small_swapchain(iSwapChain))
+    {
+        pReal->GetGammaRamp(GFDM_NATIVE_SMALL_SWAPCHAIN, pRamp);
+        return;
+    }
+
     pReal->GetGammaRamp(iSwapChain, pRamp);
 }
 
@@ -685,6 +1122,19 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetFrontBufferData(
         IDirect3DSurface9 *pDestSurface)
 {
     WRAP_DEBUG;
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_side_swapchain(iSwapChain))
+    {
+        return D3DERR_INVALIDCALL;
+    }
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_small_swapchain(iSwapChain))
+    {
+        CHECK_RESULT(pReal->GetFrontBufferData(
+                GFDM_NATIVE_SMALL_SWAPCHAIN,
+                pDestSurface));
+    }
+
     CHECK_RESULT(pReal->GetFrontBufferData(iSwapChain, pDestSurface));
 }
 
@@ -1779,6 +2229,18 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::WaitForVBlank(
     WRAP_DEBUG;
 
     assert(is_d3d9ex);
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_side_swapchain(iSwapChain))
+    {
+        return D3D_OK;
+    }
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_small_swapchain(iSwapChain))
+    {
+        CHECK_RESULT(static_cast<IDirect3DDevice9Ex *>(pReal)->WaitForVBlank(
+                GFDM_NATIVE_SMALL_SWAPCHAIN));
+    }
+
     CHECK_RESULT(static_cast<IDirect3DDevice9Ex *>(pReal)->WaitForVBlank(iSwapChain));
 }
 
@@ -1882,6 +2344,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
 
     log_misc("graphics::d3d9", "WrappedIDirect3DDevice9::ResetEx");
 
+    if (is_gfdm_two_head_exclusive()) {
+        gfdm_disarm_present_mode_recovery();
+        if (pPresentationParameters == nullptr) {
+            return D3DERR_INVALIDCALL;
+        }
+        release_gfdm_hidden_side_swapchains();
+    }
+
     if (GRAPHICS_WINDOWED) {
         if (pPresentationParameters) {
             pPresentationParameters->Windowed = true;
@@ -1898,13 +2368,115 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
         }
     }
 
+    D3DPRESENT_PARAMETERS native_presentation_parameters_storage[2] {};
+    D3DDISPLAYMODEEX native_fullscreen_display_modes_storage[2] {};
+    D3DPRESENT_PARAMETERS *native_presentation_parameters = pPresentationParameters;
+    D3DDISPLAYMODEEX *native_fullscreen_display_modes = pFullscreenDisplayMode;
+    D3DPRESENT_PARAMETERS recovery_parameters[2] {};
+    D3DDISPLAYMODEEX recovery_modes[2] {};
+    bool recovery_candidate = false;
+    UINT logical_small_swapchain = gfdm_logical_small_swapchain;
+    if (is_gfdm_two_head_exclusive()) {
+        HRESULT result = graphics_d3d9_gfdm_select_two_head_group_parameters(
+                pPresentationParameters,
+                pFullscreenDisplayMode,
+                native_presentation_parameters_storage,
+                pFullscreenDisplayMode != nullptr
+                        ? native_fullscreen_display_modes_storage
+                        : nullptr,
+                &logical_small_swapchain,
+                "ResetEx");
+        if (FAILED(result)) {
+            return result;
+        }
+        set_gfdm_logical_group_parameters(pPresentationParameters);
+        if (native_presentation_parameters_storage[0].Windowed
+                || native_presentation_parameters_storage[1].Windowed)
+        {
+            return D3DERR_INVALIDCALL;
+        }
+        if (pFullscreenDisplayMode != nullptr) {
+            native_fullscreen_display_modes = native_fullscreen_display_modes_storage;
+        }
+        if (GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+            native_presentation_parameters_storage[1].FullScreen_RefreshRateInHz =
+                    GRAPHICS_FORCE_REFRESH_SUB.value();
+            if (native_fullscreen_display_modes != nullptr) {
+                native_fullscreen_display_modes[1].RefreshRate =
+                        GRAPHICS_FORCE_REFRESH_SUB.value();
+            }
+        }
+        result = graphics_d3d9_gfdm_remap_two_head_group_parameters(
+                native_presentation_parameters_storage,
+                native_fullscreen_display_modes,
+                "ResetEx");
+        if (FAILED(result)) {
+            return result;
+        }
+        if (!graphics_gitadora_prepare_two_head_device_window(
+                    native_presentation_parameters_storage[1].hDeviceWindow,
+                    nullptr,
+                    native_presentation_parameters_storage[1].BackBufferWidth,
+                    native_presentation_parameters_storage[1].BackBufferHeight))
+        {
+            return D3DERR_INVALIDCALL;
+        }
+        if (native_fullscreen_display_modes != nullptr) {
+            IDirect3D9 *raw_d3d = nullptr;
+            IDirect3D9Ex *raw_d3d_ex = nullptr;
+            D3DDEVICE_CREATION_PARAMETERS creation {};
+            HRESULT raw_result = pReal->GetDirect3D(&raw_d3d);
+            if (SUCCEEDED(raw_result) && raw_d3d != nullptr) {
+                raw_result = raw_d3d->QueryInterface(IID_PPV_ARGS(&raw_d3d_ex));
+            }
+            if (SUCCEEDED(raw_result)) {
+                raw_result = pReal->GetCreationParameters(&creation);
+            }
+            if (SUCCEEDED(raw_result) && raw_d3d_ex != nullptr) {
+                graphics_d3d9_gfdm_align_two_head_refresh_to_desktop(
+                        raw_d3d_ex,
+                        creation.AdapterOrdinal,
+                        native_presentation_parameters_storage,
+                        native_fullscreen_display_modes,
+                        "ResetEx");
+            }
+            if (raw_d3d_ex != nullptr) {
+                raw_d3d_ex->Release();
+            }
+            if (raw_d3d != nullptr) {
+                raw_d3d->Release();
+            }
+            recovery_parameters[0] = native_presentation_parameters_storage[0];
+            recovery_parameters[1] = native_presentation_parameters_storage[1];
+            recovery_modes[0] = native_fullscreen_display_modes[0];
+            recovery_modes[1] = native_fullscreen_display_modes[1];
+            recovery_candidate = true;
+        }
+        native_presentation_parameters = native_presentation_parameters_storage;
+    }
+
     // reset overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal)) {
         overlay::OVERLAY->reset_invalidate();
     }
 
     HRESULT res = static_cast<IDirect3DDevice9Ex *>(pReal)->ResetEx(
-            pPresentationParameters, pFullscreenDisplayMode);
+            native_presentation_parameters, native_fullscreen_display_modes);
+
+    if (is_gfdm_two_head_exclusive() && SUCCEEDED(res) && recovery_candidate) {
+        gfdm_arm_present_mode_recovery(recovery_parameters, recovery_modes);
+    }
+    if (is_gfdm_two_head_exclusive() && SUCCEEDED(res)) {
+        gfdm_logical_small_swapchain = logical_small_swapchain;
+        pPresentationParameters[0] = native_presentation_parameters[0];
+        pPresentationParameters[logical_small_swapchain] =
+                native_presentation_parameters[1];
+        if (pFullscreenDisplayMode != nullptr) {
+            pFullscreenDisplayMode[0] = native_fullscreen_display_modes[0];
+            pFullscreenDisplayMode[logical_small_swapchain] =
+                    native_fullscreen_display_modes[1];
+        }
+    }
 
     // recreate overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal) && SUCCEEDED(res)) {
@@ -1922,6 +2494,22 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDisplayModeEx(
     WRAP_DEBUG;
 
     assert(is_d3d9ex);
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_side_swapchain(iSwapChain))
+    {
+        return ensure_gfdm_hidden_side_swapchain(iSwapChain)->GetDisplayModeEx(
+                pMode,
+                pRotation);
+    }
+    if (is_gfdm_two_head_exclusive()
+            && is_gfdm_logical_small_swapchain(iSwapChain))
+    {
+        CHECK_RESULT(static_cast<IDirect3DDevice9Ex *>(pReal)->GetDisplayModeEx(
+                GFDM_NATIVE_SMALL_SWAPCHAIN,
+                pMode,
+                pRotation));
+    }
+
     CHECK_RESULT(static_cast<IDirect3DDevice9Ex *>(pReal)->GetDisplayModeEx(
             iSwapChain, pMode, pRotation));
 }

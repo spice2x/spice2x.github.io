@@ -6,14 +6,19 @@
 #endif
 
 #include <atomic>
+#include <vector>
 
 #include <d3d9.h>
 
 #include "util/logging.h"
 
 struct FakeIDirect3DSwapChain9 : IDirect3DSwapChain9Ex {
-    FakeIDirect3DSwapChain9(IDirect3DDevice9 *pDev, D3DPRESENT_PARAMETERS *present_params, bool is_d3d9ex) :
-        pDev(pDev), is_d3d9ex(is_d3d9ex)
+    FakeIDirect3DSwapChain9(
+            IDirect3DDevice9 *pDev,
+            D3DPRESENT_PARAMETERS *present_params,
+            bool is_d3d9ex,
+            bool is_hidden = false) :
+        pDev(pDev), is_d3d9ex(is_d3d9ex), is_hidden(is_hidden)
     {
         // copy presentation parameters
         memcpy(&this->present_params, present_params, sizeof(this->present_params));
@@ -78,8 +83,10 @@ struct FakeIDirect3DSwapChain9 : IDirect3DSwapChain9Ex {
 
     IDirect3DDevice9 *const pDev;
     bool is_d3d9ex;
+    bool is_hidden;
 
     std::atomic<ULONG> ref_cnt = 1;
+    std::atomic<UINT> present_count = 0;
 
     D3DPRESENT_PARAMETERS present_params {};
     std::vector<IDirect3DSurface9 *> render_targets;

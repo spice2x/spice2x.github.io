@@ -1299,7 +1299,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "gdalayout",
         .desc = "For Arena Model: select how many windows to create.\n\n"
             "1 window: main only; use the subscreen overlay for SMALL.\n\n"
-            "2 windows: main + SMALL. Note: currently only works for windowed mode, broken for fullscreen.\n\n"
+            "2 windows: main + SMALL. Without -w, this uses native D3D9 adapter-group fullscreen "
+            "with physical MAIN/SMALL and virtual LEFT/RIGHT. It requires two active displays on "
+            "one adapter group. With -w, it uses borderless windows instead.\n\n"
             "4 windows: main + LEFT + RIGHT + SMALL. Fullscreen requires exactly 4 monitors in the "
             "right resolution; see wiki for details.",
         .type = OptionType::Enum,

@@ -19,6 +19,7 @@ namespace games::gitadora {
     extern std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
     extern std::optional<socd::SocdAlgorithm> PICK_ALGO;
     extern std::optional<uint8_t> ARENA_WINDOW_COUNT;
+    extern bool ARENA_TWO_HEAD_EXCLUSIVE;
     extern std::optional<std::string> ASIO_DRIVER;
     extern bool ALLOW_REALTEK_AUDIO;
 

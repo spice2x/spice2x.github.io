@@ -59,7 +59,12 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::Present(const RECT *pSourceRe
         log_misc("graphics::d3d9", "FakeIDirect3DSwapChain9::Present");
     });
 
-    return D3DERR_INVALIDCALL;
+    if (!is_hidden) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    present_count.fetch_add(1, std::memory_order_relaxed);
+    return D3D_OK;
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetFrontBufferData(IDirect3DSurface9 *pDestSurface) {
     WRAP_VERBOSE;
@@ -86,11 +91,24 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetBackBuffer(UINT iBackBuffe
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_STATUS *pRasterStatus) {
     WRAP_VERBOSE;
-    return D3DERR_INVALIDCALL;
+    if (pRasterStatus == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    *pRasterStatus = {};
+    return D3D_OK;
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDisplayMode(D3DDISPLAYMODE *pMode) {
     WRAP_VERBOSE;
-    return D3DERR_INVALIDCALL;
+    if (pMode == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    pMode->Width = present_params.BackBufferWidth;
+    pMode->Height = present_params.BackBufferHeight;
+    pMode->RefreshRate = present_params.FullScreen_RefreshRateInHz;
+    pMode->Format = present_params.BackBufferFormat;
+    return D3D_OK;
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDevice(IDirect3DDevice9 **ppDevice) {
     WRAP_VERBOSE;
@@ -108,17 +126,34 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetPresentParameters(
         D3DPRESENT_PARAMETERS *pPresentationParameters)
 {
     WRAP_VERBOSE;
-    return D3DERR_INVALIDCALL;
+    if (pPresentationParameters == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    *pPresentationParameters = present_params;
+    return D3D_OK;
 }
 
 // IDirect3DSwapChain9Ex
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetLastPresentCount(UINT *pLastPresentCount) {
     assert(is_d3d9ex);
-    return D3DERR_INVALIDCALL;
+    if (pLastPresentCount == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    *pLastPresentCount = present_count.load(std::memory_order_relaxed);
+    return D3D_OK;
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetPresentStats(D3DPRESENTSTATS *pPresentationStatistics) {
     assert(is_d3d9ex);
-    return D3DERR_INVALIDCALL;
+    if (pPresentationStatistics == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    *pPresentationStatistics = {};
+    pPresentationStatistics->PresentCount =
+        present_count.load(std::memory_order_relaxed);
+    return D3D_OK;
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDisplayModeEx(D3DDISPLAYMODEEX *pMode,
         D3DDISPLAYROTATION *pRotation)
@@ -126,5 +161,18 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDisplayModeEx(D3DDISPLAYMO
     WRAP_VERBOSE;
 
     assert(is_d3d9ex);
-    return D3DERR_INVALIDCALL;
+    if (pMode == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    pMode->Size = sizeof(*pMode);
+    pMode->Width = present_params.BackBufferWidth;
+    pMode->Height = present_params.BackBufferHeight;
+    pMode->RefreshRate = present_params.FullScreen_RefreshRateInHz;
+    pMode->Format = present_params.BackBufferFormat;
+    pMode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+    if (pRotation != nullptr) {
+        *pRotation = D3DDISPLAYROTATION_IDENTITY;
+    }
+    return D3D_OK;
 }
