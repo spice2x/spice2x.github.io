@@ -98,11 +98,13 @@ namespace games::gitadora {
                 "????????EB??????????????????????", 0, 0);
 
         if (!limiter_12ms_disabled || !limiter_16ms_disabled) {
-            log_warning("gitadora", "failed to disable libshare-pj mainloop frame limiter");
+            log_fatal(
+                "gitadora",
+                "failed to disable libshare-pj mainloop frame limiter (-gdnoframelimiter), ensure patch is not already applied");
             return;
         }
 
-        log_info("gitadora", "successfully disabled libshare-pj mainloop frame limiter");
+        log_info("gitadora", "successfully disabled libshare-pj mainloop frame limiter (-gdnoframelimiter)");
     }
 #endif
 
