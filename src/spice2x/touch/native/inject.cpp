@@ -394,11 +394,10 @@ namespace nativetouch::inject {
     // preserve native registration and attach mouse injection to the touch window
     static BOOL WINAPI RegisterTouchWindowHook(HWND window, ULONG flags) {
 
-        // for TDJ in windowed subscreen mode, the main game window is
-        // target for delivering touch messages, not the subscreen
+        // TDJ handles touches on the main window, including contacts that the
+        // dedicated subscreen forwards there
         if (GRAPHICS_IIDX_WSUB && window != TDJ_SUBSCREEN_WINDOW) {
             touch_delivery_window.store(window, std::memory_order_release);
-            return TRUE;
         }
 
         // call original
