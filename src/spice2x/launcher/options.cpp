@@ -2166,7 +2166,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             {"25", "+25 dB"},
             {"30", "+30 dB"},
         },
-        .quick_setting_category = "Audio",
     },
     {
         // AudioResample
