@@ -1206,9 +1206,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "GitaDora Disable Frame Limiter (EXPERIMENTAL)",
         .name = "gdnoframelimiter",
         .desc = "Only for GITADORA to GALAXY WAVE; not for XG series or Arena Model.\n\n"
-            "This disables game engine's built-in frame limiter, which can result in unstable frame pacing "
-            "(around 56-58 FPS) on modern Windows. Turning this on forces the game to rely on V-Sync "
-            "instead, resulting in stable FPS. Ensure your monitors are set to 60Hz.",
+            "Game engine's built-in frame limiter can result in unstable frame pacing "
+            "(around 56-58 FPS) on modern Windows. Turning this on disables that and "
+            "forces the game to rely on V-Sync instead, resulting in a stable FPS.\n\n"
+            "Ensure your monitors are set to 60Hz.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
         .category = "Game Options",
