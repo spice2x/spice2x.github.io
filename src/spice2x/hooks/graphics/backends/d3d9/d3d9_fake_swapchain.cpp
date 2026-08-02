@@ -91,6 +91,10 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetBackBuffer(UINT iBackBuffe
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_STATUS *pRasterStatus) {
     WRAP_VERBOSE;
+    if (!is_hidden) {
+        return D3DERR_INVALIDCALL;
+    }
+
     if (pRasterStatus == nullptr) {
         return D3DERR_INVALIDCALL;
     }
@@ -100,6 +104,10 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_STA
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDisplayMode(D3DDISPLAYMODE *pMode) {
     WRAP_VERBOSE;
+    if (!is_hidden) {
+        return D3DERR_INVALIDCALL;
+    }
+
     if (pMode == nullptr) {
         return D3DERR_INVALIDCALL;
     }
@@ -126,6 +134,10 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetPresentParameters(
         D3DPRESENT_PARAMETERS *pPresentationParameters)
 {
     WRAP_VERBOSE;
+    if (!is_hidden) {
+        return D3DERR_INVALIDCALL;
+    }
+
     if (pPresentationParameters == nullptr) {
         return D3DERR_INVALIDCALL;
     }
@@ -137,6 +149,10 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetPresentParameters(
 // IDirect3DSwapChain9Ex
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetLastPresentCount(UINT *pLastPresentCount) {
     assert(is_d3d9ex);
+    if (!is_hidden) {
+        return D3DERR_INVALIDCALL;
+    }
+
     if (pLastPresentCount == nullptr) {
         return D3DERR_INVALIDCALL;
     }
@@ -146,6 +162,10 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetLastPresentCount(UINT *pLa
 }
 HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetPresentStats(D3DPRESENTSTATS *pPresentationStatistics) {
     assert(is_d3d9ex);
+    if (!is_hidden) {
+        return D3DERR_INVALIDCALL;
+    }
+
     if (pPresentationStatistics == nullptr) {
         return D3DERR_INVALIDCALL;
     }
@@ -161,6 +181,10 @@ HRESULT STDMETHODCALLTYPE FakeIDirect3DSwapChain9::GetDisplayModeEx(D3DDISPLAYMO
     WRAP_VERBOSE;
 
     assert(is_d3d9ex);
+    if (!is_hidden) {
+        return D3DERR_INVALIDCALL;
+    }
+
     if (pMode == nullptr) {
         return D3DERR_INVALIDCALL;
     }
