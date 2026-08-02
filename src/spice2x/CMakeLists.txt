@@ -536,6 +536,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/graphics/nvenc_hook.cpp
         hooks/graphics/backends/d3d9/d3d9_backend.cpp
         hooks/graphics/backends/d3d9/d3d9_device.cpp
+        hooks/graphics/backends/d3d9/d3d9_gfdm.cpp
         hooks/graphics/backends/d3d9/d3d9_live2d.cpp
         hooks/graphics/backends/d3d9/d3d9_fake_swapchain.cpp
         hooks/graphics/backends/d3d9/d3d9_swapchain.cpp

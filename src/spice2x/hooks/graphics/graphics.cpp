@@ -44,6 +44,8 @@ HWND SDVX_SUBSCREEN_WINDOW = nullptr;
 HWND GFDM_SUBSCREEN_WINDOW = nullptr;
 static HWND GFDM_LEFT_WINDOW = nullptr;
 static HWND GFDM_RIGHT_WINDOW = nullptr;
+static HMONITOR GFDM_TWO_HEAD_SMALL_MONITOR = nullptr;
+static HWND GFDM_TWO_HEAD_SMALL_WINDOW = nullptr;
 HWND POPN_SUBSCREEN_WINDOW = nullptr;
 bool FAKE_SUBSCREEN_ADAPTER = false;
 
@@ -183,6 +185,13 @@ static bool is_gfdm_known_window(HWND hWnd) {
     return gitadora_window_name_for_hwnd(hWnd) != nullptr;
 }
 
+static bool is_gfdm_two_head_small_window(HWND hWnd) {
+    return games::gitadora::is_arena_model() &&
+        games::gitadora::ARENA_TWO_HEAD_EXCLUSIVE &&
+        hWnd != nullptr &&
+        hWnd == GFDM_TWO_HEAD_SMALL_WINDOW;
+}
+
 static bool gitadora_should_block_game_window_placement(HWND hWnd) {
     if (!GRAPHICS_WINDOWED || !games::gitadora::is_arena_model()) {
         return false;
@@ -202,6 +211,95 @@ static void gitadora_remember_window(HWND hWnd, const std::string &window_name) 
     } else if (window_name == "SMALL") {
         GFDM_SUBSCREEN_WINDOW = hWnd;
     }
+}
+
+bool graphics_gitadora_prepare_two_head_device_window(
+        HWND hWnd, HMONITOR target_monitor, UINT desired_width, UINT desired_height) {
+    if (hWnd == nullptr || !IsWindow(hWnd)) {
+        log_warning(
+            "graphics",
+            "two-head exclusive: native secondary device window is invalid: {}",
+            fmt::ptr(hWnd));
+        return false;
+    }
+    if (ShowWindow_orig == nullptr || SetWindowLongA_orig == nullptr ||
+            SetWindowPos_orig == nullptr) {
+        log_warning(
+            "graphics",
+            "two-head exclusive: window hooks are not initialized for {}",
+            fmt::ptr(hWnd));
+        return false;
+    }
+
+    RECT rect_before {};
+    GetWindowRect(hWnd, &rect_before);
+    const DWORD style_before = static_cast<DWORD>(GetWindowLongA(hWnd, GWL_STYLE));
+    const BOOL visible_before = IsWindowVisible(hWnd);
+
+    if (target_monitor != nullptr) {
+        GFDM_TWO_HEAD_SMALL_MONITOR = target_monitor;
+    }
+    const HMONITOR monitor = target_monitor != nullptr
+        ? target_monitor
+        : (GFDM_TWO_HEAD_SMALL_MONITOR != nullptr
+            ? GFDM_TWO_HEAD_SMALL_MONITOR
+            : MonitorFromWindow(hWnd, MONITOR_DEFAULTTONULL));
+    MONITORINFO monitor_info {};
+    monitor_info.cbSize = sizeof(monitor_info);
+    if (monitor == nullptr || !GetMonitorInfoA(monitor, &monitor_info)) {
+        log_warning(
+            "graphics",
+            "two-head exclusive: could not find the SMALL monitor for {}",
+            fmt::ptr(hWnd));
+        return false;
+    }
+
+    // Arena requests D3DCREATE_NOWINDOWCHANGES, so place its SMALL window on
+    // the second head before D3D9 takes ownership of it.
+    const DWORD fullscreen_style = (style_before & ~WS_OVERLAPPEDWINDOW) | WS_POPUP;
+    const bool style_changed = fullscreen_style != style_before;
+    if (style_changed) {
+        SetWindowLongA_orig(hWnd, GWL_STYLE, static_cast<LONG>(fullscreen_style));
+    }
+    const RECT &monitor_rect = monitor_info.rcMonitor;
+    const int host_width = desired_width != 0
+        ? static_cast<int>(desired_width)
+        : monitor_rect.right - monitor_rect.left;
+    const int host_height = desired_height != 0
+        ? static_cast<int>(desired_height)
+        : monitor_rect.bottom - monitor_rect.top;
+    const bool rect_changed = rect_before.left != monitor_rect.left ||
+        rect_before.top != monitor_rect.top ||
+        rect_before.right != monitor_rect.left + host_width ||
+        rect_before.bottom != monitor_rect.top + host_height;
+    if ((style_changed || rect_changed) && !SetWindowPos_orig(
+        hWnd,
+        HWND_TOP,
+        monitor_rect.left,
+        monitor_rect.top,
+        host_width,
+        host_height,
+        SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_FRAMECHANGED)) {
+        log_warning(
+            "graphics",
+            "two-head exclusive: failed to place SMALL window, error={}",
+            GetLastError());
+        return false;
+    }
+
+    if (!visible_before) {
+        ShowWindow_orig(hWnd, SW_SHOWNOACTIVATE);
+    }
+    if (MonitorFromWindow(hWnd, MONITOR_DEFAULTTONULL) != monitor) {
+        log_warning(
+            "graphics",
+            "two-head exclusive: SMALL window {} is on the wrong monitor",
+            fmt::ptr(hWnd));
+        return false;
+    }
+
+    GFDM_TWO_HEAD_SMALL_WINDOW = hWnd;
+    return true;
 }
 
 static bool gitadora_should_allow_small_resize() {
@@ -618,9 +716,16 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     }
 
     // only hook touch window if multiple windows are allowed
-    if (is_gfdm_sub_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
+    if (gfdm_window_name == "LEFT" || gfdm_window_name == "RIGHT") {
         gitadora_remember_window(result, gfdm_window_name);
-        graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
+    }
+    if (is_gfdm_sub_window &&
+            ((GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) ||
+             games::gitadora::ARENA_TWO_HEAD_EXCLUSIVE)) {
+        gitadora_remember_window(result, gfdm_window_name);
+        if (GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
+            graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
+        }
     }
     if (is_gfdm_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
         gitadora_force_window_style(result);
@@ -767,6 +872,10 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
         nHeight,
         bRepaint);
 
+    if (is_gfdm_two_head_small_window(hWnd)) {
+        return TRUE;
+    }
+
     // sound voltex windowed mode adjustments
     if (GRAPHICS_WINDOWED && GRAPHICS_SDVX_FORCE_720 && avs::game::is_model("KFC")) {
         RECT rect {};
@@ -874,6 +983,11 @@ static HCURSOR WINAPI SetCursor_hook(HCURSOR hCursor) {
 
 static LONG WINAPI SetWindowLongA_hook(HWND hWnd, int nIndex, LONG dwNewLong) {
 
+    if (is_gfdm_two_head_small_window(hWnd) &&
+            (nIndex == GWL_STYLE || nIndex == GWL_EXSTYLE)) {
+        return GetWindowLongA(hWnd, nIndex);
+    }
+
     // DDR window style fix
     if (nIndex == GWL_STYLE && avs::game::is_model("MDX")) {
         dwNewLong |= WS_OVERLAPPEDWINDOW;
@@ -893,6 +1007,11 @@ static LONG WINAPI SetWindowLongA_hook(HWND hWnd, int nIndex, LONG dwNewLong) {
 }
 
 static LONG WINAPI SetWindowLongW_hook(HWND hWnd, int nIndex, LONG dwNewLong) {
+
+    if (is_gfdm_two_head_small_window(hWnd) &&
+            (nIndex == GWL_STYLE || nIndex == GWL_EXSTYLE)) {
+        return GetWindowLongW(hWnd, nIndex);
+    }
 
     // DDR overlapped window fix
     if (nIndex == GWL_STYLE && avs::game::is_model("MDX")) {
@@ -914,6 +1033,12 @@ static LONG WINAPI SetWindowLongW_hook(HWND hWnd, int nIndex, LONG dwNewLong) {
 
 static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
         int X, int Y, int cx, int cy, UINT uFlags) {
+
+    if (is_gfdm_two_head_small_window(hWnd) &&
+            ((uFlags & SWP_HIDEWINDOW) ||
+             (uFlags & (SWP_NOMOVE | SWP_NOSIZE)) != (SWP_NOMOVE | SWP_NOSIZE))) {
+        return TRUE;
+    }
 
     // windowed mode adjustments
     if (GRAPHICS_WINDOWED && (avs::game::is_model("LMA") || avs::game::is_model("MDX"))) {
@@ -939,6 +1064,13 @@ static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
 }
 
 static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
+    if (is_gfdm_two_head_small_window(hWnd) &&
+            (nCmdShow == SW_HIDE || nCmdShow == SW_MINIMIZE ||
+             nCmdShow == SW_SHOWMINIMIZED || nCmdShow == SW_SHOWMINNOACTIVE ||
+             nCmdShow == SW_FORCEMINIMIZE)) {
+        return TRUE;
+    }
+
     if (games::gitadora::is_arena_model() &&
         GRAPHICS_PREVENT_SECONDARY_WINDOWS &&
         hWnd != GRAPHICS_HOOKED_WINDOW) {

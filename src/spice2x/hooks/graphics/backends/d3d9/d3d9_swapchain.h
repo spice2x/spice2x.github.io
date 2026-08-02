@@ -5,8 +5,13 @@
 interface WrappedIDirect3DDevice9;
 
 struct WrappedIDirect3DSwapChain9 : IDirect3DSwapChain9Ex {
-    WrappedIDirect3DSwapChain9(WrappedIDirect3DDevice9 *dev, IDirect3DSwapChain9 *orig) :
-        pDev(dev), pReal(orig), is_d3d9ex(false)
+    enum class NativeGroupHead { Unknown, Main, Small };
+
+    WrappedIDirect3DSwapChain9(
+            WrappedIDirect3DDevice9 *dev,
+            IDirect3DSwapChain9 *orig,
+            NativeGroupHead native_group_head = NativeGroupHead::Unknown) :
+        pDev(dev), pReal(orig), is_d3d9ex(false), native_group_head(native_group_head)
     {
         IDirect3DSwapChain9Ex *swapchain = nullptr;
 
@@ -16,8 +21,11 @@ struct WrappedIDirect3DSwapChain9 : IDirect3DSwapChain9Ex {
         }
     }
 
-    WrappedIDirect3DSwapChain9(WrappedIDirect3DDevice9 *dev, IDirect3DSwapChain9Ex *orig) :
-        pDev(dev), pReal(orig), is_d3d9ex(true)
+    WrappedIDirect3DSwapChain9(
+            WrappedIDirect3DDevice9 *dev,
+            IDirect3DSwapChain9Ex *orig,
+            NativeGroupHead native_group_head = NativeGroupHead::Unknown) :
+        pDev(dev), pReal(orig), is_d3d9ex(true), native_group_head(native_group_head)
     {
     }
 
@@ -53,6 +61,7 @@ struct WrappedIDirect3DSwapChain9 : IDirect3DSwapChain9Ex {
 
     IDirect3DSwapChain9 *pReal;
     bool is_d3d9ex = false;
+    NativeGroupHead native_group_head = NativeGroupHead::Unknown;
 
     bool should_run_hooks = true;
 };

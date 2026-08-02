@@ -2,6 +2,8 @@
 
 #include <d3d9.h>
 
+#include "d3d9_gfdm.h"
+
 // {EEE9CCF6-53D6-4326-9AE5-60921B3DB394}
 static const GUID IID_WrappedIDirect3D9 = {
     0xeee9ccf6, 0x53d6, 0x4326, { 0x9a, 0xe5, 0x60, 0x92, 0x1b, 0x3d, 0xb3, 0x94 }

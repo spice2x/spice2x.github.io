@@ -2,12 +2,14 @@
 #include "asio.h"
 #include "handle.h"
 #include "bi2x_hook.h"
+#include <span>
 #include <unordered_map>
+
+#include "cfg/configurator.h"
+#include "cfg/screen_resize.h"
 
 #include <ks.h>
 #include <ksmedia.h>
-
-#include "cfg/configurator.h"
 #include "hooks/audio/audio.h"
 #include "hooks/audio/mme.h"
 #include "hooks/graphics/graphics.h"
@@ -35,6 +37,7 @@ namespace games::gitadora {
     std::optional<std::string> SUBSCREEN_OVERLAY_SIZE;
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
     std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
+    bool ARENA_TWO_HEAD_EXCLUSIVE = false;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
     bool ALLOW_REALTEK_AUDIO = false;
 
@@ -271,9 +274,21 @@ namespace games::gitadora {
                         break;
                     case 2:
                         if (!GRAPHICS_WINDOWED) {
-                            log_fatal(
+                            if (D3D9_ADAPTER.has_value()) {
+                                log_fatal(
+                                    "gitadora",
+                                    "arena model: fullscreen two-window mode cannot use -monitor; "
+                                    "use -w for borderless windows instead");
+                            }
+                            ARENA_TWO_HEAD_EXCLUSIVE = true;
+                            log_info(
                                 "gitadora",
-                                "arena model: 2-window mode is not supported in fullscreen, choose 1 or 4");
+                                "arena model: native two-head fullscreen adapter-group mode "
+                                "(MAIN + SMALL; LEFT/RIGHT are virtual)");
+                        } else {
+                            log_info(
+                                "gitadora",
+                                "arena model: two-window mode uses windowed rendering");
                         }
                         log_info("gitadora", "arena model: two-window mode");
                         GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS = true;
@@ -299,10 +314,18 @@ namespace games::gitadora {
     static decltype(QueryDisplayConfig) *QueryDisplayConfig_orig = nullptr;
     static decltype(DisplayConfigGetDeviceInfo) *DisplayConfigGetDeviceInfo_orig = nullptr;
 
-    // cached primary real monitor: its path + source/target mode entries.
-    // modeInfoIdx values on the path are renumbered to 0 / 1 so the cache is self-contained.
+    // Cached real monitor paths and their source/target mode entries. modeInfoIdx values are
+    // renumbered so the cache is self-contained. The normal single-head emulation keeps only
+    // MAIN; the two-head adapter-group mode keeps MAIN and SMALL as real heads.
     static DISPLAYCONFIG_PATH_INFO real_primary_path = {};
     static DISPLAYCONFIG_MODE_INFO real_primary_modes[2] = {}; // [0]=source, [1]=target
+    static DISPLAYCONFIG_PATH_INFO real_small_path = {};
+    static DISPLAYCONFIG_MODE_INFO real_small_modes[2] = {}; // [0]=source, [1]=target
+    static bool real_small_path_available = false;
+
+    static bool is_two_head_exclusive() {
+        return ARENA_TWO_HEAD_EXCLUSIVE && !GRAPHICS_WINDOWED;
+    }
 
     // fake monitors appended after the real ones. the game classifies monitors
     // by outputTechnology + connectorInstance:
@@ -326,12 +349,31 @@ namespace games::gitadora {
     // adapter to a swap chain role via its DisplayConfig connector instance,
     // so the entries here must be listed in the same order the wrapper enumerates
     // them: id=1 -> adapter 1 -> left, id=2 -> adapter 2 -> right, id=3 -> adapter 3 -> small.
-    static constexpr FakeMonitor FAKE_MONITORS[] = {
+    // Normal single-head emulation: every non-MAIN role is fake.
+    static constexpr FakeMonitor FAKE_MONITORS_SINGLE_HEAD[] = {
         { 1, 1080, 1920, -100000, -100000, 0 }, // left  (DP connector instance 0)
         { 2, 1080, 1920, -200000, -200000, 1 }, // right (DP connector instance 1)
         { 3,  800, 1280, -300000, -300000, 2 }, // small (DP connector instance 2, touch)
     };
-    static constexpr UINT32 FAKE_MONITOR_COUNT = static_cast<UINT32>(std::size(FAKE_MONITORS));
+
+    // Two-head fullscreen: adapters 0/1 are the real MAIN/SMALL group heads.
+    // Keep only LEFT/RIGHT fake, with their adapter ids matching the D3D9 wrapper.
+    static constexpr FakeMonitor FAKE_MONITORS_TWO_HEAD[] = {
+        { 2, 1080, 1920, -200000, -200000, 0 }, // left  (DP connector instance 0)
+        { 3, 1080, 1920, -300000, -300000, 1 }, // right (DP connector instance 1)
+    };
+
+    static std::span<const FakeMonitor> get_fake_monitors() {
+        if (is_two_head_exclusive()) {
+            return FAKE_MONITORS_TWO_HEAD;
+        }
+
+        return FAKE_MONITORS_SINGLE_HEAD;
+    }
+
+    static UINT32 real_monitor_count() {
+        return is_two_head_exclusive() ? 2 : 1;
+    }
 
     // call QueryDisplayConfig once, keep only the primary monitor's path and its
     // two referenced modes (source + target). modeInfoIdx values are rewritten to
@@ -369,13 +411,55 @@ namespace games::gitadora {
             log_fatal("gitadora", "cache_primary_monitor_info: no primary monitor found");
         }
 
+        if (primary->targetInfo.modeInfoIdx >= all_modes.size()) {
+            log_fatal("gitadora", "cache_primary_monitor_info: primary target mode is missing");
+        }
+
         real_primary_modes[0] = all_modes[primary->sourceInfo.modeInfoIdx];
         real_primary_modes[1] = all_modes[primary->targetInfo.modeInfoIdx];
         real_primary_path = *primary;
         real_primary_path.sourceInfo.modeInfoIdx = 0;
         real_primary_path.targetInfo.modeInfoIdx = 1;
 
-        log_info("gitadora", "cache_primary_monitor_info: cached primary monitor");
+        real_small_path_available = false;
+        if (is_two_head_exclusive()) {
+            if (all_paths.size() != 2) {
+                log_fatal(
+                    "gitadora",
+                    "two-head fullscreen mode requires exactly two active display paths, found {}",
+                    all_paths.size());
+            }
+
+            const auto secondary = std::find_if(all_paths.begin(), all_paths.end(),
+                [&](const auto &p) {
+                    return &p != &*primary;
+                });
+            if (secondary == all_paths.end() ||
+                    secondary->sourceInfo.modeInfoIdx >= all_modes.size() ||
+                    secondary->targetInfo.modeInfoIdx >= all_modes.size()) {
+                log_fatal("gitadora", "could not identify the physical SMALL monitor");
+            }
+            const LUID primary_adapter = primary->sourceInfo.adapterId;
+            const LUID secondary_adapter = secondary->sourceInfo.adapterId;
+            const bool same_adapter = primary_adapter.HighPart == secondary_adapter.HighPart &&
+                primary_adapter.LowPart == secondary_adapter.LowPart;
+            if (!same_adapter) {
+                log_fatal(
+                    "gitadora",
+                    "MAIN and SMALL must use the same display adapter");
+            }
+
+            real_small_modes[0] = all_modes[secondary->sourceInfo.modeInfoIdx];
+            real_small_modes[1] = all_modes[secondary->targetInfo.modeInfoIdx];
+            real_small_path = *secondary;
+            real_small_path.sourceInfo.modeInfoIdx = 2;
+            real_small_path.targetInfo.modeInfoIdx = 3;
+            real_small_path_available = true;
+
+            log_info("gitadora", "cache_primary_monitor_info: cached real MAIN and SMALL monitors");
+        } else {
+            log_info("gitadora", "cache_primary_monitor_info: cached primary monitor");
+        }
     }
 
     static
@@ -390,33 +474,36 @@ namespace games::gitadora {
         static std::once_flag populate_once;
         std::call_once(populate_once, cache_primary_monitor_info);
 
-        // always report exactly 1 real + N fake monitors
-        *pNumPathArrayElements = 1 + FAKE_MONITOR_COUNT;
-        *pNumModeInfoArrayElements = 2 + FAKE_MONITOR_COUNT * 2;
+        const auto fake_monitors = get_fake_monitors();
+        const auto fake_count = static_cast<UINT32>(fake_monitors.size());
+        const UINT32 real_count = real_monitor_count();
+        *pNumPathArrayElements = real_count + fake_count;
+        *pNumModeInfoArrayElements = (real_count + fake_count) * 2;
 
         log_info(
             "gitadora",
-            "GetDisplayConfigBufferSizes: 1 real path + {} fake monitor(s)",
-            FAKE_MONITOR_COUNT);
+            "GetDisplayConfigBufferSizes: {} real path(s) + {} fake monitor(s)",
+            real_count,
+            fake_count);
 
         return ERROR_SUCCESS;
     }
 
-    // write fake monitor i into the caller's path/mode arrays. layout (single-monitor
-    // assumption): index 0 in both arrays holds the cached primary real monitor, so
-    // fake i occupies path slot (1 + i) and mode slots (2 + i*2) / (2 + i*2 + 1).
+    // Write a fake monitor after the real paths. The cache is packed as [source, target]
+    // mode pairs, so each path consumes two mode entries.
     static void insert_fake_monitor(
         DISPLAYCONFIG_PATH_INFO *paths,
         DISPLAYCONFIG_MODE_INFO *modes,
-        UINT32 i)
+        const FakeMonitor &m,
+        UINT32 path_index,
+        UINT32 source_mode_index)
     {
-        const FakeMonitor &m = FAKE_MONITORS[i];
-        const UINT32 src_idx = 2 + i * 2;
+        const UINT32 src_idx = source_mode_index;
         const UINT32 tgt_idx = src_idx + 1;
         const LUID adapter_id { .LowPart = static_cast<DWORD>(-m.id), .HighPart = -m.id };
         const UINT32 uid = static_cast<UINT32>(-m.id);
 
-        paths[1 + i] = {
+        paths[path_index] = {
             .sourceInfo = {
                 .adapterId = adapter_id,
                 .id = uid,
@@ -474,21 +561,35 @@ namespace games::gitadora {
         DISPLAYCONFIG_MODE_INFO* modeInfoArray,
         DISPLAYCONFIG_TOPOLOGY_ID* currentTopologyId)
     {
-        // copy cached primary real monitor into caller buffers at index 0
+        // Copy cached real monitor paths into the caller buffers.
         pathArray[0] = real_primary_path;
         modeInfoArray[0] = real_primary_modes[0];
         modeInfoArray[1] = real_primary_modes[1];
-        *numPathArrayElements = 1 + FAKE_MONITOR_COUNT;
-        *numModeInfoArrayElements = 2 + FAKE_MONITOR_COUNT * 2;
+        if (is_two_head_exclusive() && real_small_path_available) {
+            pathArray[1] = real_small_path;
+            modeInfoArray[2] = real_small_modes[0];
+            modeInfoArray[3] = real_small_modes[1];
+        }
+
+        const auto fake_monitors = get_fake_monitors();
+        const auto fake_count = static_cast<UINT32>(fake_monitors.size());
+        const UINT32 real_count = real_monitor_count();
+        *numPathArrayElements = real_count + fake_count;
+        *numModeInfoArrayElements = (real_count + fake_count) * 2;
         if (currentTopologyId != nullptr) {
             *currentTopologyId = DISPLAYCONFIG_TOPOLOGY_EXTEND;
         }
 
         log_misc("gitadora", "QueryDisplayConfig returning fake monitor paths and modes");
 
-        // append fake monitors after the real one
-        for (UINT32 i = 0; i < FAKE_MONITOR_COUNT; i++) {
-            insert_fake_monitor(pathArray, modeInfoArray, i);
+        // Append fake monitors after the real path(s).
+        for (UINT32 i = 0; i < fake_count; i++) {
+            insert_fake_monitor(
+                pathArray,
+                modeInfoArray,
+                fake_monitors[i],
+                real_count + i,
+                real_count * 2 + i * 2);
         }
 
         return ERROR_SUCCESS;
@@ -519,7 +620,8 @@ namespace games::gitadora {
                 const auto targetName = reinterpret_cast<DISPLAYCONFIG_TARGET_DEVICE_NAME*>(requestPacket);
                 const LONG fake_id = -id;
                 UINT32 conn_inst = 0xff;
-                for (const auto& f : FAKE_MONITORS) {
+                const auto fake_monitors = get_fake_monitors();
+                for (const auto &f : fake_monitors) {
                     if (f.id == fake_id) {
                         conn_inst = f.connector_instance;
                         break;
@@ -542,17 +644,26 @@ namespace games::gitadora {
             return ret;
         }
 
-        // override the cached primary real monitor target info to look like HDMI/0
+        // Override MAIN to HDMI/0 and retag the real second head as the DP/2 SMALL
+        // display expected by the cabinet software in two-head fullscreen mode.
         const auto targetName = reinterpret_cast<DISPLAYCONFIG_TARGET_DEVICE_NAME*>(requestPacket);
-        const auto& target = real_primary_path.targetInfo;
-        if (target.id == targetName->header.id &&
-            target.adapterId.HighPart == targetName->header.adapterId.HighPart &&
-            target.adapterId.LowPart == targetName->header.adapterId.LowPart)
-        {
+        const auto target_matches = [&](const DISPLAYCONFIG_PATH_TARGET_INFO &target) {
+            return target.id == targetName->header.id &&
+                target.adapterId.HighPart == targetName->header.adapterId.HighPart &&
+                target.adapterId.LowPart == targetName->header.adapterId.LowPart;
+        };
+        if (target_matches(real_primary_path.targetInfo)) {
             targetName->outputTechnology = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_HDMI;
             targetName->connectorInstance = 0;
             log_info("gitadora",
                 "overriding primary monitor (id={}) to pretend to be HDMI",
+                targetName->header.id);
+        } else if (is_two_head_exclusive() && real_small_path_available &&
+                target_matches(real_small_path.targetInfo)) {
+            targetName->outputTechnology = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_DISPLAYPORT_EXTERNAL;
+            targetName->connectorInstance = 2;
+            log_info("gitadora",
+                "overriding secondary monitor (id={}) to pretend to be SMALL DP/2",
                 targetName->header.id);
         }
         return ret;
@@ -651,7 +762,8 @@ namespace games::gitadora {
                 hooks::audio::INJECT_FAKE_REALTEK_AUDIO = true;
             }
 
-            // monitor/touch hooks (windowed or full screen)
+            // Single-window mode needs touch injection for its overlay. Two-head fullscreen
+            // mode uses the real SMALL output, so it only needs the display-topology shim.
             if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
                 // enable touch hook for subscreen overlay
                 const auto native_touch_ready = !wintouchemu::FORCE &&
@@ -661,25 +773,28 @@ namespace games::gitadora {
                     wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
                     wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);
                 }
+            }
 
 #if !SPICE_XP
 
-                if (!GRAPHICS_WINDOWED) {
-                    // monitor hook: always pretend to have 1 primary real monitor + 3 fake monitors
-                    // (LEFT / RIGHT / SMALL) so the game accepts the arena cab topology
-                    GetDisplayConfigBufferSizes_orig =
-                        detour::iat_try("GetDisplayConfigBufferSizes",
-                            GetDisplayConfigBufferSizes_hook, avs::game::DLL_INSTANCE);
-                    QueryDisplayConfig_orig =
-                        detour::iat_try("QueryDisplayConfig",
-                            QueryDisplayConfig_hook, avs::game::DLL_INSTANCE);
-                    DisplayConfigGetDeviceInfo_orig =
-                        detour::iat_try("DisplayConfigGetDeviceInfo",
-                            DisplayConfigGetDeviceInfo_hook, avs::game::DLL_INSTANCE);
+            if (!GRAPHICS_WINDOWED &&
+                    (GRAPHICS_PREVENT_SECONDARY_WINDOWS || ARENA_TWO_HEAD_EXCLUSIVE)) {
+                if (ARENA_TWO_HEAD_EXCLUSIVE) {
+                    log_info(
+                        "gitadora",
+                        "exposing physical MAIN/SMALL and virtual LEFT/RIGHT");
                 }
-#endif
-
+                GetDisplayConfigBufferSizes_orig =
+                    detour::iat_try("GetDisplayConfigBufferSizes",
+                        GetDisplayConfigBufferSizes_hook, avs::game::DLL_INSTANCE);
+                QueryDisplayConfig_orig =
+                    detour::iat_try("QueryDisplayConfig",
+                        QueryDisplayConfig_hook, avs::game::DLL_INSTANCE);
+                DisplayConfigGetDeviceInfo_orig =
+                    detour::iat_try("DisplayConfigGetDeviceInfo",
+                        DisplayConfigGetDeviceInfo_hook, avs::game::DLL_INSTANCE);
             }
+#endif
         }
 
         // window patch

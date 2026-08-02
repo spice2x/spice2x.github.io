@@ -113,7 +113,10 @@ static Direct3DCreate9On12Ex_t Direct3DCreate9On12Ex_orig = nullptr;
 static bool ATTEMPTED_SUB_SWAP_CHAIN_ACQUIRE = false;
 static IDirect3DSwapChain9 *SUB_SWAP_CHAIN = nullptr;
 
-static void graphics_d3d9_ldj_init_sub_screen(IDirect3DDevice9Ex *device, D3DPRESENT_PARAMETERS *present_params);
+static void graphics_d3d9_ldj_init_sub_screen(
+        IDirect3DDevice9Ex *device,
+        D3DPRESENT_PARAMETERS *present_params,
+        UINT gfdm_small_swapchain);
 
 static std::string behavior2s(DWORD behavior_flags) {
     FLAGS_START(behavior_flags);
@@ -409,7 +412,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::QueryInterface(
         return E_POINTER;
     }
 
-    if (riid == IID_WrappedIDirect3D9 ||
+    if ((riid == IID_IUnknown && gfdm_two_head_exclusive()) ||
+        riid == IID_WrappedIDirect3D9 ||
         riid == IID_IDirect3D9 ||
         riid == IID_IDirect3D9Ex)
     {
@@ -467,6 +471,18 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::RegisterSoftwareDevice(void *pIniti
 UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterCount() {
     UINT result = pReal->GetAdapterCount();
 
+    if (gfdm_two_head_exclusive()) {
+        if (result == 2) {
+            FAKE_SUBSCREEN_ADAPTER = true;
+            return GFDM_LOGICAL_HEAD_COUNT;
+        }
+        log_warning(
+                "graphics::d3d9",
+                "two-head mode requires two native adapters; found {}",
+                result);
+        return result;
+    }
+
     if (!FAKE_SUBSCREEN_ADAPTER) {
         if (games::popn::is_pikapika_model() && result == 1) {
             FAKE_SUBSCREEN_ADAPTER = true;
@@ -493,7 +509,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterIdentifier(
         D3DADAPTER_IDENTIFIER9 *pIdentifier)
 {
 
-    if (FAKE_SUBSCREEN_ADAPTER && Adapter > 0 && pIdentifier) {
+    if (is_fake_subscreen_adapter(Adapter) && pIdentifier) {
         *pIdentifier = {};
         const std::string adapter_name = fmt::format("\\\\.\\DISPLAY_SPICE_FAKE_{}", Adapter);
         strcpy(pIdentifier->DeviceName, adapter_name.c_str()); 
@@ -509,7 +525,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterIdentifier(
 }
 
 UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterModeCount(UINT Adapter, D3DFORMAT Format) {
-    if (FAKE_SUBSCREEN_ADAPTER && Adapter > 0) {
+    if (is_fake_subscreen_adapter(Adapter)) {
         log_misc("graphics::d3d9", "GetAdapterModeCount called for fake subscreen adapter {}", Adapter);
         return 1;
     }
@@ -523,13 +539,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
         UINT Mode,
         D3DDISPLAYMODE *pMode)
 {
-    if (FAKE_SUBSCREEN_ADAPTER && Adapter > 0) {
+    if (is_fake_subscreen_adapter(Adapter)) {
         log_misc("graphics::d3d9", "EnumAdapterModes called for fake subscreen adapter {}", Adapter);
         if (Mode == 0 && pMode) {
-            pMode->Width = 1280;
-            pMode->Height = 800;
-            pMode->RefreshRate = 60;
-            pMode->Format = D3DFMT_X8R8G8B8;
+            get_fake_subscreen_display_mode(Adapter, pMode);
             return S_OK;
         } else {
             return D3DERR_INVALIDCALL;
@@ -611,6 +624,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModes(
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE *pMode) {
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        if (pMode == nullptr) {
+            return D3DERR_INVALIDCALL;
+        }
+        get_fake_subscreen_display_mode(Adapter, pMode);
+        return D3D_OK;
+    }
+
     CHECK_RESULT(pReal->GetAdapterDisplayMode(Adapter, pMode));
 }
 
@@ -621,6 +642,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDeviceType(
         D3DFORMAT BackBufferFormat,
         BOOL bWindowed)
 {
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(iAdapter)) {
+        return D3D_OK;
+    }
+
     CHECK_RESULT(pReal->CheckDeviceType(iAdapter, DevType, DisplayFormat, BackBufferFormat, bWindowed));
 }
 
@@ -632,7 +657,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDeviceFormat(
         D3DRESOURCETYPE RType,
         D3DFORMAT CheckFormat)
 {
-    if (FAKE_SUBSCREEN_ADAPTER && Adapter > 0) {
+    if (is_fake_subscreen_adapter(Adapter)) {
         log_misc("graphics::d3d9", "CheckDeviceFormat called for fake subscreen adapter {}", Adapter);
         return D3D_OK;
     }
@@ -648,6 +673,13 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDeviceMultiSampleType(
         D3DMULTISAMPLE_TYPE MultiSampleType,
         DWORD *pQualityLevels)
 {
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        if (pQualityLevels != nullptr) {
+            *pQualityLevels = 1;
+        }
+        return D3D_OK;
+    }
+
     CHECK_RESULT(pReal->CheckDeviceMultiSampleType(
             Adapter,
             DeviceType,
@@ -664,6 +696,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDepthStencilMatch(
         D3DFORMAT RenderTargetFormat,
         D3DFORMAT DepthStencilFormat)
 {
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        return D3D_OK;
+    }
+
     CHECK_RESULT(pReal->CheckDepthStencilMatch(
             Adapter,
             DeviceType,
@@ -678,6 +714,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CheckDeviceFormatConversion(
         D3DFORMAT SourceFormat,
         D3DFORMAT TargetFormat)
 {
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        return D3D_OK;
+    }
+
     CHECK_RESULT(pReal->CheckDeviceFormatConversion(Adapter, DeviceType, SourceFormat, TargetFormat));
 }
 
@@ -687,6 +727,20 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetDeviceCaps(UINT Adapter, D3DDEVT
     if (!pCaps) {
         log_warning("graphics::d3d9", "NULL pointer passed in for required parameter");
         return D3DERR_INVALIDCALL;
+    }
+
+    if (gfdm_two_head_exclusive() && Adapter < GFDM_LOGICAL_HEAD_COUNT) {
+        HRESULT ret = this->pReal->GetDeviceCaps(
+                Adapter >= 2 ? 0 : Adapter,
+                DeviceType,
+                pCaps);
+        if (SUCCEEDED(ret)) {
+            pCaps->NumberOfAdaptersInGroup =
+                    Adapter == 0 ? GFDM_LOGICAL_HEAD_COUNT : 0;
+            pCaps->MasterAdapterOrdinal = 0;
+            pCaps->AdapterOrdinalInGroup = Adapter;
+        }
+        return ret;
     }
 
     // SDVX uses `NumberOfAdaptersInGroup` to allocate a vector and the Microsoft documentation states:
@@ -741,6 +795,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetDeviceCaps(UINT Adapter, D3DDEVT
 }
 
 HMONITOR STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterMonitor(UINT Adapter) {
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        return pReal->GetAdapterMonitor(0);
+    }
+
     return pReal->GetAdapterMonitor(Adapter);
 }
 
@@ -861,7 +919,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
             "either use -graphics-force-refresh option or change the desktop resolution beforehand.");
     }
 
-    if (!GRAPHICS_WINDOWED && num_adapters >= 2 && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+    if (!GRAPHICS_WINDOWED && num_adapters >= 2
+            && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
         log_info("graphics::d3d9", "force sub refresh rate: {} => {} Hz (-graphics-force-refresh-sub option)",
                 pPresentationParameters[1].FullScreen_RefreshRateInHz,
                 GRAPHICS_FORCE_REFRESH_SUB.value());
@@ -902,7 +961,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
     } else if (!D3D9_DEVICE_HOOK_DISABLE) {
         graphics_hook_window(hFocusWindow, pPresentationParameters);
 
-        *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(hFocusWindow, *ppReturnedDeviceInterface);
+        *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(
+                hFocusWindow,
+                *ppReturnedDeviceInterface);
     }
 
     // return result
@@ -916,6 +977,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
 UINT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterModeCountEx(UINT Adapter, const D3DDISPLAYMODEFILTER *pFilter) {
     assert(is_d3d9ex);
 
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        return 1;
+    }
+
     return static_cast<IDirect3D9Ex *>(pReal)->GetAdapterModeCountEx(Adapter, pFilter);
 }
 
@@ -926,6 +991,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::EnumAdapterModesEx(
         D3DDISPLAYMODEEX *pMode)
 {
     assert(is_d3d9ex);
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        if (Mode != 0 || pMode == nullptr) {
+            return D3DERR_INVALIDCALL;
+        }
+        get_fake_subscreen_display_mode_ex(Adapter, pMode);
+        return D3D_OK;
+    }
+
     CHECK_RESULT(static_cast<IDirect3D9Ex *>(pReal)->EnumAdapterModesEx(Adapter, pFilter, Mode, pMode));
 }
 
@@ -935,6 +1008,17 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterDisplayModeEx(
         D3DDISPLAYROTATION *pRotation)
 {
     assert(is_d3d9ex);
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        if (pMode == nullptr) {
+            return D3DERR_INVALIDCALL;
+        }
+        get_fake_subscreen_display_mode_ex(Adapter, pMode);
+        if (pRotation != nullptr) {
+            *pRotation = D3DDISPLAYROTATION_IDENTITY;
+        }
+        return D3D_OK;
+    }
+
     CHECK_RESULT(static_cast<IDirect3D9Ex *>(pReal)->GetAdapterDisplayModeEx(Adapter, pMode, pRotation));
 }
 
@@ -963,6 +1047,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
         return D3DERR_INVALIDCALL;
     }
+    if (gfdm_two_head_exclusive() && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
+        log_warning(
+                "graphics::d3d9",
+                "-forceressub is unavailable; SMALL must remain {}x{}",
+                GFDM_SMALL_WIDTH,
+                GFDM_SMALL_HEIGHT);
+        return D3DERR_INVALIDCALL;
+    }
 
     DWORD orig_behavior_flags = BehaviorFlags;
     size_t num_adapters = 1;
@@ -988,6 +1080,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
         if (SUCCEEDED(this->pReal->GetDeviceCaps(Adapter, DeviceType, &device_caps))) {
             num_adapters = device_caps.NumberOfAdaptersInGroup;
+        }
+        if (gfdm_two_head_exclusive()) {
+            num_adapters = GFDM_LOGICAL_HEAD_COUNT;
         }
     }
 
@@ -1105,7 +1200,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         }
     }
 
-    if (!GRAPHICS_WINDOWED && num_adapters >= 2 && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+    if (!GRAPHICS_WINDOWED && !gfdm_two_head_exclusive()
+            && num_adapters >= 2 && GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
         log_info("graphics::d3d9", "force sub refresh rate: {} => {} Hz (-graphics-force-refresh-sub option)",
                 pPresentationParameters[1].FullScreen_RefreshRateInHz,
                 GRAPHICS_FORCE_REFRESH_SUB.value());
@@ -1131,15 +1227,92 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
         pPresentationParameters->BackBufferCount = GRAPHICS_FORCE_VSYNC_BUFFER.value();
     }
 
+    GfdmTwoHeadDeviceState gfdm_parameters(
+            pPresentationParameters,
+            pFullscreenDisplayMode);
+    if (gfdm_two_head_exclusive()) {
+        if (!(BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
+            log_warning(
+                    "graphics::d3d9",
+                    "CreateDeviceEx did not request an adapter-group device");
+            return D3DERR_NOTAVAILABLE;
+        }
+        HRESULT select = graphics_d3d9_gfdm_select_two_head_group_parameters(
+                pPresentationParameters,
+                pFullscreenDisplayMode,
+                gfdm_parameters.native_presentation_parameters.data(),
+                gfdm_parameters.native_fullscreen_display_modes.data(),
+                &gfdm_parameters.logical_small_swapchain,
+                "CreateDeviceEx");
+        if (FAILED(select)) {
+            return select;
+        }
+        if (GRAPHICS_FORCE_REFRESH_SUB.has_value()) {
+            gfdm_parameters.native_presentation_parameters[1]
+                    .FullScreen_RefreshRateInHz =
+                    GRAPHICS_FORCE_REFRESH_SUB.value();
+            if (pFullscreenDisplayMode != nullptr) {
+                gfdm_parameters.native_fullscreen_display_modes[1].RefreshRate =
+                        GRAPHICS_FORCE_REFRESH_SUB.value();
+            }
+        }
+        HRESULT remap = graphics_d3d9_gfdm_remap_two_head_group_parameters(
+                gfdm_parameters.native_presentation_parameters.data(),
+                pFullscreenDisplayMode != nullptr
+                        ? gfdm_parameters.native_fullscreen_display_modes.data()
+                        : nullptr,
+                "CreateDeviceEx");
+        if (FAILED(remap)) {
+            return remap;
+        }
+        if (pFullscreenDisplayMode != nullptr) {
+            graphics_d3d9_gfdm_align_two_head_refresh_to_desktop(
+                    static_cast<IDirect3D9Ex *>(this->pReal),
+                    Adapter,
+                    gfdm_parameters.native_presentation_parameters.data(),
+                    gfdm_parameters.native_fullscreen_display_modes.data(),
+                    "CreateDeviceEx");
+        }
+        if (!graphics_gitadora_prepare_two_head_device_window(
+                    gfdm_parameters.native_presentation_parameters[1].hDeviceWindow,
+                    this->pReal->GetAdapterMonitor(Adapter + 1),
+                    gfdm_parameters.native_presentation_parameters[1].BackBufferWidth,
+                    gfdm_parameters.native_presentation_parameters[1].BackBufferHeight))
+        {
+            return D3DERR_INVALIDCALL;
+        }
+        HRESULT validation = validate_gfdm_two_head_exclusive(
+                this->pReal,
+                Adapter,
+                DeviceType,
+                BehaviorFlags,
+                gfdm_parameters.native_presentation_parameters.data());
+        if (FAILED(validation)) {
+            return validation;
+        }
+        gfdm_parameters.use_native_parameters();
+    }
+
     // call original
     HRESULT result = static_cast<IDirect3D9Ex *>(this->pReal)->CreateDeviceEx(
             Adapter,
             DeviceType,
             hFocusWindow,
             BehaviorFlags,
-            pPresentationParameters,
-            pFullscreenDisplayMode,
+            gfdm_parameters.presentation_parameters,
+            gfdm_parameters.fullscreen_display_modes,
             ppReturnedDeviceInterface);
+
+    if (SUCCEEDED(result) && gfdm_two_head_exclusive()) {
+        pPresentationParameters[0] = gfdm_parameters.presentation_parameters[0];
+        pPresentationParameters[gfdm_parameters.logical_small_swapchain] =
+                gfdm_parameters.presentation_parameters[1];
+        if (pFullscreenDisplayMode != nullptr) {
+            pFullscreenDisplayMode[0] = gfdm_parameters.fullscreen_display_modes[0];
+            pFullscreenDisplayMode[gfdm_parameters.logical_small_swapchain] =
+                    gfdm_parameters.fullscreen_display_modes[1];
+        }
+    }
 
     // check for error
     if (result != D3D_OK) {
@@ -1151,17 +1324,28 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     } else if (!D3D9_DEVICE_HOOK_DISABLE) {
         graphics_hook_window(hFocusWindow, pPresentationParameters);
 
-        *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(hFocusWindow, *ppReturnedDeviceInterface);
+        *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(
+                hFocusWindow,
+                *ppReturnedDeviceInterface,
+                gfdm_parameters.logical_small_swapchain,
+                gfdm_two_head_exclusive() ? static_cast<IDirect3D9 *>(this) : nullptr,
+                gfdm_two_head_exclusive() ? pPresentationParameters : nullptr);
 
         // initialize sub screen if the game requested a multi-head context
         if (avs::game::is_model({"LDJ", "KFC", "M39", "M32"}) &&
             (orig_behavior_flags & D3DCREATE_ADAPTERGROUP_DEVICE)) {
 
-            UINT i = 1;
-            if (games::gitadora::is_arena_model()) {
-                i = 2;
-            }
-            graphics_d3d9_ldj_init_sub_screen(*ppReturnedDeviceInterface, &pPresentationParameters[i]);
+            UINT i = games::gitadora::is_arena_model()
+                    ? gfdm_parameters.logical_small_swapchain
+                    : 1;
+            D3DPRESENT_PARAMETERS *subscreen_parameters =
+                    gfdm_two_head_exclusive()
+                    ? &gfdm_parameters.presentation_parameters[1]
+                    : &pPresentationParameters[i];
+            graphics_d3d9_ldj_init_sub_screen(
+                    *ppReturnedDeviceInterface,
+                    subscreen_parameters,
+                    i);
         }
     }
 
@@ -1170,6 +1354,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterLUID(UINT Adapter, LUID *pLUID) {
     assert(is_d3d9ex);
+    if (gfdm_two_head_exclusive() && is_fake_subscreen_adapter(Adapter)) {
+        if (pLUID == nullptr) {
+            return D3DERR_INVALIDCALL;
+        }
+        pLUID->LowPart = static_cast<DWORD>(-static_cast<LONG>(Adapter));
+        pLUID->HighPart = -static_cast<LONG>(Adapter);
+        return D3D_OK;
+    }
     CHECK_RESULT(static_cast<IDirect3D9Ex *>(pReal)->GetAdapterLUID(Adapter, pLUID));
 }
 
@@ -1178,7 +1370,11 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::GetAdapterLUID(UINT Adapter, LUID *
 // The sub screen swap chain should be created if:
 // - Running windowed with `NumberOfAdaptersInGroup >= 2` (game expects implicit swap chain to exist)
 // - Running fullscreen with `NumberOfAdaptersInGroup < 2` (overridden `GetDeviceCaps` structure)
-static void graphics_d3d9_ldj_init_sub_screen(IDirect3DDevice9Ex *device, D3DPRESENT_PARAMETERS *present_params) {
+static void graphics_d3d9_ldj_init_sub_screen(
+        IDirect3DDevice9Ex *device,
+        D3DPRESENT_PARAMETERS *present_params,
+        UINT gfdm_small_swapchain)
+{
     D3DCAPS9 caps {};
     HRESULT hr = device->GetDeviceCaps(&caps);
     if (FAILED(hr)) {
@@ -1212,10 +1408,9 @@ static void graphics_d3d9_ldj_init_sub_screen(IDirect3DDevice9Ex *device, D3DPRE
         }
     } else {
 
-        int swapchain = 1;
-        if (games::gitadora::is_arena_model()) {
-            swapchain = 2;
-        }
+        const int swapchain = games::gitadora::is_arena_model()
+                ? static_cast<int>(gfdm_small_swapchain)
+                : 1;
 
         hr = device->GetSwapChain(swapchain, &SUB_SWAP_CHAIN);
         if (FAILED(hr)) {
