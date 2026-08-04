@@ -13,7 +13,9 @@
 #include "avs/game.h"
 #include "games/iidx/iidx.h"
 #include "games/gitadora/gitadora.h"
+#include "games/popn/popn.h"
 #include "games/sdvx/sdvx.h"
+#include "util/deferlog.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -29,6 +31,7 @@ static decltype(GetLocaleInfoEx) *GetLocaleInfoEx_orig = nullptr;
 #ifdef SPICE64
 static decltype(GetSystemDefaultLCID) *GetSystemDefaultLCID_orig = nullptr;
 static decltype(IsDBCSLeadByte) *IsDBCSLeadByte_orig = nullptr;
+static decltype(IsDBCSLeadByteEx) *IsDBCSLeadByteEx_orig = nullptr;
 static decltype(WideCharToMultiByte) *WideCharToMultiByte_orig = nullptr;
 static decltype(GetLocaleInfoA) *GetLocaleInfoA_orig = nullptr;
 static decltype(GetThreadLocale) *GetThreadLocale_orig = nullptr;
@@ -185,6 +188,23 @@ static BOOL WINAPI IsDBCSLeadByte_hook (
     return IsDBCSLeadByteEx(CODEPAGE_SHIFT_JIS, TestChar);
 }
 
+static BOOL WINAPI IsDBCSLeadByteEx_hook(
+    UINT CodePage,
+    BYTE TestChar)
+{
+    switch (CodePage) {
+        case CP_ACP:
+        case CP_THREAD_ACP:
+            CodePage = CODEPAGE_SHIFT_JIS;
+            break;
+
+        default:
+            break;
+    }
+
+    return IsDBCSLeadByteEx_orig(CodePage, TestChar);
+}
+
 static
 int
 WINAPI
@@ -249,6 +269,18 @@ GetLocaleInfoA_hook(
 
 void hooks::lang::early_init() {
     log_info("hooks::lang", "early initialization");
+
+    const auto native_code_page = GetACP();
+    if (native_code_page == CP_UTF8) {
+        log_warning(
+            "hooks::lang",
+            "Windows is using UTF-8 as the system code page; "
+            "some games may render text incorrectly or behave unexpectedly");
+
+        deferredlogs::defer_error_messages({
+            "Windows is using UTF-8 as the system code page",
+            "    some games may render text incorrectly or behave unexpectedly"});
+    }
 
     // hooking these two functions fixes the jubeat mojibake
     detour::trampoline_try("kernel32.dll", "GetACP", GetACP_hook, &GetACP_orig);
@@ -315,6 +347,15 @@ void hooks::lang::early_init() {
             WideCharToMultiByte_hook,
             &WideCharToMultiByte_orig);
     }
+
+    if (games::popn::is_pikapika_model() && native_code_page == CP_UTF8) {
+        detour::trampoline_try(
+            "kernel32.dll",
+            "IsDBCSLeadByteEx",
+            IsDBCSLeadByteEx_hook,
+            &IsDBCSLeadByteEx_orig);
+    }
+
 #endif
 
 }
