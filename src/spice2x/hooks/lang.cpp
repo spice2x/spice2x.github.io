@@ -185,6 +185,10 @@ static BOOL WINAPI IsDBCSLeadByte_hook (
     BYTE TestChar
     )
 {
+    if (IsDBCSLeadByteEx_orig) {
+        return IsDBCSLeadByteEx_orig(CODEPAGE_SHIFT_JIS, TestChar);
+    }
+
     return IsDBCSLeadByteEx(CODEPAGE_SHIFT_JIS, TestChar);
 }
 
