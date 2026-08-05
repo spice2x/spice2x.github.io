@@ -489,6 +489,20 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
 
             graphics_screens_register(iSwapChain);
             return D3D_OK;
+        } else if (SUBSCREEN_FORCE_REDRAW) {
+            IDirect3DSwapChain9 *real_swapchain = nullptr;
+            HRESULT ret = pReal->GetSwapChain(iSwapChain, &real_swapchain);
+            if (FAILED(ret)) {
+                return ret;
+            }
+
+            sub_swapchain[0] = new WrappedIDirect3DSwapChain9(this, real_swapchain);
+            sub_swapchain[0]->should_run_hooks = false;
+            sub_swapchain[0]->AddRef();
+            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(sub_swapchain[0]);
+
+            graphics_screens_register(iSwapChain);
+            return D3D_OK;
         }
     }
 

@@ -14,6 +14,7 @@ void graphics_d3d9_on_present(
     HWND hFocusWindow,
     IDirect3DDevice9 *device,
     IDirect3DDevice9 *wrapped_device);
+void graphics_d3d9_notify_subscreen_present();
 
 IDirect3DSurface9 *graphics_d3d9_ldj_get_sub_screen();
 

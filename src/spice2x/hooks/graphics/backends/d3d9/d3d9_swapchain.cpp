@@ -96,6 +96,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
             pDirtyRegion,
             dwFlags);
 
+    if (SUCCEEDED(result) && this == pDev->sub_swapchain[0]) {
+        graphics_d3d9_notify_subscreen_present();
+    }
+
     // Some drivers report S_PRESENT_MODE_CHANGED after Windows moves the portrait SMALL
     // head into the requested exclusive mode, leaving both group heads black. Toggle SMALL
     // through another supported mode and restore it once, then retry the interrupted MAIN
