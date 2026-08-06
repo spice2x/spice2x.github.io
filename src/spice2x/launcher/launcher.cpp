@@ -5,7 +5,6 @@
 
 #include <cmath>
 #include <cstdlib>
-#include <assert.h>
 #include <shlwapi.h>
 #include <windows.h>
 #include <cfg/configurator.h>
@@ -542,7 +541,6 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::IIDXCamHook].value_bool()) {
         games::iidx::TDJ_CAMERA = true;
-        // Disable legacy behaviour to avoid conflict
         games::iidx::CAB_CAMERA_ACCESS = games::iidx::cab_camera_access_mode::off;
     }
     // CONNECT_CAMERA env var will be set once logging is enabled
