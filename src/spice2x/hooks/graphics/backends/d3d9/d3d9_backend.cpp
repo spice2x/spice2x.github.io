@@ -1454,7 +1454,7 @@ IDirect3DSurface9 *graphics_d3d9_ldj_get_sub_screen() {
 
 void graphics_d3d9_notify_subscreen_present() {
     if (SUBSCREEN_FORCE_REDRAW && !SUBSCREEN_FORCE_REDRAW_IN_PROGRESS) {
-        SUBSCREEN_PRESENTED_SINCE_LAST_MAIN.store(true, std::memory_order_release);
+        SUBSCREEN_PRESENTED_SINCE_LAST_MAIN.store(true, std::memory_order_relaxed);
     }
 }
 
@@ -1488,10 +1488,8 @@ static void graphics_d3d9_ldj_on_present(IDirect3DDevice9 *wrapped_device) {
         //
         // treat forced redraw as a fallback so it does not duplicate a successful game present.
 
-        const bool game_presented_subscreen = SUBSCREEN_FORCE_REDRAW &&
-            SUBSCREEN_PRESENTED_SINCE_LAST_MAIN.exchange(false, std::memory_order_acq_rel);
-
-        const bool force_redraw = SUBSCREEN_FORCE_REDRAW && !game_presented_subscreen;
+        const bool force_redraw = SUBSCREEN_FORCE_REDRAW &&
+            !SUBSCREEN_PRESENTED_SINCE_LAST_MAIN.exchange(false, std::memory_order_relaxed);
 
         if (GRAPHICS_WINDOWED || force_redraw) {
             SUBSCREEN_FORCE_REDRAW_IN_PROGRESS = true;
