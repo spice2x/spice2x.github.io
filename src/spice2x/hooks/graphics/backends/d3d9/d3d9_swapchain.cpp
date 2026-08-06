@@ -96,7 +96,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
             pDirtyRegion,
             dwFlags);
 
-    if (SUCCEEDED(result) && this == pDev->sub_swapchain[0]) {
+    // a successful game subscreen present suppresses the next forced fallback present.
+    if (SUCCEEDED(result) &&
+        (this == pDev->implicit_sub_swapchain || this == pDev->sub_swapchain[0])) {
         graphics_d3d9_notify_subscreen_present();
     }
 

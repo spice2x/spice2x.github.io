@@ -134,6 +134,10 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() {
             this->main_swapchain->Release();
             this->main_swapchain = nullptr;
         }
+        if (this->implicit_sub_swapchain) {
+            this->implicit_sub_swapchain->Release();
+            this->implicit_sub_swapchain = nullptr;
+        }
         for (auto &sc : this->sub_swapchain) {
             if (sc) {
                 sc->Release();
@@ -490,16 +494,20 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetSwapChain(
             graphics_screens_register(iSwapChain);
             return D3D_OK;
         } else if (SUBSCREEN_FORCE_REDRAW) {
-            IDirect3DSwapChain9 *real_swapchain = nullptr;
-            HRESULT ret = pReal->GetSwapChain(iSwapChain, &real_swapchain);
-            if (FAILED(ret)) {
-                return ret;
+            // store implicit sub swap chain
+            if (!implicit_sub_swapchain) {
+                IDirect3DSwapChain9 *real_swapchain = nullptr;
+                HRESULT ret = pReal->GetSwapChain(iSwapChain, &real_swapchain);
+                if (FAILED(ret)) {
+                    return ret;
+                }
+
+                implicit_sub_swapchain = new WrappedIDirect3DSwapChain9(this, real_swapchain);
+                implicit_sub_swapchain->should_run_hooks = false;
             }
 
-            sub_swapchain[0] = new WrappedIDirect3DSwapChain9(this, real_swapchain);
-            sub_swapchain[0]->should_run_hooks = false;
-            sub_swapchain[0]->AddRef();
-            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(sub_swapchain[0]);
+            implicit_sub_swapchain->AddRef();
+            *ppSwapChain = static_cast<IDirect3DSwapChain9 *>(implicit_sub_swapchain);
 
             graphics_screens_register(iSwapChain);
             return D3D_OK;

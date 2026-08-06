@@ -113,7 +113,11 @@ static Direct3DCreate9On12Ex_t Direct3DCreate9On12Ex_orig = nullptr;
 
 static bool ATTEMPTED_SUB_SWAP_CHAIN_ACQUIRE = false;
 static IDirect3DSwapChain9 *SUB_SWAP_CHAIN = nullptr;
+
+// main and subscreen presents may occur on different threads.
 static std::atomic_bool SUBSCREEN_PRESENTED_SINCE_LAST_MAIN = false;
+
+// do not mistake the fallback Present below for a game-originated Present.
 static thread_local bool SUBSCREEN_FORCE_REDRAW_IN_PROGRESS = false;
 
 static void graphics_d3d9_ldj_init_sub_screen(
