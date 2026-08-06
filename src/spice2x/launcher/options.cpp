@@ -640,17 +640,21 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // IIDXCabCamAccess
-        .title = "IIDX Use Official AC Cams",
+        .title = "IIDX Official AC Camera Access",
         .name = "iidxcabcams",
-        .desc = "For IIDX25+, allow direct access to cameras from real arcade cabinets. "
-            "Only turn this on if you have OFFICIAL arcade cameras connected to the correct USB ports. Default: auto.",
+        .desc = "Controls how the game accesses USB cameras for IIDX 25+.\n\n"
+            "auto (default): use [off] when the IIDX module is enabled; otherwise, use [on].\n\n"
+            "on: game discovers and directly accesses cameras; requires official cameras on correct USB ports.\n\n"
+            "legacy: for IIDX 25/26 only; allow camera access with emulated discovery.\n\n"
+            "off: prevent game from accessing USB cameras.",
         .type = OptionType::Enum,
         .game_name = "Beatmania IIDX",
         .category = "Cab Peripherals",
         .elements = {
             {"auto", ""},
+            {"on", ""},
+            {"legacy", ""},
             {"off", ""},
-            {"on", ""}
         },
     },
     {
