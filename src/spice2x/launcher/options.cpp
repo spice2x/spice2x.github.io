@@ -981,7 +981,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .display_name = "sdvxsubredraw",
         .aliases= "sdvxsubredraw",
         .desc = "Check if submonitor in fullscreen mode doesn't update every frame; "
-            "this option forces subscreen to redraw every frame.",
+            "this option presents the subscreen when the game does not.",
         .type = OptionType::Bool,
         .game_name = "Sound Voltex",
         .category = "Advanced Game Options",
@@ -1175,7 +1175,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .title = "Pop'n Music PikaPika Subscreen Force Redraw",
         .name = "popnsubredraw",
         .desc = "Check if submonitor in fullscreen mode appears stuck; "
-            "this option forces subscreen to redraw every frame.",
+            "this option presents the subscreen when the game does not.",
         .type = OptionType::Bool,
         .game_name = "Pop'n Music",
         .category = "Advanced Game Options",

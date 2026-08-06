@@ -1,5 +1,6 @@
 #include "d3d9_backend.h"
 
+#include <atomic>
 #include <cassert>
 #include <memory>
 #include <thread>
@@ -112,6 +113,12 @@ static Direct3DCreate9On12Ex_t Direct3DCreate9On12Ex_orig = nullptr;
 
 static bool ATTEMPTED_SUB_SWAP_CHAIN_ACQUIRE = false;
 static IDirect3DSwapChain9 *SUB_SWAP_CHAIN = nullptr;
+
+// main and subscreen presents may occur on different threads.
+static std::atomic_bool SUBSCREEN_PRESENTED_SINCE_LAST_MAIN = false;
+
+// do not mistake the fallback Present below for a game-originated Present.
+static thread_local bool SUBSCREEN_FORCE_REDRAW_IN_PROGRESS = false;
 
 static void graphics_d3d9_ldj_init_sub_screen(
         IDirect3DDevice9Ex *device,
@@ -1445,6 +1452,12 @@ IDirect3DSurface9 *graphics_d3d9_ldj_get_sub_screen() {
     return surface;
 }
 
+void graphics_d3d9_notify_subscreen_present() {
+    if (SUBSCREEN_FORCE_REDRAW && !SUBSCREEN_FORCE_REDRAW_IN_PROGRESS) {
+        SUBSCREEN_PRESENTED_SINCE_LAST_MAIN.store(true, std::memory_order_relaxed);
+    }
+}
+
 static void graphics_d3d9_ldj_on_present(IDirect3DDevice9 *wrapped_device) {
     // iidx/sdvx
     int swapchain = 1;
@@ -1472,8 +1485,16 @@ static void graphics_d3d9_ldj_on_present(IDirect3DDevice9 *wrapped_device) {
         //
         // early versions of popn HC needs this as well, but not on by default as it can cause
         // graphical glitches on some GPUs 
-        if (GRAPHICS_WINDOWED || SUBSCREEN_FORCE_REDRAW) {
+        //
+        // treat forced redraw as a fallback so it does not duplicate a successful game present.
+
+        const bool force_redraw = SUBSCREEN_FORCE_REDRAW &&
+            !SUBSCREEN_PRESENTED_SINCE_LAST_MAIN.exchange(false, std::memory_order_relaxed);
+
+        if (GRAPHICS_WINDOWED || force_redraw) {
+            SUBSCREEN_FORCE_REDRAW_IN_PROGRESS = true;
             SUB_SWAP_CHAIN->Present(nullptr, nullptr, nullptr, nullptr, 0);
+            SUBSCREEN_FORCE_REDRAW_IN_PROGRESS = false;
         }
     }
 }

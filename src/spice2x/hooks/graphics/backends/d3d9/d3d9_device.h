@@ -262,6 +262,7 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     std::atomic_ulong refs = 1;
 
     WrappedIDirect3DSwapChain9 *main_swapchain = nullptr;
+    WrappedIDirect3DSwapChain9 *implicit_sub_swapchain = nullptr;
     WrappedIDirect3DSwapChain9 *sub_swapchain[3] = { nullptr, nullptr, nullptr };
     FakeIDirect3DSwapChain9 *fake_sub_swapchain[3] = { nullptr, nullptr, nullptr };
 
