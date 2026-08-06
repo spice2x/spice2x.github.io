@@ -524,22 +524,26 @@ int main_implementation(int argc, char *argv[]) {
         games::iidx::FLIP_CAMS = true;
     }
 
-    // IIDX CONNECT_CAMERA logic here for cases where user is running without -iidx module
-    // for now, we assume that user may be running on a cab
-    // (games::iidx::DISABLE_CAMS starts out as false unless user overrides)
-    // we will check again in IIDX module with a different default
-    assert(!games::iidx::DISABLE_CAMS.has_value());
-    if (options[launcher::Options::IIDXDisableCameras].value_bool()) {
-        games::iidx::DISABLE_CAMS = true;
+    // Resolve the IIDX camera policy here so it also applies without the -iidx module.
+    const auto &cab_camera_access = options[launcher::Options::IIDXCabCamAccess];
+    if (cab_camera_access.is_active()) {
+        const auto value = cab_camera_access.value_text();
+        if (value == "off") {
+            games::iidx::CAB_CAMERA_ACCESS = games::iidx::cab_camera_access_mode::off;
+        } else if (value == "on") {
+            games::iidx::CAB_CAMERA_ACCESS = games::iidx::cab_camera_access_mode::on;
+        } else if (value == "legacy") {
+            games::iidx::CAB_CAMERA_ACCESS = games::iidx::cab_camera_access_mode::legacy;
+        }
     }
-    if (options[launcher::Options::IIDXCabCamAccess].is_active() &&
-        options[launcher::Options::IIDXCabCamAccess].value_text() == "off") {
-        games::iidx::DISABLE_CAMS = true;
+
+    if (options[launcher::Options::IIDXDisableCameras].value_bool()) {
+        games::iidx::CAB_CAMERA_ACCESS = games::iidx::cab_camera_access_mode::off;
     }
     if (options[launcher::Options::IIDXCamHook].value_bool()) {
         games::iidx::TDJ_CAMERA = true;
         // Disable legacy behaviour to avoid conflict
-        games::iidx::DISABLE_CAMS = true;
+        games::iidx::CAB_CAMERA_ACCESS = games::iidx::cab_camera_access_mode::off;
     }
     // CONNECT_CAMERA env var will be set once logging is enabled
 
@@ -1717,14 +1721,13 @@ int main_implementation(int argc, char *argv[]) {
         GRAPHICS_FS_ORIENTATION_SWAP = true;
     }
 
-
-    // for cab usage - set environment variables (outside of -iidx module)
-    if (games::iidx::DISABLE_CAMS.has_value() &&
-        games::iidx::DISABLE_CAMS.value() &&
+    // apply an explicit off outside of the -iidx module so it also works on cabinets.
+    if (games::iidx::CAB_CAMERA_ACCESS == games::iidx::cab_camera_access_mode::off &&
         !cfg::CONFIGURATOR_STANDALONE) {
         log_misc("launcher::iidx", "CONNECT_CAMERA env var set to 0");
         SetEnvironmentVariable("CONNECT_CAMERA", "0");
     }
+
     if (games::iidx::SOUND_OUTPUT_DEVICE.has_value() &&
         games::iidx::SOUND_OUTPUT_DEVICE.value() != "auto" &&
         !cfg::CONFIGURATOR_STANDALONE) {

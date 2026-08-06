@@ -11,6 +11,13 @@
 
 namespace games::iidx {
 
+    enum class cab_camera_access_mode {
+        automatic,
+        off,
+        on,
+        legacy,
+    };
+
     enum class iidx_aio_emulation_state {
         unknown,
         bi2a_com2,
@@ -20,7 +27,7 @@ namespace games::iidx {
     // settings
 
     extern bool FLIP_CAMS;
-    extern std::optional<bool> DISABLE_CAMS;
+    extern cab_camera_access_mode CAB_CAMERA_ACCESS;
     extern bool TDJ_CAMERA;
     extern bool TDJ_CAMERA_PREFER_16_9;
     extern std::optional<std::string> TDJ_CAMERA_OVERRIDE;
