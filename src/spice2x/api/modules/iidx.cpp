@@ -106,14 +106,16 @@ namespace api::modules {
     void IIDX::copy_tapeled_data(Response &res, Value &response_object, const tapeledutils::tape_led &mapping) {
         // Create an array for the light state
         Value light_state(kArrayType);
-        light_state.Reserve(mapping.data.capacity() * 3, res.doc()->GetAllocator());
+        light_state.Reserve(
+            static_cast<SizeType>(mapping.data.size() * 3),
+            res.doc()->GetAllocator());
         for (const auto [r, g, b] : mapping.data) {
             light_state.PushBack(r, res.doc()->GetAllocator());
             light_state.PushBack(g, res.doc()->GetAllocator());
             light_state.PushBack(b, res.doc()->GetAllocator());
         }
 
-        // Can't use StringRef here, turns some strings partially into null bytes for some reason
+        // can't use StringRef here, turns some strings partially into null bytes for some reason
         Value light_name(mapping.lightName.c_str(), res.doc()->GetAllocator());
         response_object.AddMember(light_name, light_state, res.doc()->GetAllocator());
     }
