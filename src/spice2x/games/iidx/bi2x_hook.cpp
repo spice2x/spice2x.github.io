@@ -3,6 +3,7 @@
 #if SPICE64
 
 #include <cstdint>
+#include "api/client.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -443,10 +444,12 @@ namespace games::iidx {
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_g], rgb.g);
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_b], rgb.b);
 
-            for (unsigned int i = 0; i < data_size; ++i) {
-                map.data[i].r = data[i * 3];
-                map.data[i].g = data[i * 3 + 1];
-                map.data[i].b = data[i * 3 + 2];
+            if (api::has_clients()) {
+                for (size_t i = 0; i < data_size; ++i) {
+                    map.data[i].r = data[i * 3];
+                    map.data[i].g = data[i * 3 + 1];
+                    map.data[i].b = data[i * 3 + 2];
+                }
             }
         }
 

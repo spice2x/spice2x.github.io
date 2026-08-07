@@ -7,6 +7,7 @@ from .coin import *
 from .control import *
 from .exceptions import *
 from .iidx import *
+from .sdvx import *
 from .info import *
 from .keypads import *
 from .lights import *

@@ -5,6 +5,7 @@
 
 #include <utility>
 
+#include "client.h"
 #include "cfg/configurator.h"
 #include "external/rapidjson/document.h"
 #include "util/crypt.h"
@@ -28,6 +29,7 @@
 #include "modules/lcd.h"
 #include "modules/lights.h"
 #include "modules/memory.h"
+#include "modules/sdvx.h"
 #include "modules/touch.h"
 #include "modules/resize.h"
 #include "request.h"
@@ -35,6 +37,8 @@
 
 using namespace rapidjson;
 using namespace api;
+
+std::atomic_uint32_t api::CLIENT_COUNT = 0;
 
 Controller::Controller(unsigned short port, std::string password, bool pretty)
     : port(port), password(std::move(password)), pretty(pretty)
@@ -411,8 +415,11 @@ void Controller::init_state(api::ClientState *state) {
     state->modules.push_back(new modules::LCD());
     state->modules.push_back(new modules::Lights());
     state->modules.push_back(new modules::Memory());
+    state->modules.push_back(new modules::SDVX());
     state->modules.push_back(new modules::Touch());
     state->modules.push_back(new modules::Resize());
+
+    CLIENT_COUNT.fetch_add(1, std::memory_order_relaxed);
 }
 
 void Controller::free_state(api::ClientState *state) {
@@ -424,6 +431,8 @@ void Controller::free_state(api::ClientState *state) {
 
     // free cipher
     delete state->cipher;
+
+    CLIENT_COUNT.fetch_sub(1, std::memory_order_relaxed);
 }
 
 void Controller::free_socket() {

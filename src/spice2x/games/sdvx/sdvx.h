@@ -6,6 +6,7 @@
 
 #include "avs/game.h"
 #include "games/game.h"
+#include "util/tapeled.h"
 
 namespace games::sdvx {
 
@@ -24,6 +25,9 @@ namespace games::sdvx {
 
     // states
     extern bool SHOW_VM_MONITOR_WARNING;
+
+    constexpr int SDVX_TAPELED_TOTAL = 10;
+    extern tapeledutils::tape_led TAPELED_MAPPING[SDVX_TAPELED_TOTAL];
 
     static inline bool is_valkyrie_model() {
         return (

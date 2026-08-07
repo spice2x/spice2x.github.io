@@ -3,6 +3,7 @@
 #if SPICE64
 
 #include <cstdint>
+#include "api/client.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -349,43 +350,29 @@ namespace games::sdvx {
          * 9 - v unit - 258 bytes - 86 colors
          *
          * data is stored in RGB order, 3 bytes per color
-         *
-         * TODO: expose this data via API
          */
 
-        // data mapping
-        static struct TapeLedMapping {
-            size_t data_size;
-            int index_r, index_g, index_b;
-
-            TapeLedMapping(size_t data_size, int index_r, int index_g, int index_b)
-                    : data_size(data_size), index_r(index_r), index_g(index_g), index_b(index_b) {}
-
-        } mapping[] = {
-                { 74, Lights::TITLE_AVG_R, Lights::TITLE_AVG_G, Lights::TITLE_AVG_B },
-                { 12, Lights::UPPER_LEFT_SPEAKER_AVG_R, Lights::UPPER_LEFT_SPEAKER_AVG_G, Lights::UPPER_LEFT_SPEAKER_AVG_B },
-                { 12, Lights::UPPER_RIGHT_SPEAKER_AVG_R, Lights::UPPER_RIGHT_SPEAKER_AVG_G, Lights::UPPER_RIGHT_SPEAKER_AVG_B },
-                { 56, Lights::LEFT_WING_AVG_R, Lights::LEFT_WING_AVG_G, Lights::LEFT_WING_AVG_B },
-                { 56, Lights::RIGHT_WING_AVG_R, Lights::RIGHT_WING_AVG_G, Lights::RIGHT_WING_AVG_B },
-                { 94, Lights::CONTROL_PANEL_AVG_R, Lights::CONTROL_PANEL_AVG_G, Lights::CONTROL_PANEL_AVG_B },
-                { 12, Lights::LOWER_LEFT_SPEAKER_AVG_R, Lights::LOWER_LEFT_SPEAKER_AVG_G, Lights::LOWER_LEFT_SPEAKER_AVG_B },
-                { 12, Lights::LOWER_RIGHT_SPEAKER_AVG_R, Lights::LOWER_RIGHT_SPEAKER_AVG_G, Lights::LOWER_RIGHT_SPEAKER_AVG_B },
-                { 14, Lights::WOOFER_AVG_R, Lights::WOOFER_AVG_G, Lights::WOOFER_AVG_B },
-                { 86, Lights::V_UNIT_AVG_R, Lights::V_UNIT_AVG_G, Lights::V_UNIT_AVG_B },
-        };
-
         // check index bounds
-        if (tapeledutils::is_enabled() && index < std::size(mapping)) {
-            auto &map = mapping[index];
+        if (tapeledutils::is_enabled() && index < std::size(TAPELED_MAPPING)) {
+            auto &map = TAPELED_MAPPING[index];
+            const auto data_size = map.data.size();
 
             // pick a color to use
-            const auto rgb = tapeledutils::pick_color_from_led_tape(data, map.data_size);
+            const auto rgb = tapeledutils::pick_color_from_led_tape(data, data_size);
 
             // program the lights into API
             auto &lights = get_lights();
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_r], rgb.r);
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_g], rgb.g);
             GameAPI::Lights::writeLight(RI_MGR, lights[map.index_b], rgb.b);
+
+            if (api::has_clients()) {
+                for (size_t i = 0; i < data_size; ++i) {
+                    map.data[i].r = data[i * 3];
+                    map.data[i].g = data[i * 3 + 1];
+                    map.data[i].b = data[i * 3 + 2];
+                }
+            }
         }
 
         if (This != custom_node) {

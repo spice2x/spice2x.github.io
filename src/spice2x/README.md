@@ -267,6 +267,20 @@ which also means that your hex edits are applicable directly.
     - `Side Panel Right Inner`
     - `Side Panel Right`
 
+#### SDVX
+- tapeled_get(name: str, ...)
+  - returns a list containing a dict of the current tape LED states. The dict keys are:
+    - `Title`
+    - `Upper Left Speaker`
+    - `Upper Right Speaker`
+    - `Left Wing`
+    - `Right Wing`
+    - `Control Panel`
+    - `Lower Left Speaker`
+    - `Lower Right Speaker`
+    - `Woofer`
+    - `V Unit`
+
 #### LCD
 - info()
   - returns information about the serial LCD controller some games use
