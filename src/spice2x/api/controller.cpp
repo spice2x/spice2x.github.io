@@ -28,6 +28,7 @@
 #include "modules/lcd.h"
 #include "modules/lights.h"
 #include "modules/memory.h"
+#include "modules/sdvx.h"
 #include "modules/touch.h"
 #include "modules/resize.h"
 #include "request.h"
@@ -411,6 +412,7 @@ void Controller::init_state(api::ClientState *state) {
     state->modules.push_back(new modules::LCD());
     state->modules.push_back(new modules::Lights());
     state->modules.push_back(new modules::Memory());
+    state->modules.push_back(new modules::SDVX());
     state->modules.push_back(new modules::Touch());
     state->modules.push_back(new modules::Resize());
 }

@@ -332,6 +332,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         api/modules/control.cpp
         api/modules/touch.cpp
         api/modules/iidx.cpp
+        api/modules/sdvx.cpp
         api/serial.cpp
         api/modules/drs.cpp
         api/modules/lcd.cpp

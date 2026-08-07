@@ -61,6 +61,19 @@ namespace games::sdvx {
     static HKEY real_asio_reg_handle = nullptr;
     static HKEY real_asio_device_reg_handle = nullptr;
 
+    tapeledutils::tape_led TAPELED_MAPPING[SDVX_TAPELED_TOTAL] = {
+        { 74, Lights::TITLE_AVG_R, Lights::TITLE_AVG_G, Lights::TITLE_AVG_B, "Title" },
+        { 12, Lights::UPPER_LEFT_SPEAKER_AVG_R, Lights::UPPER_LEFT_SPEAKER_AVG_G, Lights::UPPER_LEFT_SPEAKER_AVG_B, "Upper Left Speaker" },
+        { 12, Lights::UPPER_RIGHT_SPEAKER_AVG_R, Lights::UPPER_RIGHT_SPEAKER_AVG_G, Lights::UPPER_RIGHT_SPEAKER_AVG_B, "Upper Right Speaker" },
+        { 56, Lights::LEFT_WING_AVG_R, Lights::LEFT_WING_AVG_G, Lights::LEFT_WING_AVG_B, "Left Wing" },
+        { 56, Lights::RIGHT_WING_AVG_R, Lights::RIGHT_WING_AVG_G, Lights::RIGHT_WING_AVG_B, "Right Wing" },
+        { 94, Lights::CONTROL_PANEL_AVG_R, Lights::CONTROL_PANEL_AVG_G, Lights::CONTROL_PANEL_AVG_B, "Control Panel" },
+        { 12, Lights::LOWER_LEFT_SPEAKER_AVG_R, Lights::LOWER_LEFT_SPEAKER_AVG_G, Lights::LOWER_LEFT_SPEAKER_AVG_B, "Lower Left Speaker" },
+        { 12, Lights::LOWER_RIGHT_SPEAKER_AVG_R, Lights::LOWER_RIGHT_SPEAKER_AVG_G, Lights::LOWER_RIGHT_SPEAKER_AVG_B, "Lower Right Speaker" },
+        { 14, Lights::WOOFER_AVG_R, Lights::WOOFER_AVG_G, Lights::WOOFER_AVG_B, "Woofer" },
+        { 86, Lights::V_UNIT_AVG_R, Lights::V_UNIT_AVG_G, Lights::V_UNIT_AVG_B, "V Unit" },
+    };
+
     static LONG WINAPI RegOpenKeyA_hook(HKEY hKey, LPCSTR lpSubKey, PHKEY phkResult) {
         if (lpSubKey != nullptr &&
             phkResult != nullptr &&
