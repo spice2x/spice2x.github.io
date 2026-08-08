@@ -55,9 +55,10 @@ namespace api::modules {
         native_canvas_w = 0;
         native_canvas_h = 0;
         if (is_sdvx) {
-            // exceed gear subscreen, portrait after the rotation applied in apply_touch_errata
-            native_canvas_w = 1080;
-            native_canvas_h = 1920;
+            // landscape API coordinates already match the primary screen orientation;
+            // portrait coordinates are rotated by apply_touch_errata
+            native_canvas_w = GRAPHICS_FS_ORIENTATION_SWAP ? 1920 : 1080;
+            native_canvas_h = GRAPHICS_FS_ORIENTATION_SWAP ? 1080 : 1920;
         } else if (avs::game::is_model("LDJ")) {
             // TDJ subscreen; FHD models are upscaled to 1080p by apply_touch_errata
             native_canvas_w = is_tdj_fhd ? 1920 : 1280;
@@ -218,8 +219,8 @@ namespace api::modules {
             // the target of the touch events so just assume it's the sub screen
             x = x_raw * 1920 / 1280;
             y = y_raw * 1080 / 720;
-        } else if (is_sdvx) {
-            // for exceed gear, they are both 1080p screens, but need to apply transformation
+        } else if (is_sdvx && !GRAPHICS_FS_ORIENTATION_SWAP) {
+            // rotate API coordinates into SDVX's portrait touch space
             x = 1080 - y_raw;
             y = x_raw;
         }
