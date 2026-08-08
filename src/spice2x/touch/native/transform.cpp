@@ -1,5 +1,6 @@
 #include "transform.h"
 
+#include "avs/game.h"
 #include "hooks/graphics/graphics.h"
 #include "overlay/overlay.h"
 #include "settings.h"
@@ -82,6 +83,25 @@ namespace nativetouch::transform {
         return overlay::OVERLAY->transform_touch_point(&position->x, &position->y);
     }
 
+    // the digitizer is mapped to the zero-based primary display, while SDVX
+    // still expects portrait coordinates when its image is rendered in landscape:
+    // (x, y) -> (width * (1 - y / height), height * x / width).
+    static bool transform_sdvx_landscape_touch_position(POINT *position) {
+        const auto landscape_width = static_cast<LONG>(GRAPHICS_FS_CUSTOM_RESOLUTION.has_value() ?
+            GRAPHICS_FS_CUSTOM_RESOLUTION.value().first : GRAPHICS_FS_ORIGINAL_HEIGHT);
+        const auto landscape_height = static_cast<LONG>(GRAPHICS_FS_CUSTOM_RESOLUTION.has_value() ?
+            GRAPHICS_FS_CUSTOM_RESOLUTION.value().second : GRAPHICS_FS_ORIGINAL_WIDTH);
+        if (landscape_width <= 0 || landscape_height <= 0) {
+            return false;
+        }
+
+        const auto input_x = position->x;
+        position->x = landscape_width -
+            MulDiv(position->y, landscape_width, landscape_height);
+        position->y = MulDiv(input_x, landscape_height, landscape_width);
+        return true;
+    }
+
     // convert physical screen coordinates to game touch coordinates for a known target
     bool screen_to_game(HWND window, POINT *position) {
         if (settings::SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES) {
@@ -143,6 +163,13 @@ namespace nativetouch::transform {
     Result hardware_to_game(POINT *position) {
         const auto dedicated_subscreen = is_tdj_dedicated_subscreen(TDJ_SUBSCREEN_WINDOW);
         const auto active_overlay = has_active_overlay_transform();
+
+        // special case for SDVX landscape mode
+        if (!dedicated_subscreen && !active_overlay &&
+            GRAPHICS_FS_ORIENTATION_SWAP && avs::game::is_model("KFC")) {
+            return transform_sdvx_landscape_touch_position(position) ?
+                Result::Transformed : Result::Rejected;
+        }
 
         // no dedicated subscreen or active overlay mapping; pass the point through unchanged
         if (!dedicated_subscreen && !active_overlay) {
