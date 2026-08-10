@@ -38,6 +38,11 @@ typedef HRESULT (WINAPI *D3DXSaveSurfaceToFileA_t)(
 
 static bool ATTEMPTED_D3DX9_LOAD_LIBRARY = false;
 
+struct PendingScreenshotSurface {
+    D3DSURFACE_DESC desc;
+    IDirect3DSurface9 *surface;
+};
+
 static void save_capture(
         int screen,
         D3DFORMAT format,
@@ -226,6 +231,128 @@ void graphics_d3d9_poll_screenshot_hotkey() {
     }
 }
 
+static bool copy_screenshot_surface(
+        IDirect3DDevice9 *device,
+        IDirect3DSwapChain9 *sub_swap_chain,
+        int screen,
+        PendingScreenshotSurface &pending) {
+    HRESULT hr = S_OK;
+
+    // TODO: verify screen is a valid swapchain
+
+    IDirect3DSurface9 *buffer = nullptr;
+    if (sub_swap_chain != nullptr && screen & 1) {
+        hr = sub_swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
+    } else {
+        hr = device->GetBackBuffer(screen, 0, D3DBACKBUFFER_TYPE_MONO, &buffer);
+    }
+    if (FAILED(hr) || buffer == nullptr) {
+        log_warning("graphics::d3d9",
+                "failed to get back buffer, hr={}",
+                FMT_HRESULT(hr));
+        return false;
+    }
+
+    D3DSURFACE_DESC desc {};
+    hr = buffer->GetDesc(&desc);
+    if (FAILED(hr)) {
+        log_warning("graphics::d3d9",
+                "failed to acquire back buffer descriptor, hr={}",
+                FMT_HRESULT(hr));
+        buffer->Release();
+        return false;
+    }
+
+    // TODO: cache render targets
+    IDirect3DSurface9 *temp_surface = nullptr;
+    hr = device->CreateRenderTarget(
+            desc.Width, desc.Height, desc.Format, desc.MultiSampleType,
+            desc.MultiSampleQuality, TRUE, &temp_surface, nullptr);
+    if (FAILED(hr) || temp_surface == nullptr) {
+        log_warning("graphics::d3d9",
+                "failed to acquire temporary surface, hr={}",
+                FMT_HRESULT(hr));
+        buffer->Release();
+        return false;
+    }
+
+    hr = device->StretchRect(buffer, nullptr, temp_surface, nullptr, D3DTEXF_NONE);
+    if (FAILED(hr)) {
+        log_warning("graphics::d3d9",
+                "failed to copy back buffer contents, hr={}",
+                FMT_HRESULT(hr));
+        temp_surface->Release();
+        buffer->Release();
+        return false;
+    }
+
+    // release original back buffer reference
+    buffer->Release();
+
+    pending.desc = desc;
+    pending.surface = temp_surface;
+    return true;
+}
+
+static void process_screenshot_surface(
+        bool screenshot,
+        bool capture,
+        int capture_screen,
+        const PendingScreenshotSurface &pending) {
+    auto surface_process = [=]() {
+
+        // capture
+        if (capture) {
+            save_capture(
+                    capture_screen,
+                    pending.desc.Format,
+                    pending.desc.Width,
+                    pending.desc.Height,
+                    pending.surface);
+        }
+
+        // screenshot
+        if (screenshot) {
+
+            // check where we can save it
+            auto file_path = graphics_screenshot_genpath();
+            if (!file_path.empty()) {
+
+                // write to file
+                save_screenshot(
+                        file_path,
+                        pending.desc.Format,
+                        pending.desc.Width,
+                        pending.desc.Height,
+                        pending.surface);
+            }
+        }
+
+        // release surface
+        pending.surface->Release();
+    };
+
+    // list of games that crash when running the screenshot processor on another thread
+    static const robin_hood::unordered_set<std::string> THREAD_BAN {
+            "JMA",
+#ifndef SPICE64
+            // KFC only crashes under threaded processing in 32-bit builds
+            "KFC",
+#endif
+            "KMA",
+            "KLP",
+            "LMA",
+    };
+
+    // run the save operation on another thread for supported games
+    if (THREAD_BAN.contains(avs::game::MODEL)) {
+        surface_process();
+    } else {
+        static auto pool = ThreadPool(2);
+        pool.add(surface_process);
+    }
+}
+
 void graphics_d3d9_process_screenshot_and_capture(
         IDirect3DDevice9 *device,
         IDirect3DSwapChain9 *sub_swap_chain) {
@@ -235,119 +362,18 @@ void graphics_d3d9_process_screenshot_and_capture(
     int capture_screen = 0;
     if ((screenshot = graphics_screenshot_consume())
     || ((capture = graphics_capture_consume(&capture_screen)))) {
-        HRESULT hr = S_OK;
-
-        // TODO: verify capture_screen is a valid swapchain
-
-        // get back buffer
-        IDirect3DSurface9 *buffer = nullptr;
-        if (sub_swap_chain != nullptr && capture_screen & 1) {
-            hr = sub_swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
-        } else {
-            hr = device->GetBackBuffer(capture_screen, 0, D3DBACKBUFFER_TYPE_MONO, &buffer);
-        }
-        if (FAILED(hr) || buffer == nullptr) {
-            log_warning("graphics::d3d9",
-                    "failed to get back buffer, hr={}",
-                    FMT_HRESULT(hr));
+        PendingScreenshotSurface pending {};
+        if (!copy_screenshot_surface(
+                    device,
+                    sub_swap_chain,
+                    capture_screen,
+                    pending)) {
             if (capture) {
                 graphics_capture_skip(capture_screen);
             }
             return;
         }
 
-        D3DSURFACE_DESC desc {};
-        hr = buffer->GetDesc(&desc);
-        if (FAILED(hr)) {
-            log_warning("graphics::d3d9",
-                    "failed to acquire back buffer descriptor, hr={}",
-                    FMT_HRESULT(hr));
-            buffer->Release();
-            if (capture) {
-                graphics_capture_skip(capture_screen);
-            }
-            return;
-        }
-
-        // TODO: cache render targets
-        IDirect3DSurface9 *temp_surface = nullptr;
-        hr = device->CreateRenderTarget(
-                desc.Width, desc.Height, desc.Format, desc.MultiSampleType,
-                desc.MultiSampleQuality, TRUE, &temp_surface, nullptr);
-        if (FAILED(hr) || temp_surface == nullptr) {
-            log_warning("graphics::d3d9",
-                    "failed to acquire temporary surface, hr={}",
-                    FMT_HRESULT(hr));
-            buffer->Release();
-            if (capture) {
-                graphics_capture_skip(capture_screen);
-            }
-            return;
-        }
-
-        hr = device->StretchRect(buffer, nullptr, temp_surface, nullptr, D3DTEXF_NONE);
-        if (FAILED(hr)) {
-            log_warning("graphics::d3d9",
-                    "failed to copy back buffer contents, hr={}",
-                    FMT_HRESULT(hr));
-            temp_surface->Release();
-            buffer->Release();
-            if (capture) {
-                graphics_capture_skip(capture_screen);
-            }
-            return;
-        }
-
-        // release original back buffer reference
-        buffer->Release();
-
-        // function for storing the surface
-        auto surface_process = [=]() {
-
-            // capture
-            if (capture) {
-                save_capture(capture_screen, desc.Format, desc.Width, desc.Height, temp_surface);
-            }
-
-            // screenshot
-            if (screenshot) {
-
-                // check where we can save it
-                auto file_path = graphics_screenshot_genpath();
-                if (!file_path.empty()) {
-
-                    // write to file
-                    save_screenshot(
-                            file_path,
-                            desc.Format,
-                            desc.Width,
-                            desc.Height,
-                            temp_surface);
-                }
-            }
-
-            // release surface
-            temp_surface->Release();
-        };
-
-        // list of games that crash when running the screenshot processor on another thread
-        static const robin_hood::unordered_set<std::string> THREAD_BAN {
-                "JMA",
-#ifndef SPICE64
-                // KFC only crashes under threaded processing in 32-bit builds
-                "KFC",
-#endif
-                "KMA",
-                "KLP",
-                "LMA",
-        };
-
-        // run the save operation on another thread for supported games
-        if (THREAD_BAN.contains(avs::game::MODEL)) {
-            surface_process();
-        } else {
-            static auto pool = ThreadPool(2);
-            pool.add(surface_process);
-        }
+        process_screenshot_surface(screenshot, capture, capture_screen, pending);
     }
 }
