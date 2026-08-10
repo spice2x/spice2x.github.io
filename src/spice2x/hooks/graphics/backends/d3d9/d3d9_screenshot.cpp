@@ -1,5 +1,9 @@
 #include "d3d9_screenshot.h"
 
+#include <cstdint>
+#include <memory>
+#include <string>
+
 #include <external/robin_hood.h>
 
 #ifdef __GNUC__
@@ -9,6 +13,7 @@
 #include "avs/game.h"
 #include "games/io.h"
 #include "hooks/graphics/graphics.h"
+#include "launcher/launcher.h"
 #include "misc/clipboard.h"
 #include "misc/eamuse.h"
 #include "overlay/notifications.h"
@@ -50,56 +55,51 @@ static void save_capture(
         return;
     }
 
-    // copy pixel data
+    // normalize supported D3D formats to packed RGB for API capture
     size_t pitch = finished_copy.Pitch;
     auto data = reinterpret_cast<uint8_t *>(finished_copy.pBits);
-    auto pixels = new uint8_t[width * height * 3];
+    auto pixels = std::unique_ptr<uint8_t[]>(new uint8_t[width * height * 3]);
     for (size_t row = 0; row < height; row++) {
-        size_t offset_pixels = 0;
         size_t offset_row = row * width * 3;
         switch (format) {
             case D3DFMT_R8G8B8: {
-                for (size_t offset = 0; offset < pitch; offset += 3) {
-                    auto cell = data + row * pitch + offset;
-                    auto pixel = &pixels[offset_row + offset_pixels];
+                for (size_t column = 0; column < width; column++) {
+                    auto cell = data + row * pitch + column * 3;
+                    auto pixel = &pixels[offset_row + column * 3];
                     pixel[0] = cell[0];
                     pixel[1] = cell[1];
                     pixel[2] = cell[2];
-                    offset_pixels += 3;
                 }
                 break;
             }
             case D3DFMT_X8R8G8B8:
             case D3DFMT_A8R8G8B8: {
-                for (size_t offset = 0; offset < pitch; offset += 4) {
-                    auto cell = data + row * pitch + offset;
-                    auto pixel = &pixels[offset_row + offset_pixels];
+                for (size_t column = 0; column < width; column++) {
+                    auto cell = data + row * pitch + column * 4;
+                    auto pixel = &pixels[offset_row + column * 3];
                     pixel[0] = cell[2];
                     pixel[1] = cell[1];
                     pixel[2] = cell[0];
-                    offset_pixels += 3;
                 }
                 break;
             }
             case D3DFMT_X8B8G8R8:
             case D3DFMT_A8B8G8R8: {
-                for (size_t offset = 0; offset < pitch; offset += 4) {
-                    auto cell = data + row * pitch + offset;
-                    auto pixel = &pixels[offset_row + offset_pixels];
+                for (size_t column = 0; column < width; column++) {
+                    auto cell = data + row * pitch + column * 4;
+                    auto pixel = &pixels[offset_row + column * 3];
                     pixel[0] = cell[0];
                     pixel[1] = cell[1];
                     pixel[2] = cell[2];
-                    offset_pixels += 3;
                 }
                 break;
             }
             default: {
-                for (size_t offset = 0; offset < width; offset++) {
-                    auto pixel = &pixels[offset_row + offset_pixels];
+                for (size_t column = 0; column < width; column++) {
+                    auto pixel = &pixels[offset_row + column * 3];
                     pixel[0] = 0;
                     pixel[1] = 0;
                     pixel[2] = 0;
-                    offset_pixels += 3;
                 }
             }
         }
@@ -114,35 +114,39 @@ static void save_capture(
     }
 
     // enqueue
-    graphics_capture_enqueue(screen, pixels, width, height);
+    graphics_capture_enqueue(screen, pixels.release(), width, height);
 }
 
-static void save_screenshot(const std::string &file_path, UINT height, IDirect3DSurface9 *surface) {
-    HRESULT hr;
+static void save_screenshot(
+        const std::string &file_path,
+        D3DFORMAT format,
+        UINT width,
+        UINT height,
+        IDirect3DSurface9 *surface) {
+    // 32-bit XRGB and ARGB surfaces use byte 3 as alpha; force opaque PNG output
+    if (format == D3DFMT_X8R8G8B8 || format == D3DFMT_A8R8G8B8 ||
+        format == D3DFMT_X8B8G8R8 || format == D3DFMT_A8B8G8R8) {
 
-    D3DLOCKED_RECT finished_copy {};
-    hr = surface->LockRect(&finished_copy, nullptr, 0);
-    if (FAILED(hr)) {
-        log_warning("graphics::d3d9", "failed to lock screenshot surface, hr={}", FMT_HRESULT(hr));
-        return;
-    }
+        D3DLOCKED_RECT finished_copy {};
+        HRESULT hr = surface->LockRect(&finished_copy, nullptr, 0);
+        if (FAILED(hr)) {
+            log_warning("graphics::d3d9", "failed to lock screenshot surface, hr={}", FMT_HRESULT(hr));
+            return;
+        }
 
-    // set alpha channel to 255
-    {
-        auto pitch = finished_copy.Pitch;
+        const size_t pitch = finished_copy.Pitch;
         auto data = reinterpret_cast<uint8_t *>(finished_copy.pBits);
-
-        for (size_t i = 0; i < height; i++) {
-            for (int j = 3; j < pitch; j += 4) {
-                data[i * pitch + j] = 255;
+        for (size_t row = 0; row < height; row++) {
+            for (size_t column = 0; column < width; column++) {
+                data[row * pitch + column * 4 + 3] = 255;
             }
         }
-    }
 
-    hr = surface->UnlockRect();
-    if (FAILED(hr)) {
-        log_warning("graphics::d3d9", "failed to unlock screenshot surface, hr={}", FMT_HRESULT(hr));
-        return;
+        hr = surface->UnlockRect();
+        if (FAILED(hr)) {
+            log_warning("graphics::d3d9", "failed to unlock screenshot surface, hr={}", FMT_HRESULT(hr));
+            return;
+        }
     }
 
     // lazy load function
@@ -154,6 +158,7 @@ static void save_screenshot(const std::string &file_path, UINT height, IDirect3D
         if (!ATTEMPTED_D3DX9_LOAD_LIBRARY && D3DXSaveSurfaceToFileA_ptr == nullptr) {
             ATTEMPTED_D3DX9_LOAD_LIBRARY = true;
 
+            // prefer the newest installed helper while supporting older D3DX9 runtimes
             for (size_t i = 43; i >= 24; i--) {
                 auto lib_name = fmt::format("d3dx9_{}.dll", i);
                 auto d3dx9 = libutils::try_library(lib_name);
@@ -184,9 +189,10 @@ static void save_screenshot(const std::string &file_path, UINT height, IDirect3D
 
         // save to file
         log_info("graphics::d3d9", "saving screenshot to {}", file_path);
-        auto hr = D3DXSaveSurfaceToFileA_ptr(file_path.c_str(), D3DXIFF_PNG, surface, nullptr, nullptr);
+        const HRESULT save_result = D3DXSaveSurfaceToFileA_ptr(
+            file_path.c_str(), D3DXIFF_PNG, surface, nullptr, nullptr);
 
-        if (FAILED(hr)) {
+        if (FAILED(save_result)) {
             log_warning("graphics::d3d9", "Failed to save screenshot");
             overlay::notifications::add(
                 overlay::notifications::Severity::Error,
@@ -205,10 +211,7 @@ static void save_screenshot(const std::string &file_path, UINT height, IDirect3D
     }
 }
 
-void graphics_d3d9_process_capture(
-    IDirect3DDevice9 *device,
-    IDirect3DSwapChain9 *sub_swap_chain) {
-    // check screenshot key
+void graphics_d3d9_poll_screenshot_hotkey() {
     static bool trigger_last = false;
     auto buttons = games::get_buttons_overlay(eamuse_get_game());
     if (buttons && (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered()) &&
@@ -221,7 +224,11 @@ void graphics_d3d9_process_capture(
     } else {
         trigger_last = false;
     }
+}
 
+void graphics_d3d9_process_screenshot_and_capture(
+        IDirect3DDevice9 *device,
+        IDirect3DSwapChain9 *sub_swap_chain) {
     // process pending screenshot
     bool screenshot = false;
     bool capture = false;
@@ -310,7 +317,12 @@ void graphics_d3d9_process_capture(
                 if (!file_path.empty()) {
 
                     // write to file
-                    save_screenshot(file_path, desc.Height, temp_surface);
+                    save_screenshot(
+                            file_path,
+                            desc.Format,
+                            desc.Width,
+                            desc.Height,
+                            temp_surface);
                 }
             }
 
@@ -322,6 +334,7 @@ void graphics_d3d9_process_capture(
         static const robin_hood::unordered_set<std::string> THREAD_BAN {
                 "JMA",
 #ifndef SPICE64
+                // KFC only crashes under threaded processing in 32-bit builds
                 "KFC",
 #endif
                 "KMA",

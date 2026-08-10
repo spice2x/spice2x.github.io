@@ -1522,7 +1522,8 @@ void graphics_d3d9_on_present(
         wintouchemu::update();
     }
 
-    graphics_d3d9_process_capture(device, SUB_SWAP_CHAIN);
+    graphics_d3d9_poll_screenshot_hotkey();
+    graphics_d3d9_process_screenshot_and_capture(device, SUB_SWAP_CHAIN);
 }
 
 void update_backbuffer_dimensions(D3DPRESENT_PARAMETERS *params) {
