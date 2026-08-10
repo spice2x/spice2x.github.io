@@ -55,10 +55,12 @@ namespace api::modules {
         native_canvas_w = 0;
         native_canvas_h = 0;
         if (is_sdvx) {
-            // landscape API coordinates already match the primary screen orientation;
-            // portrait coordinates are rotated by apply_touch_errata
-            native_canvas_w = GRAPHICS_FS_ORIENTATION_SWAP ? 1920 : 1080;
-            native_canvas_h = GRAPHICS_FS_ORIENTATION_SWAP ? 1080 : 1920;
+            // windowed and landscape API coordinates already match the primary screen orientation;
+            // fullscreen portrait coordinates are rotated by apply_touch_errata
+            const bool landscape_coordinates =
+                GRAPHICS_WINDOWED || GRAPHICS_FS_ORIENTATION_SWAP;
+            native_canvas_w = landscape_coordinates ? 1920 : 1080;
+            native_canvas_h = landscape_coordinates ? 1080 : 1920;
         } else if (avs::game::is_model("LDJ")) {
             // TDJ subscreen; FHD models are upscaled to 1080p by apply_touch_errata
             native_canvas_w = is_tdj_fhd ? 1920 : 1280;
@@ -219,7 +221,7 @@ namespace api::modules {
             // the target of the touch events so just assume it's the sub screen
             x = x_raw * 1920 / 1280;
             y = y_raw * 1080 / 720;
-        } else if (is_sdvx && !GRAPHICS_FS_ORIENTATION_SWAP) {
+        } else if (is_sdvx && !GRAPHICS_WINDOWED && !GRAPHICS_FS_ORIENTATION_SWAP) {
             // rotate API coordinates into SDVX's portrait touch space
             x = 1080 - y_raw;
             y = x_raw;

@@ -147,6 +147,12 @@ namespace nativetouch::transform {
             return screen_to_game(window, position);
         }
 
+        // exception: sdvx windowed subscreen does not use the subscreen overlay transform
+        if (GRAPHICS_WINDOWED && window == SDVX_SUBSCREEN_WINDOW) {
+            POINT client_position = *position;
+            return screen_to_game_client(window, &client_position);
+        }
+
         // if this game has a subscreen overlay that can transform touch input
         // but the window is hidden or not under the cursor, reject mouse-as-touch
         // (e.g., iidx/sdvx are rejected here, but nostalgia is allowed)
