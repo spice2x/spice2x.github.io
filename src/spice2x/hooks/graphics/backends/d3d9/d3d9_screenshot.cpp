@@ -312,34 +312,30 @@ static std::optional<BackbufferCopy> acquire_backbuffer_copy(
 
 static void dispatch_surface_save(
         const ImageRequest &request,
-    BackbufferCopy copy) {
+        BackbufferCopy copy) {
     // this function takes ownership of copy.surface and releases it after processing
-    auto surface_process = [=]() {
+    auto surface_process = [request, copy = std::move(copy)]() {
+        switch (request.kind) {
+            case ImageRequestKind::Capture:
+                save_capture(
+                        request.screen,
+                        copy.desc.Format,
+                        copy.desc.Width,
+                        copy.desc.Height,
+                        copy.surface);
+                break;
 
-        // capture
-        if (request.kind == ImageRequestKind::Capture) {
-            save_capture(
-                    request.screen,
-                    copy.desc.Format,
-                    copy.desc.Width,
-                    copy.desc.Height,
-                    copy.surface);
-        }
-
-        // screenshot
-        if (request.kind == ImageRequestKind::Screenshot) {
-
-            // check where we can save it
-            auto file_path = graphics_screenshot_genpath();
-            if (!file_path.empty()) {
-
-                // write to file
-                save_screenshot(
-                        file_path,
-                    copy.desc.Format,
-                    copy.desc.Width,
-                    copy.desc.Height,
-                    copy.surface);
+            case ImageRequestKind::Screenshot: {
+                auto file_path = graphics_screenshot_genpath();
+                if (!file_path.empty()) {
+                    save_screenshot(
+                            file_path,
+                            copy.desc.Format,
+                            copy.desc.Width,
+                            copy.desc.Height,
+                            copy.surface);
+                }
+                break;
             }
         }
 
