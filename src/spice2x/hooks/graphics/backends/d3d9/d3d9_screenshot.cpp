@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <external/robin_hood.h>
 
@@ -51,9 +52,17 @@ struct ImageRequest {
     int screen;
 };
 
+struct SurfaceReleaser {
+    void operator()(IDirect3DSurface9 *surface) const {
+        surface->Release();
+    }
+};
+
+using SurfacePtr = std::unique_ptr<IDirect3DSurface9, SurfaceReleaser>;
+
 struct BackbufferCopy {
     D3DSURFACE_DESC desc {};
-    IDirect3DSurface9 *surface = nullptr;
+    SurfacePtr surface;
 };
 
 } // namespace
@@ -247,9 +256,8 @@ void graphics_d3d9_poll_screenshot_hotkey() {
 }
 
 static std::optional<BackbufferCopy> acquire_backbuffer_copy(
-        IDirect3DDevice9 *device,
-        IDirect3DSwapChain9 *sub_swap_chain,
-    int screen) {
+    IDirect3DDevice9 *device, IDirect3DSwapChain9 *sub_swap_chain, int screen) {
+
     HRESULT hr = S_OK;
 
     // TODO: verify screen is a valid swapchain
@@ -303,17 +311,15 @@ static std::optional<BackbufferCopy> acquire_backbuffer_copy(
     // release original back buffer reference
     buffer->Release();
 
-    // the caller owns the returned surface reference
     return BackbufferCopy {
         .desc = desc,
-        .surface = temp_surface,
+        .surface = SurfacePtr(temp_surface),
     };
 }
 
 static void dispatch_surface_save(
         const ImageRequest &request,
         BackbufferCopy copy) {
-    // this function takes ownership of copy.surface and releases it after processing
     auto surface_process = [request, copy = std::move(copy)]() {
         switch (request.kind) {
             case ImageRequestKind::Capture:
@@ -322,7 +328,7 @@ static void dispatch_surface_save(
                         copy.desc.Format,
                         copy.desc.Width,
                         copy.desc.Height,
-                        copy.surface);
+                        copy.surface.get());
                 break;
 
             case ImageRequestKind::Screenshot: {
@@ -333,14 +339,11 @@ static void dispatch_surface_save(
                             copy.desc.Format,
                             copy.desc.Width,
                             copy.desc.Height,
-                            copy.surface);
+                            copy.surface.get());
                 }
                 break;
             }
         }
-
-        // release surface
-        copy.surface->Release();
     };
 
     // list of games that crash when running the screenshot processor on another thread
@@ -360,7 +363,7 @@ static void dispatch_surface_save(
         surface_process();
     } else {
         static auto pool = ThreadPool(2);
-        pool.add(surface_process);
+        pool.add(std::move(surface_process));
     }
 }
 
@@ -391,7 +394,7 @@ void graphics_d3d9_process_screenshot_and_capture(
         return;
     }
 
-    const auto copy = acquire_backbuffer_copy(
+    auto copy = acquire_backbuffer_copy(
             device,
             sub_swap_chain,
             request->screen);
@@ -402,5 +405,5 @@ void graphics_d3d9_process_screenshot_and_capture(
         return;
     }
 
-    dispatch_surface_save(*request, *copy);
+    dispatch_surface_save(*request, std::move(*copy));
 }
