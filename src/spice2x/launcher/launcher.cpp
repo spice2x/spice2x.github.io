@@ -87,13 +87,13 @@
 #include "launcher/launcher.h"
 #include "launcher/logger.h"
 #include "launcher/signal.h"
-#include "launcher/superexit.h"
 #include "launcher/richpresence.h"
 #include "launcher/shutdown.h"
 #include "launcher/options.h"
 #include "misc/bt5api.h"
 #include "misc/device.h"
 #include "misc/eamuse.h"
+#include "misc/hotkeys.h"
 #include "misc/extdev.h"
 #include "misc/ami2000.h"
 #include "misc/sciunit.h"
@@ -1777,9 +1777,8 @@ int main_implementation(int argc, char *argv[]) {
         nvapi::initialize();
         // add application profile to nvcp
         nvapi::set_profile_settings();
-        // enable super exit
-        superexit::enable();
-
+        // keep ALT+F4 available during lengthy boot before raw input is initialized
+        hotkeys::start();
         // enable subscreen touch emulation
         if (options[launcher::Options::spice2x_IIDXEmulateSubscreenKeypadTouch].is_active()) {
             games::iidx::ENABLE_POKE = true;
@@ -2452,6 +2451,7 @@ int main_implementation(int argc, char *argv[]) {
 
     // initialize raw input
     RI_MGR = std::make_unique<rawinput::RawInputManager>();
+    hotkeys::enable_raw_input();
     for (const auto &device : sextet_devices) {
         RI_MGR->sextet_register(device);
     }
@@ -2703,12 +2703,9 @@ int main_implementation(int argc, char *argv[]) {
         API_CONTROLLER->listen_serial(api_serial_port[i], api_serial_baud[i]);
     }
 
-    // start coin input thread
-    eamuse_coin_start_thread();
-
     // pin macro
     if (!cfg::CONFIGURATOR_STANDALONE && PIN_MACRO_ENABLED) {
-        eamuse_pin_macro_start_thread();
+        eamuse_pin_macro_start();
     }
 
     // print PEB
@@ -2751,9 +2748,18 @@ int main_implementation(int argc, char *argv[]) {
         game->post_attach();
     }
 
+    if (!cfg::CONFIGURATOR_STANDALONE) {
+        // configured actions are valid only while mappings and their owners are alive
+        hotkeys::enable_input(overlay::OVERLAY != nullptr);
+    }
+
     // game start
     log_info("launcher", "calling game entry");
     avs::game::entry_main();
+
+    // stop raw-input-dependent polling before game and device teardown; ALT+F4 remains active
+    hotkeys::disable_input();
+    eamuse_pin_macro_stop();
 
     // clear presence
     richpresence::shutdown();
@@ -2792,11 +2798,6 @@ int main_implementation(int argc, char *argv[]) {
     // free api controller
     API_CONTROLLER.reset();
 
-    // stop coin input thread
-    eamuse_coin_stop_thread();
-
-    eamuse_pin_macro_stop_thread();
-
     // BT5API
     if (BT5API_ENABLED) {
         bt5api_dispose();
@@ -2805,6 +2806,7 @@ int main_implementation(int argc, char *argv[]) {
     sdk::fini_sdk_modules();
 
     // stop raw input
+    hotkeys::disable_raw_input();
     RI_MGR.reset();
 
     // debug hook
@@ -2837,8 +2839,8 @@ int main_implementation(int argc, char *argv[]) {
     // dispose crypt
     crypt::dispose();
 
-    // disable super exit
-    superexit::disable();
+    // end early/late ALT+F4 monitoring at the same teardown point as legacy SuperExit
+    hotkeys::stop();
 
     // disable poke
     games::iidx::poke::disable();

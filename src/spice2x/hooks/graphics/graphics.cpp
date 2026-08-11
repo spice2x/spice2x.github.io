@@ -17,11 +17,13 @@
 #include "games/ddr/ddr.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
+#include "games/io.h"
 #include "games/sdvx/sdvx.h"
 #include "games/popn/popn.h"
 #include "hooks/graphics/backends/d3d9/d3d9_backend.h"
 #include "hooks/graphics/backends/d3d11/d3d11_backend.h"
 #include "launcher/shutdown.h"
+#include "misc/hotkeys.h"
 #include "overlay/overlay.h"
 #include "touch/touch.h"
 #include "touch/touch_gestures.h"
@@ -1372,6 +1374,12 @@ void graphics_screens_get(std::vector<int> &screens) {
     std::lock_guard<std::mutex> lock(GRAPHICS_SCREENS_M);
 
     screens.insert(screens.end(), GRAPHICS_SCREENS.begin(), GRAPHICS_SCREENS.end());
+}
+
+void graphics_poll_screenshot_hotkey() {
+    if (hotkeys::consume_overlay_button(games::OverlayButtons::Screenshot)) {
+        graphics_screenshot_trigger();
+    }
 }
 
 void graphics_screenshot_trigger() {

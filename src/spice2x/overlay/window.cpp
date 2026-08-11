@@ -1,8 +1,7 @@
 #include "window.h"
 #include "cfg/configurator.h"
+#include "misc/hotkeys.h"
 #include "util/logging.h"
-#include "games/io.h"
-#include "misc/eamuse.h"
 #include "external/imgui/imgui_internal.h"
 
 
@@ -22,12 +21,7 @@ void overlay::Window::update() {
     // check if toggle is enabled
     if (this->toggle_button != ~0u) {
 
-        // get state
-        auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
-        bool toggle_button_new = overlay_buttons
-                && this->overlay->hotkeys_triggered()
-                && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(this->toggle_button));
-        if (toggle_button_new && !this->toggle_button_state) {
+        if (hotkeys::consume_overlay_button(this->toggle_button)) {
 
             // if the overlay is hidden just reactivate it
             if (!this->overlay->get_active()) {
@@ -49,7 +43,6 @@ void overlay::Window::update() {
                 this->bring_to_front();
             }
         }
-        this->toggle_button_state = toggle_button_new;
     }
 
     // update children

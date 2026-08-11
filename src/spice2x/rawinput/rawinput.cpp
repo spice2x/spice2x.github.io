@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdarg>
+#include <iterator>
 #include <map>
 #include <thread>
 #include <utility>
@@ -2541,6 +2542,30 @@ rawinput::Device *rawinput::RawInputManager::devices_get(const std::string &name
 
     // device not found
     return nullptr;
+}
+
+bool rawinput::RawInputManager::keyboard_combo_pressed(uint16_t first, uint16_t second) {
+    if (first >= 256 || second >= 256) {
+        return false;
+    }
+
+    std::lock_guard<std::recursive_mutex> devices_lock(this->devices_mutex);
+    for (auto &device : this->devices) {
+        if (device.type != rawinput::KEYBOARD ||
+            device.keyboardInfo == nullptr ||
+            device.mutex == nullptr) {
+            continue;
+        }
+
+        std::lock_guard<std::mutex> device_lock(*device.mutex);
+        const auto &states = device.keyboardInfo->key_states;
+        for (size_t page = 0; page < std::size(states); page += 256) {
+            if (states[page + first] && states[page + second]) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void rawinput::RawInputManager::add_callback_add(void *data, std::function<void (void *, Device *)> callback) {

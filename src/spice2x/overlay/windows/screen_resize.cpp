@@ -4,6 +4,7 @@
 #include "avs/game.h"
 #include "cfg/screen_resize.h"
 #include "hooks/graphics/graphics.h"
+#include "misc/hotkeys.h"
 #include "overlay/imgui/extensions.h"
 #include "overlay/notifications.h"
 #include "misc/eamuse.h"
@@ -305,41 +306,25 @@ namespace overlay::windows {
 
     void ScreenResize::update() {
         Window::update();
-        auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
 
         // toggle
-        if (this->toggle_screen_resize != ~0u) {
-            bool toggle_screen_resize_new = overlay_buttons
-                && this->overlay->hotkeys_triggered()
-                && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(this->toggle_screen_resize));
-            
-            if (toggle_screen_resize_new && !this->toggle_screen_resize_state) {
-                cfg::SCREENRESIZE->enable_screen_resize = !cfg::SCREENRESIZE->enable_screen_resize;
-                overlay::notifications::add(
-                        overlay::notifications::Severity::Info,
-                        cfg::SCREENRESIZE->enable_screen_resize
-                                ? "Screen resize enabled"
-                                : "Screen resize disabled");
-            }
-            this->toggle_screen_resize_state = toggle_screen_resize_new;
+        if (this->toggle_screen_resize != ~0u &&
+            hotkeys::consume_overlay_button(this->toggle_screen_resize)) {
+            cfg::SCREENRESIZE->enable_screen_resize = !cfg::SCREENRESIZE->enable_screen_resize;
+            overlay::notifications::add(
+                    overlay::notifications::Severity::Info,
+                    cfg::SCREENRESIZE->enable_screen_resize
+                            ? "Screen resize enabled"
+                            : "Screen resize disabled");
         }
 
         // scene switch
-        auto toggle_scene_state_new = ~0u;
         for (size_t i = 0; i < std::size(this->toggle_scene); i++) {
             if (this->toggle_scene[i] == ~0u) {
                 continue;
             }
-            bool scene_switched = overlay_buttons
-                && this->overlay->hotkeys_triggered()
-                && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(this->toggle_scene[i]));
 
-            if (scene_switched) {
-                toggle_scene_state_new = (uint32_t)i;
-            }
-
-            // only detect rising edges of key presses
-            if (scene_switched && (this->toggle_scene_state != i)) {
+            if (hotkeys::consume_overlay_button(this->toggle_scene[i])) {
                 if (cfg::SCREENRESIZE->screen_resize_current_scene == (int8_t)i &&
                     cfg::SCREENRESIZE->enable_screen_resize) {
                     // this scene is already active, turn scaling off
@@ -358,7 +343,5 @@ namespace overlay::windows {
                 break;
             }
         }
-        // remember if a key was pressed (or nothing pressed) this frame
-        this->toggle_scene_state = toggle_scene_state_new;
     }
 }

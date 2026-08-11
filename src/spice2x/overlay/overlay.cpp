@@ -10,6 +10,7 @@
 #include "games/rb/touch_debug.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/eamuse.h"
+#include "misc/hotkeys.h"
 #include "touch/touch.h"
 #include "util/fileutils.h"
 #include "util/logging.h"
@@ -116,6 +117,7 @@ void overlay::create_d3d9(HWND hWnd, IDirect3D9 *d3d, IDirect3DDevice9 *device) 
 
     if (!overlay::OVERLAY) {
         overlay::OVERLAY = std::make_unique<overlay::SpiceOverlay>(hWnd, d3d, device);
+        hotkeys::enable_hotkey_gate();
     }
 }
 
@@ -130,6 +132,7 @@ void overlay::create_d3d11(HWND hWnd, ID3D11Device *device, ID3D11DeviceContext 
 
     if (!overlay::OVERLAY) {
         overlay::OVERLAY = std::make_unique<overlay::SpiceOverlay>(hWnd, device, context, swapchain);
+        hotkeys::enable_hotkey_gate();
     }
 }
 #endif
@@ -143,6 +146,7 @@ void overlay::create_software(HWND hWnd) {
 
     if (!overlay::OVERLAY) {
         overlay::OVERLAY = std::make_unique<overlay::SpiceOverlay>(hWnd);
+        hotkeys::enable_hotkey_gate();
     }
 }
 
@@ -155,6 +159,7 @@ void overlay::destroy(HWND hWnd) {
 
     if (overlay::OVERLAY && (hWnd == nullptr || overlay::OVERLAY->uses_window(hWnd))) {
         overlay::OVERLAY.reset();
+        hotkeys::disable_hotkey_gate();
     }
 }
 
@@ -801,34 +806,20 @@ void overlay::SpiceOverlay::update() {
     // overlay layer - most windows
     // topmost layer - main menu (popup)
 
-    auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
-
     // check overlay toggle
-    const bool toggle_down_new = overlay_buttons
-            && this->hotkeys_triggered()
-            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleAllWindows));
-    if (toggle_down_new && !this->toggle_down) {
+    if (hotkeys::consume_overlay_button(games::OverlayButtons::ToggleAllWindows)) {
         toggle_active();
     }
-    this->toggle_down = toggle_down_new;
 
     // check main menu
-    const auto main_menu_down_new = overlay_buttons
-            && this->hotkeys_triggered()
-            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleMainMenu));
-    if (main_menu_down_new && !this->main_menu_down) {
+    if (hotkeys::consume_overlay_button(games::OverlayButtons::ToggleMainMenu)) {
         show_main_menu();
     }
-    this->main_menu_down = main_menu_down_new;
 
     // check FPS toggle - controls the persistent FPS window only, never the overlay
-    const auto fps_down_new = overlay_buttons
-            && this->hotkeys_triggered()
-            && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(games::OverlayButtons::ToggleFps));
-    if (fps_down_new && !this->fps_down) {
+    if (hotkeys::consume_overlay_button(games::OverlayButtons::ToggleFps)) {
         this->window_fps->toggle_active();
     }
-    this->fps_down = fps_down_new;
 
     // update windows
     for (auto &window : this->windows) {
@@ -921,49 +912,6 @@ bool overlay::SpiceOverlay::accepts_subscreen_mouse_input() {
 
 bool overlay::SpiceOverlay::has_focus() {
     return this->get_active() && ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow);
-}
-
-bool overlay::SpiceOverlay::hotkeys_triggered() {
-    // prevent hotkeys in spicecfg
-    if (cfg::CONFIGURATOR_STANDALONE) {
-        return false;
-    }
-
-    // get buttons
-    auto buttons = games::get_buttons_overlay(eamuse_get_game());
-    if (!buttons) {
-        return false;
-    }
-
-    auto &hotkey1 = buttons->at(games::OverlayButtons::HotkeyEnable1);
-    auto &hotkey2 = buttons->at(games::OverlayButtons::HotkeyEnable2);
-    auto &toggle = buttons->at(games::OverlayButtons::HotkeyToggle);
-
-    // check hotkey toggle
-    auto toggle_state = GameAPI::Buttons::getState(RI_MGR, toggle);
-    if (toggle_state) {
-        if (!this->hotkey_toggle_last) {
-            this->hotkey_toggle_last = true;
-            this->hotkey_toggle = !this->hotkey_toggle;
-        }
-    } else {
-        this->hotkey_toggle_last = false;
-    }
-
-    // hotkey toggle overrides hotkey enable button states
-    if (hotkey_toggle) {
-        return true;
-    }
-
-    // check hotkey enable buttons
-    bool triggered = true;
-    if (hotkey1.isSet() && !GameAPI::Buttons::getState(RI_MGR, hotkey1)) {
-        triggered = false;
-    }
-    if (hotkey2.isSet() && !GameAPI::Buttons::getState(RI_MGR, hotkey2)) {
-        triggered = false;
-    }
-    return triggered;
 }
 
 void overlay::SpiceOverlay::reset_invalidate() {

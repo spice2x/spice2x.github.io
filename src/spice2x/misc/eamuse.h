@@ -47,7 +47,7 @@ bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card,
 void eamuse_card_insert(int unit);
 void eamuse_card_insert(int unit, const uint8_t *card);
 
-bool eamuse_card_insert_consume(int active_count, int unit_id);
+bool eamuse_card_insert_consume(int active_count, int unit_id, bool reader_available);
 
 bool eamuse_coin_get_block();
 void eamuse_coin_set_block(bool block);
@@ -58,12 +58,12 @@ bool eamuse_coin_consume(int amount);
 int eamuse_coin_consume_stock();
 
 int eamuse_coin_add();
+void eamuse_coin_insert();
 
-void eamuse_coin_start_thread();
-void eamuse_coin_stop_thread();
-
-void eamuse_pin_macro_start_thread();
-void eamuse_pin_macro_stop_thread();
+void eamuse_pin_macro_start();
+bool eamuse_pin_macro_is_active(size_t unit);
+void eamuse_pin_macro_tick();
+void eamuse_pin_macro_stop();
 
 void eamuse_set_keypad_overrides(size_t unit, uint16_t keypad_state);
 void eamuse_set_keypad_overrides_bt5(size_t unit, uint16_t keypad_state);

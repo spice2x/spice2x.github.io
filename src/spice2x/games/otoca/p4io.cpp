@@ -96,8 +96,10 @@ namespace games::otoca {
         // eamio keypress
         kb_insert_press |= static_cast<bool>(eamuse_get_keypad_state(0) & (1 << EAM_IO_INSERT));
 
-        // check for card
-        if (CARD_DATA == nullptr && (eamuse_card_insert_consume(1, 0) || kb_insert_press)) {
+        // check for card; still poll while occupied so manual insert edges do not become stale
+        const bool reader_available = CARD_DATA == nullptr;
+        const bool card_insert = eamuse_card_insert_consume(1, 0, reader_available);
+        if (reader_available && (card_insert || kb_insert_press)) {
             auto card = new uint8_t[8];
             if (!eamuse_get_card(1, 0, card)) {
 

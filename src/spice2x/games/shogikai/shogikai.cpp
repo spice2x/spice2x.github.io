@@ -320,7 +320,7 @@ namespace games::shogikai {
     }
 
     static void update_card() {
-        if (eamuse_card_insert_consume(1, 0)) {
+        if (eamuse_card_insert_consume(1, 0, !CARD_IN)) {
 
             if (!CARD_IN) {
                 CARD_IN = true;

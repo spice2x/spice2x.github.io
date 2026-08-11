@@ -134,6 +134,7 @@ void graphics_hook_subscreen_window(HWND hWnd);
 void graphics_screens_register(int screen);
 void graphics_screens_unregister(int screen);
 void graphics_screens_get(std::vector<int> &screens);
+void graphics_poll_screenshot_hotkey();
 void graphics_screenshot_trigger();
 bool graphics_screenshot_consume();
 void graphics_capture_trigger(int screen);
