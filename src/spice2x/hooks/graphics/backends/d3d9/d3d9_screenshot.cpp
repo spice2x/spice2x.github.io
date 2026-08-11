@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include <external/robin_hood.h>
 
@@ -37,6 +39,33 @@ typedef HRESULT (WINAPI *D3DXSaveSurfaceToFileA_t)(
 #endif
 
 static bool ATTEMPTED_D3DX9_LOAD_LIBRARY = false;
+
+namespace {
+
+enum class ImageRequestKind {
+    Screenshot,
+    Capture,
+};
+
+struct ImageRequest {
+    ImageRequestKind kind;
+    int screen;
+};
+
+struct SurfaceReleaser {
+    void operator()(IDirect3DSurface9 *surface) const {
+        surface->Release();
+    }
+};
+
+using SurfacePtr = std::unique_ptr<IDirect3DSurface9, SurfaceReleaser>;
+
+struct BackbufferCopy {
+    D3DSURFACE_DESC desc {};
+    SurfacePtr surface;
+};
+
+} // namespace
 
 static void save_capture(
         int screen,
@@ -226,128 +255,155 @@ void graphics_d3d9_poll_screenshot_hotkey() {
     }
 }
 
+static std::optional<BackbufferCopy> acquire_backbuffer_copy(
+    IDirect3DDevice9 *device, IDirect3DSwapChain9 *sub_swap_chain, int screen) {
+
+    HRESULT hr = S_OK;
+
+    // TODO: verify screen is a valid swapchain
+
+    IDirect3DSurface9 *buffer = nullptr;
+    if (sub_swap_chain != nullptr && screen & 1) {
+        hr = sub_swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
+    } else {
+        hr = device->GetBackBuffer(screen, 0, D3DBACKBUFFER_TYPE_MONO, &buffer);
+    }
+    if (FAILED(hr) || buffer == nullptr) {
+        log_warning("graphics::d3d9",
+                "failed to get back buffer, hr={}",
+                FMT_HRESULT(hr));
+        return std::nullopt;
+    }
+
+    D3DSURFACE_DESC desc {};
+    hr = buffer->GetDesc(&desc);
+    if (FAILED(hr)) {
+        log_warning("graphics::d3d9",
+                "failed to acquire back buffer descriptor, hr={}",
+                FMT_HRESULT(hr));
+        buffer->Release();
+        return std::nullopt;
+    }
+
+    // TODO: cache render targets
+    IDirect3DSurface9 *temp_surface = nullptr;
+    hr = device->CreateRenderTarget(
+            desc.Width, desc.Height, desc.Format, desc.MultiSampleType,
+            desc.MultiSampleQuality, TRUE, &temp_surface, nullptr);
+    if (FAILED(hr) || temp_surface == nullptr) {
+        log_warning("graphics::d3d9",
+                "failed to acquire temporary surface, hr={}",
+                FMT_HRESULT(hr));
+        buffer->Release();
+        return std::nullopt;
+    }
+
+    hr = device->StretchRect(buffer, nullptr, temp_surface, nullptr, D3DTEXF_NONE);
+    if (FAILED(hr)) {
+        log_warning("graphics::d3d9",
+                "failed to copy back buffer contents, hr={}",
+                FMT_HRESULT(hr));
+        temp_surface->Release();
+        buffer->Release();
+        return std::nullopt;
+    }
+
+    // release original back buffer reference
+    buffer->Release();
+
+    return BackbufferCopy {
+        .desc = desc,
+        .surface = SurfacePtr(temp_surface),
+    };
+}
+
+static void dispatch_surface_save(
+        const ImageRequest &request,
+        BackbufferCopy copy) {
+    auto surface_process = [request, copy = std::move(copy)]() {
+        switch (request.kind) {
+            case ImageRequestKind::Capture:
+                save_capture(
+                        request.screen,
+                        copy.desc.Format,
+                        copy.desc.Width,
+                        copy.desc.Height,
+                        copy.surface.get());
+                break;
+
+            case ImageRequestKind::Screenshot: {
+                auto file_path = graphics_screenshot_genpath();
+                if (!file_path.empty()) {
+                    save_screenshot(
+                            file_path,
+                            copy.desc.Format,
+                            copy.desc.Width,
+                            copy.desc.Height,
+                            copy.surface.get());
+                }
+                break;
+            }
+        }
+    };
+
+    // list of games that crash when running the screenshot processor on another thread
+    static const robin_hood::unordered_set<std::string> THREAD_BAN {
+            "JMA",
+#ifndef SPICE64
+            // KFC only crashes under threaded processing in 32-bit builds
+            "KFC",
+#endif
+            "KMA",
+            "KLP",
+            "LMA",
+    };
+
+    // run the save operation on another thread for supported games
+    if (THREAD_BAN.contains(avs::game::MODEL)) {
+        surface_process();
+    } else {
+        static auto pool = ThreadPool(2);
+        pool.add(std::move(surface_process));
+    }
+}
+
+static std::optional<ImageRequest> consume_image_request() {
+    if (graphics_screenshot_consume()) {
+        return ImageRequest {
+            .kind = ImageRequestKind::Screenshot,
+            .screen = 0,
+        };
+    }
+
+    int capture_screen = 0;
+    if (graphics_capture_consume(&capture_screen)) {
+        return ImageRequest {
+            .kind = ImageRequestKind::Capture,
+            .screen = capture_screen,
+        };
+    }
+
+    return std::nullopt;
+}
+
 void graphics_d3d9_process_screenshot_and_capture(
         IDirect3DDevice9 *device,
         IDirect3DSwapChain9 *sub_swap_chain) {
-    // process pending screenshot
-    bool screenshot = false;
-    bool capture = false;
-    int capture_screen = 0;
-    if ((screenshot = graphics_screenshot_consume())
-    || ((capture = graphics_capture_consume(&capture_screen)))) {
-        HRESULT hr = S_OK;
-
-        // TODO: verify capture_screen is a valid swapchain
-
-        // get back buffer
-        IDirect3DSurface9 *buffer = nullptr;
-        if (sub_swap_chain != nullptr && capture_screen & 1) {
-            hr = sub_swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
-        } else {
-            hr = device->GetBackBuffer(capture_screen, 0, D3DBACKBUFFER_TYPE_MONO, &buffer);
-        }
-        if (FAILED(hr) || buffer == nullptr) {
-            log_warning("graphics::d3d9",
-                    "failed to get back buffer, hr={}",
-                    FMT_HRESULT(hr));
-            if (capture) {
-                graphics_capture_skip(capture_screen);
-            }
-            return;
-        }
-
-        D3DSURFACE_DESC desc {};
-        hr = buffer->GetDesc(&desc);
-        if (FAILED(hr)) {
-            log_warning("graphics::d3d9",
-                    "failed to acquire back buffer descriptor, hr={}",
-                    FMT_HRESULT(hr));
-            buffer->Release();
-            if (capture) {
-                graphics_capture_skip(capture_screen);
-            }
-            return;
-        }
-
-        // TODO: cache render targets
-        IDirect3DSurface9 *temp_surface = nullptr;
-        hr = device->CreateRenderTarget(
-                desc.Width, desc.Height, desc.Format, desc.MultiSampleType,
-                desc.MultiSampleQuality, TRUE, &temp_surface, nullptr);
-        if (FAILED(hr) || temp_surface == nullptr) {
-            log_warning("graphics::d3d9",
-                    "failed to acquire temporary surface, hr={}",
-                    FMT_HRESULT(hr));
-            buffer->Release();
-            if (capture) {
-                graphics_capture_skip(capture_screen);
-            }
-            return;
-        }
-
-        hr = device->StretchRect(buffer, nullptr, temp_surface, nullptr, D3DTEXF_NONE);
-        if (FAILED(hr)) {
-            log_warning("graphics::d3d9",
-                    "failed to copy back buffer contents, hr={}",
-                    FMT_HRESULT(hr));
-            temp_surface->Release();
-            buffer->Release();
-            if (capture) {
-                graphics_capture_skip(capture_screen);
-            }
-            return;
-        }
-
-        // release original back buffer reference
-        buffer->Release();
-
-        // function for storing the surface
-        auto surface_process = [=]() {
-
-            // capture
-            if (capture) {
-                save_capture(capture_screen, desc.Format, desc.Width, desc.Height, temp_surface);
-            }
-
-            // screenshot
-            if (screenshot) {
-
-                // check where we can save it
-                auto file_path = graphics_screenshot_genpath();
-                if (!file_path.empty()) {
-
-                    // write to file
-                    save_screenshot(
-                            file_path,
-                            desc.Format,
-                            desc.Width,
-                            desc.Height,
-                            temp_surface);
-                }
-            }
-
-            // release surface
-            temp_surface->Release();
-        };
-
-        // list of games that crash when running the screenshot processor on another thread
-        static const robin_hood::unordered_set<std::string> THREAD_BAN {
-                "JMA",
-#ifndef SPICE64
-                // KFC only crashes under threaded processing in 32-bit builds
-                "KFC",
-#endif
-                "KMA",
-                "KLP",
-                "LMA",
-        };
-
-        // run the save operation on another thread for supported games
-        if (THREAD_BAN.contains(avs::game::MODEL)) {
-            surface_process();
-        } else {
-            static auto pool = ThreadPool(2);
-            pool.add(surface_process);
-        }
+    const auto request = consume_image_request();
+    if (!request.has_value()) {
+        return;
     }
+
+    auto copy = acquire_backbuffer_copy(
+            device,
+            sub_swap_chain,
+            request->screen);
+    if (!copy.has_value()) {
+        if (request->kind == ImageRequestKind::Capture) {
+            graphics_capture_skip(request->screen);
+        }
+        return;
+    }
+
+    dispatch_surface_save(*request, std::move(*copy));
 }
