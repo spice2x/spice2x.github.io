@@ -26,13 +26,13 @@ constexpr UINT CODEPAGE_SHIFT_JIS = 932;
 static decltype(GetACP) *GetACP_orig = nullptr;
 static decltype(GetOEMCP) *GetOEMCP_orig = nullptr;
 static decltype(MultiByteToWideChar) *MultiByteToWideChar_orig = nullptr;
+static decltype(WideCharToMultiByte) *WideCharToMultiByte_orig = nullptr;
 static decltype(GetLocaleInfoEx) *GetLocaleInfoEx_orig = nullptr;
 
 #ifdef SPICE64
 static decltype(GetSystemDefaultLCID) *GetSystemDefaultLCID_orig = nullptr;
 static decltype(IsDBCSLeadByte) *IsDBCSLeadByte_orig = nullptr;
 static decltype(IsDBCSLeadByteEx) *IsDBCSLeadByteEx_orig = nullptr;
-static decltype(WideCharToMultiByte) *WideCharToMultiByte_orig = nullptr;
 static decltype(GetLocaleInfoA) *GetLocaleInfoA_orig = nullptr;
 static decltype(GetThreadLocale) *GetThreadLocale_orig = nullptr;
 #endif
@@ -209,6 +209,8 @@ static BOOL WINAPI IsDBCSLeadByteEx_hook(
     return IsDBCSLeadByteEx_orig(CodePage, TestChar);
 }
 
+#endif
+
 static
 int
 WINAPI
@@ -243,6 +245,8 @@ WideCharToMultiByte_hook(
         lpDefaultChar,
         lpUsedDefaultChar);
 }
+
+#ifdef SPICE64
 
 int
 WINAPI
@@ -343,15 +347,6 @@ void hooks::lang::early_init() {
             &IsDBCSLeadByte_orig);
     }
 
-    if (games::gitadora::is_arena_model() || avs::game::is_model("T44")) {
-        log_info("hooks::lang", "hooking WideCharToMultiByte");
-        detour::trampoline_try(
-            "kernel32.dll",
-            "WideCharToMultiByte",
-            WideCharToMultiByte_hook,
-            &WideCharToMultiByte_orig);
-    }
-
     if (games::popn::is_pikapika_model() && native_code_page == CP_UTF8) {
         detour::trampoline_try(
             "kernel32.dll",
@@ -361,6 +356,23 @@ void hooks::lang::early_init() {
     }
 
 #endif
+
+#ifdef SPICE64
+    const auto hook_wide_char_to_multi_byte =
+        games::gitadora::is_arena_model() || avs::game::is_model("T44");
+#else
+    // XG2 converts UTF-8 property strings through CP_ACP before rendering.
+    const auto hook_wide_char_to_multi_byte = avs::game::is_model({ "K32", "K33" });
+#endif
+
+    if (hook_wide_char_to_multi_byte) {
+        log_info("hooks::lang", "hooking WideCharToMultiByte");
+        detour::trampoline_try(
+            "kernel32.dll",
+            "WideCharToMultiByte",
+            WideCharToMultiByte_hook,
+            &WideCharToMultiByte_orig);
+    }
 
 }
 
