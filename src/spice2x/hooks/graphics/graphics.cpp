@@ -1377,7 +1377,7 @@ void graphics_screens_get(std::vector<int> &screens) {
 }
 
 void graphics_poll_screenshot_hotkey() {
-    if (hotkeys::consume_overlay_button(games::OverlayButtons::Screenshot)) {
+    if (hotkeys::consume_screenshot()) {
         graphics_screenshot_trigger();
     }
 }

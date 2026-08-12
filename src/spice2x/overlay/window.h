@@ -51,6 +51,7 @@ namespace overlay {
         std::string title = "Title";
         ImGuiWindowFlags flags = 0;
         size_t toggle_button = ~0u;
+        bool toggle_button_state = false;
 
         // init settings
         // calculate_initial_window() runs only once; results feed ImGuiCond_Once

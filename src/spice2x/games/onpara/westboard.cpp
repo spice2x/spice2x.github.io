@@ -87,7 +87,7 @@ bool games::onpara::WestBoardHandle::WestBoardDevice::parse_msg(MessageData *msg
             response_.cmd.data_size = 24;
             response_.cmd.raw[0] = 2;
 
-            if (eamuse_card_insert_consume(1, 0, true)) {
+            if (eamuse_card_insert_consume(1, 0)) {
                 eamuse_get_card(1, 0, &response_.cmd.raw[2]);
             }
             break;

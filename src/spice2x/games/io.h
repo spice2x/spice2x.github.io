@@ -45,8 +45,6 @@ namespace games {
             HotkeyEnable1,
             HotkeyEnable2,
             HotkeyToggle,
-            // keep last; the sampler uses this as the overlay-button count
-            Size,
         };
     }
 

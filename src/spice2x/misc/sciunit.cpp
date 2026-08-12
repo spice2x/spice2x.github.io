@@ -30,7 +30,7 @@ static char CARD_DISPLAY_ID[17];
 static bool CARD_WAS_CONVERTED = false;
 
 static inline void update_card() {
-    if (eamuse_card_insert_consume(1, 0, !CARD_IN)) {
+    if (eamuse_card_insert_consume(1, 0)) {
         if (!CARD_PRESSED) {
             CARD_PRESSED = true;
 

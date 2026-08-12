@@ -115,8 +115,7 @@ static inline void update_card(int unit_id) {
     // get unit
     ICCA_UNIT *unit = &ICCA_UNITS[unit_id];
 
-    const bool card_presented = eamuse_card_insert_consume(
-        icca_get_active_count(), unit_id, !unit->card_in);
+    const bool card_presented = eamuse_card_insert_consume(icca_get_active_count(), unit_id);
     const bool key_pressed = (kb_insert_press && !kb_insert_press_old[unit_id]);
 
     // beatstream and nostalgia have logic that requires ac_io_icca_get_uid_felica to return the

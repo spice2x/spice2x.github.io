@@ -111,6 +111,7 @@ namespace overlay {
         bool get_active();
         bool accepts_subscreen_mouse_input();
         bool has_focus();
+        bool hotkeys_triggered();
 
         static bool update_cursor();
         static void reset_invalidate();
@@ -206,6 +207,12 @@ namespace overlay {
         std::function<bool(LONG *, LONG *)> subscreen_touch_transform = nullptr;
 
         bool active = false;
+        bool toggle_down = false;
+        bool main_menu_down = false;
+        bool fps_down = false;
+        bool hotkey_toggle = false;
+        bool hotkey_toggle_last = false;
+        std::mutex hotkeys_mutex;
 
         // true between new_frame()'s ImGui::NewFrame() and render()'s ImGui::Render(),
         // so render() never runs without a matching NewFrame.
@@ -229,4 +236,5 @@ namespace overlay {
 #endif
     void create_software(HWND hWnd);
     void destroy(HWND hWnd = nullptr);
+    bool global_hotkeys_triggered();
 }

@@ -167,8 +167,7 @@ static void __cdecl cardunit_update() {
         kb_insert_press |= static_cast<bool>(eamuse_get_keypad_state(unit) & (1 << EAM_IO_INSERT));
 
         // update card inserts
-        if (eamuse_card_insert_consume(
-            (int) EXTDEV_CARDUNIT_COUNT, unit, !EXTDEV_CARD_IN[unit]) ||
+        if (eamuse_card_insert_consume((int) EXTDEV_CARDUNIT_COUNT, unit) ||
                 (kb_insert_press && !EXTDEV_CARD_PRESSED[unit])) {
             EXTDEV_CARD_PRESSED[unit] = true;
             if (!EXTDEV_CARD_IN[unit]) {

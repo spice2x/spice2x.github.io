@@ -1777,7 +1777,7 @@ int main_implementation(int argc, char *argv[]) {
         nvapi::initialize();
         // add application profile to nvcp
         nvapi::set_profile_settings();
-        // keep ALT+F4 available during lengthy boot before raw input is initialized
+        // keep ALT+F4 available during lengthy non-standalone boot
         hotkeys::start();
         // enable subscreen touch emulation
         if (options[launcher::Options::spice2x_IIDXEmulateSubscreenKeypadTouch].is_active()) {
@@ -2705,7 +2705,7 @@ int main_implementation(int argc, char *argv[]) {
 
     // pin macro
     if (!cfg::CONFIGURATOR_STANDALONE && PIN_MACRO_ENABLED) {
-        eamuse_pin_macro_start();
+        eamuse_pin_macro_start_thread();
     }
 
     // print PEB
@@ -2750,16 +2750,15 @@ int main_implementation(int argc, char *argv[]) {
 
     if (!cfg::CONFIGURATOR_STANDALONE) {
         // configured actions are valid only while mappings and their owners are alive
-        hotkeys::enable_input(overlay::OVERLAY != nullptr);
+        hotkeys::enable_input();
     }
 
     // game start
     log_info("launcher", "calling game entry");
     avs::game::entry_main();
 
-    // stop raw-input-dependent polling before game and device teardown; ALT+F4 remains active
+    // stop screenshot and coin polling; mapped SuperExit and ALT+F4 remain active
     hotkeys::disable_input();
-    eamuse_pin_macro_stop();
 
     // clear presence
     richpresence::shutdown();
@@ -2797,6 +2796,8 @@ int main_implementation(int argc, char *argv[]) {
 
     // free api controller
     API_CONTROLLER.reset();
+
+    eamuse_pin_macro_stop_thread();
 
     // BT5API
     if (BT5API_ENABLED) {
