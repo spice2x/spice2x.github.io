@@ -20,7 +20,9 @@ namespace hotkeys {
 
     namespace {
 
-        constexpr auto SAMPLE_INTERVAL = std::chrono::milliseconds(8);
+        // 8 ms targets short screenshot pulses; sleep_for may use a coarser scheduler
+        // interval during early boot or when process timer adjustments are disabled
+        constexpr auto MIN_SAMPLE_INTERVAL = std::chrono::milliseconds(8);
 
         std::atomic_bool SCREENSHOT_PENDING {false};
         std::mutex INPUT_MUTEX;
@@ -44,6 +46,12 @@ namespace hotkeys {
             return pressed || RI_MGR->keyboard_combo_pressed(VK_MENU, VK_F4);
         }
 
+        bool rising_edge(bool current, bool &previous) {
+            const bool edge = current && !previous;
+            previous = current;
+            return edge;
+        }
+
         void run(std::stop_token stop_token) {
             bool screenshot_previous = false;
             bool coin_previous = false;
@@ -58,43 +66,31 @@ namespace hotkeys {
                 {
                     // lifecycle functions hold this mutex until raw-input polling is complete
                     std::lock_guard<std::mutex> lock(INPUT_MUTEX);
-                    auto *buttons = games::get_buttons_overlay(eamuse_get_game());
-                    bool screenshot_down = false;
-                    bool super_exit_down = false;
-
-                    if (INPUT_ENABLED) {
-                        screenshot_down = read_button(
+                    if (INPUT_ENABLED || RAW_INPUT_ENABLED) {
+                        auto *buttons = games::get_buttons_overlay(eamuse_get_game());
+                        const bool screenshot_down = INPUT_ENABLED && read_button(
                                 buttons, games::OverlayButtons::Screenshot);
-                        const bool coin_current = read_button(
+                        const bool coin_current = INPUT_ENABLED && read_button(
                                 buttons, games::OverlayButtons::InsertCoin);
-                        coin_edge = coin_current && !coin_previous;
-                        coin_previous = coin_current;
-                    } else {
-                        coin_previous = false;
-                    }
-
-                    if (RAW_INPUT_ENABLED) {
-                        super_exit_down = read_button(
+                        const bool super_exit_down = RAW_INPUT_ENABLED && read_button(
                                 buttons, games::OverlayButtons::SuperExit);
-                    }
 
-                    // gate polling mutates a shared edge latch, so avoid its lock chain while idle
-                    const bool gate_active = (screenshot_down || super_exit_down) &&
-                        overlay::global_hotkeys_triggered();
-                    const bool screenshot_current = screenshot_down && gate_active;
-                    const bool super_exit_current = super_exit_down && gate_active;
+                        // global_hotkeys_triggered takes OVERLAY_MUTEX, then the overlay's
+                        // hotkeys_mutex; its button reads may then take device mutexes. polling
+                        // every mapped-input tick is intentional so HotkeyToggle releases cannot
+                        // be missed when the render thread stalls.
+                        const bool gate_active = overlay::global_hotkeys_triggered();
+                        const bool screenshot_current = screenshot_down && gate_active;
+                        const bool super_exit_current = super_exit_down && gate_active;
 
-                    if (screenshot_current && !screenshot_previous) {
-                        SCREENSHOT_PENDING.store(true, std::memory_order_relaxed);
-                    }
-                    super_exit_edge = super_exit_current && !super_exit_previous;
-                    screenshot_previous = screenshot_current;
-                    super_exit_previous = super_exit_current;
-
-                    if (!INPUT_ENABLED) {
+                        if (rising_edge(screenshot_current, screenshot_previous)) {
+                            SCREENSHOT_PENDING.store(true, std::memory_order_relaxed);
+                        }
+                        coin_edge = rising_edge(coin_current, coin_previous);
+                        super_exit_edge = rising_edge(super_exit_current, super_exit_previous);
+                    } else {
                         screenshot_previous = false;
-                    }
-                    if (!RAW_INPUT_ENABLED) {
+                        coin_previous = false;
                         super_exit_previous = false;
                     }
 
@@ -105,11 +101,10 @@ namespace hotkeys {
                     eamuse_coin_insert();
                 }
 
-                const bool alt_f4_edge = alt_f4_current && !alt_f4_previous;
-                alt_f4_previous = alt_f4_current;
+                const bool alt_f4_edge = rising_edge(alt_f4_current, alt_f4_previous);
                 superexit::handle_hotkeys(alt_f4_edge, super_exit_edge);
 
-                std::this_thread::sleep_for(SAMPLE_INTERVAL);
+                std::this_thread::sleep_for(MIN_SAMPLE_INTERVAL);
             }
         }
     }
