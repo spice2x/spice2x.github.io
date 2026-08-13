@@ -171,6 +171,7 @@ namespace rawinput {
 
         void __stdcall devices_print();
         Device *devices_get(const std::string &name, bool updated = false);
+        bool keyboard_combo_pressed(uint16_t first, uint16_t second);
 
         inline std::list<Device> &devices_get() {
             return devices;

@@ -2,6 +2,5 @@
 
 namespace superexit {
     bool has_focus();
-    void enable();
-    void disable();
+    void handle_hotkeys(bool alt_f4, bool mapped_exit);
 }

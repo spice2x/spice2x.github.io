@@ -25,10 +25,8 @@ static double CARD_INSERT_TIME[2] = {0, 0};
 static double CARD_INSERT_TIMEOUT = 2.0;
 static char CARD_INSERT_UID[2][8] = {{0}, {0}};
 static char CARD_INSERT_UID_ENABLE[2] = {false, false};
-static int COIN_STOCK = 0;
-static bool COIN_BLOCK = false;
-static std::thread *COIN_INPUT_THREAD;
-static bool COIN_INPUT_THREAD_ACTIVE = false;
+static std::atomic_int COIN_STOCK {0};
+static std::atomic_bool COIN_BLOCK {false};
 static uint16_t KEYPAD_STATE[] = {0, 0};
 static uint16_t KEYPAD_STATE_OVERRIDES[] = {0, 0};
 static uint16_t KEYPAD_STATE_OVERRIDES_BT5[] = {0, 0};
@@ -292,78 +290,49 @@ bool eamuse_card_insert_consume(int active_count, int unit_id) {
 }
 
 bool eamuse_coin_get_block() {
-    return COIN_BLOCK;
+    return COIN_BLOCK.load(std::memory_order_relaxed);
 }
 
 void eamuse_coin_set_block(bool block) {
-    COIN_BLOCK = block;
+    COIN_BLOCK.store(block, std::memory_order_relaxed);
 }
 
 int eamuse_coin_get_stock() {
-    return COIN_STOCK;
+    return COIN_STOCK.load(std::memory_order_relaxed);
 }
 
 void eamuse_coin_set_stock(int amount) {
-    COIN_STOCK = amount;
+    COIN_STOCK.store(amount, std::memory_order_relaxed);
 }
 
 bool eamuse_coin_consume(int amount) {
-    if (COIN_STOCK < amount) {
-        return false;
-    } else {
-        COIN_STOCK -= amount;
-        return true;
+    auto stock = COIN_STOCK.load(std::memory_order_relaxed);
+    while (stock >= amount) {
+        if (COIN_STOCK.compare_exchange_weak(
+                stock,
+                stock - amount,
+                std::memory_order_relaxed)) {
+            return true;
+        }
     }
+    return false;
 }
 
 int eamuse_coin_consume_stock() {
-    int stock = COIN_STOCK;
-    COIN_STOCK = 0;
-    return stock;
+    return COIN_STOCK.exchange(0, std::memory_order_relaxed);
 }
 
 int eamuse_coin_add() {
-    return ++COIN_STOCK;
+    return COIN_STOCK.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
-void eamuse_coin_start_thread() {
-
-    // set active
-    COIN_INPUT_THREAD_ACTIVE = true;
-
-    // create thread
-    COIN_INPUT_THREAD = new std::thread([]() {
-        auto overlay_buttons = games::get_buttons_overlay(eamuse_get_game());
-        static bool COIN_INPUT_KEY_STATE = false;
-        while (COIN_INPUT_THREAD_ACTIVE) {
-
-            // check input key
-            if (overlay_buttons && GameAPI::Buttons::getState(RI_MGR, overlay_buttons->at(
-                    games::OverlayButtons::InsertCoin))) {
-                if (!COIN_INPUT_KEY_STATE) {
-                    if (COIN_BLOCK)
-                        log_info("eamuse", "coin inserted while blocked");
-                    else {
-                        log_info("eamuse", "coin insert");
-                        COIN_STOCK++;
-                    }
-                }
-                COIN_INPUT_KEY_STATE = true;
-            } else {
-                COIN_INPUT_KEY_STATE = false;
-            }
-
-            // once every two frames
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000 / 30));
-        }
-    });
-}
-
-void eamuse_coin_stop_thread() {
-    COIN_INPUT_THREAD_ACTIVE = false;
-    COIN_INPUT_THREAD->join();
-    delete COIN_INPUT_THREAD;
-    COIN_INPUT_THREAD = nullptr;
+void eamuse_coin_insert() {
+    if (COIN_BLOCK.load(std::memory_order_relaxed)) {
+        log_info("eamuse", "coin inserted while blocked");
+    } else {
+        log_info("eamuse", "coin insert");
+        COIN_STOCK.fetch_add(1, std::memory_order_relaxed);
+    }
 }
 
 void eamuse_pin_macro_start_thread() {

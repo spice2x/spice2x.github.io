@@ -212,6 +212,7 @@ namespace overlay {
         bool fps_down = false;
         bool hotkey_toggle = false;
         bool hotkey_toggle_last = false;
+        std::mutex hotkeys_mutex;
 
         // true between new_frame()'s ImGui::NewFrame() and render()'s ImGui::Render(),
         // so render() never runs without a matching NewFrame.
@@ -235,4 +236,5 @@ namespace overlay {
 #endif
     void create_software(HWND hWnd);
     void destroy(HWND hWnd = nullptr);
+    bool global_hotkeys_triggered();
 }

@@ -158,6 +158,11 @@ void overlay::destroy(HWND hWnd) {
     }
 }
 
+bool overlay::global_hotkeys_triggered() {
+    const std::lock_guard<std::mutex> lock(OVERLAY_MUTEX);
+    return !overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered();
+}
+
 overlay::SpiceOverlay::SpiceOverlay(HWND hWnd, IDirect3D9 *d3d, IDirect3DDevice9 *device)
         : renderer(OverlayRenderer::D3D9), hWnd(hWnd), d3d(d3d), device(device) {
     log_info("overlay", "initializing (D3D9)");
@@ -924,6 +929,9 @@ bool overlay::SpiceOverlay::has_focus() {
 }
 
 bool overlay::SpiceOverlay::hotkeys_triggered() {
+    const std::lock_guard<std::mutex> lock(this->hotkeys_mutex);
+
+    // this query also consumes the shared HotkeyToggle edge; the mutex gives all callers one latch
     // prevent hotkeys in spicecfg
     if (cfg::CONFIGURATOR_STANDALONE) {
         return false;

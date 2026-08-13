@@ -23,10 +23,7 @@
 #include "external/imgui/backends/imgui_impl_dx11.h"
 #include "overlay/imgui/impl_spice.h"
 
-#include "games/io.h"
 #include "hooks/graphics/graphics.h"
-#include "launcher/launcher.h"
-#include "misc/eamuse.h"
 #include "util/utils.h"
 
 // --------------------------------------------------------------------------
@@ -149,26 +146,12 @@ void try_create_overlay(IDXGISwapChain *swapchain) {
     device->Release();
 }
 
-// rising-edge screenshot hotkey poll (mirrors d3d9 backend behaviour).
-void poll_screenshot_hotkey() {
-    static bool s_down = false;
-    auto buttons = games::get_buttons_overlay(eamuse_get_game());
-    const bool pressed = buttons
-        && (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered())
-        && GameAPI::Buttons::getState(RI_MGR,
-                buttons->at(games::OverlayButtons::Screenshot));
-    if (pressed && !s_down) {
-        graphics_screenshot_trigger();
-    }
-    s_down = pressed;
-}
-
 void pump_overlay(IDXGISwapChain *swapchain) {
     if (!overlay::OVERLAY || !overlay::OVERLAY->uses_swapchain(swapchain)) {
         return;
     }
 
-    poll_screenshot_hotkey();
+    graphics_poll_screenshot_hotkey();
 
     // size imgui to the backbuffer (not window client). dxgi may upscale
     // a small backbuffer into a larger client rect; without this override

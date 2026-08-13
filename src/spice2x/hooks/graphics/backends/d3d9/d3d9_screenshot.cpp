@@ -13,13 +13,9 @@
 #endif
 
 #include "avs/game.h"
-#include "games/io.h"
 #include "hooks/graphics/graphics.h"
-#include "launcher/launcher.h"
 #include "misc/clipboard.h"
-#include "misc/eamuse.h"
 #include "overlay/notifications.h"
-#include "overlay/overlay.h"
 #include "util/fileutils.h"
 #include "util/libutils.h"
 #include "util/logging.h"
@@ -237,21 +233,6 @@ static void save_screenshot(
             fmt::format("Screenshot saved: {}", fileutils::basename(file_path)));
     } else {
         log_warning("graphics::d3d9", "Direct3D save helper function not available");
-    }
-}
-
-void graphics_d3d9_poll_screenshot_hotkey() {
-    static bool trigger_last = false;
-    auto buttons = games::get_buttons_overlay(eamuse_get_game());
-    if (buttons && (!overlay::OVERLAY || overlay::OVERLAY->hotkeys_triggered()) &&
-            GameAPI::Buttons::getState(RI_MGR, buttons->at(games::OverlayButtons::Screenshot)))
-    {
-        if (!trigger_last) {
-            graphics_screenshot_trigger();
-        }
-        trigger_last = true;
-    } else {
-        trigger_last = false;
     }
 }
 
