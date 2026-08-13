@@ -55,12 +55,10 @@ namespace hotkeys {
         void run(std::stop_token stop_token) {
             bool screenshot_previous = false;
             bool coin_previous = false;
-            bool super_exit_previous = false;
-            bool alt_f4_previous = false;
 
             while (!stop_token.stop_requested()) {
                 bool coin_edge = false;
-                bool super_exit_edge = false;
+                bool super_exit_current = false;
                 bool alt_f4_current = false;
 
                 {
@@ -69,7 +67,7 @@ namespace hotkeys {
                     if (INPUT_ENABLED || RAW_INPUT_ENABLED) {
                         auto *buttons = games::get_buttons_overlay(eamuse_get_game());
                         const bool screenshot_down = INPUT_ENABLED && read_button(
-                                buttons, games::OverlayButtons::Screenshot);
+                            buttons, games::OverlayButtons::Screenshot);
                         const bool coin_current = INPUT_ENABLED && read_button(
                                 buttons, games::OverlayButtons::InsertCoin);
                         const bool super_exit_down = RAW_INPUT_ENABLED && read_button(
@@ -81,17 +79,15 @@ namespace hotkeys {
                         // be missed when the render thread stalls.
                         const bool gate_active = overlay::global_hotkeys_triggered();
                         const bool screenshot_current = screenshot_down && gate_active;
-                        const bool super_exit_current = super_exit_down && gate_active;
+                        super_exit_current = super_exit_down && gate_active;
 
                         if (rising_edge(screenshot_current, screenshot_previous)) {
                             SCREENSHOT_PENDING.store(true, std::memory_order_relaxed);
                         }
                         coin_edge = rising_edge(coin_current, coin_previous);
-                        super_exit_edge = rising_edge(super_exit_current, super_exit_previous);
                     } else {
                         screenshot_previous = false;
                         coin_previous = false;
-                        super_exit_previous = false;
                     }
 
                     alt_f4_current = read_alt_f4();
@@ -101,8 +97,8 @@ namespace hotkeys {
                     eamuse_coin_insert();
                 }
 
-                const bool alt_f4_edge = rising_edge(alt_f4_current, alt_f4_previous);
-                superexit::handle_hotkeys(alt_f4_edge, super_exit_edge);
+                // pass held state so returning focus can exit without another key press
+                superexit::handle_hotkeys(alt_f4_current, super_exit_current);
 
                 std::this_thread::sleep_for(MIN_SAMPLE_INTERVAL);
             }

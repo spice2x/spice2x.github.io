@@ -2474,6 +2474,9 @@ int main_implementation(int argc, char *argv[]) {
     log_misc("rawinput", "Analog mappings:");
     dump_analog_bindings();
 
+    // mappings are ready; begin screenshot and coin polling during late startup
+    hotkeys::enable_input();
+
     // for certain games, show cursor if no touch is available (must be called after RI_MGR is available)
     if (show_cursor_if_no_touch && !is_touch_available("launcher::main_implementation")) {
         GRAPHICS_SHOW_CURSOR = true;
@@ -2746,11 +2749,6 @@ int main_implementation(int argc, char *argv[]) {
     // attach games
     for (auto game : games) {
         game->post_attach();
-    }
-
-    if (!cfg::CONFIGURATOR_STANDALONE) {
-        // configured actions are valid only while mappings and their owners are alive
-        hotkeys::enable_input();
     }
 
     // game start
