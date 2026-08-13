@@ -152,6 +152,9 @@ void pump_overlay(IDXGISwapChain *swapchain) {
     }
 
     graphics_poll_screenshot_hotkey();
+    if (!GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
+        d3d11_hooks::try_screenshot(swapchain);
+    }
 
     // size imgui to the backbuffer (not window client). dxgi may upscale
     // a small backbuffer into a larger client rect; without this override
@@ -167,8 +170,9 @@ void pump_overlay(IDXGISwapChain *swapchain) {
     overlay::OVERLAY->new_frame();
     overlay::OVERLAY->render();
 
-    // after overlay render so toasts/menus end up in the saved image.
-    d3d11_hooks::try_screenshot(swapchain);
+    if (GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
+        d3d11_hooks::try_screenshot(swapchain);
+    }
 }
 
 // ----------------------------------------------------------------------

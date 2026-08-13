@@ -1489,6 +1489,12 @@ void graphics_d3d9_on_present(
         SurfaceHook(device);
     }
 
+    graphics_poll_screenshot_hotkey();
+    bool screenshot = false;
+    if (!GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
+        screenshot = graphics_d3d9_process_screenshot(device, SUB_SWAP_CHAIN);
+    }
+
     // Do overlay init as many d3d9 hooks create a dummy instance to get vtable offsets and never
     // call `Present`. This avoids race conditions on `IDirect3D9::CreateDevice` like with
     // `dx9osd.dll` for pfreepanic.
@@ -1508,6 +1514,10 @@ void graphics_d3d9_on_present(
         device->EndScene();
     }
 
+    if (GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
+        screenshot = graphics_d3d9_process_screenshot(device, SUB_SWAP_CHAIN);
+    }
+
     // for IIDX TDJ / SDVX UFC, handle subscreen
     const bool is_vm = games::sdvx::is_valkyrie_model();
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
@@ -1522,8 +1532,9 @@ void graphics_d3d9_on_present(
         wintouchemu::update();
     }
 
-    graphics_poll_screenshot_hotkey();
-    graphics_d3d9_process_screenshot_and_capture(device, SUB_SWAP_CHAIN);
+    if (!screenshot) {
+        graphics_d3d9_process_capture(device, SUB_SWAP_CHAIN);
+    }
 }
 
 void update_backbuffer_dimensions(D3DPRESENT_PARAMETERS *params) {
