@@ -23,7 +23,13 @@ namespace superexit {
     }
 
     void handle_hotkeys(bool alt_f4, bool mapped_exit) {
-        if ((!alt_f4 && !mapped_exit) || cfg::CONFIGURATOR_STANDALONE || !has_focus()) {
+        if (!alt_f4 && !mapped_exit) {
+            return;
+        }
+        if (cfg::CONFIGURATOR_STANDALONE) {
+            return;
+        }
+        if (!has_focus()) {
             return;
         }
         if (alt_f4) {
