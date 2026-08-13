@@ -152,6 +152,8 @@ void pump_overlay(IDXGISwapChain *swapchain) {
     }
 
     graphics_poll_screenshot_hotkey();
+
+    // before overlay render so it stays out of the saved image.
     if (!GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
         d3d11_hooks::try_screenshot(swapchain);
     }
@@ -170,6 +172,7 @@ void pump_overlay(IDXGISwapChain *swapchain) {
     overlay::OVERLAY->new_frame();
     overlay::OVERLAY->render();
 
+    // after overlay render so toasts/menus end up in the saved image.
     if (GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
         d3d11_hooks::try_screenshot(swapchain);
     }

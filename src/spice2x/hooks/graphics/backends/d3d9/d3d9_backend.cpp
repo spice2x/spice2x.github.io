@@ -1490,9 +1490,10 @@ void graphics_d3d9_on_present(
     }
 
     graphics_poll_screenshot_hotkey();
-    bool screenshot = false;
+
+    // before the overlay render so the screenshot excludes it
     if (!GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
-        screenshot = graphics_d3d9_process_screenshot(device, SUB_SWAP_CHAIN);
+        graphics_d3d9_process_screenshot(device, SUB_SWAP_CHAIN);
     }
 
     // Do overlay init as many d3d9 hooks create a dummy instance to get vtable offsets and never
@@ -1514,8 +1515,9 @@ void graphics_d3d9_on_present(
         device->EndScene();
     }
 
+    // after the overlay render so the screenshot includes toasts / menus
     if (GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
-        screenshot = graphics_d3d9_process_screenshot(device, SUB_SWAP_CHAIN);
+        graphics_d3d9_process_screenshot(device, SUB_SWAP_CHAIN);
     }
 
     // for IIDX TDJ / SDVX UFC, handle subscreen
@@ -1532,9 +1534,8 @@ void graphics_d3d9_on_present(
         wintouchemu::update();
     }
 
-    if (!screenshot) {
-        graphics_d3d9_process_capture(device, SUB_SWAP_CHAIN);
-    }
+    // API capture always includes the overlay
+    graphics_d3d9_process_capture(device, SUB_SWAP_CHAIN);
 }
 
 void update_backbuffer_dimensions(D3DPRESENT_PARAMETERS *params) {

@@ -366,7 +366,7 @@ static void process_image_request(
     dispatch_surface_save(request, std::move(*copy));
 }
 
-bool graphics_d3d9_process_screenshot(
+void graphics_d3d9_process_screenshot(
         IDirect3DDevice9 *device,
         IDirect3DSwapChain9 *sub_swap_chain) {
     if (graphics_screenshot_consume()) {
@@ -374,9 +374,7 @@ bool graphics_d3d9_process_screenshot(
             .kind = ImageRequestKind::Screenshot,
             .screen = 0,
         });
-        return true;
     }
-    return false;
 }
 
 void graphics_d3d9_process_capture(
