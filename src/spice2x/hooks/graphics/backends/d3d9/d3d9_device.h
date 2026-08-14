@@ -235,13 +235,13 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     virtual HRESULT STDMETHODCALLTYPE GetDisplayModeEx(UINT iSwapChain, D3DDISPLAYMODEEX *pMode, D3DDISPLAYROTATION *pRotation) override;
 #pragma endregion
 
-    bool is_gfdm_two_head_exclusive() const;
-    bool is_gfdm_logical_small_swapchain(UINT swapchain) const;
-    bool is_gfdm_logical_side_swapchain(UINT swapchain) const;
-
     // logical screens the game draws, and the swap chain each one lives on
     void get_screenshot_screens(std::vector<int> &screens) const;
     HRESULT get_screenshot_swap_chain(UINT iSwapChain, IDirect3DSwapChain9 **ppSwapChain);
+
+    bool is_gfdm_two_head_exclusive() const;
+    bool is_gfdm_logical_small_swapchain(UINT swapchain) const;
+    bool is_gfdm_logical_side_swapchain(UINT swapchain) const;
     size_t gfdm_hidden_side_swapchain_slot(UINT swapchain) const;
     void set_gfdm_logical_group_parameters(
             const D3DPRESENT_PARAMETERS *presentation_parameters);

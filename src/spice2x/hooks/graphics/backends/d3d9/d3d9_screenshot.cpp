@@ -249,14 +249,11 @@ static std::string screenshot_path_for_screen(const std::string &primary_path, i
             .string();
 }
 
-// a null swap_chain means read the device's own back buffer for this screen
 static std::optional<BackbufferCopy> acquire_backbuffer_copy(
     IDirect3DDevice9 *device, IDirect3DSwapChain9 *swap_chain, int screen) {
 
     IDirect3DSurface9 *buffer = nullptr;
-    HRESULT hr = swap_chain != nullptr
-            ? swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer)
-            : device->GetBackBuffer(screen, 0, D3DBACKBUFFER_TYPE_MONO, &buffer);
+    HRESULT hr = swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
     if (FAILED(hr) || buffer == nullptr) {
         log_warning("graphics::d3d9",
                 "failed to get back buffer for screen {}, hr={}",
