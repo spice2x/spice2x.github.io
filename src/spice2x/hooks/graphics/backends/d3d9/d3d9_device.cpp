@@ -23,9 +23,9 @@
 #include "shaders/vertex_shader.h"
 #endif
 
-// GITADORA arena keeps SMALL in slot 0 and the two side heads in slots 1 and 2,
-// which does not match the logical screen numbering the game asks for.
-static constexpr int GFDM_ARENA_SLOT_SCREENS[] { 2, 1, 3 };
+// GITADORA arena caches SMALL in slot 0 and the two side heads in slots 1 and 2.
+// screen 1 is the subscreen for every other game, so SMALL takes that number here too.
+static constexpr int GFDM_ARENA_SLOT_SCREENS[] { 1, 2, 3 };
 
 #define CHECK_RESULT_FMT(x, fmt, ...) \
     HRESULT __ret = (x); \
