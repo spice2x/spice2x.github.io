@@ -247,6 +247,7 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
             const D3DPRESENT_PARAMETERS *presentation_parameters);
     FakeIDirect3DSwapChain9 *ensure_gfdm_hidden_side_swapchain(UINT iSwapChain);
     void release_gfdm_hidden_side_swapchains();
+    void release_gfdm_cached_swap_chains();
 
     enum class GfdmPresentModeRecoveryResult {
         NotAttempted,
