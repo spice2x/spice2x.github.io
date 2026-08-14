@@ -731,6 +731,11 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         if (GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
             graphics_hook_subscreen_window(GFDM_SUBSCREEN_WINDOW);
         }
+
+        // the dedicated SMALL window is the touch panel; mouse and API touch target it
+        if (games::gitadora::NATIVE_TOUCH) {
+            nativetouch::inject::register_and_attach_window(GFDM_SUBSCREEN_WINDOW);
+        }
     }
     if (is_gfdm_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
         gitadora_force_window_style(result);
@@ -1320,7 +1325,9 @@ void graphics_hook_window(HWND hWnd, D3DPRESENT_PARAMETERS *pPresentationParamet
         const bool native_touch_overlay =
             (games::iidx::NATIVE_TOUCH && games::iidx::TDJ_MODE && !GRAPHICS_IIDX_WSUB) ||
             (games::popn::NATIVE_TOUCH &&
-             games::popn::is_pikapika_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS);
+             games::popn::is_pikapika_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS) ||
+            (games::gitadora::NATIVE_TOUCH &&
+             games::gitadora::is_arena_model() && GRAPHICS_PREVENT_SECONDARY_WINDOWS);
         if (native_touch_overlay) {
             nativetouch::inject::register_and_attach_window(hWnd);
         }

@@ -13,6 +13,7 @@
 #include "touch/native/inject.h"
 #include "touch/native/nativetouchhook.h"
 #include "util/utils.h"
+#include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
 
 using namespace std::placeholders;
@@ -69,6 +70,10 @@ namespace api::modules {
             // pop'n music API touch surface
             native_canvas_w = 1280;
             native_canvas_h = 800;
+        } else if (games::gitadora::is_arena_model()) {
+            // GITADORA arena SMALL subscreen, either in its own window or in the overlay
+            native_canvas_w = games::gitadora::ARENA_SUBSCREEN_WIDTH;
+            native_canvas_h = games::gitadora::ARENA_SUBSCREEN_HEIGHT;
         }
 
         functions["read"] = std::bind(&Touch::read, this, _1, _2);

@@ -38,6 +38,12 @@ namespace nativetouch::transform {
             window == TDJ_SUBSCREEN_WINDOW;
     }
 
+    // the GITADORA arena SMALL window is a real touch panel; it only exists in the
+    // window modes that do not draw the subscreen in the overlay
+    static bool has_gfdm_dedicated_subscreen() {
+        return GFDM_SUBSCREEN_WINDOW != nullptr;
+    }
+
     // convert game touch coordinates to Windows desktop coordinates
     bool game_to_screen(HWND window, POINT *position) {
         if (settings::SYNTHETIC_TOUCH_USES_CLIENT_COORDINATES) {
@@ -67,6 +73,12 @@ namespace nativetouch::transform {
     }
 
     static bool has_active_overlay_transform() {
+        // the arena SMALL window is the touch surface whenever it exists, so the
+        // subscreen overlay must not claim touch input in those window modes
+        if (has_gfdm_dedicated_subscreen()) {
+            return false;
+        }
+
         return overlay::OVERLAY != nullptr &&
             overlay::OVERLAY->get_active() &&
             overlay::OVERLAY->has_subscreen_touch_transform();
@@ -149,6 +161,17 @@ namespace nativetouch::transform {
 
         // exception: sdvx windowed subscreen does not use the subscreen overlay transform
         if (GRAPHICS_WINDOWED && window == SDVX_SUBSCREEN_WINDOW) {
+            POINT client_position = *position;
+            return screen_to_game_client(window, &client_position);
+        }
+
+        // exception: the arena SMALL window is the touch panel, so accept the mouse there
+        // (and only there) with the coordinates a real contact on it would produce
+        if (has_gfdm_dedicated_subscreen()) {
+            if (window != GFDM_SUBSCREEN_WINDOW) {
+                return false;
+            }
+
             POINT client_position = *position;
             return screen_to_game_client(window, &client_position);
         }

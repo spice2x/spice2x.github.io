@@ -41,6 +41,7 @@ namespace games::gitadora {
     bool ARENA_TWO_HEAD_EXCLUSIVE = false;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
     bool ALLOW_REALTEK_AUDIO = false;
+    bool NATIVE_TOUCH = false;
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -809,17 +810,16 @@ namespace games::gitadora {
                 hooks::audio::INJECT_FAKE_REALTEK_AUDIO = true;
             }
 
-            // Single-window mode needs touch injection for its overlay. Two-head fullscreen
-            // mode uses the real SMALL output, so it only needs the display-topology shim.
-            if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
-                // enable touch hook for subscreen overlay
-                const auto native_touch_ready = !wintouchemu::FORCE &&
-                    nativetouch::hook(avs::game::DLL_INSTANCE);
-                if (!native_touch_ready) {
-                    wintouchemu::FORCE = true;
-                    wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
-                    wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);
-                }
+            // touch injection drives mouse-as-touch and API touch for the subscreen,
+            // no matter whether it is drawn by the overlay (single-window mode) or by
+            // the dedicated SMALL window
+            NATIVE_TOUCH = !wintouchemu::FORCE &&
+                nativetouch::hook(avs::game::DLL_INSTANCE);
+            if (!NATIVE_TOUCH && GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
+                // the legacy fallback can only feed the subscreen overlay
+                wintouchemu::FORCE = true;
+                wintouchemu::INJECT_MOUSE_AS_WM_TOUCH = true;
+                wintouchemu::hook("GITADORA", avs::game::DLL_INSTANCE);
             }
 
 #if !SPICE_XP

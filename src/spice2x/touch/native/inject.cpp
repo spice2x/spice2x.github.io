@@ -11,6 +11,7 @@
 #include "inject_internal.h"
 #include "transform.h"
 
+#include "games/gitadora/gitadora.h"
 #include "hooks/graphics/graphics.h"
 #include "util/detour.h"
 #include "util/libutils.h"
@@ -122,6 +123,33 @@ namespace nativetouch::inject {
 
     // asks the touch window thread to send an UPDATE when the game loop runs elsewhere
     static UINT contact_refresh_message;
+
+    // the window hosting GITADORA arena touch input: the dedicated SMALL window, or the
+    // main window when the subscreen is drawn by the overlay instead
+    static HWND gitadora_touch_window() {
+        if (!games::gitadora::is_arena_model()) {
+            return nullptr;
+        }
+        if (GFDM_SUBSCREEN_WINDOW != nullptr) {
+            return GFDM_SUBSCREEN_WINDOW;
+        }
+        return GRAPHICS_HOOKED_WINDOW.value_or(nullptr);
+    }
+
+    // games can register several windows for touch; keep synthetic contacts on the one
+    // that actually shows the touch surface
+    static bool is_preferred_injection_window(HWND window) {
+        if (GRAPHICS_IIDX_WSUB) {
+            return window == TDJ_SUBSCREEN_WINDOW;
+        }
+
+        const auto gitadora_window = gitadora_touch_window();
+        if (gitadora_window != nullptr) {
+            return window == gitadora_window;
+        }
+
+        return true;
+    }
 
     // submit one synthetic contact frame to Windows touch injection
     static bool inject_touch_frame(
@@ -369,8 +397,9 @@ namespace nativetouch::inject {
             return;
         }
 
-        // publish the UI-thread target for synthetic touch requests
-        if (!GRAPHICS_IIDX_WSUB || window == TDJ_SUBSCREEN_WINDOW) {
+        // publish the UI-thread target for synthetic touch requests; an explicit attach
+        // knows the touch surface, while game-driven registrations have to be filtered
+        if (register_touch || is_preferred_injection_window(window)) {
             injection_window.store(window, std::memory_order_release);
         }
         log_misc(
