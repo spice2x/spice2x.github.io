@@ -539,6 +539,61 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
     return n;
 }
 
+// GITADORA arena keeps SMALL in slot 0 and the two side heads in slots 1 and 2,
+// which does not match the logical screen numbering the game asks for.
+static constexpr int GFDM_ARENA_SLOT_SCREENS[] { 2, 1, 3 };
+
+void WrappedIDirect3DDevice9::get_screenshot_screens(std::vector<int> &screens) const {
+    if (games::gitadora::is_arena_model() && !is_gfdm_two_head_exclusive()) {
+        screens.push_back(0);
+        for (int slot = 0; slot < 3; slot++) {
+            if (sub_swapchain[slot] != nullptr || fake_sub_swapchain[slot] != nullptr) {
+                screens.push_back(GFDM_ARENA_SLOT_SCREENS[slot]);
+            }
+        }
+        return;
+    }
+
+    graphics_screens_get(screens);
+
+    // the sub screen is only registered once the game asks for it by index
+    if (sub_swapchain[0] != nullptr &&
+        avs::game::is_model({"LDJ", "KFC", "M39"}) &&
+        std::find(screens.begin(), screens.end(), 1) == screens.end())
+    {
+        screens.push_back(1);
+    }
+}
+
+HRESULT WrappedIDirect3DDevice9::get_screenshot_swap_chain(
+        UINT iSwapChain,
+        IDirect3DSwapChain9 **ppSwapChain)
+{
+    if (ppSwapChain == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    if (games::gitadora::is_arena_model() && !is_gfdm_two_head_exclusive()) {
+        for (int slot = 0; slot < 3; slot++) {
+            if (GFDM_ARENA_SLOT_SCREENS[slot] != (int) iSwapChain) {
+                continue;
+            }
+            if (sub_swapchain[slot] != nullptr) {
+                sub_swapchain[slot]->AddRef();
+                *ppSwapChain = sub_swapchain[slot];
+                return D3D_OK;
+            }
+            if (fake_sub_swapchain[slot] != nullptr) {
+                fake_sub_swapchain[slot]->AddRef();
+                *ppSwapChain = fake_sub_swapchain[slot];
+                return D3D_OK;
+            }
+        }
+    }
+
+    return GetSwapChain(iSwapChain, ppSwapChain);
+}
+
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         D3DPRESENT_PARAMETERS *pPresentationParameters)
 {

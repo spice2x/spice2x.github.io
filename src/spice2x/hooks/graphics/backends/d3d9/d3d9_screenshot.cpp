@@ -24,6 +24,8 @@
 #include "util/logging.h"
 #include "util/threadpool.h"
 
+#include "d3d9_device.h"
+
 #ifdef __GNUC__
 typedef decltype(D3DXSaveSurfaceToFileA) *D3DXSaveSurfaceToFileA_t;
 #else
@@ -248,21 +250,25 @@ static std::string screenshot_path_for_screen(const std::string &primary_path, i
 }
 
 static std::optional<BackbufferCopy> acquire_backbuffer_copy(
-    IDirect3DDevice9 *device, IDirect3DSwapChain9 *sub_swap_chain, int screen) {
+    IDirect3DDevice9 *device, WrappedIDirect3DDevice9 *wrapped_device, int screen) {
 
-    HRESULT hr = S_OK;
-
-    // TODO: verify screen is a valid swapchain
+    IDirect3DSwapChain9 *swap_chain = nullptr;
+    HRESULT hr = wrapped_device->get_screenshot_swap_chain(screen, &swap_chain);
+    if (FAILED(hr) || swap_chain == nullptr) {
+        log_warning("graphics::d3d9",
+                "failed to get swap chain for screen {}, hr={}",
+                screen,
+                FMT_HRESULT(hr));
+        return std::nullopt;
+    }
 
     IDirect3DSurface9 *buffer = nullptr;
-    if (sub_swap_chain != nullptr && screen & 1) {
-        hr = sub_swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
-    } else {
-        hr = device->GetBackBuffer(screen, 0, D3DBACKBUFFER_TYPE_MONO, &buffer);
-    }
+    hr = swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
+    swap_chain->Release();
     if (FAILED(hr) || buffer == nullptr) {
         log_warning("graphics::d3d9",
-                "failed to get back buffer, hr={}",
+                "failed to get back buffer for screen {}, hr={}",
+                screen,
                 FMT_HRESULT(hr));
         return std::nullopt;
     }
@@ -409,22 +415,18 @@ static void dispatch_surface_save(
 
 static void process_image_request(
         IDirect3DDevice9 *device,
-        IDirect3DSwapChain9 *sub_swap_chain,
+        WrappedIDirect3DDevice9 *wrapped_device,
         const ImageRequest &request) {
     std::vector<int> screens { request.screen };
     if (request.kind == ImageRequestKind::Screenshot && GRAPHICS_SCREENSHOT_SUBSCREENS) {
         screens.clear();
-        graphics_screens_get(screens);
-
-        // the cached sub swapchain only stands in for logical screen 1; higher screens
-        // need per-game mapping, so skip them rather than save the wrong image
-        std::erase_if(screens, [](int screen) { return screen > 1; });
+        wrapped_device->get_screenshot_screens(screens);
     }
 
     std::vector<BackbufferCopy> copies;
     copies.reserve(screens.size());
     for (const int screen : screens) {
-        auto copy = acquire_backbuffer_copy(device, sub_swap_chain, screen);
+        auto copy = acquire_backbuffer_copy(device, wrapped_device, screen);
         if (copy.has_value()) {
             copies.emplace_back(std::move(*copy));
         } else if (request.kind == ImageRequestKind::Capture) {
@@ -442,9 +444,9 @@ static void process_image_request(
 
 void graphics_d3d9_process_screenshot(
         IDirect3DDevice9 *device,
-        IDirect3DSwapChain9 *sub_swap_chain) {
+        WrappedIDirect3DDevice9 *wrapped_device) {
     if (graphics_screenshot_consume()) {
-        process_image_request(device, sub_swap_chain, ImageRequest {
+        process_image_request(device, wrapped_device, ImageRequest {
             .kind = ImageRequestKind::Screenshot,
             .screen = 0,
         });
@@ -453,10 +455,10 @@ void graphics_d3d9_process_screenshot(
 
 void graphics_d3d9_process_capture(
         IDirect3DDevice9 *device,
-        IDirect3DSwapChain9 *sub_swap_chain) {
+        WrappedIDirect3DDevice9 *wrapped_device) {
     int screen = 0;
     if (graphics_capture_consume(&screen)) {
-        process_image_request(device, sub_swap_chain, ImageRequest {
+        process_image_request(device, wrapped_device, ImageRequest {
             .kind = ImageRequestKind::Capture,
             .screen = screen,
         });

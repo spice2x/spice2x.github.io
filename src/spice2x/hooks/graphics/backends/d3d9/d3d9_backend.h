@@ -4,6 +4,8 @@
 
 #include "d3d9_gfdm.h"
 
+struct WrappedIDirect3DDevice9;
+
 // {EEE9CCF6-53D6-4326-9AE5-60921B3DB394}
 static const GUID IID_WrappedIDirect3D9 = {
     0xeee9ccf6, 0x53d6, 0x4326, { 0x9a, 0xe5, 0x60, 0x92, 0x1b, 0x3d, 0xb3, 0x94 }
@@ -13,7 +15,7 @@ void graphics_d3d9_init();
 void graphics_d3d9_on_present(
     HWND hFocusWindow,
     IDirect3DDevice9 *device,
-    IDirect3DDevice9 *wrapped_device);
+    WrappedIDirect3DDevice9 *wrapped_device);
 
 void graphics_d3d9_notify_subscreen_present();
 
