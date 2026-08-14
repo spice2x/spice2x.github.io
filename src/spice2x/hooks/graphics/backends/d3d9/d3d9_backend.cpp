@@ -1535,7 +1535,7 @@ void graphics_d3d9_on_present(
     }
 
     // API capture always includes the overlay
-    graphics_d3d9_process_capture(device, wrapped_device);
+    graphics_d3d9_process_capture(device, SUB_SWAP_CHAIN);
 }
 
 void update_backbuffer_dimensions(D3DPRESENT_PARAMETERS *params) {

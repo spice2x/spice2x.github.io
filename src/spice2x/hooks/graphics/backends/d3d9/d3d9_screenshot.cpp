@@ -249,22 +249,14 @@ static std::string screenshot_path_for_screen(const std::string &primary_path, i
             .string();
 }
 
+// a null swap_chain means read the device's own back buffer for this screen
 static std::optional<BackbufferCopy> acquire_backbuffer_copy(
-    IDirect3DDevice9 *device, WrappedIDirect3DDevice9 *wrapped_device, int screen) {
-
-    IDirect3DSwapChain9 *swap_chain = nullptr;
-    HRESULT hr = wrapped_device->get_screenshot_swap_chain(screen, &swap_chain);
-    if (FAILED(hr) || swap_chain == nullptr) {
-        log_warning("graphics::d3d9",
-                "failed to get swap chain for screen {}, hr={}",
-                screen,
-                FMT_HRESULT(hr));
-        return std::nullopt;
-    }
+    IDirect3DDevice9 *device, IDirect3DSwapChain9 *swap_chain, int screen) {
 
     IDirect3DSurface9 *buffer = nullptr;
-    hr = swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
-    swap_chain->Release();
+    HRESULT hr = swap_chain != nullptr
+            ? swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer)
+            : device->GetBackBuffer(screen, 0, D3DBACKBUFFER_TYPE_MONO, &buffer);
     if (FAILED(hr) || buffer == nullptr) {
         log_warning("graphics::d3d9",
                 "failed to get back buffer for screen {}, hr={}",
@@ -416,9 +408,12 @@ static void dispatch_surface_save(
 static void process_image_request(
         IDirect3DDevice9 *device,
         WrappedIDirect3DDevice9 *wrapped_device,
+        IDirect3DSwapChain9 *sub_swap_chain,
         const ImageRequest &request) {
+    const bool screenshot = request.kind == ImageRequestKind::Screenshot;
+
     std::vector<int> screens { request.screen };
-    if (request.kind == ImageRequestKind::Screenshot && GRAPHICS_SCREENSHOT_SUBSCREENS) {
+    if (screenshot && GRAPHICS_SCREENSHOT_SUBSCREENS) {
         screens.clear();
         wrapped_device->get_screenshot_screens(screens);
     }
@@ -426,10 +421,30 @@ static void process_image_request(
     std::vector<BackbufferCopy> copies;
     copies.reserve(screens.size());
     for (const int screen : screens) {
-        auto copy = acquire_backbuffer_copy(device, wrapped_device, screen);
+        std::optional<BackbufferCopy> copy;
+        if (screenshot) {
+            IDirect3DSwapChain9 *swap_chain = nullptr;
+            HRESULT hr = wrapped_device->get_screenshot_swap_chain(screen, &swap_chain);
+            if (FAILED(hr) || swap_chain == nullptr) {
+                log_warning("graphics::d3d9",
+                        "failed to get swap chain for screen {}, hr={}",
+                        screen,
+                        FMT_HRESULT(hr));
+            } else {
+                copy = acquire_backbuffer_copy(device, swap_chain, screen);
+                swap_chain->Release();
+            }
+        } else {
+            // the api numbers screens its own way; keep the mapping it has always used
+            copy = acquire_backbuffer_copy(
+                    device,
+                    (sub_swap_chain != nullptr && screen & 1) ? sub_swap_chain : nullptr,
+                    screen);
+        }
+
         if (copy.has_value()) {
             copies.emplace_back(std::move(*copy));
-        } else if (request.kind == ImageRequestKind::Capture) {
+        } else if (!screenshot) {
             graphics_capture_skip(request.screen);
             return;
         }
@@ -446,7 +461,7 @@ void graphics_d3d9_process_screenshot(
         IDirect3DDevice9 *device,
         WrappedIDirect3DDevice9 *wrapped_device) {
     if (graphics_screenshot_consume()) {
-        process_image_request(device, wrapped_device, ImageRequest {
+        process_image_request(device, wrapped_device, nullptr, ImageRequest {
             .kind = ImageRequestKind::Screenshot,
             .screen = 0,
         });
@@ -455,10 +470,10 @@ void graphics_d3d9_process_screenshot(
 
 void graphics_d3d9_process_capture(
         IDirect3DDevice9 *device,
-        WrappedIDirect3DDevice9 *wrapped_device) {
+        IDirect3DSwapChain9 *sub_swap_chain) {
     int screen = 0;
     if (graphics_capture_consume(&screen)) {
-        process_image_request(device, wrapped_device, ImageRequest {
+        process_image_request(device, nullptr, sub_swap_chain, ImageRequest {
             .kind = ImageRequestKind::Capture,
             .screen = screen,
         });
