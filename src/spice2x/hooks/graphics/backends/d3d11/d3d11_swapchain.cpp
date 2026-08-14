@@ -105,6 +105,16 @@ Present1_t Present1_orig = nullptr;
 bool g_swapchain_hooked = false;
 bool g_swapchain1_hooked = false;
 
+// sub-screens / IME helpers are usually child or zero-sized windows.
+// visibility isn't checked - the game may present before showing the window.
+bool looks_like_game_window(HWND hwnd) {
+    RECT client {};
+    return GetAncestor(hwnd, GA_ROOT) == hwnd
+        && GetClientRect(hwnd, &client)
+        && client.right > client.left
+        && client.bottom > client.top;
+}
+
 // only the main game window; ignore sub-screens / IME helpers.
 bool is_main_game_swapchain(IDXGISwapChain *swapchain) {
     DXGI_SWAP_CHAIN_DESC desc {};
@@ -114,14 +124,35 @@ bool is_main_game_swapchain(IDXGISwapChain *swapchain) {
 
     HWND main = d3d11_hooks::main_hwnd();
     if (!main) {
+        // no creation hook recorded a window, so fall back to the presenting one;
+        // the choice is permanent, so require a plausible game window
+        if (!looks_like_game_window(desc.OutputWindow)) {
+            return false;
+        }
         d3d11_hooks::note_main_hwnd(desc.OutputWindow);
         main = d3d11_hooks::main_hwnd();
     }
     return desc.OutputWindow == main;
 }
 
+// checks are ordered cheapest first, since this runs on every present
 void try_create_overlay(IDXGISwapChain *swapchain) {
-    if (!swapchain || overlay::OVERLAY || !is_main_game_swapchain(swapchain)) {
+    if (!swapchain) {
+        return;
+    }
+
+    // overlay is disabled by user
+    if (!overlay::ENABLED) {
+        return;
+    }
+
+    // overlay is already enabled and attached
+    if (overlay::OVERLAY) {
+        return;
+    }
+
+    // ignore sub windows
+    if (!is_main_game_swapchain(swapchain)) {
         return;
     }
 
@@ -199,8 +230,11 @@ void pump_frame(IDXGISwapChain *swapchain) {
 HRESULT STDMETHODCALLTYPE Present_hook(
         IDXGISwapChain *swapchain, UINT SyncInterval, UINT Flags)
 {
-    try_create_overlay(swapchain);
-    pump_frame(swapchain);
+    // a test present doesn't display anything; don't pick a window or take a screenshot off it
+    if (!(Flags & DXGI_PRESENT_TEST)) {
+        try_create_overlay(swapchain);
+        pump_frame(swapchain);
+    }
     return Present_orig(swapchain, SyncInterval, Flags);
 }
 
@@ -208,8 +242,10 @@ HRESULT STDMETHODCALLTYPE Present1_hook(
         IDXGISwapChain1 *swapchain, UINT SyncInterval, UINT Flags,
         const DXGI_PRESENT_PARAMETERS *pParams)
 {
-    try_create_overlay(swapchain);
-    pump_frame(swapchain);
+    if (!(Flags & DXGI_PRESENT_TEST)) {
+        try_create_overlay(swapchain);
+        pump_frame(swapchain);
+    }
     return Present1_orig(swapchain, SyncInterval, Flags, pParams);
 }
 
