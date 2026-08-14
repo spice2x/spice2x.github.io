@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <mutex>
+#include <vector>
 
 #include <initguid.h>
 #include <d3d9.h>
@@ -233,6 +234,10 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     virtual HRESULT STDMETHODCALLTYPE ResetEx(D3DPRESENT_PARAMETERS *pPresentationParameters, D3DDISPLAYMODEEX *pFullscreenDisplayMode) override;
     virtual HRESULT STDMETHODCALLTYPE GetDisplayModeEx(UINT iSwapChain, D3DDISPLAYMODEEX *pMode, D3DDISPLAYROTATION *pRotation) override;
 #pragma endregion
+
+    // logical screens the game draws, and the swap chain each one lives on
+    void get_screenshot_screens(std::vector<int> &screens) const;
+    HRESULT get_screenshot_swap_chain(UINT iSwapChain, IDirect3DSwapChain9 **ppSwapChain);
 
     bool is_gfdm_two_head_exclusive() const;
     bool is_gfdm_logical_small_swapchain(UINT swapchain) const;

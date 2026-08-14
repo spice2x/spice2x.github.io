@@ -3405,6 +3405,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .category = "General Overlay",
     },
+    {
+        // ScreenshotSubscreens
+        .title = "Include Subscreens in Screenshots",
+        .name = "screenshotsub",
+        .desc = "Saves each subscreen as a separate PNG alongside the primary screenshot.",
+        .type = OptionType::Bool,
+        .category = "General Overlay",
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {

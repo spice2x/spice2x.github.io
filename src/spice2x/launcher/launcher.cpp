@@ -1106,6 +1106,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::ScreenshotIncludeOverlay].value_bool()) {
         GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY = true;
     }
+    if (options[launcher::Options::ScreenshotSubscreens].value_bool()) {
+        GRAPHICS_SCREENSHOT_SUBSCREENS = true;
+    }
     if (options[launcher::Options::DisableColoredOutput].value_bool()) {
         logger::COLOR = false;
     }

@@ -23,6 +23,11 @@
 #include "shaders/vertex_shader.h"
 #endif
 
+// maps arena's cached additional swap chains (SMALL, LEFT, RIGHT) to screen numbers.
+// MAIN is the implicit swap chain, is not in those slots, and is always screen 0.
+// screen 1 is the subscreen for every other game, so SMALL takes that number here too.
+static constexpr int GFDM_ARENA_SLOT_SCREENS[] { 1, 2, 3 };
+
 #define CHECK_RESULT_FMT(x, fmt, ...) \
     HRESULT __ret = (x); \
     if (GRAPHICS_LOG_HRESULT && FAILED(__ret)) [[unlikely]] { \
@@ -336,20 +341,25 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
     int index = 0;
     bool create_swap_chain = false;
     bool create_fake_swap_chain = false;
+    bool arena_slot = false;
     if (avs::game::is_model({"LDJ", "KFC", "M39"})) {
         create_swap_chain = true;
 
     } else if (games::gitadora::is_arena_model() &&
-        (GRAPHICS_PREVENT_SECONDARY_WINDOWS || GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS)) {
+        (GRAPHICS_SCREENSHOT_SUBSCREENS ||
+         GRAPHICS_PREVENT_SECONDARY_WINDOWS ||
+         GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS)) {
 
         if (pPresentationParameters->BackBufferWidth == 800) {
             // SMALL (subscreen)
             create_swap_chain = true;
+            arena_slot = true;
             index = 0;
 
         } else if (pPresentationParameters->BackBufferWidth == 1080) {
             // LEFT/RIGHT
             create_swap_chain = true;
+            arena_slot = true;
             index = 1;
             if (sub_swapchain[index] || fake_sub_swapchain[index]) {
                 index = 2;
@@ -359,6 +369,11 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
         } else {
             log_warning("graphics::d3d9", "unknown swap chain detected in CreateAdditionalSwapChain");
         }
+    }
+
+    // the api lists screens from this registry, so arena heads need their logical numbers in it
+    if (arena_slot) {
+        graphics_screens_register(GFDM_ARENA_SLOT_SCREENS[index]);
     }
 
     if (create_fake_swap_chain) {
@@ -537,6 +552,64 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
     }
 
     return n;
+}
+
+void WrappedIDirect3DDevice9::get_screenshot_screens(std::vector<int> &screens) const {
+    if (games::gitadora::is_arena_model()) {
+        screens.push_back(0);
+
+        // every head the game renders into, whether or not it reaches a display
+        for (int slot = 0; slot < 3; slot++) {
+            if (sub_swapchain[slot] != nullptr || fake_sub_swapchain[slot] != nullptr) {
+                screens.push_back(GFDM_ARENA_SLOT_SCREENS[slot]);
+            }
+        }
+        return;
+    }
+
+    graphics_screens_get(screens);
+
+    // the sub screen is only registered once the game asks for it by index
+    if (sub_swapchain[0] != nullptr &&
+        avs::game::is_model({"LDJ", "KFC", "M39"}) &&
+        std::find(screens.begin(), screens.end(), 1) == screens.end())
+    {
+        screens.push_back(1);
+    }
+}
+
+HRESULT WrappedIDirect3DDevice9::get_screenshot_swap_chain(
+        UINT iSwapChain,
+        IDirect3DSwapChain9 **ppSwapChain)
+{
+    if (ppSwapChain == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    // the game numbers the two-head SMALL head itself; keep screen 1 meaning SMALL
+    if (games::gitadora::is_arena_model() && is_gfdm_two_head_exclusive() && iSwapChain == 1) {
+        return GetSwapChain(gfdm_logical_small_swapchain, ppSwapChain);
+    }
+
+    if (games::gitadora::is_arena_model()) {
+        for (int slot = 0; slot < 3; slot++) {
+            if (GFDM_ARENA_SLOT_SCREENS[slot] != (int) iSwapChain) {
+                continue;
+            }
+            if (sub_swapchain[slot] != nullptr) {
+                sub_swapchain[slot]->AddRef();
+                *ppSwapChain = sub_swapchain[slot];
+                return D3D_OK;
+            }
+            if (fake_sub_swapchain[slot] != nullptr) {
+                fake_sub_swapchain[slot]->AddRef();
+                *ppSwapChain = fake_sub_swapchain[slot];
+                return D3D_OK;
+            }
+        }
+    }
+
+    return GetSwapChain(iSwapChain, ppSwapChain);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
