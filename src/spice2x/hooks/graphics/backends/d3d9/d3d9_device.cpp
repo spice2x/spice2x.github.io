@@ -555,26 +555,11 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
 }
 
 void WrappedIDirect3DDevice9::get_screenshot_screens(std::vector<int> &screens) const {
-    if (games::gitadora::is_arena_model() && is_gfdm_two_head_exclusive()) {
-        // LEFT/RIGHT are virtual here, so MAIN and SMALL are the only real screens
-        screens.push_back(0);
-        screens.push_back(1);
-        return;
-    }
-
-    if (games::gitadora::is_arena_model() && !is_gfdm_two_head_exclusive()) {
+    if (games::gitadora::is_arena_model()) {
         screens.push_back(0);
 
-        // nothing secondary is drawn at all in this mode
-        if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
-            return;
-        }
-
+        // every head the game renders into, whether or not it reaches a display
         for (int slot = 0; slot < 3; slot++) {
-            // two-window mode draws LEFT/RIGHT into hidden swap chains; SMALL is the only real screen
-            if (GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS && slot != 0) {
-                continue;
-            }
             if (sub_swapchain[slot] != nullptr || fake_sub_swapchain[slot] != nullptr) {
                 screens.push_back(GFDM_ARENA_SLOT_SCREENS[slot]);
             }
@@ -606,7 +591,7 @@ HRESULT WrappedIDirect3DDevice9::get_screenshot_swap_chain(
         return GetSwapChain(gfdm_logical_small_swapchain, ppSwapChain);
     }
 
-    if (games::gitadora::is_arena_model() && !is_gfdm_two_head_exclusive()) {
+    if (games::gitadora::is_arena_model()) {
         for (int slot = 0; slot < 3; slot++) {
             if (GFDM_ARENA_SLOT_SCREENS[slot] != (int) iSwapChain) {
                 continue;
