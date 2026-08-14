@@ -23,6 +23,10 @@
 #include "shaders/vertex_shader.h"
 #endif
 
+// GITADORA arena keeps SMALL in slot 0 and the two side heads in slots 1 and 2,
+// which does not match the logical screen numbering the game asks for.
+static constexpr int GFDM_ARENA_SLOT_SCREENS[] { 2, 1, 3 };
+
 #define CHECK_RESULT_FMT(x, fmt, ...) \
     HRESULT __ret = (x); \
     if (GRAPHICS_LOG_HRESULT && FAILED(__ret)) [[unlikely]] { \
@@ -336,6 +340,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
     int index = 0;
     bool create_swap_chain = false;
     bool create_fake_swap_chain = false;
+    bool arena_slot = false;
     if (avs::game::is_model({"LDJ", "KFC", "M39"})) {
         create_swap_chain = true;
 
@@ -347,11 +352,13 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
         if (pPresentationParameters->BackBufferWidth == 800) {
             // SMALL (subscreen)
             create_swap_chain = true;
+            arena_slot = true;
             index = 0;
 
         } else if (pPresentationParameters->BackBufferWidth == 1080) {
             // LEFT/RIGHT
             create_swap_chain = true;
+            arena_slot = true;
             index = 1;
             if (sub_swapchain[index] || fake_sub_swapchain[index]) {
                 index = 2;
@@ -361,6 +368,11 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
         } else {
             log_warning("graphics::d3d9", "unknown swap chain detected in CreateAdditionalSwapChain");
         }
+    }
+
+    // the api lists screens from this registry, so arena heads need their logical numbers in it
+    if (arena_slot) {
+        graphics_screens_register(GFDM_ARENA_SLOT_SCREENS[index]);
     }
 
     if (create_fake_swap_chain) {
@@ -540,10 +552,6 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
 
     return n;
 }
-
-// GITADORA arena keeps SMALL in slot 0 and the two side heads in slots 1 and 2,
-// which does not match the logical screen numbering the game asks for.
-static constexpr int GFDM_ARENA_SLOT_SCREENS[] { 2, 1, 3 };
 
 void WrappedIDirect3DDevice9::get_screenshot_screens(std::vector<int> &screens) const {
     if (games::gitadora::is_arena_model() && !is_gfdm_two_head_exclusive()) {

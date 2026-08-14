@@ -408,7 +408,6 @@ static void dispatch_surface_save(
 static void process_image_request(
         IDirect3DDevice9 *device,
         WrappedIDirect3DDevice9 *wrapped_device,
-        IDirect3DSwapChain9 *sub_swap_chain,
         const ImageRequest &request) {
     const bool screenshot = request.kind == ImageRequestKind::Screenshot;
 
@@ -422,24 +421,17 @@ static void process_image_request(
     copies.reserve(screens.size());
     for (const int screen : screens) {
         std::optional<BackbufferCopy> copy;
-        if (screenshot) {
-            IDirect3DSwapChain9 *swap_chain = nullptr;
-            HRESULT hr = wrapped_device->get_screenshot_swap_chain(screen, &swap_chain);
-            if (FAILED(hr) || swap_chain == nullptr) {
-                log_warning("graphics::d3d9",
-                        "failed to get swap chain for screen {}, hr={}",
-                        screen,
-                        FMT_HRESULT(hr));
-            } else {
-                copy = acquire_backbuffer_copy(device, swap_chain, screen);
-                swap_chain->Release();
-            }
+
+        IDirect3DSwapChain9 *swap_chain = nullptr;
+        HRESULT hr = wrapped_device->get_screenshot_swap_chain(screen, &swap_chain);
+        if (FAILED(hr) || swap_chain == nullptr) {
+            log_warning("graphics::d3d9",
+                    "failed to get swap chain for screen {}, hr={}",
+                    screen,
+                    FMT_HRESULT(hr));
         } else {
-            // the api numbers screens its own way; keep the mapping it has always used
-            copy = acquire_backbuffer_copy(
-                    device,
-                    (sub_swap_chain != nullptr && screen & 1) ? sub_swap_chain : nullptr,
-                    screen);
+            copy = acquire_backbuffer_copy(device, swap_chain, screen);
+            swap_chain->Release();
         }
 
         if (copy.has_value()) {
@@ -461,7 +453,7 @@ void graphics_d3d9_process_screenshot(
         IDirect3DDevice9 *device,
         WrappedIDirect3DDevice9 *wrapped_device) {
     if (graphics_screenshot_consume()) {
-        process_image_request(device, wrapped_device, nullptr, ImageRequest {
+        process_image_request(device, wrapped_device, ImageRequest {
             .kind = ImageRequestKind::Screenshot,
             .screen = 0,
         });
@@ -470,10 +462,10 @@ void graphics_d3d9_process_screenshot(
 
 void graphics_d3d9_process_capture(
         IDirect3DDevice9 *device,
-        IDirect3DSwapChain9 *sub_swap_chain) {
+        WrappedIDirect3DDevice9 *wrapped_device) {
     int screen = 0;
     if (graphics_capture_consume(&screen)) {
-        process_image_request(device, nullptr, sub_swap_chain, ImageRequest {
+        process_image_request(device, wrapped_device, ImageRequest {
             .kind = ImageRequestKind::Capture,
             .screen = screen,
         });
