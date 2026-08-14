@@ -23,7 +23,8 @@
 #include "shaders/vertex_shader.h"
 #endif
 
-// GITADORA arena caches SMALL in slot 0 and the two side heads in slots 1 and 2.
+// maps arena's cached additional swap chains (SMALL, LEFT, RIGHT) to screen numbers.
+// MAIN is the implicit swap chain, is not in those slots, and is always screen 0.
 // screen 1 is the subscreen for every other game, so SMALL takes that number here too.
 static constexpr int GFDM_ARENA_SLOT_SCREENS[] { 1, 2, 3 };
 
