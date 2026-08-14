@@ -129,7 +129,15 @@ bool is_main_game_swapchain(IDXGISwapChain *swapchain) {
         if (!looks_like_game_window(desc.OutputWindow)) {
             return false;
         }
+
+        log_misc(
+            "graphics::d3d11",
+            "try to notemain hwnd from swapchain present: 0x{:x}",
+            (uintptr_t)desc.OutputWindow);
+
         d3d11_hooks::note_main_hwnd(desc.OutputWindow);
+
+        // it may have been ignored, or another thread may have won the slot
         main = d3d11_hooks::main_hwnd();
     }
     return desc.OutputWindow == main;
