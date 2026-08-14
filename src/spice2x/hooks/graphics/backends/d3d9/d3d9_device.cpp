@@ -340,7 +340,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::CreateAdditionalSwapChain(
         create_swap_chain = true;
 
     } else if (games::gitadora::is_arena_model() &&
-        (GRAPHICS_PREVENT_SECONDARY_WINDOWS || GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS)) {
+        (GRAPHICS_SCREENSHOT_SUBSCREENS ||
+         GRAPHICS_PREVENT_SECONDARY_WINDOWS ||
+         GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS)) {
 
         if (pPresentationParameters->BackBufferWidth == 800) {
             // SMALL (subscreen)
