@@ -2231,8 +2231,6 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
         release_gfdm_hidden_side_swapchains();
     }
 
-    release_gfdm_cached_swap_chains();
-
     if (GRAPHICS_WINDOWED) {
         if (pPresentationParameters) {
             pPresentationParameters->Windowed = true;

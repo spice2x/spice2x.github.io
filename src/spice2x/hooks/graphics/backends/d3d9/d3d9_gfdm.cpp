@@ -599,25 +599,6 @@ void WrappedIDirect3DDevice9::release_gfdm_hidden_side_swapchains() {
     }
 }
 
-// a reset destroys the game's additional swap chains, so forget the handles cached
-// for them; the game recreates them afterwards
-void WrappedIDirect3DDevice9::release_gfdm_cached_swap_chains() {
-    if (!games::gitadora::is_arena_model() || is_gfdm_two_head_exclusive()) {
-        return;
-    }
-
-    for (size_t index = 0; index < 3; index++) {
-        // CreateAdditionalSwapChain hands the game the real swap chain and keeps this
-        // wrapper as an observer only, so there is no reference here to release
-        sub_swapchain[index] = nullptr;
-
-        if (fake_sub_swapchain[index] != nullptr) {
-            fake_sub_swapchain[index]->Release();
-            fake_sub_swapchain[index] = nullptr;
-        }
-    }
-}
-
 void WrappedIDirect3DDevice9::gfdm_disarm_present_mode_recovery() {
     std::lock_guard<std::mutex> lock(gfdm_recovery_mutex);
     gfdm_recovery_armed = false;
