@@ -546,7 +546,17 @@ static constexpr int GFDM_ARENA_SLOT_SCREENS[] { 2, 1, 3 };
 void WrappedIDirect3DDevice9::get_screenshot_screens(std::vector<int> &screens) const {
     if (games::gitadora::is_arena_model() && !is_gfdm_two_head_exclusive()) {
         screens.push_back(0);
+
+        // nothing secondary is drawn at all in this mode
+        if (GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
+            return;
+        }
+
         for (int slot = 0; slot < 3; slot++) {
+            // two-window mode draws LEFT/RIGHT into hidden swap chains; SMALL is the only real screen
+            if (GRAPHICS_GITADORA_HIDE_SIDE_WINDOWS && slot != 0) {
+                continue;
+            }
             if (sub_swapchain[slot] != nullptr || fake_sub_swapchain[slot] != nullptr) {
                 screens.push_back(GFDM_ARENA_SLOT_SCREENS[slot]);
             }
