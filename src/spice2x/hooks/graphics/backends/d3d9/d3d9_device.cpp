@@ -554,6 +554,13 @@ UINT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetNumberOfSwapChains() {
 }
 
 void WrappedIDirect3DDevice9::get_screenshot_screens(std::vector<int> &screens) const {
+    if (games::gitadora::is_arena_model() && is_gfdm_two_head_exclusive()) {
+        // LEFT/RIGHT are virtual here, so MAIN and SMALL are the only real screens
+        screens.push_back(0);
+        screens.push_back(1);
+        return;
+    }
+
     if (games::gitadora::is_arena_model() && !is_gfdm_two_head_exclusive()) {
         screens.push_back(0);
 
@@ -591,6 +598,11 @@ HRESULT WrappedIDirect3DDevice9::get_screenshot_swap_chain(
 {
     if (ppSwapChain == nullptr) {
         return D3DERR_INVALIDCALL;
+    }
+
+    // the game numbers the two-head SMALL head itself; keep screen 1 meaning SMALL
+    if (games::gitadora::is_arena_model() && is_gfdm_two_head_exclusive() && iSwapChain == 1) {
+        return GetSwapChain(gfdm_logical_small_swapchain, ppSwapChain);
     }
 
     if (games::gitadora::is_arena_model() && !is_gfdm_two_head_exclusive()) {
