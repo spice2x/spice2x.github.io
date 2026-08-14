@@ -321,7 +321,8 @@ namespace launcher {
             OBSWebSocketPort,
             OBSWebSocketPassword,
             OBSWebSocketDebug,
-            ScreenshotIncludeOverlay
+            ScreenshotIncludeOverlay,
+            ScreenshotSubscreens
         };
 
         enum class OptionsCategory {

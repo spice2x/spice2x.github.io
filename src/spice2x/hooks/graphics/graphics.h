@@ -112,6 +112,7 @@ extern bool FAKE_SUBSCREEN_ADAPTER;
 extern std::string GRAPHICS_DEVICEID;
 extern std::string GRAPHICS_SCREENSHOT_DIR;
 extern bool GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY;
+extern bool GRAPHICS_SCREENSHOT_SUBSCREENS;
 
 // Direct3D 9 settings
 extern std::optional<UINT> D3D9_ADAPTER;
@@ -146,7 +147,8 @@ bool graphics_capture_receive_jpeg(int screen, TooJpeg::WRITE_ONE_BYTE receiver,
         bool rgb = true, int quality = 80, bool downsample = true, int divide = 0,
         uint64_t *timestamp = nullptr,
         int *width = nullptr, int *height = nullptr);
-std::string graphics_screenshot_genpath();
+// the returned path is for screen 0; any extra screens only reserve their suffixed names
+std::string graphics_screenshot_genpath(const std::vector<int> &screens = {});
 
 // graphics_windowed.cpp
 void graphics_windowed_wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
