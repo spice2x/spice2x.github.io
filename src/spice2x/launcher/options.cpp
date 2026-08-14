@@ -3397,6 +3397,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .category = "OBS Control",
     },
+    {
+        // ScreenshotIncludeOverlay
+        .title = "Include Overlay in Screenshots",
+        .name = "screenshotoverlay",
+        .desc = "Includes Spice overlay in screenshots.",
+        .type = OptionType::Bool,
+        .category = "General Overlay",
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {

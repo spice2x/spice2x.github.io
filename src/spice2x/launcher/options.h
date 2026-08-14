@@ -320,7 +320,8 @@ namespace launcher {
             OBSWebSocketHost,
             OBSWebSocketPort,
             OBSWebSocketPassword,
-            OBSWebSocketDebug
+            OBSWebSocketDebug,
+            ScreenshotIncludeOverlay
         };
 
         enum class OptionsCategory {

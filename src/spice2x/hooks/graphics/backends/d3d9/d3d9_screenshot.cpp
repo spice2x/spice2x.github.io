@@ -348,43 +348,43 @@ static void dispatch_surface_save(
     }
 }
 
-static std::optional<ImageRequest> consume_image_request() {
-    if (graphics_screenshot_consume()) {
-        return ImageRequest {
-            .kind = ImageRequestKind::Screenshot,
-            .screen = 0,
-        };
-    }
-
-    int capture_screen = 0;
-    if (graphics_capture_consume(&capture_screen)) {
-        return ImageRequest {
-            .kind = ImageRequestKind::Capture,
-            .screen = capture_screen,
-        };
-    }
-
-    return std::nullopt;
-}
-
-void graphics_d3d9_process_screenshot_and_capture(
+static void process_image_request(
         IDirect3DDevice9 *device,
-        IDirect3DSwapChain9 *sub_swap_chain) {
-    const auto request = consume_image_request();
-    if (!request.has_value()) {
-        return;
-    }
-
+        IDirect3DSwapChain9 *sub_swap_chain,
+        const ImageRequest &request) {
     auto copy = acquire_backbuffer_copy(
             device,
             sub_swap_chain,
-            request->screen);
+            request.screen);
     if (!copy.has_value()) {
-        if (request->kind == ImageRequestKind::Capture) {
-            graphics_capture_skip(request->screen);
+        if (request.kind == ImageRequestKind::Capture) {
+            graphics_capture_skip(request.screen);
         }
         return;
     }
 
-    dispatch_surface_save(*request, std::move(*copy));
+    dispatch_surface_save(request, std::move(*copy));
+}
+
+void graphics_d3d9_process_screenshot(
+        IDirect3DDevice9 *device,
+        IDirect3DSwapChain9 *sub_swap_chain) {
+    if (graphics_screenshot_consume()) {
+        process_image_request(device, sub_swap_chain, ImageRequest {
+            .kind = ImageRequestKind::Screenshot,
+            .screen = 0,
+        });
+    }
+}
+
+void graphics_d3d9_process_capture(
+        IDirect3DDevice9 *device,
+        IDirect3DSwapChain9 *sub_swap_chain) {
+    int screen = 0;
+    if (graphics_capture_consume(&screen)) {
+        process_image_request(device, sub_swap_chain, ImageRequest {
+            .kind = ImageRequestKind::Capture,
+            .screen = screen,
+        });
+    }
 }

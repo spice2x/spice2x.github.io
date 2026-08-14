@@ -118,6 +118,7 @@ uint32_t GRAPHICS_FS_ORIGINAL_HEIGHT = 0;
 // settings
 std::string GRAPHICS_DEVICEID = "PCI\\VEN_1002&DEV_7146";
 std::string GRAPHICS_SCREENSHOT_DIR = ".\\screenshots";
+bool GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY = false;
 
 static decltype(ChangeDisplaySettingsA) *ChangeDisplaySettingsA_orig = nullptr;
 static decltype(ChangeDisplaySettingsExA) *ChangeDisplaySettingsExA_orig = nullptr;

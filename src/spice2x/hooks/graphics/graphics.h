@@ -111,6 +111,7 @@ extern bool FAKE_SUBSCREEN_ADAPTER;
 // settings
 extern std::string GRAPHICS_DEVICEID;
 extern std::string GRAPHICS_SCREENSHOT_DIR;
+extern bool GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY;
 
 // Direct3D 9 settings
 extern std::optional<UINT> D3D9_ADAPTER;

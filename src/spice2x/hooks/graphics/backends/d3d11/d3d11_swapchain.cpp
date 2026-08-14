@@ -105,19 +105,67 @@ Present1_t Present1_orig = nullptr;
 bool g_swapchain_hooked = false;
 bool g_swapchain1_hooked = false;
 
+// sub-screens / IME helpers are usually child or zero-sized windows.
+// visibility isn't checked - the game may present before showing the window.
+bool looks_like_game_window(HWND hwnd) {
+    RECT client {};
+    return GetAncestor(hwnd, GA_ROOT) == hwnd
+        && GetClientRect(hwnd, &client)
+        && client.right > client.left
+        && client.bottom > client.top;
+}
+
+// only the main game window; ignore sub-screens / IME helpers.
+bool is_main_game_swapchain(IDXGISwapChain *swapchain) {
+    DXGI_SWAP_CHAIN_DESC desc {};
+    if (!swapchain || FAILED(swapchain->GetDesc(&desc)) || !desc.OutputWindow) {
+        return false;
+    }
+
+    HWND main = d3d11_hooks::main_hwnd();
+    if (!main) {
+        // no creation hook recorded a window, so fall back to the presenting one;
+        // the choice is permanent, so require a plausible game window
+        if (!looks_like_game_window(desc.OutputWindow)) {
+            return false;
+        }
+
+        log_misc(
+            "graphics::d3d11",
+            "try to notemain hwnd from swapchain present: 0x{:x}",
+            (uintptr_t)desc.OutputWindow);
+
+        d3d11_hooks::note_main_hwnd(desc.OutputWindow);
+
+        // it may have been ignored, or another thread may have won the slot
+        main = d3d11_hooks::main_hwnd();
+    }
+    return desc.OutputWindow == main;
+}
+
+// checks are ordered cheapest first, since this runs on every present
 void try_create_overlay(IDXGISwapChain *swapchain) {
-    if (!swapchain || overlay::OVERLAY) {
+    if (!swapchain) {
+        return;
+    }
+
+    // overlay is disabled by user
+    if (!overlay::ENABLED) {
+        return;
+    }
+
+    // overlay is already enabled and attached
+    if (overlay::OVERLAY) {
+        return;
+    }
+
+    // ignore sub windows
+    if (!is_main_game_swapchain(swapchain)) {
         return;
     }
 
     DXGI_SWAP_CHAIN_DESC desc {};
     if (FAILED(swapchain->GetDesc(&desc)) || !desc.OutputWindow) {
-        return;
-    }
-
-    // only attach to the main game window; ignore sub-screens / IME helpers.
-    HWND main = d3d11_hooks::main_hwnd();
-    if (main && desc.OutputWindow != main) {
         return;
     }
 
@@ -146,29 +194,42 @@ void try_create_overlay(IDXGISwapChain *swapchain) {
     device->Release();
 }
 
-void pump_overlay(IDXGISwapChain *swapchain) {
-    if (!overlay::OVERLAY || !overlay::OVERLAY->uses_swapchain(swapchain)) {
+// screenshots have to keep working with the overlay disabled, so they are not gated on it
+void pump_frame(IDXGISwapChain *swapchain) {
+    const bool has_overlay =
+        overlay::OVERLAY && overlay::OVERLAY->uses_swapchain(swapchain);
+    if (!has_overlay && !is_main_game_swapchain(swapchain)) {
         return;
     }
 
     graphics_poll_screenshot_hotkey();
 
-    // size imgui to the backbuffer (not window client). dxgi may upscale
-    // a small backbuffer into a larger client rect; without this override
-    // imgui would draw past the RTV and the mouse mapping would be off.
-    DXGI_SWAP_CHAIN_DESC desc {};
-    if (SUCCEEDED(swapchain->GetDesc(&desc))) {
-        ImGui_ImplSpice_SetDisplaySizeOverride(
-            (float) desc.BufferDesc.Width,
-            (float) desc.BufferDesc.Height);
+    // before the overlay render so the screenshot excludes it
+    if (!GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
+        d3d11_hooks::try_screenshot(swapchain);
     }
 
-    overlay::OVERLAY->update();
-    overlay::OVERLAY->new_frame();
-    overlay::OVERLAY->render();
+    if (has_overlay) {
 
-    // after overlay render so toasts/menus end up in the saved image.
-    d3d11_hooks::try_screenshot(swapchain);
+        // size imgui to the backbuffer (not window client). dxgi may upscale
+        // a small backbuffer into a larger client rect; without this override
+        // imgui would draw past the RTV and the mouse mapping would be off.
+        DXGI_SWAP_CHAIN_DESC desc {};
+        if (SUCCEEDED(swapchain->GetDesc(&desc))) {
+            ImGui_ImplSpice_SetDisplaySizeOverride(
+                (float) desc.BufferDesc.Width,
+                (float) desc.BufferDesc.Height);
+        }
+
+        overlay::OVERLAY->update();
+        overlay::OVERLAY->new_frame();
+        overlay::OVERLAY->render();
+    }
+
+    // after the overlay render so the screenshot includes toasts / menus
+    if (GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {
+        d3d11_hooks::try_screenshot(swapchain);
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -177,8 +238,11 @@ void pump_overlay(IDXGISwapChain *swapchain) {
 HRESULT STDMETHODCALLTYPE Present_hook(
         IDXGISwapChain *swapchain, UINT SyncInterval, UINT Flags)
 {
-    try_create_overlay(swapchain);
-    pump_overlay(swapchain);
+    // a test present doesn't display anything; don't pick a window or take a screenshot off it
+    if (!(Flags & DXGI_PRESENT_TEST)) {
+        try_create_overlay(swapchain);
+        pump_frame(swapchain);
+    }
     return Present_orig(swapchain, SyncInterval, Flags);
 }
 
@@ -186,8 +250,10 @@ HRESULT STDMETHODCALLTYPE Present1_hook(
         IDXGISwapChain1 *swapchain, UINT SyncInterval, UINT Flags,
         const DXGI_PRESENT_PARAMETERS *pParams)
 {
-    try_create_overlay(swapchain);
-    pump_overlay(swapchain);
+    if (!(Flags & DXGI_PRESENT_TEST)) {
+        try_create_overlay(swapchain);
+        pump_frame(swapchain);
+    }
     return Present1_orig(swapchain, SyncInterval, Flags, pParams);
 }
 
