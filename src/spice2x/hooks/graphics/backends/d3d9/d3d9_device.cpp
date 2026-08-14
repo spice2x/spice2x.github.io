@@ -645,8 +645,6 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         overlay::OVERLAY->reset_invalidate();
     }
 
-    release_gfdm_cached_swap_chains();
-
     HRESULT res = pReal->Reset(pPresentationParameters);
 
     // recreate overlay
