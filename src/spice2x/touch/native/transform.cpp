@@ -38,10 +38,9 @@ namespace nativetouch::transform {
             window == TDJ_SUBSCREEN_WINDOW;
     }
 
-    // the GITADORA arena SMALL window is a real touch panel; it only exists in the
-    // window modes that do not draw the subscreen in the overlay
-    static bool has_gfdm_dedicated_subscreen() {
-        return GFDM_SUBSCREEN_WINDOW != nullptr;
+    // mouse-as-touch only applies while the cursor is over the target window
+    static bool is_cursor_over_window(HWND window, POINT position) {
+        return screen_to_game_client(window, &position);
     }
 
     // convert game touch coordinates to Windows desktop coordinates
@@ -72,10 +71,10 @@ namespace nativetouch::transform {
         return ClientToScreen(window, position) != FALSE;
     }
 
-    static bool has_active_overlay_transform() {
+    static bool overlay_owns_touch_input() {
         // the arena SMALL window is the touch surface whenever it exists, so the
         // subscreen overlay must not claim touch input in those window modes
-        if (has_gfdm_dedicated_subscreen()) {
+        if (graphics_gitadora_has_dedicated_subscreen()) {
             return false;
         }
 
@@ -144,7 +143,7 @@ namespace nativetouch::transform {
 
         // check if subscreen overlay is active and can transform the touch point;
         // if not, the touch point is valid as-is
-        if (!has_active_overlay_transform()) {
+        if (!overlay_owns_touch_input()) {
             return true;
         }
 
@@ -161,19 +160,14 @@ namespace nativetouch::transform {
 
         // exception: sdvx windowed subscreen does not use the subscreen overlay transform
         if (GRAPHICS_WINDOWED && window == SDVX_SUBSCREEN_WINDOW) {
-            POINT client_position = *position;
-            return screen_to_game_client(window, &client_position);
+            return is_cursor_over_window(window, *position);
         }
 
         // exception: the arena SMALL window is the touch panel, so accept the mouse there
         // (and only there) with the coordinates a real contact on it would produce
-        if (has_gfdm_dedicated_subscreen()) {
-            if (window != GFDM_SUBSCREEN_WINDOW) {
-                return false;
-            }
-
-            POINT client_position = *position;
-            return screen_to_game_client(window, &client_position);
+        if (graphics_gitadora_has_dedicated_subscreen()) {
+            return window == GFDM_SUBSCREEN_WINDOW &&
+                is_cursor_over_window(window, *position);
         }
 
         // if this game has a subscreen overlay that can transform touch input
@@ -191,7 +185,7 @@ namespace nativetouch::transform {
     // route hardware screen coordinates through dedicated or overlay mapping and report the result
     Result hardware_to_game(POINT *position) {
         const auto dedicated_subscreen = is_tdj_dedicated_subscreen(TDJ_SUBSCREEN_WINDOW);
-        const auto active_overlay = has_active_overlay_transform();
+        const auto active_overlay = overlay_owns_touch_input();
 
         // special case for SDVX landscape mode
         if (!dedicated_subscreen && !active_overlay &&

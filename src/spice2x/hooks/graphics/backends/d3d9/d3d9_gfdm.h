@@ -4,10 +4,12 @@
 
 #include <d3d9.h>
 
+#include "games/gitadora/gitadora.h"
+
 inline constexpr UINT GFDM_SIDE_WIDTH = 1080;
 inline constexpr UINT GFDM_SIDE_HEIGHT = 1920;
-inline constexpr UINT GFDM_SMALL_WIDTH = 800;
-inline constexpr UINT GFDM_SMALL_HEIGHT = 1280;
+inline constexpr UINT GFDM_SMALL_WIDTH = games::gitadora::ARENA_SUBSCREEN_WIDTH;
+inline constexpr UINT GFDM_SMALL_HEIGHT = games::gitadora::ARENA_SUBSCREEN_HEIGHT;
 inline constexpr UINT GFDM_LOGICAL_HEAD_COUNT = 4;
 inline constexpr UINT GFDM_NATIVE_SMALL_SWAPCHAIN = 1;
 

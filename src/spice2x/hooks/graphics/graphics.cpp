@@ -33,6 +33,7 @@
 #include "util/utils.h"
 #include "misc/wintouchemu.h"
 #include "touch/native/inject.h"
+#include "touch/native/nativetouchhook.h"
 #include "util/time.h"
 #include "rawinput/rawinput.h"
 
@@ -216,6 +217,18 @@ static void gitadora_remember_window(HWND hWnd, const std::string &window_name) 
     } else if (window_name == "SMALL") {
         GFDM_SUBSCREEN_WINDOW = hWnd;
     }
+
+    // touch belongs to the SMALL panel when it exists, otherwise to the main window
+    // that draws the subscreen overlay
+    const bool hosts_touch = window_name == "SMALL" ||
+        (window_name == "GITADORA" && !graphics_gitadora_has_dedicated_subscreen());
+    if (nativetouch::is_hooked() && hWnd != nullptr && hosts_touch) {
+        nativetouch::inject::set_preferred_injection_window(hWnd);
+    }
+}
+
+bool graphics_gitadora_has_dedicated_subscreen() {
+    return GFDM_SUBSCREEN_WINDOW != nullptr;
 }
 
 bool graphics_gitadora_prepare_two_head_device_window(
@@ -733,8 +746,8 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         }
 
         // the dedicated SMALL window is the touch panel; mouse and API touch target it
-        if (games::gitadora::NATIVE_TOUCH) {
-            nativetouch::inject::register_and_attach_window(GFDM_SUBSCREEN_WINDOW);
+        if (nativetouch::is_hooked() && result != nullptr) {
+            nativetouch::inject::register_and_attach_window(result);
         }
     }
     if (is_gfdm_window && GRAPHICS_WINDOWED && !GRAPHICS_PREVENT_SECONDARY_WINDOWS) {
