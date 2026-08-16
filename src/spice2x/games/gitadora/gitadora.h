@@ -23,6 +23,11 @@ namespace games::gitadora {
     extern bool ARENA_TWO_HEAD_EXCLUSIVE;
     extern std::optional<std::string> ASIO_DRIVER;
     extern bool ALLOW_REALTEK_AUDIO;
+    extern bool NATIVE_TOUCH;
+
+    // arena SMALL subscreen (touch panel) resolution
+    static constexpr int ARENA_SUBSCREEN_WIDTH = 800;
+    static constexpr int ARENA_SUBSCREEN_HEIGHT = 1280;
 
     class GitaDoraGame : public games::Game {
     public:

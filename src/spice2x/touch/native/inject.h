@@ -7,6 +7,7 @@ struct tagTOUCHINPUT;
 namespace nativetouch::inject {
     void attach_window(HWND window);
     void register_and_attach_window(HWND window);
+    void set_preferred_injection_window(HWND window);
     bool hook_available(HMODULE module);
     bool hook(HMODULE module);
     bool inject_synthetic_touch(POINT position, bool down);

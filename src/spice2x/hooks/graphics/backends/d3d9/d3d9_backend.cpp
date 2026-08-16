@@ -1520,6 +1520,10 @@ void graphics_d3d9_on_present(
         graphics_d3d9_process_screenshot(device, wrapped_device);
     }
 
+    // API capture always includes the overlay; it must run before the subscreen present
+    // below, which leaves the arena SMALL back buffer black
+    graphics_d3d9_process_capture(device, wrapped_device);
+
     // for IIDX TDJ / SDVX UFC, handle subscreen
     const bool is_vm = games::sdvx::is_valkyrie_model();
     const bool is_tdj = avs::game::is_model("LDJ") && games::iidx::TDJ_MODE;
@@ -1533,9 +1537,6 @@ void graphics_d3d9_on_present(
     if (is_mfc) {
         wintouchemu::update();
     }
-
-    // API capture always includes the overlay
-    graphics_d3d9_process_capture(device, wrapped_device);
 }
 
 void update_backbuffer_dimensions(D3DPRESENT_PARAMETERS *params) {

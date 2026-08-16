@@ -123,6 +123,30 @@ namespace nativetouch::inject {
     // asks the touch window thread to send an UPDATE when the game loop runs elsewhere
     static UINT contact_refresh_message;
 
+    // the window that shows the touch surface; contacts can be registered from any thread,
+    // so this is published by the graphics window hooks rather than derived from the globals
+    static std::atomic<HWND> preferred_injection_window { nullptr };
+
+    void set_preferred_injection_window(HWND window) {
+        preferred_injection_window.store(window, std::memory_order_release);
+    }
+
+    // a game that publishes its touch surface needs injection only on that window
+    static bool is_published_touch_window(HWND window) {
+        const auto preferred = preferred_injection_window.load(std::memory_order_acquire);
+        return preferred == nullptr || window == preferred;
+    }
+
+    // games can register several windows for touch; keep synthetic contacts on the one
+    // that actually shows the touch surface
+    static bool is_preferred_injection_window(HWND window) {
+        if (GRAPHICS_IIDX_WSUB) {
+            return window == TDJ_SUBSCREEN_WINDOW;
+        }
+
+        return is_published_touch_window(window);
+    }
+
     // submit one synthetic contact frame to Windows touch injection
     static bool inject_touch_frame(
             POINT position, POINTER_FLAGS pointer_flags, bool retry_if_not_ready = false) {
@@ -325,11 +349,22 @@ namespace nativetouch::inject {
             if (contact_state.input_window == window) {
                 release_active_contact();
             }
+
             HWND expected_window = window;
             injection_window.compare_exchange_strong(
                 expected_window, nullptr, std::memory_order_acq_rel);
+
+            HWND expected_preferred_window = window;
+            preferred_injection_window.compare_exchange_strong(
+                expected_preferred_window, nullptr, std::memory_order_acq_rel);
+
+            if (GRAPHICS_IIDX_WSUB) {
+                HWND expected_delivery_window = window;
+                touch_delivery_window.compare_exchange_strong(
+                    expected_delivery_window, nullptr, std::memory_order_acq_rel);
+            }
+
             contact_refresh_pending.store(false, std::memory_order_release);
-            touch_delivery_window.store(nullptr, std::memory_order_release);
             RemoveWindowSubclass(window, touch_window_subclass_proc, subclass_id);
         }
 
@@ -370,7 +405,7 @@ namespace nativetouch::inject {
         }
 
         // publish the UI-thread target for synthetic touch requests
-        if (!GRAPHICS_IIDX_WSUB || window == TDJ_SUBSCREEN_WINDOW) {
+        if (is_preferred_injection_window(window)) {
             injection_window.store(window, std::memory_order_release);
         }
         log_misc(
@@ -403,7 +438,7 @@ namespace nativetouch::inject {
         // call original
         const auto result = RegisterTouchWindow_orig(window, flags);
 
-        if (result) {
+        if (result && is_published_touch_window(window)) {
             // attach but don't register for touch messages
             // (we're already in the middle of RegisterTouchWindow as a result
             // of the game calling it)
