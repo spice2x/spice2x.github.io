@@ -107,7 +107,8 @@ namespace nativetouch::transform {
         return true;
     }
 
-    // the digitizer is mapped to the zero-based primary display
+    // the digitizer is mapped to the zero-based primary display, so the contact is already
+    // in the effective landscape resolution the rotation is based on
     static bool transform_sdvx_landscape_touch_position(POINT *position) {
         const auto landscape_width = static_cast<LONG>(GRAPHICS_FS_CUSTOM_RESOLUTION.has_value() ?
             GRAPHICS_FS_CUSTOM_RESOLUTION.value().first : GRAPHICS_FS_ORIGINAL_HEIGHT);

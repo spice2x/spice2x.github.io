@@ -738,8 +738,7 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     // SDVX registers touch on both windows, so name the one synthetic touches must land on
     // instead of letting window creation order decide: the sub screen window when windowed,
     // the main window in fullscreen since the game reads it in primary-display coordinates
-    if (is_sdvx &&
-        nativetouch::is_hooked() &&
+    if (nativetouch::is_hooked() &&
         result != nullptr &&
         (GRAPHICS_WINDOWED ? is_sdvx_sub_window : is_sdvx_main_window)) {
         log_misc(
