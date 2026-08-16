@@ -25,6 +25,15 @@ namespace overlay::windows {
     const ImVec4 YELLOW(1.f, 1.f, 0.f, 1.f);
     const ImVec4 WHITE(1.f, 1.f, 1.f, 1.f);
 
+    // a subscreen is an already-composited backbuffer, so its alpha bits are not
+    // meaningful for display. Use AddImage's diffuse alpha (opaque by default)
+    // instead of the texture alpha while preserving ImGui's normal blend state.
+    static void ignore_texture_alpha(const ImDrawList *, const ImDrawCmd *command) {
+        auto device = static_cast<IDirect3DDevice9 *>(command->UserCallbackData);
+        device->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+        device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
+    }
+
     GenericSubScreen::GenericSubScreen(SpiceOverlay *overlay) : Window(overlay), device(overlay->get_device()) {
         this->remove_window_padding = true;
         // ImGuiWindowFlags_NoBackground is needed as the background is drawn on top of the subscreen image
@@ -239,10 +248,13 @@ namespace overlay::windows {
         auto draw_list = this->draws_window
             ? ImGui::GetWindowDrawList()
             : ImGui::GetBackgroundDrawList();
+        draw_list->AddCallback(ignore_texture_alpha, this->device);
         draw_list->AddImage(
             reinterpret_cast<ImTextureID>(this->texture),
             overlay_content_top_left,
             bottom_right);
+        // following ImGui draws should resume normal texture-alpha modulation
+        draw_list->AddCallback(ImGui::GetPlatformIO().DrawCallback_ResetRenderState);
 
         if (this->draws_window) {
             // draw an invisible button so that it swallows mouse input
