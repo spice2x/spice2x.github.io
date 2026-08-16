@@ -12,6 +12,7 @@
 #include "touch/touch.h"
 #include "touch/native/inject.h"
 #include "touch/native/nativetouchhook.h"
+#include "touch/native/transform.h"
 #include "util/utils.h"
 #include "games/gitadora/gitadora.h"
 #include "games/iidx/iidx.h"
@@ -41,6 +42,35 @@ namespace api::modules {
         return nativetouch::inject::inject_synthetic_touch(position, true);
     }
 
+    // map API coordinates onto the touch space SDVX reads, which depends on how it is displayed
+    static void sdvx_touch_errata(
+            int &x, int &y, bool use_native, int canvas_w, int canvas_h) {
+
+        // windowed coordinates already match the sub screen window they land on
+        if (GRAPHICS_WINDOWED) {
+            return;
+        }
+
+        // landscape mode: native injection hands the game these coordinates
+        // unchanged, so apply the rotation the touchscreen gets, while wintouchemu instead
+        // rotates them later through the subscreen overlay
+        if (GRAPHICS_FS_ORIENTATION_SWAP) {
+            if (use_native) {
+                POINT position { x, y };
+                if (nativetouch::transform::sdvx_landscape_rotate(&position, canvas_w, canvas_h)) {
+                    x = position.x;
+                    y = position.y;
+                }
+            }
+            return;
+        }
+
+        // rotate into the portrait touch space
+        const int x_raw = x;
+        x = canvas_w - y;
+        y = x_raw;
+    }
+
     Touch::Touch() : Module("touch") {
         is_sdvx = avs::game::is_model("KFC");
 
@@ -56,8 +86,8 @@ namespace api::modules {
         native_canvas_w = 0;
         native_canvas_h = 0;
         if (is_sdvx) {
-            // windowed and landscape API coordinates already match the primary screen orientation;
-            // fullscreen portrait coordinates are rotated by apply_touch_errata
+            // windowed API coordinates land on the sub screen window as-is; fullscreen
+            // coordinates are rotated into the game's touch space by apply_touch_errata
             const bool landscape_coordinates =
                 GRAPHICS_WINDOWED || GRAPHICS_FS_ORIENTATION_SWAP;
             native_canvas_w = landscape_coordinates ? 1920 : 1080;
@@ -217,19 +247,14 @@ namespace api::modules {
     }
 
     void Touch::apply_touch_errata(int &x, int &y) {
-        int x_raw = x;
-        int y_raw = y;
-
         if (is_tdj_fhd) {
             // deal with TDJ FHD resolution mismatch (upgrade 720p to 1080p)
             // we don't know what screen is being shown on the companion and the API doesn't specify
             // the target of the touch events so just assume it's the sub screen
-            x = x_raw * 1920 / 1280;
-            y = y_raw * 1080 / 720;
-        } else if (is_sdvx && !GRAPHICS_WINDOWED && !GRAPHICS_FS_ORIENTATION_SWAP) {
-            // rotate API coordinates into SDVX's portrait touch space
-            x = 1080 - y_raw;
-            y = x_raw;
+            x = x * 1920 / 1280;
+            y = y * 1080 / 720;
+        } else if (is_sdvx) {
+            sdvx_touch_errata(x, y, use_native, native_canvas_w, native_canvas_h);
         }
     }
 }

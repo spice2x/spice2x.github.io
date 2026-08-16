@@ -94,23 +94,27 @@ namespace nativetouch::transform {
         return overlay::OVERLAY->transform_touch_point(&position->x, &position->y);
     }
 
-    // the digitizer is mapped to the zero-based primary display, while SDVX
-    // still expects portrait coordinates when its image is rendered in landscape:
+    // SDVX still expects portrait coordinates when its image is rendered in landscape:
     // (x, y) -> (width * (1 - y / height), height * x / width).
+    bool sdvx_landscape_rotate(POINT *position, LONG width, LONG height) {
+        if (width <= 0 || height <= 0) {
+            return false;
+        }
+
+        const auto input_x = position->x;
+        position->x = width - MulDiv(position->y, width, height);
+        position->y = MulDiv(input_x, height, width);
+        return true;
+    }
+
+    // the digitizer is mapped to the zero-based primary display
     static bool transform_sdvx_landscape_touch_position(POINT *position) {
         const auto landscape_width = static_cast<LONG>(GRAPHICS_FS_CUSTOM_RESOLUTION.has_value() ?
             GRAPHICS_FS_CUSTOM_RESOLUTION.value().first : GRAPHICS_FS_ORIGINAL_HEIGHT);
         const auto landscape_height = static_cast<LONG>(GRAPHICS_FS_CUSTOM_RESOLUTION.has_value() ?
             GRAPHICS_FS_CUSTOM_RESOLUTION.value().second : GRAPHICS_FS_ORIGINAL_WIDTH);
-        if (landscape_width <= 0 || landscape_height <= 0) {
-            return false;
-        }
 
-        const auto input_x = position->x;
-        position->x = landscape_width -
-            MulDiv(position->y, landscape_width, landscape_height);
-        position->y = MulDiv(input_x, landscape_height, landscape_width);
-        return true;
+        return sdvx_landscape_rotate(position, landscape_width, landscape_height);
     }
 
     // convert physical screen coordinates to game touch coordinates for a known target

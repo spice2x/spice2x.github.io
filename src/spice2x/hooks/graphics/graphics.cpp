@@ -629,8 +629,10 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         }
     }
 
+    const bool is_sdvx = avs::game::is_model("KFC");
     bool is_tdj_sub_window = avs::game::is_model("LDJ") && window_name.ends_with(" sub");
-    bool is_sdvx_sub_window = avs::game::is_model("KFC") && window_name.ends_with(" Sub Screen");
+    bool is_sdvx_sub_window = is_sdvx && window_name.ends_with(" Sub Screen");
+    bool is_sdvx_main_window = is_sdvx && window_name.ends_with(" Main Screen");
     bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with("Sub Screen");
     const std::string gfdm_window_name = games::gitadora::is_arena_model()
         ? gitadora_canonical_window_name(effective_window_name)
@@ -731,6 +733,21 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     if (is_sdvx_sub_window) {
         SDVX_SUBSCREEN_WINDOW = result;
         graphics_hook_subscreen_window(SDVX_SUBSCREEN_WINDOW);
+    }
+
+    // SDVX registers touch on both windows, so name the one synthetic touches must land on
+    // instead of letting window creation order decide: the sub screen window when windowed,
+    // the main window in fullscreen since the game reads it in primary-display coordinates
+    if (is_sdvx &&
+        nativetouch::is_hooked() &&
+        result != nullptr &&
+        (GRAPHICS_WINDOWED ? is_sdvx_sub_window : is_sdvx_main_window)) {
+        log_misc(
+            "graphics",
+            "SDVX touch surface is {}, {}",
+            fmt::ptr(result),
+            window_name);
+        nativetouch::inject::set_preferred_injection_window(result);
     }
 
     // only hook touch window if multiple windows are allowed
@@ -1118,6 +1135,15 @@ static BOOL WINAPI ShowWindow_hook(HWND hWnd, int nCmdShow) {
     if (games::iidx::TDJ_MODE &&
         GRAPHICS_PREVENT_SECONDARY_WINDOWS &&
         hWnd == TDJ_SUBSCREEN_WINDOW) {
+        log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
+        return true;
+    }
+
+    // fullscreen SDVX keeps two adapters so the subscreen overlay can draw, so the game still
+    // creates the sub window even when the user asked for it to be gone
+    if (avs::game::is_model("KFC") &&
+        GRAPHICS_PREVENT_SECONDARY_WINDOWS &&
+        hWnd == SDVX_SUBSCREEN_WINDOW) {
         log_info("graphics", "ShowWindow_hook - hiding sub window {}", fmt::ptr(hWnd));
         return true;
     }

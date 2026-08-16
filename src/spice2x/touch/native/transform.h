@@ -10,6 +10,7 @@ namespace nativetouch::transform {
     };
 
     bool is_tdj_dedicated_subscreen(HWND window);
+    bool sdvx_landscape_rotate(POINT *position, LONG width, LONG height);
     bool game_to_screen(HWND window, POINT *position);
     bool screen_to_game(HWND window, POINT *position);
     bool mouse_to_game(HWND window, POINT *position);
