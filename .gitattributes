@@ -40,3 +40,7 @@ Dockerfile   text eol=lf
 *.o          binary
 *.obj        binary
 *.pdb        binary
+
+# Vendored code is stored and checked out byte-for-byte as upstream ships it,
+# so re-importing a library never produces line-ending-only diffs.
+src/spice2x/external/** -text
