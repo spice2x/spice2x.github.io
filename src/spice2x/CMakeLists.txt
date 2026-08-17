@@ -536,6 +536,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/graphics/nvapi_hook.cpp
         hooks/graphics/nvenc_hook.cpp
         hooks/graphics/backends/d3d9/d3d9_backend.cpp
+        hooks/graphics/backends/d3d9/d3d9_readback.cpp
         hooks/graphics/backends/d3d9/d3d9_screenshot.cpp
         hooks/graphics/backends/d3d9/d3d9_device.cpp
         hooks/graphics/backends/d3d9/d3d9_gfdm.cpp

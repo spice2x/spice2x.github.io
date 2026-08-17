@@ -25,6 +25,7 @@
 #include "util/threadpool.h"
 
 #include "d3d9_device.h"
+#include "d3d9_readback.h"
 
 #ifdef __GNUC__
 typedef decltype(D3DXSaveSurfaceToFileA) *D3DXSaveSurfaceToFileA_t;
@@ -56,21 +57,9 @@ struct ImageRequest {
     int screen;
 };
 
-struct SurfaceReleaser {
-    void operator()(IDirect3DSurface9 *surface) const {
-        surface->Release();
-    }
-};
-
-using SurfacePtr = std::unique_ptr<IDirect3DSurface9, SurfaceReleaser>;
-
-struct BackbufferCopy {
-    int screen {};
-    D3DSURFACE_DESC desc {};
-    SurfacePtr surface;
-};
-
 } // namespace
+
+using d3d9_readback::BackbufferCopy;
 
 static void save_capture(
         int screen,
@@ -82,7 +71,7 @@ static void save_capture(
 
     // lock surface to be able to access the data
     D3DLOCKED_RECT finished_copy {};
-    hr = surface->LockRect(&finished_copy, nullptr, 0);
+    hr = surface->LockRect(&finished_copy, nullptr, D3DLOCK_READONLY);
     if (FAILED(hr)) {
         log_warning("graphics::d3d9", "failed to lock screenshot surface, hr={}", FMT_HRESULT(hr));
         graphics_capture_skip(screen);
@@ -249,62 +238,6 @@ static std::string screenshot_path_for_screen(const std::string &primary_path, i
             .string();
 }
 
-static std::optional<BackbufferCopy> acquire_backbuffer_copy(
-    IDirect3DDevice9 *device, IDirect3DSwapChain9 *swap_chain, int screen) {
-
-    IDirect3DSurface9 *buffer = nullptr;
-    HRESULT hr = swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
-    if (FAILED(hr) || buffer == nullptr) {
-        log_warning("graphics::d3d9",
-                "failed to get back buffer for screen {}, hr={}",
-                screen,
-                FMT_HRESULT(hr));
-        return std::nullopt;
-    }
-
-    D3DSURFACE_DESC desc {};
-    hr = buffer->GetDesc(&desc);
-    if (FAILED(hr)) {
-        log_warning("graphics::d3d9",
-                "failed to acquire back buffer descriptor, hr={}",
-                FMT_HRESULT(hr));
-        buffer->Release();
-        return std::nullopt;
-    }
-
-    // TODO: cache render targets
-    IDirect3DSurface9 *temp_surface = nullptr;
-    hr = device->CreateRenderTarget(
-            desc.Width, desc.Height, desc.Format, desc.MultiSampleType,
-            desc.MultiSampleQuality, TRUE, &temp_surface, nullptr);
-    if (FAILED(hr) || temp_surface == nullptr) {
-        log_warning("graphics::d3d9",
-                "failed to acquire temporary surface, hr={}",
-                FMT_HRESULT(hr));
-        buffer->Release();
-        return std::nullopt;
-    }
-
-    hr = device->StretchRect(buffer, nullptr, temp_surface, nullptr, D3DTEXF_NONE);
-    if (FAILED(hr)) {
-        log_warning("graphics::d3d9",
-                "failed to copy back buffer contents, hr={}",
-                FMT_HRESULT(hr));
-        temp_surface->Release();
-        buffer->Release();
-        return std::nullopt;
-    }
-
-    // release original back buffer reference
-    buffer->Release();
-
-    return BackbufferCopy {
-        .screen = screen,
-        .desc = desc,
-        .surface = SurfacePtr(temp_surface),
-    };
-}
-
 static void dispatch_surface_save(
         const ImageRequest &request,
         std::vector<BackbufferCopy> copies,
@@ -427,7 +360,8 @@ static void process_image_request(
                     screen,
                     FMT_HRESULT(hr));
         } else {
-            copy = acquire_backbuffer_copy(device, swap_chain, screen);
+            // only the API capture path runs often enough to benefit from pooling
+            copy = d3d9_readback::acquire_backbuffer_copy(device, swap_chain, screen, !screenshot);
             swap_chain->Release();
         }
 
