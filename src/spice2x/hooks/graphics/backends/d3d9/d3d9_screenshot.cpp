@@ -39,6 +39,16 @@ struct ImageRequest {
     int screen;
 };
 
+// a screen already read out of its surface, so nothing here touches D3D
+struct PendingWrite {
+    int screen {};
+    UINT width {};
+    UINT height {};
+    std::vector<uint8_t> pixels;
+    std::string path;
+    bool saved = false;
+};
+
 // normalize the supported D3D formats to packed 24bpp RGB
 void surface_to_rgb(
         D3DFORMAT format,
@@ -263,151 +273,9 @@ static std::string screenshot_path_for_screen(const std::string &primary_path, i
             .string();
 }
 
-static void dispatch_surface_save(
-        const ImageRequest &request,
-        std::vector<BackbufferCopy> copies,
-        size_t screen_count) {
-    auto surface_process = [request, screen_count, copies = std::move(copies)]() mutable {
-        switch (request.kind) {
-            case ImageRequestKind::Capture: {
-                const auto &copy = copies.front();
-                save_capture(
-                        request.screen,
-                        copy.desc.Format,
-                        copy.desc.Width,
-                        copy.desc.Height,
-                        copy.surface.get());
-                break;
-            }
-
-            case ImageRequestKind::Screenshot: {
-                std::lock_guard<std::mutex> lock(SCREENSHOT_SAVE_M);
-
-                std::vector<int> screens;
-                screens.reserve(copies.size());
-                for (const auto &copy : copies) {
-                    screens.push_back(copy.screen);
-                }
-
-                const auto base_path = graphics_screenshot_genpath(screens);
-                if (base_path.empty()) {
-                    break;
-                }
-
-                // screens missing from copies already failed to be acquired
-                size_t failed = screen_count - copies.size();
-
-                struct PendingWrite {
-                    std::string path;
-                    UINT width;
-                    UINT height;
-                    int screen;
-                    std::vector<uint8_t> pixels;
-                    bool saved = false;
-                };
-
-                std::vector<PendingWrite> writes;
-                writes.reserve(copies.size());
-                for (const auto &copy : copies) {
-                    PendingWrite write;
-                    write.path = screenshot_path_for_screen(base_path, copy.screen);
-                    write.width = copy.desc.Width;
-                    write.height = copy.desc.Height;
-                    write.screen = copy.screen;
-
-                    if (!read_surface_pixels(
-                            copy.desc.Format,
-                            copy.desc.Width,
-                            copy.desc.Height,
-                            copy.surface.get(),
-                            write.pixels)) {
-                        failed++;
-                        continue;
-                    }
-
-                    writes.push_back(std::move(write));
-                }
-
-                // the surfaces are several megabytes each and the pixels have been
-                // taken out of them, so drop them before the encode allocates more
-                copies.clear();
-
-                // encoding is pure CPU work on plain memory, so the screens fan out.
-                // a throw here would otherwise reach a thread boundary and terminate
-                auto encode_one = [](PendingWrite &write) {
-                    try {
-                        write.saved = write_screenshot_png(
-                                write.path, write.width, write.height, write.pixels);
-                    } catch (const std::exception &error) {
-                        log_warning("graphics::d3d9",
-                                "screenshot encode failed for {}: {}", write.path, error.what());
-                        write.saved = false;
-                    } catch (...) {
-                        log_warning("graphics::d3d9",
-                                "screenshot encode failed for {}", write.path);
-                        write.saved = false;
-                    }
-                };
-
-                {
-                    // jthread so a failure part way through the loop still joins
-                    // whatever was already started
-                    std::vector<std::jthread> workers;
-                    workers.reserve(writes.empty() ? 0 : writes.size() - 1);
-                    for (size_t i = 1; i < writes.size(); i++) {
-                        try {
-                            workers.emplace_back([&writes, &encode_one, i] {
-                                encode_one(writes[i]);
-                            });
-                        } catch (const std::exception &) {
-                            // no thread to be had; encoding it here still makes progress
-                            encode_one(writes[i]);
-                        }
-                    }
-
-                    if (!writes.empty()) {
-                        encode_one(writes.front());
-                    }
-                }
-
-                std::string primary_path;
-                std::string notify_path;
-                for (const auto &write : writes) {
-                    if (!write.saved) {
-                        failed++;
-                        continue;
-                    }
-                    if (notify_path.empty()) {
-                        notify_path = write.path;
-                    }
-                    if (write.screen == 0) {
-                        primary_path = write.path;
-                    }
-                }
-
-                // only the primary screen goes to the clipboard, but any saved file is a success
-                if (!primary_path.empty()) {
-                    clipboard::copy_image(primary_path);
-                }
-                if (!notify_path.empty()) {
-                    overlay::notifications::add(
-                        overlay::notifications::Severity::Success,
-                        fmt::format("Screenshot saved: {}", fileutils::basename(notify_path)));
-                } else {
-                    overlay::notifications::add(
-                        overlay::notifications::Severity::Error,
-                        "Screenshot failed to save");
-                }
-
-                if (failed > 0) {
-                    log_warning("graphics::d3d9", "{} screenshot screen(s) missing", failed);
-                }
-                break;
-            }
-        }
-    };
-
-    // list of games that crash when running the screenshot processor on another thread
+// games that crash or hang when the screenshot processor runs on another thread.
+// D3DCREATE_MULTITHREADED is not a predictor of this; MDX omits it and threads fine
+static bool image_processing_must_be_inline() {
     static const robin_hood::unordered_set<std::string> THREAD_BAN {
             "JMA",
 #ifndef SPICE64
@@ -419,12 +287,126 @@ static void dispatch_surface_save(
             "LMA",
     };
 
-    // run the save operation on another thread for supported games
-    if (THREAD_BAN.contains(avs::game::MODEL)) {
-        surface_process();
+    return THREAD_BAN.contains(avs::game::MODEL);
+}
+
+static void dispatch_capture_save(int screen, BackbufferCopy copy) {
+    auto capture_process = [screen, copy = std::move(copy)]() mutable {
+        save_capture(
+                screen,
+                copy.desc.Format,
+                copy.desc.Width,
+                copy.desc.Height,
+                copy.surface.get());
+    };
+
+    if (image_processing_must_be_inline()) {
+        capture_process();
     } else {
         static auto pool = ThreadPool(2);
-        pool.add(std::move(surface_process));
+        pool.add(std::move(capture_process));
+    }
+}
+
+// by this point the pixels are plain memory, so none of this needs the device
+static void dispatch_screenshot_save(std::vector<PendingWrite> writes, size_t screen_count) {
+    auto screenshot_process = [writes = std::move(writes), screen_count]() mutable {
+        std::lock_guard<std::mutex> lock(SCREENSHOT_SAVE_M);
+
+        std::vector<int> screens;
+        screens.reserve(writes.size());
+        for (const auto &write : writes) {
+            screens.push_back(write.screen);
+        }
+
+        const auto base_path = graphics_screenshot_genpath(screens);
+        if (base_path.empty()) {
+            return;
+        }
+
+        for (auto &write : writes) {
+            write.path = screenshot_path_for_screen(base_path, write.screen);
+        }
+
+        // screens missing from writes either failed to be acquired or failed to read
+        size_t failed = screen_count - writes.size();
+
+        // a throw here would otherwise reach a thread boundary and terminate
+        auto encode_one = [](PendingWrite &write) {
+            try {
+                write.saved = write_screenshot_png(
+                        write.path, write.width, write.height, write.pixels);
+            } catch (const std::exception &error) {
+                log_warning("graphics::d3d9",
+                        "screenshot encode failed for {}: {}", write.path, error.what());
+                write.saved = false;
+            } catch (...) {
+                log_warning("graphics::d3d9",
+                        "screenshot encode failed for {}", write.path);
+                write.saved = false;
+            }
+        };
+
+        {
+            // jthread so a failure part way through the loop still joins
+            // whatever was already started
+            std::vector<std::jthread> workers;
+            workers.reserve(writes.empty() ? 0 : writes.size() - 1);
+            for (size_t i = 1; i < writes.size(); i++) {
+                try {
+                    workers.emplace_back([&writes, &encode_one, i] {
+                        encode_one(writes[i]);
+                    });
+                } catch (const std::exception &) {
+                    // no thread to be had; encoding it here still makes progress
+                    encode_one(writes[i]);
+                }
+            }
+
+            if (!writes.empty()) {
+                encode_one(writes.front());
+            }
+        }
+
+        std::string primary_path;
+        std::string notify_path;
+        for (const auto &write : writes) {
+            if (!write.saved) {
+                failed++;
+                continue;
+            }
+            if (notify_path.empty()) {
+                notify_path = write.path;
+            }
+            if (write.screen == 0) {
+                primary_path = write.path;
+            }
+        }
+
+        // only the primary screen goes to the clipboard, but any saved file is a success
+        if (!primary_path.empty()) {
+            clipboard::copy_image(primary_path);
+        }
+        if (!notify_path.empty()) {
+            overlay::notifications::add(
+                overlay::notifications::Severity::Success,
+                fmt::format("Screenshot saved: {}", fileutils::basename(notify_path)));
+        } else {
+            overlay::notifications::add(
+                overlay::notifications::Severity::Error,
+                "Screenshot failed to save");
+        }
+
+        if (failed > 0) {
+            log_warning("graphics::d3d9", "{} screenshot screen(s) missing", failed);
+        }
+    };
+
+    if (image_processing_must_be_inline()) {
+        screenshot_process();
+    } else {
+        static auto pool = ThreadPool(2);
+        pool.add(std::move(screenshot_process));
     }
 }
 
@@ -470,7 +452,36 @@ static void process_image_request(
         return;
     }
 
-    dispatch_surface_save(request, std::move(copies), screens.size());
+    if (!screenshot) {
+        dispatch_capture_save(request.screen, std::move(copies.front()));
+        return;
+    }
+
+    // reading a surface touches the device, and doing that off the present thread
+    // has been seen to deadlock games whose device has no internal locking
+    std::vector<PendingWrite> writes;
+    writes.reserve(copies.size());
+    for (const auto &copy : copies) {
+        PendingWrite write;
+        write.screen = copy.screen;
+        write.width = copy.desc.Width;
+        write.height = copy.desc.Height;
+
+        if (!read_surface_pixels(
+                copy.desc.Format,
+                copy.desc.Width,
+                copy.desc.Height,
+                copy.surface.get(),
+                write.pixels)) {
+            continue;
+        }
+
+        writes.push_back(std::move(write));
+    }
+
+    copies.clear();
+
+    dispatch_screenshot_save(std::move(writes), screens.size());
 }
 
 void graphics_d3d9_process_screenshot(

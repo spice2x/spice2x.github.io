@@ -58,17 +58,18 @@ namespace clipboard {
             return;
         }
 
-        // If the screenshot button is print screen, the OpenClipboard call seems to fail often if we only
-        // call it once, probably due to a race condition. So, we can try calling a lot until we can open it.
+        // print screen key leaves the OS briefly holding the clipboard, so retry
+        // spinning without yielding starves the thread we are waiting on and looks like a hang
         bool clipboard_open = false;
-        for (int i = 0; i < 1000000; i++) {
+        for (int i = 0; i < 100; i++) {
             if (OpenClipboard(nullptr)) {
                 clipboard_open = true;
                 break;
             }
+            Sleep(5);
         }
         if (!clipboard_open) {
-            log_warning("clipboard", "Failed to open clipboard");
+            log_warning("clipboard", "failed to open clipboard");
             return;
         }
 
