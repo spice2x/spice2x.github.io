@@ -1,7 +1,9 @@
 #include "d3d9_screenshot.h"
 
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -48,6 +50,65 @@ struct PendingWrite {
     std::string path;
     bool saved = false;
 };
+
+struct PendingCapture {
+    int screen {};
+    D3DFORMAT format {};
+    UINT width {};
+    UINT height {};
+    size_t pitch {};
+    std::vector<uint8_t> data;
+};
+
+static std::optional<size_t> surface_pixel_size(D3DFORMAT format) {
+    switch (format) {
+        case D3DFMT_R8G8B8:
+            return 3;
+        case D3DFMT_X8R8G8B8:
+        case D3DFMT_A8R8G8B8:
+        case D3DFMT_X8B8G8R8:
+        case D3DFMT_A8B8G8R8:
+        case D3DFMT_A2R10G10B10:
+            return 4;
+        case D3DFMT_R5G6B5:
+        case D3DFMT_X1R5G5B5:
+        case D3DFMT_A1R5G5B5:
+            return 2;
+        default:
+            return std::nullopt;
+    }
+}
+
+static bool compute_image_size(
+        UINT width,
+        UINT height,
+        size_t bytes_per_pixel,
+        size_t *row_size,
+        size_t *total_size) {
+
+    if (width == 0 || height == 0
+            || width > std::numeric_limits<size_t>::max() / bytes_per_pixel) {
+        return false;
+    }
+
+    *row_size = static_cast<size_t>(width) * bytes_per_pixel;
+    if (height > std::numeric_limits<size_t>::max() / *row_size) {
+        return false;
+    }
+
+    *total_size = static_cast<size_t>(height) * *row_size;
+    return true;
+}
+
+static bool resize_pixels(std::vector<uint8_t> &pixels, size_t size) {
+    try {
+        pixels.resize(size);
+        return true;
+    } catch (const std::exception &error) {
+        log_warning("graphics::d3d9", "failed to allocate image buffer: {}", error.what());
+        return false;
+    }
+}
 
 // normalize the supported D3D formats to packed 24bpp RGB
 void surface_to_rgb(
@@ -175,37 +236,28 @@ void surface_to_rgb(
 
 using d3d9_readback::BackbufferCopy;
 
-static void save_capture(
-        int screen,
-        D3DFORMAT format,
-        UINT width,
-        UINT height,
-        IDirect3DSurface9 *surface) {
-    HRESULT hr;
-
-    // lock surface to be able to access the data
-    D3DLOCKED_RECT finished_copy {};
-    hr = surface->LockRect(&finished_copy, nullptr, D3DLOCK_READONLY);
-    if (FAILED(hr)) {
-        log_warning("graphics::d3d9", "failed to lock screenshot surface, hr={}", FMT_HRESULT(hr));
-        graphics_capture_skip(screen);
+static void save_capture(PendingCapture capture) {
+    size_t row_size = 0;
+    size_t total_size = 0;
+    if (!compute_image_size(capture.width, capture.height, 3, &row_size, &total_size)) {
+        graphics_capture_skip(capture.screen);
         return;
     }
 
-    // normalize supported D3D formats to packed RGB for API capture
-    auto pixels = std::unique_ptr<uint8_t[]>(new uint8_t[width * height * 3]);
-    surface_to_rgb(format, width, height, finished_copy, pixels.get());
-
-    // unlock surface
-    hr = surface->UnlockRect();
-    if (FAILED(hr)) {
-        log_warning("graphics::d3d9", "failed to unlock screenshot surface, hr={}", FMT_HRESULT(hr));
-        graphics_capture_skip(screen);
+    auto pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[total_size]);
+    if (!pixels) {
+        log_warning("graphics::d3d9", "failed to allocate capture image buffer");
+        graphics_capture_skip(capture.screen);
         return;
     }
 
-    // enqueue
-    graphics_capture_enqueue(screen, pixels.release(), width, height);
+    D3DLOCKED_RECT locked {
+        .Pitch = static_cast<INT>(capture.pitch),
+        .pBits = capture.data.data(),
+    };
+    surface_to_rgb(capture.format, capture.width, capture.height, locked, pixels.get());
+
+    graphics_capture_enqueue(capture.screen, pixels.release(), capture.width, capture.height);
 }
 
 // reading the surface touches D3D, so it stays on the caller's thread; the
@@ -217,6 +269,13 @@ static bool read_surface_pixels(
         IDirect3DSurface9 *surface,
         std::vector<uint8_t> &pixels) {
 
+    size_t row_size = 0;
+    size_t total_size = 0;
+    if (!compute_image_size(width, height, 3, &row_size, &total_size)
+            || !resize_pixels(pixels, total_size)) {
+        return false;
+    }
+
     D3DLOCKED_RECT locked {};
     HRESULT hr = surface->LockRect(&locked, nullptr, D3DLOCK_READONLY);
     if (FAILED(hr)) {
@@ -224,7 +283,6 @@ static bool read_surface_pixels(
         return false;
     }
 
-    pixels.resize(static_cast<size_t>(width) * height * 3);
     surface_to_rgb(format, width, height, locked, pixels.data());
 
     hr = surface->UnlockRect();
@@ -233,6 +291,60 @@ static bool read_surface_pixels(
         return false;
     }
 
+    return true;
+}
+
+static bool read_capture_surface(
+        const BackbufferCopy &copy,
+        PendingCapture &capture) {
+
+    const auto bytes_per_pixel = surface_pixel_size(copy.desc.Format);
+    size_t row_size = 0;
+    size_t total_size = 0;
+    if (!bytes_per_pixel.has_value()
+            || !compute_image_size(
+                    copy.desc.Width,
+                    copy.desc.Height,
+                    *bytes_per_pixel,
+                    &row_size,
+                    &total_size)
+            || row_size > static_cast<size_t>(std::numeric_limits<INT>::max())
+            || !resize_pixels(capture.data, total_size)) {
+        return false;
+    }
+
+    D3DLOCKED_RECT locked {};
+    HRESULT hr = copy.surface->LockRect(&locked, nullptr, D3DLOCK_READONLY);
+    if (FAILED(hr)) {
+        log_warning("graphics::d3d9", "failed to lock capture surface, hr={}", FMT_HRESULT(hr));
+        return false;
+    }
+
+    if (locked.Pitch < 0 || static_cast<size_t>(locked.Pitch) < row_size) {
+        log_warning("graphics::d3d9", "capture surface has invalid pitch {}", locked.Pitch);
+        copy.surface->UnlockRect();
+        return false;
+    }
+
+    auto data = reinterpret_cast<const uint8_t *>(locked.pBits);
+    for (size_t row = 0; row < copy.desc.Height; row++) {
+        std::memcpy(
+                capture.data.data() + row * row_size,
+                data + row * locked.Pitch,
+                row_size);
+    }
+
+    hr = copy.surface->UnlockRect();
+    if (FAILED(hr)) {
+        log_warning("graphics::d3d9", "failed to unlock capture surface, hr={}", FMT_HRESULT(hr));
+        return false;
+    }
+
+    capture.screen = copy.screen;
+    capture.format = copy.desc.Format;
+    capture.width = copy.desc.Width;
+    capture.height = copy.desc.Height;
+    capture.pitch = row_size;
     return true;
 }
 
@@ -290,14 +402,9 @@ static bool image_processing_must_be_inline() {
     return THREAD_BAN.contains(avs::game::MODEL);
 }
 
-static void dispatch_capture_save(int screen, BackbufferCopy copy) {
-    auto capture_process = [screen, copy = std::move(copy)]() mutable {
-        save_capture(
-                screen,
-                copy.desc.Format,
-                copy.desc.Width,
-                copy.desc.Height,
-                copy.surface.get());
+static void dispatch_capture_save(PendingCapture capture) {
+    auto capture_process = [capture = std::move(capture)]() mutable {
+        save_capture(std::move(capture));
     };
 
     if (image_processing_must_be_inline()) {
@@ -453,7 +560,14 @@ static void process_image_request(
     }
 
     if (!screenshot) {
-        dispatch_capture_save(request.screen, std::move(copies.front()));
+        PendingCapture capture;
+        if (!read_capture_surface(copies.front(), capture)) {
+            graphics_capture_skip(request.screen);
+            return;
+        }
+
+        copies.clear();
+        dispatch_capture_save(std::move(capture));
         return;
     }
 

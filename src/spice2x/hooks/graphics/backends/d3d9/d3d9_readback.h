@@ -19,6 +19,7 @@ namespace d3d9_readback {
     struct BackbufferCopy {
         int screen {};
         D3DSURFACE_DESC desc {};
+        IDirect3DDevice9 *device = nullptr;
         SurfacePtr surface;
         bool pooled = false;
 

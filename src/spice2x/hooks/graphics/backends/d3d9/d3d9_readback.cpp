@@ -50,7 +50,7 @@ public:
         return create_readback_surface(device, desc);
     }
 
-    void release(SurfacePtr surface) {
+    void release(IDirect3DDevice9 *device, SurfacePtr surface) {
         if (!surface) {
             return;
         }
@@ -61,6 +61,9 @@ public:
         }
 
         std::lock_guard<std::mutex> lock(this->mutex);
+        if (this->device != device) {
+            return;
+        }
 
         auto *bucket = this->find(desc);
         if (bucket == nullptr) {
@@ -119,7 +122,7 @@ ReadbackPool &pool() {
 
 BackbufferCopy::~BackbufferCopy() {
     if (this->pooled && this->surface) {
-        pool().release(std::move(this->surface));
+        pool().release(this->device, std::move(this->surface));
     }
 }
 
@@ -192,7 +195,7 @@ std::optional<BackbufferCopy> acquire_backbuffer_copy(
                 "failed to copy back buffer contents, hr={}",
                 FMT_HRESULT(hr));
         if (pooled) {
-            pool().release(std::move(destination));
+            pool().release(device, std::move(destination));
         }
         return std::nullopt;
     }
@@ -200,6 +203,7 @@ std::optional<BackbufferCopy> acquire_backbuffer_copy(
     BackbufferCopy copy;
     copy.screen = screen;
     copy.desc = desc;
+    copy.device = device;
     copy.surface = std::move(destination);
     copy.pooled = pooled;
 
