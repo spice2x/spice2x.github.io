@@ -93,8 +93,6 @@ namespace api::modules {
      * reduce: uint for dividing image size
      */
     void Capture::get_jpg(Request &req, Response &res) {
-        CAPTURE_BUFFER.clear();
-        CAPTURE_BUFFER.reserve(1024 * 128);
 
         // settings
         int screen = 0;
@@ -121,9 +119,8 @@ namespace api::modules {
         int width = 0;
         int height = 0;
         graphics_capture_trigger(screen);
-        bool success = graphics_capture_receive_jpeg(screen, [] (uint8_t byte) {
-            CAPTURE_BUFFER.push_back(byte);
-        }, true, quality, true, divide, &timestamp, &width, &height);
+        bool success = graphics_capture_receive_jpeg(
+                screen, CAPTURE_BUFFER, quality, divide, &timestamp, &width, &height);
 
         if (success) {
             add_jpeg_response(screen, timestamp, width, height, CAPTURE_BUFFER, res);

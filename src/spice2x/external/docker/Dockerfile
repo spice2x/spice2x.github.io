@@ -7,6 +7,7 @@ RUN pacman --noconfirm -Syu git \
     ninja \
     cmake \
     unzip \
+    nasm \
     mingw-w64-crt \
     mingw-w64-winpthreads \
     mingw-w64-gcc \
