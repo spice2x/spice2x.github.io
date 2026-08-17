@@ -60,44 +60,60 @@ struct PendingCapture {
     std::vector<uint8_t> data;
 };
 
+// packed 24bpp RGB, what both the png encoder and the api capture consume
+constexpr size_t RGB_PIXEL_SIZE = 3;
+
+// the formats surface_to_rgb knows how to convert; the two must stay in sync
 static std::optional<size_t> surface_pixel_size(D3DFORMAT format) {
     switch (format) {
+        // never valid for a back buffer, carried over from the original capture conversion
         case D3DFMT_R8G8B8:
             return 3;
+
+        // what back buffers are actually created as in practice
         case D3DFMT_X8R8G8B8:
         case D3DFMT_A8R8G8B8:
+
+        // never valid for a back buffer, carried over from the original capture conversion
         case D3DFMT_X8B8G8R8:
         case D3DFMT_A8B8G8R8:
+
+        // a valid display format, but no supported game has been seen presenting one
         case D3DFMT_A2R10G10B10:
             return 4;
+
+        // valid display formats, but no supported game has been seen presenting one
         case D3DFMT_R5G6B5:
         case D3DFMT_X1R5G5B5:
         case D3DFMT_A1R5G5B5:
             return 2;
+
         default:
             return std::nullopt;
     }
 }
 
-static bool compute_image_size(
+struct ImageSize {
+    size_t row_size {};
+    size_t total_size {};
+};
+
+static std::optional<ImageSize> compute_image_size(
         UINT width,
         UINT height,
-        size_t bytes_per_pixel,
-        size_t *row_size,
-        size_t *total_size) {
+        size_t bytes_per_pixel) {
 
     if (width == 0 || height == 0
             || width > std::numeric_limits<size_t>::max() / bytes_per_pixel) {
-        return false;
+        return std::nullopt;
     }
 
-    *row_size = static_cast<size_t>(width) * bytes_per_pixel;
-    if (height > std::numeric_limits<size_t>::max() / *row_size) {
-        return false;
+    const size_t row_size = static_cast<size_t>(width) * bytes_per_pixel;
+    if (height > std::numeric_limits<size_t>::max() / row_size) {
+        return std::nullopt;
     }
 
-    *total_size = static_cast<size_t>(height) * *row_size;
-    return true;
+    return ImageSize { row_size, static_cast<size_t>(height) * row_size };
 }
 
 static bool resize_pixels(std::vector<uint8_t> &pixels, size_t size) {
@@ -110,38 +126,54 @@ static bool resize_pixels(std::vector<uint8_t> &pixels, size_t size) {
     }
 }
 
-// normalize the supported D3D formats to packed 24bpp RGB
+// the api capture stages a whole back buffer every frame, so the staging buffer
+// is recycled rather than reallocated. returned buffers keep their size, which
+// leaves the reuse free of a zero fill
+class CaptureBuffers {
+public:
+    std::vector<uint8_t> take() {
+        std::lock_guard<std::mutex> lock(this->mutex);
+        if (this->idle.empty()) {
+            return {};
+        }
+
+        auto buffer = std::move(this->idle.back());
+        this->idle.pop_back();
+        return buffer;
+    }
+
+    void give(std::vector<uint8_t> buffer) {
+        std::lock_guard<std::mutex> lock(this->mutex);
+        if (this->idle.size() < MAX_IDLE) {
+            this->idle.push_back(std::move(buffer));
+        }
+    }
+
+private:
+    // one per save in flight plus one for the next capture; a full screen is
+    // several megabytes, so the cap matters
+    static constexpr size_t MAX_IDLE = 2;
+
+    std::mutex mutex;
+    std::vector<std::vector<uint8_t>> idle;
+};
+
+// deliberately never destroyed, so a save still running at process exit cannot
+// hand a buffer back to a dead free list
+CaptureBuffers &capture_buffers() {
+    static CaptureBuffers *instance = new CaptureBuffers();
+    return *instance;
+}
+
+// normalize the supported D3D formats to packed 24bpp RGB. callers screen the
+// format through surface_pixel_size first, so the black fill below is a fallback
 void surface_to_rgb(
         D3DFORMAT format,
         UINT width,
         UINT height,
-        const D3DLOCKED_RECT &locked,
+        const uint8_t *data,
+        size_t pitch,
         uint8_t *pixels) {
-
-    const size_t pitch = locked.Pitch;
-    auto data = reinterpret_cast<const uint8_t *>(locked.pBits);
-
-    switch (format) {
-        // what back buffers are actually created as in practice
-        case D3DFMT_X8R8G8B8:
-        case D3DFMT_A8R8G8B8:
-
-        // valid display formats, but no supported game has been seen presenting one
-        case D3DFMT_R5G6B5:
-        case D3DFMT_X1R5G5B5:
-        case D3DFMT_A1R5G5B5:
-        case D3DFMT_A2R10G10B10:
-
-        // never valid for a back buffer, carried over from the original capture conversion
-        case D3DFMT_R8G8B8:
-        case D3DFMT_X8B8G8R8:
-        case D3DFMT_A8B8G8R8:
-            break;
-        default:
-            log_warning("graphics::d3d9",
-                    "unsupported surface format {}, image will be blank",
-                    static_cast<uint32_t>(format));
-    }
 
     for (size_t row = 0; row < height; row++) {
         size_t offset_row = row * width * 3;
@@ -237,25 +269,28 @@ void surface_to_rgb(
 using d3d9_readback::BackbufferCopy;
 
 static void save_capture(PendingCapture capture) {
-    size_t row_size = 0;
-    size_t total_size = 0;
-    if (!compute_image_size(capture.width, capture.height, 3, &row_size, &total_size)) {
+    const auto size = compute_image_size(capture.width, capture.height, RGB_PIXEL_SIZE);
+    if (!size.has_value()) {
         graphics_capture_skip(capture.screen);
         return;
     }
 
-    auto pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[total_size]);
+    auto pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[size->total_size]);
     if (!pixels) {
         log_warning("graphics::d3d9", "failed to allocate capture image buffer");
         graphics_capture_skip(capture.screen);
         return;
     }
 
-    D3DLOCKED_RECT locked {
-        .Pitch = static_cast<INT>(capture.pitch),
-        .pBits = capture.data.data(),
-    };
-    surface_to_rgb(capture.format, capture.width, capture.height, locked, pixels.get());
+    surface_to_rgb(
+            capture.format,
+            capture.width,
+            capture.height,
+            capture.data.data(),
+            capture.pitch,
+            pixels.get());
+
+    capture_buffers().give(std::move(capture.data));
 
     graphics_capture_enqueue(capture.screen, pixels.release(), capture.width, capture.height);
 }
@@ -269,10 +304,19 @@ static bool read_surface_pixels(
         IDirect3DSurface9 *surface,
         std::vector<uint8_t> &pixels) {
 
-    size_t row_size = 0;
-    size_t total_size = 0;
-    if (!compute_image_size(width, height, 3, &row_size, &total_size)
-            || !resize_pixels(pixels, total_size)) {
+    const auto bytes_per_pixel = surface_pixel_size(format);
+    if (!bytes_per_pixel.has_value()) {
+        log_warning("graphics::d3d9",
+                "unsupported surface format {}",
+                static_cast<uint32_t>(format));
+        return false;
+    }
+
+    const auto source = compute_image_size(width, height, *bytes_per_pixel);
+    const auto rgb = compute_image_size(width, height, RGB_PIXEL_SIZE);
+    if (!source.has_value()
+            || !rgb.has_value()
+            || !resize_pixels(pixels, rgb->total_size)) {
         return false;
     }
 
@@ -283,7 +327,19 @@ static bool read_surface_pixels(
         return false;
     }
 
-    surface_to_rgb(format, width, height, locked, pixels.data());
+    if (locked.Pitch < 0 || static_cast<size_t>(locked.Pitch) < source->row_size) {
+        log_warning("graphics::d3d9", "screenshot surface has invalid pitch {}", locked.Pitch);
+        surface->UnlockRect();
+        return false;
+    }
+
+    surface_to_rgb(
+            format,
+            width,
+            height,
+            reinterpret_cast<const uint8_t *>(locked.pBits),
+            static_cast<size_t>(locked.Pitch),
+            pixels.data());
 
     hr = surface->UnlockRect();
     if (FAILED(hr)) {
@@ -299,17 +355,20 @@ static bool read_capture_surface(
         PendingCapture &capture) {
 
     const auto bytes_per_pixel = surface_pixel_size(copy.desc.Format);
-    size_t row_size = 0;
-    size_t total_size = 0;
-    if (!bytes_per_pixel.has_value()
-            || !compute_image_size(
-                    copy.desc.Width,
-                    copy.desc.Height,
-                    *bytes_per_pixel,
-                    &row_size,
-                    &total_size)
-            || row_size > static_cast<size_t>(std::numeric_limits<INT>::max())
-            || !resize_pixels(capture.data, total_size)) {
+    if (!bytes_per_pixel.has_value()) {
+        log_warning("graphics::d3d9",
+                "unsupported surface format {}",
+                static_cast<uint32_t>(copy.desc.Format));
+        return false;
+    }
+
+    const auto size = compute_image_size(copy.desc.Width, copy.desc.Height, *bytes_per_pixel);
+    if (!size.has_value()) {
+        return false;
+    }
+
+    capture.data = capture_buffers().take();
+    if (!resize_pixels(capture.data, size->total_size)) {
         return false;
     }
 
@@ -320,7 +379,7 @@ static bool read_capture_surface(
         return false;
     }
 
-    if (locked.Pitch < 0 || static_cast<size_t>(locked.Pitch) < row_size) {
+    if (locked.Pitch < 0 || static_cast<size_t>(locked.Pitch) < size->row_size) {
         log_warning("graphics::d3d9", "capture surface has invalid pitch {}", locked.Pitch);
         copy.surface->UnlockRect();
         return false;
@@ -329,9 +388,9 @@ static bool read_capture_surface(
     auto data = reinterpret_cast<const uint8_t *>(locked.pBits);
     for (size_t row = 0; row < copy.desc.Height; row++) {
         std::memcpy(
-                capture.data.data() + row * row_size,
+                capture.data.data() + row * size->row_size,
                 data + row * locked.Pitch,
-                row_size);
+                size->row_size);
     }
 
     hr = copy.surface->UnlockRect();
@@ -344,7 +403,7 @@ static bool read_capture_surface(
     capture.format = copy.desc.Format;
     capture.width = copy.desc.Width;
     capture.height = copy.desc.Height;
-    capture.pitch = row_size;
+    capture.pitch = size->row_size;
     return true;
 }
 
