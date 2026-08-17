@@ -17,6 +17,7 @@
 
 #include "d3d9_backend.h"
 #include "d3d9_live2d.h"
+#include "d3d9_readback.h"
 #include "d3d9_texture.h"
 
 #ifndef SPICE64
@@ -630,6 +631,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal)) {
         overlay::OVERLAY->reset_invalidate();
     }
+
+    d3d9_readback::release_default_resources();
 
     HRESULT res = pReal->Reset(pPresentationParameters);
 
@@ -2317,6 +2320,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal)) {
         overlay::OVERLAY->reset_invalidate();
     }
+
+    d3d9_readback::release_default_resources();
 
     HRESULT res = static_cast<IDirect3DDevice9Ex *>(pReal)->ResetEx(
             gfdm_parameters.presentation_parameters,

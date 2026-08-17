@@ -38,4 +38,8 @@ namespace d3d9_readback {
             IDirect3DSwapChain9 *swap_chain,
             int screen,
             bool pooled);
+
+    // the cached multisample resolve target lives in D3DPOOL_DEFAULT, so it has to
+    // be gone before Reset; call this from the device's reset paths
+    void release_default_resources();
 }

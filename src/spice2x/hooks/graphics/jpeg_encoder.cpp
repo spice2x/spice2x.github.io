@@ -25,9 +25,25 @@ void dest_init(j_compress_ptr cinfo) {
     dest->mgr.free_in_buffer = CHUNK_SIZE;
 }
 
+// libjpeg cannot unwind a C++ exception out of its own frames, so growing the
+// output has to fail by value and be turned into an error_exit by the caller
+bool dest_append(VectorDestination *dest, size_t size) {
+    try {
+        dest->out->insert(dest->out->end(), dest->chunk, dest->chunk + size);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 boolean dest_empty(j_compress_ptr cinfo) {
     auto dest = reinterpret_cast<VectorDestination *>(cinfo->dest);
-    dest->out->insert(dest->out->end(), dest->chunk, dest->chunk + CHUNK_SIZE);
+
+    // returning FALSE would mean suspension to libjpeg, not failure
+    if (!dest_append(dest, CHUNK_SIZE)) {
+        (*cinfo->err->error_exit)(reinterpret_cast<j_common_ptr>(cinfo));
+    }
+
     dest->mgr.next_output_byte = dest->chunk;
     dest->mgr.free_in_buffer = CHUNK_SIZE;
     return TRUE;
@@ -35,8 +51,9 @@ boolean dest_empty(j_compress_ptr cinfo) {
 
 void dest_term(j_compress_ptr cinfo) {
     auto dest = reinterpret_cast<VectorDestination *>(cinfo->dest);
-    const size_t used = CHUNK_SIZE - dest->mgr.free_in_buffer;
-    dest->out->insert(dest->out->end(), dest->chunk, dest->chunk + used);
+    if (!dest_append(dest, CHUNK_SIZE - dest->mgr.free_in_buffer)) {
+        (*cinfo->err->error_exit)(reinterpret_cast<j_common_ptr>(cinfo));
+    }
 }
 
 // the default handler calls exit(), which is not an option inside a game process
@@ -71,6 +88,8 @@ bool encode(
         quality = 100;
     }
 
+    // zero init is load bearing: the trap below is armed before the struct is
+    // created, and jpeg_destroy_compress only tolerates that on a zeroed struct
     jpeg_compress_struct cinfo {};
     ErrorManager err;
     VectorDestination dest;

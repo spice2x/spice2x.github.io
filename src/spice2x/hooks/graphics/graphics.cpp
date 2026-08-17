@@ -1546,9 +1546,7 @@ bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
             for (int x = 0; x < capture_width; x += divide) {
                 auto pixel_new = &data_new[(data_x + data_y_offset) * 3];
                 auto pixel_old = &data_old[(data_y_offset_old + x) * 3];
-                pixel_new[0] = pixel_old[0];
-                pixel_new[1] = pixel_old[1];
-                pixel_new[2] = pixel_old[2];
+                memcpy(pixel_new, pixel_old, 3);
                 data_x++;
             }
             data_y++;
@@ -1561,7 +1559,6 @@ bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
     }
 
     // compress
-    out.reserve(static_cast<size_t>(capture_width) * capture_height / 4);
     const bool success = jpeg_encoder::encode(
             out, capture_data.get(),
             capture_width, capture_height, quality);

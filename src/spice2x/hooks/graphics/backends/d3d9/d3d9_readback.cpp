@@ -118,7 +118,71 @@ ReadbackPool &pool() {
     return *instance;
 }
 
+// only one back buffer is ever resolved at a time, so a single cached target is
+// enough. it is D3DPOOL_DEFAULT, so it must be dropped before the device resets
+class ResolveCache {
+public:
+    SurfacePtr acquire(IDirect3DDevice9 *device, const D3DSURFACE_DESC &desc) {
+        {
+            std::lock_guard<std::mutex> lock(this->mutex);
+            if (this->surface
+                    && this->device == device
+                    && this->width == desc.Width
+                    && this->height == desc.Height
+                    && this->format == desc.Format) {
+                return std::move(this->surface);
+            }
+        }
+
+        IDirect3DSurface9 *target = nullptr;
+        const HRESULT hr = device->CreateRenderTarget(
+                desc.Width, desc.Height, desc.Format,
+                D3DMULTISAMPLE_NONE, 0, FALSE, &target, nullptr);
+
+        if (FAILED(hr) || target == nullptr) {
+            log_warning("graphics::d3d9",
+                    "failed to acquire resolve target, hr={}",
+                    FMT_HRESULT(hr));
+            return nullptr;
+        }
+
+        return SurfacePtr(target);
+    }
+
+    void release(IDirect3DDevice9 *device, const D3DSURFACE_DESC &desc, SurfacePtr surface) {
+        std::lock_guard<std::mutex> lock(this->mutex);
+        this->device = device;
+        this->width = desc.Width;
+        this->height = desc.Height;
+        this->format = desc.Format;
+        this->surface = std::move(surface);
+    }
+
+    void clear() {
+        std::lock_guard<std::mutex> lock(this->mutex);
+        this->surface.reset();
+        this->device = nullptr;
+    }
+
+private:
+    std::mutex mutex;
+    SurfacePtr surface;
+    IDirect3DDevice9 *device = nullptr;
+    UINT width = 0;
+    UINT height = 0;
+    D3DFORMAT format = D3DFMT_UNKNOWN;
+};
+
+ResolveCache &resolve_cache() {
+    static ResolveCache *instance = new ResolveCache();
+    return *instance;
+}
+
 } // namespace
+
+void release_default_resources() {
+    resolve_cache().clear();
+}
 
 BackbufferCopy::~BackbufferCopy() {
     if (this->pooled && this->surface) {
@@ -153,21 +217,13 @@ std::optional<BackbufferCopy> acquire_backbuffer_copy(
     SurfacePtr resolved;
     IDirect3DSurface9 *source = buffer;
     if (desc.MultiSampleType != D3DMULTISAMPLE_NONE) {
-        IDirect3DSurface9 *target = nullptr;
-        hr = device->CreateRenderTarget(
-                desc.Width, desc.Height, desc.Format,
-                D3DMULTISAMPLE_NONE, 0, FALSE, &target, nullptr);
-        if (FAILED(hr) || target == nullptr) {
-            log_warning("graphics::d3d9",
-                    "failed to acquire resolve target, hr={}",
-                    FMT_HRESULT(hr));
+        resolved = resolve_cache().acquire(device, desc);
+        if (!resolved) {
             buffer->Release();
             return std::nullopt;
         }
 
-        resolved.reset(target);
-
-        hr = device->StretchRect(buffer, nullptr, target, nullptr, D3DTEXF_NONE);
+        hr = device->StretchRect(buffer, nullptr, resolved.get(), nullptr, D3DTEXF_NONE);
         if (FAILED(hr)) {
             log_warning("graphics::d3d9",
                     "failed to resolve back buffer, hr={}",
@@ -176,7 +232,7 @@ std::optional<BackbufferCopy> acquire_backbuffer_copy(
             return std::nullopt;
         }
 
-        source = target;
+        source = resolved.get();
     }
 
     auto destination = pooled
@@ -189,6 +245,10 @@ std::optional<BackbufferCopy> acquire_backbuffer_copy(
 
     hr = device->GetRenderTargetData(source, destination.get());
     buffer->Release();
+
+    if (resolved) {
+        resolve_cache().release(device, desc, std::move(resolved));
+    }
 
     if (FAILED(hr)) {
         log_warning("graphics::d3d9",

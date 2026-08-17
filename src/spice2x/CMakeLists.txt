@@ -262,6 +262,10 @@ include(CheckLanguage)
 check_language(ASM_NASM)
 if(CMAKE_ASM_NASM_COMPILER)
     enable_language(ASM_NASM)
+else()
+    message(WARNING
+            "nasm not found: libjpeg-turbo will be built without SIMD, "
+            "which makes api screen capture several times slower")
 endif()
 add_subdirectory(external/libjpeg-turbo EXCLUDE_FROM_ALL)
 
