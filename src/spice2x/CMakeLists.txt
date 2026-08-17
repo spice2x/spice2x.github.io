@@ -265,6 +265,15 @@ if(CMAKE_ASM_NASM_COMPILER)
 endif()
 add_subdirectory(external/libjpeg-turbo EXCLUDE_FROM_ALL)
 
+# fpng's SIMD needs the whole unit built for SSE4.1, which its runtime CPU check
+# cannot undo, so keep it scalar rather than raising the CPU baseline
+set_source_files_properties(external/fpng/fpng.cpp PROPERTIES
+        COMPILE_DEFINITIONS "FPNG_NO_SSE=1")
+if(NOT MSVC)
+    set_source_files_properties(external/fpng/fpng.cpp PROPERTIES
+            COMPILE_OPTIONS "-fno-strict-aliasing")
+endif()
+
 # set link time optimizations (disabled for Debug builds for speed, disabled
 # for RelWithDebInfo builds due to "lto1: error: two or more sections for"
 # errors)
@@ -389,6 +398,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         external/tinyxml2/tinyxml2.cpp
         external/http-parser/http_parser.c
         external/usbhidusage/usb-hid-usage.c
+        external/fpng/fpng.cpp
         external/scard/scard.cpp
 
         # games
