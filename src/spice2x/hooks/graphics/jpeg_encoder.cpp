@@ -1,5 +1,7 @@
 #include "jpeg_encoder.h"
 
+#ifdef SPICE_JPEG
+
 #include <csetjmp>
 #include <cstdio>
 
@@ -138,3 +140,17 @@ bool encode(
     return true;
 }
 }
+
+#else // SPICE_JPEG
+
+namespace jpeg_encoder {
+
+// builds without libjpeg-turbo (the WinXP toolchains) simply cannot encode;
+// callers already treat a false return as "no frame available"
+bool encode(std::vector<uint8_t> &out, const uint8_t *, int, int, int) {
+    out.clear();
+    return false;
+}
+}
+
+#endif // SPICE_JPEG
