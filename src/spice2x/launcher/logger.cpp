@@ -1,6 +1,7 @@
 #include "logger.h"
 
 #include <algorithm>
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -25,15 +26,16 @@ namespace logger {
     bool COLOR = true;
 
     // state
-    static bool RUNNING = false;
+    static std::atomic<bool> RUNNING = false;
     static WORD DEFAULT_ATTRIBUTES = 0;
     static std::mutex EVENT_MUTEX;
     static std::condition_variable EVENT_CV;
     static std::thread *THREAD = nullptr;
     static HANDLE THREAD_FINISHED = nullptr;
+    static std::atomic<bool> THREAD_ABANDONED = false;
     static std::mutex OUTPUT_MUTEX;
     static std::mutex FLUSH_MUTEX;
-    static bool OUTPUT_BUFFER_HOT = false;
+    static std::atomic<bool> OUTPUT_BUFFER_HOT = false;
     static std::vector<std::pair<std::string, Style>> OUTPUT_BUFFER1;
     static std::vector<std::pair<std::string, Style>> OUTPUT_BUFFER2;
     static std::vector<std::pair<std::string, Style>> *OUTPUT_BUFFER = &OUTPUT_BUFFER1;
@@ -147,6 +149,17 @@ namespace logger {
     }
 
     static void output_buffer_flush() {
+
+        // a detached logging thread can hold FLUSH_MUTEX forever, so never wait on it
+        if (THREAD_ABANDONED) {
+            std::unique_lock<std::mutex> guard(FLUSH_MUTEX, std::try_to_lock);
+            if (guard.owns_lock()) {
+                output_buffer_flush_locked();
+            }
+
+            return;
+        }
+
         std::lock_guard<std::mutex> guard(FLUSH_MUTEX);
 
         output_buffer_flush_locked();
@@ -171,7 +184,7 @@ namespace logger {
             while (RUNNING) {
 
                 // wait for hot buffer
-                EVENT_CV.wait(lock, [] { return OUTPUT_BUFFER_HOT; });
+                EVENT_CV.wait(lock, [] { return OUTPUT_BUFFER_HOT.load(); });
                 OUTPUT_BUFFER_HOT = false;
 
                 // flush buffer
@@ -200,11 +213,9 @@ namespace logger {
 
     void stop() {
 
-        // must come before the log call below, so it takes the synchronous path instead of
-        // handing off to a logging thread that may never get scheduled again
-        RUNNING = false;
+        // NOTE: don't log to the logger here!
 
-        log_info("logger", "stop");
+        RUNNING = false;
 
         // clean up thread if required
         if (THREAD) {
@@ -225,16 +236,13 @@ namespace logger {
                 THREAD_FINISHED = nullptr;
             } else {
                 THREAD->detach();
+                THREAD_ABANDONED = true;
 
                 // THREAD_FINISHED is leaked on purpose: the detached thread can still wake up and
                 // signal it, and closing it here risks signaling an unrelated recycled handle
 
-                // write out whatever the logging thread never got to. don't wait for the lock -
-                // whoever holds it is exactly the thread that may never resume.
-                std::unique_lock<std::mutex> flush_guard(FLUSH_MUTEX, std::try_to_lock);
-                if (flush_guard.owns_lock()) {
-                    output_buffer_flush_locked();
-                }
+                // write out whatever the logging thread never got to
+                output_buffer_flush();
 
                 if (LOG_FILE && LOG_FILE != INVALID_HANDLE_VALUE) {
                     FlushFileBuffers(LOG_FILE);
@@ -279,8 +287,9 @@ namespace logger {
 
         } else {
 
-            // mark buffer as hot
-            std::unique_lock<std::mutex> lock(EVENT_MUTEX);
+            // never block here - the logging thread can be suspended while holding EVENT_MUTEX,
+            // and it re-checks OUTPUT_BUFFER_HOT before waiting again
+            std::unique_lock<std::mutex> lock(EVENT_MUTEX, std::try_to_lock);
             OUTPUT_BUFFER_HOT = true;
             EVENT_CV.notify_one();
         }

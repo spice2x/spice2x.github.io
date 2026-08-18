@@ -119,8 +119,8 @@ static void *pe_offset(void *ptr, size_t offset) {
     return reinterpret_cast<uint8_t *>(ptr) + offset;
 }
 
-// foreign modules (injected, manually mapped, header wiped by AV/EDR or overlays) have no import
-// table to patch - they must be skipped instead of taking the process down
+// foreign modules (injected, manually mapped) have no import table to patch - skip them
+// instead of taking the process down
 static bool has_pe_header(HMODULE module) {
     const auto dos_headers = reinterpret_cast<const IMAGE_DOS_HEADER *>(module);
 
@@ -382,7 +382,7 @@ void *detour::iat_try_proc(const char *iid_name, void *proc, void *new_func, HMO
         while (cur_entry != nullptr) {
             module = reinterpret_cast<HMODULE>(cur_entry->DllBase);
 
-            if (module) {
+            if (module && has_pe_header(module)) {
                 auto old_func = iat_try_proc(iid_name, proc, new_func, module);
                 ret = ret != nullptr ? ret : old_func;
             }
