@@ -28,6 +28,8 @@ namespace api {
         static constexpr int request_size_limit = 8 * 1024;
         static constexpr int request_timeout_ms = 5000;
         static constexpr int send_timeout_ms = 5000;
+        // small enough that a low bitrate stream cannot hide a backlog of stale frames in it
+        static constexpr int send_buffer_bytes = 16 * 1024;
         static constexpr int fps_limit = 60;
 
         void accept_worker();

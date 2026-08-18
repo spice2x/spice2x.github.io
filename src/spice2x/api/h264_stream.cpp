@@ -2,7 +2,7 @@
 
 #ifdef SPICE_H264
 
-#include <cstring>
+#include <algorithm>
 #include <vector>
 
 #include <x264.h>
@@ -90,11 +90,42 @@ namespace api {
                     return true;
                 }
 
-                // annex-b: x264 lays every NAL of the frame out back to back
-                const unsigned next_timestamp = static_cast<unsigned>(
-                        this->frame_index * TIMESCALE_90KHZ / this->fps);
+                // annex-b: x264 lays every NAL of the frame out back to back.
+                // minimp4 names this argument a timestamp but uses it as the sample duration.
+                // capture never hits the requested fps exactly, so timing each frame from its
+                // own capture time keeps the media clock on wall clock instead of drifting
+                unsigned frame_duration = static_cast<unsigned>(TIMESCALE_90KHZ / this->fps);
+                if (this->last_timestamp != 0 && frame.timestamp > this->last_timestamp) {
+                    const uint64_t delta = (frame.timestamp - this->last_timestamp) * 90;
+                    frame_duration = static_cast<unsigned>(
+                            std::clamp<uint64_t>(delta, 900, TIMESCALE_90KHZ));
+                }
+                this->last_timestamp = frame.timestamp;
+
+                // in fragmentation mode minimp4 makes a separate sample out of every NAL it is
+                // given, so an SEI or delimiter becomes a fragment holding no picture and
+                // decoders reject it. only the parameter sets and the slice itself go through
+                this->annexb.clear();
+                for (int i = 0; i < nal_count; i++) {
+                    switch (nals[i].i_type) {
+                        case NAL_SEI:
+                        case NAL_AUD:
+                        case NAL_FILLER:
+                            continue;
+                        default:
+                            break;
+                    }
+                    this->annexb.insert(this->annexb.end(),
+                            nals[i].p_payload, nals[i].p_payload + nals[i].i_payload);
+                }
+
+                if (this->annexb.empty()) {
+                    return true;
+                }
+
                 if (mp4_h26x_write_nal(
-                        &this->muxer, nals[0].p_payload, size, next_timestamp)
+                        &this->muxer, this->annexb.data(),
+                        static_cast<int>(this->annexb.size()), frame_duration)
                         != MP4E_STATUS_OK) {
                     log_warning("api::stream", "H.264 muxing failed");
                     return false;
@@ -139,8 +170,7 @@ namespace api {
                 }
 
                 if (x264_picture_alloc(&this->picture, X264_CSP_I420, width, height) < 0) {
-                    x264_encoder_close(this->encoder);
-                    this->encoder = nullptr;
+                    this->close();
                     return false;
                 }
                 this->picture_ready = true;
@@ -258,7 +288,9 @@ namespace api {
             int width = 0;
             int height = 0;
             int64_t frame_index = 0;
+            uint64_t last_timestamp = 0;
             int64_t written = 0;
+            std::vector<uint8_t> annexb;
 
             x264_t *encoder = nullptr;
             x264_picture_t picture {};

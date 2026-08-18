@@ -170,7 +170,7 @@ namespace launcher {
             APIDebugMode,
             APIScreenMirrorQuality,
             APIScreenMirrorDivide,
-            APIStreamPort,
+            APIStreamEnable,
             EnableAllIOModules,
             EnableACIOModule,
             EnableICCAModule,

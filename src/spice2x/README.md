@@ -291,6 +291,59 @@ which also means that your hex edits are applicable directly.
 - image_resize_set_scene(scene: int)
   - sets the active scene for image resize state; set to 0 to disable resize
 
+## Video Stream
+
+Separate from the JSON API, spice can serve the mirrored screen as a video
+stream over plain HTTP. Enable it with `-apistream`. It listens on the API port
+plus two, in the same way the WebSocket server uses the API port plus one, so
+`-api 1337` puts the stream on 1339. This means `-api` has to be enabled too.
+
+Two formats are served:
+
+    http://host:1339/stream.mp4     H.264 in fragmented MP4
+    http://host:1339/stream.mjpg    JPEG frames, multipart/x-mixed-replace
+
+Both accept the same optional query parameters:
+
+- `screen` - which screen to mirror, 0-3. Defaults to the subscreen when the
+  game has one, otherwise the main screen.
+- `fps` - frames per second, 1-60. Default 30.
+- `q` - image quality, 1-100. Default 70.
+
+For example:
+
+    http://host:1339/stream.mp4?screen=1&fps=30&q=70
+
+Prefer `stream.mp4` where the client supports it. H.264 uses roughly 20 times
+less bandwidth than MJPEG and phones decode it in hardware, which matters a
+great deal for battery life. `stream.mjpg` needs no container support at all
+and works in a plain `<img>` tag.
+
+The stream is view only. Touch and other input still go through the JSON API,
+so a companion app needs both. There is no authentication on the stream port -
+anyone who can reach it can watch the screen.
+
+WinXP builds have no video stream at all. Neither encoder is compiled in, so
+both endpoints return 404. The JSON API's JPEG screen capture is unavailable
+on those builds for the same reason.
+
+### Latency
+
+The server hands each frame to the socket around 5ms after it was captured, so
+essentially all of the delay users notice comes from the player buffering ahead
+and then running its own clock. A player that decides it is half a second
+behind during startup will stay half a second behind.
+
+For a monitor you want the newest frame rather than smooth pacing, so use
+whatever option the player has for rendering on decode instead of scheduling
+against a presentation clock. In mpv that is:
+
+    mpv --profile=low-latency --untimed http://host:1339/stream.mp4
+
+which is near instant. If you are writing your own viewer, the equivalents are
+`releaseOutputBuffer(index, true)` on Android MediaCodec and the
+`kCMSampleAttachmentKey_DisplayImmediately` attachment on iOS VideoToolbox.
+
 ## Native wrapper libraries
 Spicetools provides wrapper libraries in: Arduino, C++, Dart, and Python.
 Python is the only one that is fully spec compliant.

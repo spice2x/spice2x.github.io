@@ -14,6 +14,7 @@
 #include "hooks/graphics/graphics.h"
 #include "stream_format.h"
 #include "util/logging.h"
+#include "util/time.h"
 #include "util/utils.h"
 
 namespace api {
@@ -208,7 +209,7 @@ namespace api {
         });
 
         // deliberately not logging a full URL; local IPs would leak into shared logs
-        log_info("api::stream", "MJPEG server is listening on port: {}", this->port);
+        log_info("api::stream", "video stream is listening on port: {}", this->port);
         log_warning("api::stream",
                 "the video stream is unauthenticated - anyone who can reach port {} can watch "
                 "the game screen", this->port);
@@ -306,6 +307,14 @@ namespace api {
         setsockopt(socket, IPPROTO_TCP, TCP_NODELAY,
                 reinterpret_cast<const char *>(&opt_enable), sizeof(int));
 
+        // whatever sits in the send buffer is already stale, and the default holds about a
+        // third of a second of H.264 because the bitrate is so low. keeping it small makes a
+        // slow reader block the sender, which then skips to the newest frame instead of
+        // handing over a backlog
+        int send_buffer = send_buffer_bytes;
+        setsockopt(socket, SOL_SOCKET, SO_SNDBUF,
+                reinterpret_cast<const char *>(&send_buffer), sizeof(send_buffer));
+
         HttpRequest request;
         if (read_request(socket, request_size_limit, request)) {
             if (request.method != "GET") {
@@ -348,6 +357,12 @@ namespace api {
                     if (send_all(socket, header) && writer->begin(stream_send)) {
                         capture_pump::Subscription subscription(screen, fps);
 
+                        // how far behind the capture we are by the time the bytes are gone.
+                        // anything past this point belongs to the network and the player
+                        double age_total = 0;
+                        double age_worst = 0;
+                        int age_count = 0;
+
                         while (this->running) {
                             auto frame = subscription.next(1000);
                             if (!frame) {
@@ -356,6 +371,19 @@ namespace api {
 
                             if (!writer->write(stream_send, *frame)) {
                                 break;
+                            }
+
+                            const double age =
+                                    get_performance_milliseconds() - frame->timestamp;
+                            age_total += age;
+                            age_worst = std::max(age_worst, age);
+                            if (++age_count >= 150) {
+                                log_misc("api::stream",
+                                        "frame age at send: {:.0f} ms average, {:.0f} ms worst",
+                                        age_total / age_count, age_worst);
+                                age_total = 0;
+                                age_worst = 0;
+                                age_count = 0;
                             }
                         }
                     }

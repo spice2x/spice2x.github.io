@@ -1745,18 +1745,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Companion & API",
     },
     {
-        // APIStreamPort
-        .title = "Video Stream Port",
+        // APIStreamEnable
+        .title = "Video Stream",
         .name = "apistream",
-        .desc = "Serves the mirrored screen as a video stream on the given port; alternative to API.\n\n"
-            "http://host:port/stream.mp4 - H.264\n\n"
-            "http://host:port/stream.mjpg - MJPEG\n\n"
+        .desc = "Serves the mirrored screen as a video stream, on the API port plus two; "
+            "alternative to API screen capture. Requires -api.\n\n"
+            "http://host:apiport+2/stream.mp4 - H.264\n\n"
+            "http://host:apiport+2/stream.mjpg - MJPEG\n\n"
             "Parameters: screen (0-3), fps (1-60, default 30), q (1-100, default 70).\n\n"
-            "Example: http://host:port/stream.mp4?fps=30&q=70\n\n"
+            "Example with -api 1337: http://host:1339/stream.mp4?fps=30&q=70\n\n"
             "VIEW ONLY - touch input still requires -api.\n\n"
             "No password protection!",
-        .type = OptionType::Integer,
-        .setting_name = "(port)",
+        .type = OptionType::Bool,
         .category = "Video Stream",
     },
     {
