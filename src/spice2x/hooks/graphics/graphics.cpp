@@ -20,6 +20,7 @@
 #include "games/io.h"
 #include "games/sdvx/sdvx.h"
 #include "games/popn/popn.h"
+#include "hooks/graphics/jpeg_encoder.h"
 #include "hooks/graphics/backends/d3d9/d3d9_backend.h"
 #include "hooks/graphics/backends/d3d11/d3d11_backend.h"
 #include "launcher/shutdown.h"
@@ -64,7 +65,6 @@ static bool GRAPHICS_SCREENSHOT_TRIGGER = false;
 static std::set<int> GRAPHICS_SCREENS { 0 };
 static std::mutex GRAPHICS_SCREENS_M {};
 static std::vector<int> GRAPHICS_CAPTURE_SCREENS;
-static const size_t GRAPHICS_CAPTURE_SCREEN_NO = 4;
 static std::mutex GRAPHICS_CAPTURE_SCREENS_M {};
 static CaptureData GRAPHICS_CAPTURE_BUFFER[GRAPHICS_CAPTURE_SCREEN_NO] {};
 static std::mutex GRAPHICS_CAPTURE_BUFFER_M[GRAPHICS_CAPTURE_SCREEN_NO] {};
@@ -1481,9 +1481,11 @@ void graphics_capture_skip(int screen) {
     GRAPHICS_CAPTURE_CV[screen].notify_one();
 }
 
-bool graphics_capture_receive_jpeg(int screen, TooJpeg::WRITE_ONE_BYTE receiver,
-        bool rgb, int quality, bool downsample, int divide, uint64_t *timestamp,
+bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
+        int quality, int divide, uint64_t *timestamp,
         int *width, int *height) {
+
+    out.clear();
 
     if (screen < 0 || screen >= static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)) {
         return false;
@@ -1557,10 +1559,13 @@ bool graphics_capture_receive_jpeg(int screen, TooJpeg::WRITE_ONE_BYTE receiver,
     }
 
     // compress
-    auto success = TooJpeg::writeJpeg(
-            receiver, capture_data.get(),
-            capture_width, capture_height,
-            rgb, quality, downsample);
+    const bool success = jpeg_encoder::encode(
+            out, capture_data.get(),
+            capture_width, capture_height, quality);
+
+    if (!success) {
+        out.clear();
+    }
 
     // status
     if (timestamp) {

@@ -1,0 +1,241 @@
+#include "d3d9_readback.h"
+
+#include <mutex>
+#include <vector>
+
+#include "hooks/graphics/graphics.h"
+#include "util/logging.h"
+
+namespace d3d9_readback {
+
+namespace {
+
+SurfacePtr create_readback_surface(IDirect3DDevice9 *device, const D3DSURFACE_DESC &desc) {
+    IDirect3DSurface9 *surface = nullptr;
+    const HRESULT hr = device->CreateOffscreenPlainSurface(
+            desc.Width, desc.Height, desc.Format, D3DPOOL_SYSTEMMEM, &surface, nullptr);
+
+    if (FAILED(hr) || surface == nullptr) {
+        log_warning("graphics::d3d9",
+                "failed to create readback surface, hr={}",
+                FMT_HRESULT(hr));
+        return nullptr;
+    }
+
+    return SurfacePtr(surface);
+}
+
+size_t surface_bytes(const D3DSURFACE_DESC &desc) {
+    size_t bytes_per_pixel = 4;
+    switch (desc.Format) {
+        case D3DFMT_R5G6B5:
+        case D3DFMT_X1R5G5B5:
+        case D3DFMT_A1R5G5B5:
+            bytes_per_pixel = 2;
+            break;
+        default:
+            break;
+    }
+
+    return static_cast<size_t>(desc.Width) * desc.Height * bytes_per_pixel;
+}
+
+// idle surfaces are kept between captures, bucketed by layout so that screens of
+// differing resolution do not evict each other. a new device drops everything,
+// since system memory surfaces outlive Reset but not the device itself
+class ReadbackPool {
+public:
+    SurfacePtr acquire(IDirect3DDevice9 *device, const D3DSURFACE_DESC &desc) {
+        {
+            std::lock_guard<std::mutex> lock(this->mutex);
+
+            if (this->device != device) {
+                this->drop();
+                this->device = device;
+            }
+
+            auto *bucket = this->find(desc);
+            if (bucket && !bucket->idle.empty()) {
+                auto surface = std::move(bucket->idle.back());
+                bucket->idle.pop_back();
+
+                const size_t bytes = surface_bytes(desc);
+                this->idle_bytes = this->idle_bytes > bytes ? this->idle_bytes - bytes : 0;
+                return surface;
+            }
+        }
+
+        return create_readback_surface(device, desc);
+    }
+
+    void release(IDirect3DDevice9 *device, SurfacePtr surface) {
+        if (!surface) {
+            return;
+        }
+
+        D3DSURFACE_DESC desc {};
+        if (FAILED(surface->GetDesc(&desc))) {
+            return;
+        }
+
+        const size_t bytes = surface_bytes(desc);
+
+        std::lock_guard<std::mutex> lock(this->mutex);
+        if (this->device != device || this->idle_bytes + bytes > MAX_IDLE_BYTES) {
+            return;
+        }
+
+        auto *bucket = this->find(desc);
+        if (bucket == nullptr) {
+            if (this->buckets.size() >= MAX_BUCKETS) {
+                return;
+            }
+
+            this->buckets.push_back(Bucket { desc.Width, desc.Height, desc.Format, {} });
+            bucket = &this->buckets.back();
+        }
+
+        if (bucket->idle.size() < MAX_IDLE_PER_BUCKET) {
+            bucket->idle.push_back(std::move(surface));
+            this->idle_bytes += bytes;
+        }
+    }
+
+    // every cached surface holds a reference on the device, so they have to go
+    // before it does or the device never reaches a zero reference count
+    void clear_device(IDirect3DDevice9 *device) {
+        std::lock_guard<std::mutex> lock(this->mutex);
+        if (this->device != device) {
+            return;
+        }
+
+        this->drop();
+        this->device = nullptr;
+    }
+
+private:
+    struct Bucket {
+        UINT width;
+        UINT height;
+        D3DFORMAT format;
+        std::vector<SurfacePtr> idle;
+    };
+
+    static constexpr size_t MAX_BUCKETS = GRAPHICS_CAPTURE_SCREEN_NO;
+
+    // one returning surface plus one for the next capture; a full screen surface
+    // is several megabytes, so the cap matters
+    static constexpr size_t MAX_IDLE_PER_BUCKET = 2;
+
+    // a 4K surface is 33MB, so the per bucket count alone does not bound this
+    static constexpr size_t MAX_IDLE_BYTES = 64u * 1024 * 1024;
+
+    void drop() {
+        this->buckets.clear();
+        this->idle_bytes = 0;
+    }
+
+    Bucket *find(const D3DSURFACE_DESC &desc) {
+        for (auto &bucket : this->buckets) {
+            if (bucket.width == desc.Width
+                    && bucket.height == desc.Height
+                    && bucket.format == desc.Format) {
+                return &bucket;
+            }
+        }
+
+        return nullptr;
+    }
+
+    std::mutex mutex;
+    std::vector<Bucket> buckets;
+    IDirect3DDevice9 *device = nullptr;
+    size_t idle_bytes = 0;
+};
+
+// deliberately never destroyed: releasing D3D surfaces during static destruction
+// would run after d3d9 may already be unloaded
+ReadbackPool &pool() {
+    static ReadbackPool *instance = new ReadbackPool();
+    return *instance;
+}
+
+} // namespace
+
+void release_device_resources(IDirect3DDevice9 *device) {
+    pool().clear_device(device);
+}
+
+BackbufferCopy::~BackbufferCopy() {
+    if (this->pooled && this->surface) {
+        pool().release(this->device, std::move(this->surface));
+    }
+}
+
+std::optional<BackbufferCopy> acquire_backbuffer_copy(
+        IDirect3DDevice9 *device, IDirect3DSwapChain9 *swap_chain, int screen, bool pooled) {
+
+    IDirect3DSurface9 *buffer = nullptr;
+    HRESULT hr = swap_chain->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &buffer);
+    if (FAILED(hr) || buffer == nullptr) {
+        log_warning("graphics::d3d9",
+                "failed to get back buffer for screen {}, hr={}",
+                screen,
+                FMT_HRESULT(hr));
+        return std::nullopt;
+    }
+
+    D3DSURFACE_DESC desc {};
+    hr = buffer->GetDesc(&desc);
+    if (FAILED(hr)) {
+        log_warning("graphics::d3d9",
+                "failed to acquire back buffer descriptor, hr={}",
+                FMT_HRESULT(hr));
+        buffer->Release();
+        return std::nullopt;
+    }
+
+    // GetRenderTargetData rejects multisampled sources. no supported game has been
+    // seen presenting one, so resolving is left unimplemented rather than untested
+    if (desc.MultiSampleType != D3DMULTISAMPLE_NONE) {
+        static std::once_flag warned;
+        std::call_once(warned, [&desc] {
+            log_warning("graphics::d3d9",
+                    "back buffer is multisampled ({}), screenshots and capture are unsupported",
+                    static_cast<uint32_t>(desc.MultiSampleType));
+        });
+        buffer->Release();
+        return std::nullopt;
+    }
+
+    auto destination = pooled
+            ? pool().acquire(device, desc)
+            : create_readback_surface(device, desc);
+    if (!destination) {
+        buffer->Release();
+        return std::nullopt;
+    }
+
+    hr = device->GetRenderTargetData(buffer, destination.get());
+    buffer->Release();
+
+    if (FAILED(hr)) {
+        log_warning("graphics::d3d9",
+                "failed to copy back buffer contents, hr={}",
+                FMT_HRESULT(hr));
+        if (pooled) {
+            pool().release(device, std::move(destination));
+        }
+        return std::nullopt;
+    }
+
+    BackbufferCopy copy;
+    copy.screen = screen;
+    copy.desc = desc;
+    copy.device = device;
+    copy.surface = std::move(destination);
+    copy.pooled = pooled;
+
+    return copy;
+}
+}

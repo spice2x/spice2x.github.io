@@ -12,8 +12,6 @@
 #include <dwmapi.h>
 #endif
 
-#include "external/toojpeg/toojpeg.h"
-
 // order must match spice2x_AutoOrientation UI enum order
 enum graphics_orientation {
     ORIENTATION_CW = 0,
@@ -140,12 +138,16 @@ void graphics_screens_get(std::vector<int> &screens);
 void graphics_poll_screenshot_hotkey();
 void graphics_screenshot_trigger();
 bool graphics_screenshot_consume();
+
+inline constexpr size_t GRAPHICS_CAPTURE_SCREEN_NO = 4;
+
 void graphics_capture_trigger(int screen);
 bool graphics_capture_consume(int *screen);
 void graphics_capture_enqueue(int screen, uint8_t *data, size_t width, size_t height);
 void graphics_capture_skip(int screen);
-bool graphics_capture_receive_jpeg(int screen, TooJpeg::WRITE_ONE_BYTE receiver,
-        bool rgb = true, int quality = 80, bool downsample = true, int divide = 0,
+// on success `out` holds the encoded JPEG; its storage is reused across calls
+bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
+        int quality = 80, int divide = 0,
         uint64_t *timestamp = nullptr,
         int *width = nullptr, int *height = nullptr);
 // the returned path is for screen 0; any extra screens only reserve their suffixed names

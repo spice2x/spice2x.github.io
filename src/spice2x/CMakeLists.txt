@@ -256,6 +256,28 @@ add_subdirectory(external/imgui EXCLUDE_FROM_ALL)
 add_subdirectory(external/minhook EXCLUDE_FROM_ALL)
 add_subdirectory(external/cpu_features EXCLUDE_FROM_ALL)
 
+# libjpeg-turbo's SIMD needs nasm; enable_language belongs at top level. Without
+# it the library still builds, just without SIMD.
+include(CheckLanguage)
+check_language(ASM_NASM)
+if(CMAKE_ASM_NASM_COMPILER)
+    enable_language(ASM_NASM)
+else()
+    message(WARNING
+            "nasm not found: libjpeg-turbo will be built without SIMD, "
+            "which makes api screen capture several times slower")
+endif()
+add_subdirectory(external/libjpeg-turbo EXCLUDE_FROM_ALL)
+
+# fpng's SIMD needs the whole unit built for SSE4.1, which its runtime CPU check
+# cannot undo, so keep it scalar rather than raising the CPU baseline
+set_source_files_properties(external/fpng/fpng.cpp PROPERTIES
+        COMPILE_DEFINITIONS "FPNG_NO_SSE=1")
+if(NOT MSVC)
+    set_source_files_properties(external/fpng/fpng.cpp PROPERTIES
+            COMPILE_OPTIONS "-fno-strict-aliasing")
+endif()
+
 # set link time optimizations (disabled for Debug builds for speed, disabled
 # for RelWithDebInfo builds due to "lto1: error: two or more sections for"
 # errors)
@@ -380,7 +402,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         external/tinyxml2/tinyxml2.cpp
         external/http-parser/http_parser.c
         external/usbhidusage/usb-hid-usage.c
-        external/toojpeg/toojpeg.cpp
+        external/fpng/fpng.cpp
         external/scard/scard.cpp
 
         # games
@@ -532,10 +554,12 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/devicehook.cpp
         hooks/graphics/graphics.cpp
         hooks/graphics/graphics_windowed.cpp
+        hooks/graphics/jpeg_encoder.cpp
         hooks/graphics/nvapi_impl.cpp
         hooks/graphics/nvapi_hook.cpp
         hooks/graphics/nvenc_hook.cpp
         hooks/graphics/backends/d3d9/d3d9_backend.cpp
+        hooks/graphics/backends/d3d9/d3d9_readback.cpp
         hooks/graphics/backends/d3d9/d3d9_screenshot.cpp
         hooks/graphics/backends/d3d9/d3d9_device.cpp
         hooks/graphics/backends/d3d9/d3d9_gfdm.cpp
@@ -740,7 +764,7 @@ endfunction()
 add_library(spicetools_spice_objs OBJECT ${SOURCE_FILES})
 target_link_libraries(spicetools_spice_objs
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features jpeg-static)
 target_link_libraries(spicetools_spice_objs PUBLIC winscard)
 
 if(NOT MSVC)
@@ -780,7 +804,7 @@ set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/W
 add_executable(spicetools_spice_linux ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice_linux
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features jpeg-static)
 set_target_properties(spicetools_spice_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice_linux PROPERTIES OUTPUT_NAME "spice_linux")
 target_compile_definitions(spicetools_spice_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
@@ -798,7 +822,7 @@ add_executable(spicetools_spice64 ${SOURCE_FILES} ${RESOURCE_FILES})
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features jpeg-static)
 target_link_libraries(spicetools_spice64 PUBLIC winscard)
 set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64 PROPERTIES OUTPUT_NAME "spice64")
@@ -821,7 +845,7 @@ add_executable(spicetools_spice64_linux ${SOURCE_FILES} ${RESOURCE_FILES})
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64_linux
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features jpeg-static)
 set_target_properties(spicetools_spice64_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64_linux PROPERTIES OUTPUT_NAME "spice64_linux")
 target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE64=1)
@@ -842,7 +866,7 @@ set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.
 add_executable(spicetools_cfg WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features jpeg-static)
 target_link_libraries(spicetools_cfg PUBLIC winscard)
 set_target_properties(spicetools_cfg PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg PROPERTIES OUTPUT_NAME "spicecfg")
@@ -860,7 +884,7 @@ set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.
 add_executable(spicetools_cfg_linux WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg_linux
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features jpeg-static)
 set_target_properties(spicetools_cfg_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg_linux PROPERTIES OUTPUT_NAME "spicecfg_linux")
 target_compile_definitions(spicetools_cfg_linux PRIVATE SPICETOOLS_SPICECFG_STANDALONE=1)
