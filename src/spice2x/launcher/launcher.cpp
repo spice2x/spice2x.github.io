@@ -1683,6 +1683,26 @@ int main_implementation(int argc, char *argv[]) {
             });
     }
 
+    if (options[launcher::Options::PathToModules].is_active() && !cfg::CONFIGURATOR_STANDALONE) {
+        log_warning(
+            "launcher",
+            "WARNING - user specified -modules option\n\n\n"
+            "!!!                                                             !!!\n"
+            "!!! Using -modules modifies where game is run from!             !!!\n"
+            "!!! Unless you know exactly what you are doing, clear -modules  !!!\n"
+            "!!!   and try again; usually this is accidentally set by users  !!!\n"
+            "!!!   without understanding the implications.                   !!!\n"
+            "!!!                                                             !!!\n"
+            );
+        deferredlogs::defer_error_messages({
+            "-modules option specified by user",
+            "    this can have unintended side-effects such as game assets loading",
+            "    from the wrong directory, or DLL load ordering resolving to",
+            "    unexpected paths; instead, clear -modules option and place spice",
+            "    binaries in the intended game directory",
+            });
+    }
+
     if (launcher::signal::DISABLE && !cfg::CONFIGURATOR_STANDALONE) {
         log_warning(
             "launcher",
