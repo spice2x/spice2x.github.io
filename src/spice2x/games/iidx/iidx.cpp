@@ -279,6 +279,26 @@ namespace games::iidx {
         return nullptr;
     }
 
+    // best-effort read of a TDJ ROM file to determine if the game is running in TDJ mode
+    //
+    // these paths are not emulated - they hit whatever is actually mounted at that drive letter.
+    // an empty optical or removable drive raises the modal "insert a disk" error (the launcher
+    // clears SEM_FAILCRITICALERRORS process-wide) and a downed network drive stalls on redirector
+    // timeouts, so only probe what a TDJ cabinet would actually be laid out on.
+    // drive_path must be absolute and start with a drive letter.
+    static bool tdj_rom_matches(const char *drive_path, const char *expected) {
+        const wchar_t root[] = { (wchar_t) drive_path[0], L':', L'\\', L'\0' };
+        const auto drive_type = GetDriveTypeW(root);
+
+        if (drive_type != DRIVE_FIXED && drive_type != DRIVE_RAMDISK) {
+            log_misc("iidx", "not probing '{}' for TDJ, not a local disk (drive type {})",
+                    drive_path, drive_type);
+            return false;
+        }
+
+        return fileutils::text_read(drive_path) == expected;
+    }
+
 #endif
 
     IIDXGame::IIDXGame() : Game("Beatmania IIDX") {
@@ -339,8 +359,10 @@ namespace games::iidx {
             HAS_LIBAIO = true;
 
             // check TDJ mode
-            TDJ_MODE |= fileutils::text_read("C:\\000rom.txt") == "TDJ-JA";
-            TDJ_MODE |= fileutils::text_read("D:\\001rom.txt") == "TDJ";
+            if (!TDJ_MODE) {
+                TDJ_MODE = tdj_rom_matches("C:\\000rom.txt", "TDJ-JA")
+                        || tdj_rom_matches("D:\\001rom.txt", "TDJ");
+            }
 
             // force TDJ mode
             if (TDJ_MODE) {

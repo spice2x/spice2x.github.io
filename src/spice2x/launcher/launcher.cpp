@@ -1683,6 +1683,26 @@ int main_implementation(int argc, char *argv[]) {
             });
     }
 
+    if (options[launcher::Options::PathToModules].is_active() && !cfg::CONFIGURATOR_STANDALONE) {
+        log_warning(
+            "launcher",
+            "WARNING - user specified -modules option\n\n\n"
+            "!!!                                                             !!!\n"
+            "!!! Using -modules changes which game DLLs get loaded!          !!!\n"
+            "!!! Unless you know exactly what you are doing, clear -modules  !!!\n"
+            "!!!   and try again; usually this is accidentally set by users  !!!\n"
+            "!!!   without understanding the implications.                   !!!\n"
+            "!!!                                                             !!!\n"
+            );
+        deferredlogs::defer_error_messages({
+            "-modules option specified by user",
+            "    game DLLs and patches are loaded from that folder instead of the spice folder,",
+            "    and it is also prepended to the DLL search path, so dependencies may resolve to",
+            "    unexpected copies; instead, clear -modules option and place spice binaries in",
+            "    the intended game directory",
+            });
+    }
+
     if (launcher::signal::DISABLE && !cfg::CONFIGURATOR_STANDALONE) {
         log_warning(
             "launcher",
