@@ -260,13 +260,15 @@ add_subdirectory(external/cpu_features EXCLUDE_FROM_ALL)
 # sysroot and cannot see it, so those targets build without JPEG support.
 add_library(spice_jpeg INTERFACE)
 if(NOT SPICE_XP)
-    # name the archive outright: the package also ships an import library, and
-    # linking that one would pull in a libjpeg DLL at runtime
-    find_library(JPEG_LIBRARY NAMES libjpeg.a)
-    find_path(JPEG_INCLUDE_DIR NAMES jpeglib.h)
-    if(JPEG_LIBRARY AND JPEG_INCLUDE_DIR)
-        target_include_directories(spice_jpeg INTERFACE "${JPEG_INCLUDE_DIR}")
-        target_link_libraries(spice_jpeg INTERFACE "${JPEG_LIBRARY}")
+    # search static archives only: the mingw package also ships an import library,
+    # and linking that one would pull in a libjpeg DLL at runtime
+    set(SPICE_JPEG_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+    find_package(JPEG)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ${SPICE_JPEG_SUFFIXES})
+
+    if(JPEG_FOUND)
+        target_link_libraries(spice_jpeg INTERFACE JPEG::JPEG)
         target_compile_definitions(spice_jpeg INTERFACE SPICE_JPEG=1)
     else()
         message(WARNING
