@@ -14,7 +14,7 @@ namespace api {
 
         /*
          * multipart/x-mixed-replace: every frame is a standalone JPEG in its own MIME part.
-         * No container and no inter-frame state, so a client may join at any point.
+         * no container and no inter-frame state, so a client may join at any point.
          */
         class MjpegWriter : public StreamWriter {
         public:
@@ -65,6 +65,10 @@ namespace api {
 #ifdef SPICE_H264
         if (path == "/stream.mp4") {
             return make_h264_writer(quality, fps);
+        }
+
+        if (path == "/stream.h264") {
+            return make_annexb_writer(quality, fps);
         }
 #endif
 

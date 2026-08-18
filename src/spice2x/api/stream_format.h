@@ -13,8 +13,8 @@ namespace api {
     using StreamSend = std::function<bool(const void *, size_t)>;
 
     /*
-     * One wire format for the video stream. Instantiated per connection so a format is free to
-     * keep encoder and muxer state across frames. Frames arrive as raw pixels; each format
+     * one wire format for the video stream. instantiated per connection so a format is free to
+     * keep encoder and muxer state across frames. frames arrive as raw pixels; each format
      * encodes them itself.
      */
     class StreamWriter {

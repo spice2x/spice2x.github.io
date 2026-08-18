@@ -18,8 +18,8 @@ namespace api::capture_pump {
     using FramePtr = std::shared_ptr<const Frame>;
 
     /*
-     * The graphics layer keeps a single capture slot per screen, so two threads waiting on it
-     * steal each other's frames. Everything that wants a captured frame goes through here:
+     * the graphics layer keeps a single capture slot per screen, so two threads waiting on it
+     * steal each other's frames. everything that wants a captured frame goes through here:
      * either directly (one at a time, serialized per screen) or by subscribing to a pump that
      * captures on a timer and shares each frame with every subscriber.
      */

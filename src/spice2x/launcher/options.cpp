@@ -1752,6 +1752,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "alternative to API screen capture. Requires -api.\n\n"
             "http://host:apiport+2/stream.mp4 - H.264\n\n"
             "http://host:apiport+2/stream.mjpg - MJPEG\n\n"
+            "http://host:apiport+2/stream.h264 - H.264 with no container, for apps\n\n"
             "Parameters: screen (0-3), fps (1-60, default 30), q (1-100, default 70).\n\n"
             "Example with -api 1337: http://host:1339/stream.mp4?fps=30&q=70\n\n"
             "VIEW ONLY - touch input still requires -api.\n\n"
