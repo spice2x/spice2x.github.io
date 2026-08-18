@@ -346,6 +346,9 @@ set(SOURCE_FILES ${SOURCE_FILES}
         # api
         api/controller.cpp
         api/websocket.cpp
+        api/capture_pump.cpp
+        api/stream_format.cpp
+        api/stream_server.cpp
         api/request.cpp
         api/response.cpp
         api/module.cpp

@@ -16,6 +16,7 @@
 
 static const std::vector<std::string> CATEGORY_ORDER_API = {
     "Companion & API",
+    "Video Stream",
     "Serial API",
     "API Dev",
     "BT5 API",
@@ -1742,6 +1743,27 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Integer,
         .setting_name = "1",
         .category = "Companion & API",
+    },
+    {
+        // APIStreamPort
+        .title = "Video Stream Port",
+        .name = "apistream",
+        .desc = "Serve the mirrored screen as an MJPEG video stream on the given port. Open the "
+            "URL in a web browser or media player and it plays; clients no longer have to poll "
+            "for one image at a time.\n\n"
+            "Example URL - every parameter is optional:\n\n"
+            "http://<host>:<port>/stream.mjpg?screen=1&fps=30&q=70\n\n"
+            "screen - which screen to mirror, 0-3. 0 is the main screen, 1 is the subscreen. "
+            "Default: the subscreen if the game has one, otherwise the main screen\n\n"
+            "fps - frames per second, 1-60. Default: 30\n\n"
+            "q - JPEG quality, 1-100. Default: 70\n\n"
+            "VIEW ONLY: touch and other input are NOT supported on this port. Input still "
+            "requires a proper API connection (-api), such as the companion app.\n\n"
+            "WARNING: no password protection - anyone who can reach this port can watch the "
+            "game screen.",
+        .type = OptionType::Integer,
+        .setting_name = "(port)",
+        .category = "Video Stream",
     },
     {
         .title = "Enable All IO Modules",

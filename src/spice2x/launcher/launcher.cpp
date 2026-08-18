@@ -14,6 +14,7 @@
 #include "acio/icca/icca.h"
 #include "acio/mdxf/mdxf.h"
 #include "api/controller.h"
+#include "api/stream_server.h"
 #include "avs/automap.h"
 #include "avs/core.h"
 #include "avs/ea3.h"
@@ -150,6 +151,7 @@ std::string CARD_OVERRIDES[2];
 
 // sub-systems
 std::unique_ptr<api::Controller> API_CONTROLLER;
+std::unique_ptr<api::StreamServer> API_STREAM_SERVER;
 std::unique_ptr<rawinput::RawInputManager> RI_MGR;
 
 // trigger NVIDIA Optimus & AMD Enduro High Performance Graphics
@@ -198,6 +200,7 @@ int main_implementation(int argc, char *argv[]) {
     bool api_pretty = false;
     bool api_debug = false;
     unsigned short api_port = 1337;
+    unsigned short api_stream_port = 0;
     std::string api_pass = "";
     std::vector<std::string> api_serial_port;
     std::vector<DWORD> api_serial_baud;
@@ -1031,6 +1034,26 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::APIScreenMirrorDivide].is_active()) {
         api::modules::CAPTURE_DIVIDE = options[launcher::Options::APIScreenMirrorDivide].value_uint32();
+    }
+    if (options[launcher::Options::APIStreamPort].is_active()) {
+        const auto stream_port = options[launcher::Options::APIStreamPort].value_uint32();
+        if (stream_port > 0 && stream_port <= 65535) {
+            // both listeners set SO_REUSEADDR, so a collision binds twice and misbehaves
+            // instead of failing cleanly
+            if (stream_port == api_port) {
+                log_fatal("launcher",
+                        "-apistream port {} is already used by the API TCP port (-api)",
+                        stream_port);
+            }
+            if (stream_port == static_cast<unsigned int>(api_port) + 1) {
+                log_fatal("launcher",
+                        "-apistream port {} is already used by the API websocket port (-api plus one)",
+                        stream_port);
+            }
+            api_stream_port = static_cast<unsigned short>(stream_port);
+        } else {
+            log_warning("launcher", "ignoring out of range -apistream port: {}", stream_port);
+        }
     }
 
     if (options[launcher::Options::DisableDebugHooks].value_bool()) {
@@ -2731,6 +2754,9 @@ int main_implementation(int argc, char *argv[]) {
     for (size_t i = 0; i < std::min(api_serial_port.size(), api_serial_baud.size()); i++) {
         API_CONTROLLER->listen_serial(api_serial_port[i], api_serial_baud[i]);
     }
+    if (api_stream_port > 0) {
+        API_STREAM_SERVER = std::make_unique<api::StreamServer>(api_stream_port);
+    }
 
     // pin macro
     if (!cfg::CONFIGURATOR_STANDALONE && PIN_MACRO_ENABLED) {
@@ -2819,6 +2845,7 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // free api controller
+    API_STREAM_SERVER.reset();
     API_CONTROLLER.reset();
 
     eamuse_pin_macro_stop_thread();

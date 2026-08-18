@@ -2,6 +2,7 @@
 #include <functional>
 #include <mutex>
 #include <unordered_map>
+#include "api/capture_pump.h"
 #include "external/rapidjson/document.h"
 #include "hooks/graphics/graphics.h"
 #include "util/crypt.h"
@@ -118,8 +119,16 @@ namespace api::modules {
         uint64_t timestamp = 0;
         int width = 0;
         int height = 0;
-        graphics_capture_trigger(screen);
-        bool success = graphics_capture_receive_jpeg(
+
+        // a stream owns this screen's capture slot while it runs, so share its frame instead
+        // of triggering a second capture that would steal from it
+        if (auto frame = capture_pump::latest(screen)) {
+            add_jpeg_response(
+                    screen, frame->timestamp, frame->width, frame->height, frame->jpeg, res);
+            return;
+        }
+
+        bool success = capture_pump::capture_direct(
                 screen, CAPTURE_BUFFER, quality, divide, &timestamp, &width, &height);
 
         if (success) {
