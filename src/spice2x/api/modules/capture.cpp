@@ -5,6 +5,7 @@
 #include "api/capture_pump.h"
 #include "external/rapidjson/document.h"
 #include "hooks/graphics/graphics.h"
+#include "hooks/graphics/jpeg_encoder.h"
 #include "util/crypt.h"
 
 using namespace std::placeholders;
@@ -123,13 +124,27 @@ namespace api::modules {
         // a stream owns this screen's capture slot while it runs, so share its frame instead
         // of triggering a second capture that would steal from it
         if (auto frame = capture_pump::latest(screen)) {
-            add_jpeg_response(
-                    screen, frame->timestamp, frame->width, frame->height, frame->jpeg, res);
-            return;
+            CAPTURE_BUFFER.clear();
+            if (jpeg_encoder::encode(
+                    CAPTURE_BUFFER, frame->pixels.get(),
+                    frame->width, frame->height, quality)) {
+                add_jpeg_response(
+                        screen, frame->timestamp, frame->width, frame->height,
+                        CAPTURE_BUFFER, res);
+                CAPTURE_BUFFER.clear();
+                return;
+            }
         }
 
+        std::shared_ptr<uint8_t[]> pixels;
         bool success = capture_pump::capture_direct(
-                screen, CAPTURE_BUFFER, quality, divide, &timestamp, &width, &height);
+                screen, pixels, divide, &timestamp, &width, &height);
+
+        if (success) {
+            CAPTURE_BUFFER.clear();
+            success = jpeg_encoder::encode(
+                    CAPTURE_BUFFER, pixels.get(), width, height, quality);
+        }
 
         if (success) {
             add_jpeg_response(screen, timestamp, width, height, CAPTURE_BUFFER, res);

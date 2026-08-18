@@ -7,7 +7,8 @@
 namespace api::capture_pump {
 
     struct Frame {
-        std::vector<uint8_t> jpeg;
+        // packed 24bpp RGB, width * height * 3 bytes
+        std::shared_ptr<uint8_t[]> pixels;
         uint64_t timestamp = 0;
         int width = 0;
         int height = 0;
@@ -24,13 +25,13 @@ namespace api::capture_pump {
      */
 
     // trigger + receive under the per-screen consumer lock
-    bool capture_direct(int screen, std::vector<uint8_t> &out, int quality, int divide,
+    bool capture_direct(int screen, std::shared_ptr<uint8_t[]> &out, int divide,
             uint64_t *timestamp = nullptr, int *width = nullptr, int *height = nullptr);
 
     // keeps a screen's pump running for as long as it exists
     class Subscription {
     public:
-        Subscription(int screen, int quality, int fps);
+        Subscription(int screen, int fps);
         ~Subscription();
 
         Subscription(const Subscription &) = delete;

@@ -1481,11 +1481,11 @@ void graphics_capture_skip(int screen) {
     GRAPHICS_CAPTURE_CV[screen].notify_one();
 }
 
-bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
-        int quality, int divide, uint64_t *timestamp,
+bool graphics_capture_receive_raw(int screen, std::shared_ptr<uint8_t[]> &out,
+        int divide, uint64_t *timestamp,
         int *width, int *height) {
 
-    out.clear();
+    out = nullptr;
 
     if (screen < 0 || screen >= static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)) {
         return false;
@@ -1558,9 +1558,39 @@ bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
         capture_height = height_new;
     }
 
+    out = std::move(capture_data);
+
+    // status
+    if (timestamp) {
+        *timestamp = capture_timestamp;
+    }
+    if (width) {
+        *width = capture_width;
+    }
+    if (height) {
+        *height = capture_height;
+    }
+
+    return true;
+}
+
+bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
+        int quality, int divide, uint64_t *timestamp,
+        int *width, int *height) {
+
+    out.clear();
+
+    std::shared_ptr<uint8_t[]> pixels;
+    int capture_width = 0;
+    int capture_height = 0;
+    if (!graphics_capture_receive_raw(
+            screen, pixels, divide, timestamp, &capture_width, &capture_height)) {
+        return false;
+    }
+
     // compress
     const bool success = jpeg_encoder::encode(
-            out, capture_data.get(),
+            out, pixels.get(),
             capture_width, capture_height, quality);
 
     if (!success) {
@@ -1568,9 +1598,6 @@ bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
     }
 
     // status
-    if (timestamp) {
-        *timestamp = capture_timestamp;
-    }
     if (width) {
         *width = capture_width;
     }

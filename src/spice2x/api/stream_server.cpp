@@ -310,54 +310,58 @@ namespace api {
         if (read_request(socket, request_size_limit, request)) {
             if (request.method != "GET") {
                 send_error(socket, "405 Method Not Allowed");
-            } else if (auto writer = make_stream_writer(request.path); !writer) {
-                send_error(socket, "404 Not Found");
             } else {
-                // screen 1 is the subscreen in every game that has one; single-screen games
-                // only ever register screen 0, so resolve the default against what exists
-                int screen = query_int(request, "screen", -1, 0,
-                        static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO) - 1);
-                if (screen < 0) {
-                    std::vector<int> screens;
-                    graphics_screens_get(screens);
-                    screen = std::find(screens.begin(), screens.end(), 1) != screens.end() ? 1 : 0;
-                }
-
                 const int fps = query_int(request, "fps", 30, 1, fps_limit);
                 const int quality = query_int(request, "q", 70, 1, 100);
 
-                log_info("api::stream",
-                        "client connected: {} (screen={}, fps={}, quality={})",
-                        address, screen, fps, quality);
+                auto writer = make_stream_writer(request.path, quality, fps);
+                if (!writer) {
+                    send_error(socket, "404 Not Found");
+                } else {
+                    // screen 1 is the subscreen in every game that has one; single-screen games
+                    // only ever register screen 0, so resolve the default against what exists
+                    int screen = query_int(request, "screen", -1, 0,
+                            static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO) - 1);
+                    if (screen < 0) {
+                        std::vector<int> screens;
+                        graphics_screens_get(screens);
+                        screen = std::find(screens.begin(), screens.end(), 1) != screens.end()
+                                ? 1 : 0;
+                    }
 
-                const std::string header =
-                        "HTTP/1.0 200 OK\r\n"
-                        "Connection: close\r\n"
-                        "Cache-Control: no-store, no-cache, must-revalidate\r\n"
-                        "Pragma: no-cache\r\n"
-                        "Content-Type: " + writer->content_type() + "\r\n"
-                        "\r\n";
+                    log_info("api::stream",
+                            "client connected: {} ({}, screen={}, fps={}, quality={})",
+                            address, request.path, screen, fps, quality);
 
-                const StreamSend stream_send = [socket](const void *data, size_t size) {
-                    return send_all(socket, data, size);
-                };
+                    const std::string header =
+                            "HTTP/1.0 200 OK\r\n"
+                            "Connection: close\r\n"
+                            "Cache-Control: no-store, no-cache, must-revalidate\r\n"
+                            "Pragma: no-cache\r\n"
+                            "Content-Type: " + writer->content_type() + "\r\n"
+                            "\r\n";
 
-                if (send_all(socket, header) && writer->begin(stream_send)) {
-                    capture_pump::Subscription subscription(screen, quality, fps);
+                    const StreamSend stream_send = [socket](const void *data, size_t size) {
+                        return send_all(socket, data, size);
+                    };
 
-                    while (this->running) {
-                        auto frame = subscription.next(1000);
-                        if (!frame) {
-                            continue;
-                        }
+                    if (send_all(socket, header) && writer->begin(stream_send)) {
+                        capture_pump::Subscription subscription(screen, fps);
 
-                        if (!writer->write(stream_send, *frame)) {
-                            break;
+                        while (this->running) {
+                            auto frame = subscription.next(1000);
+                            if (!frame) {
+                                continue;
+                            }
+
+                            if (!writer->write(stream_send, *frame)) {
+                                break;
+                            }
                         }
                     }
-                }
 
-                log_info("api::stream", "client disconnected: {}", address);
+                    log_info("api::stream", "client disconnected: {}", address);
+                }
             }
         }
 

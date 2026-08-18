@@ -14,8 +14,8 @@ namespace api {
 
     /*
      * One wire format for the video stream. Instantiated per connection so a format is free to
-     * keep muxer state across frames. Frames arrive already JPEG-encoded by the capture pump;
-     * a format wanting a different codec re-encodes inside its own writer.
+     * keep encoder and muxer state across frames. Frames arrive as raw pixels; each format
+     * encodes them itself.
      */
     class StreamWriter {
     public:
@@ -36,6 +36,7 @@ namespace api {
         StreamWriter() = default;
     };
 
-    // null when the path does not name a known format
-    std::unique_ptr<StreamWriter> make_stream_writer(const std::string &path);
+    // null when the path does not name a format this build supports
+    std::unique_ptr<StreamWriter> make_stream_writer(
+            const std::string &path, int quality, int fps);
 }

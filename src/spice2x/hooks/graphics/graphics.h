@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <string>
 #include <vector>
 #include <optional>
@@ -145,6 +146,11 @@ void graphics_capture_trigger(int screen);
 bool graphics_capture_consume(int *screen);
 void graphics_capture_enqueue(int screen, uint8_t *data, size_t width, size_t height);
 void graphics_capture_skip(int screen);
+// on success `out` owns packed 24bpp RGB pixels, width * height * 3 bytes
+bool graphics_capture_receive_raw(int screen, std::shared_ptr<uint8_t[]> &out,
+        int divide = 0,
+        uint64_t *timestamp = nullptr,
+        int *width = nullptr, int *height = nullptr);
 // on success `out` holds the encoded JPEG; its storage is reused across calls
 bool graphics_capture_receive_jpeg(int screen, std::vector<uint8_t> &out,
         int quality = 80, int divide = 0,

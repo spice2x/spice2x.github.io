@@ -276,6 +276,28 @@ if(NOT SPICE_XP)
     endif()
 endif()
 
+# x264 for the API H.264 video stream, installed into the mingw sysroots by the
+# deps image. The WinXP toolchains deliberately go without it and serve MJPEG only.
+add_library(spice_x264 INTERFACE)
+if(NOT SPICE_XP)
+    # search static archives only: the mingw package also ships an import library,
+    # and linking that one would pull in a libx264 DLL at runtime
+    set(SPICE_X264_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_STATIC_LIBRARY_SUFFIX})
+    find_library(X264_LIBRARY NAMES x264 libx264)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ${SPICE_X264_SUFFIXES})
+
+    find_path(X264_INCLUDE_DIR NAMES x264.h)
+    if(X264_LIBRARY AND X264_INCLUDE_DIR)
+        target_include_directories(spice_x264 INTERFACE "${X264_INCLUDE_DIR}")
+        target_link_libraries(spice_x264 INTERFACE "${X264_LIBRARY}")
+        target_compile_definitions(spice_x264 INTERFACE SPICE_H264=1)
+    else()
+        message(WARNING
+                "x264 not found: the api video stream will only offer MJPEG")
+    endif()
+endif()
+
 # fpng's SIMD needs the whole unit built for SSE4.1, which its runtime CPU check
 # cannot undo, so keep it scalar rather than raising the CPU baseline
 set_source_files_properties(external/fpng/fpng.cpp PROPERTIES
@@ -283,6 +305,13 @@ set_source_files_properties(external/fpng/fpng.cpp PROPERTIES
 if(NOT MSVC)
     set_source_files_properties(external/fpng/fpng.cpp PROPERTIES
             COMPILE_OPTIONS "-fno-strict-aliasing")
+endif()
+
+# minimp4 is a vendored single-header library and does not build warning clean,
+# so silence those warnings on the unit that instantiates it
+if(NOT MSVC)
+    set_source_files_properties(api/h264_stream.cpp PROPERTIES
+            COMPILE_OPTIONS "-Wno-sign-compare;-Wno-unused-variable;-Wno-implicit-fallthrough;-Wno-unused-function")
 endif()
 
 # set link time optimizations (disabled for Debug builds for speed, disabled
@@ -347,6 +376,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         api/controller.cpp
         api/websocket.cpp
         api/capture_pump.cpp
+        api/h264_stream.cpp
         api/stream_format.cpp
         api/stream_server.cpp
         api/request.cpp
@@ -774,7 +804,7 @@ endfunction()
 add_library(spicetools_spice_objs OBJECT ${SOURCE_FILES})
 target_link_libraries(spicetools_spice_objs
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg spice_x264)
 target_link_libraries(spicetools_spice_objs PUBLIC winscard)
 
 if(NOT MSVC)
@@ -814,7 +844,7 @@ set(RESOURCE_FILES build/manifest.manifest build/manifest.rc build/icon.rc cfg/W
 add_executable(spicetools_spice_linux ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_spice_linux
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg spice_x264)
 set_target_properties(spicetools_spice_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice_linux PROPERTIES OUTPUT_NAME "spice_linux")
 target_compile_definitions(spicetools_spice_linux PRIVATE NO_SCARD=1 PRIVATE SPICE_LINUX=1)
@@ -832,7 +862,7 @@ add_executable(spicetools_spice64 ${SOURCE_FILES} ${RESOURCE_FILES})
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg spice_x264)
 target_link_libraries(spicetools_spice64 PUBLIC winscard)
 set_target_properties(spicetools_spice64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64 PROPERTIES OUTPUT_NAME "spice64")
@@ -855,7 +885,7 @@ add_executable(spicetools_spice64_linux ${SOURCE_FILES} ${RESOURCE_FILES})
 # do NOT link against: mf, mfplat, mfreadwrite; otherwise unity games will break
 target_link_libraries(spicetools_spice64_linux
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp mfuuid strmiids dxva2
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg spice_x264)
 set_target_properties(spicetools_spice64_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_spice64_linux PROPERTIES OUTPUT_NAME "spice64_linux")
 target_compile_definitions(spicetools_spice64_linux PRIVATE SPICE64=1)
@@ -876,7 +906,7 @@ set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.
 add_executable(spicetools_cfg WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg spice_x264)
 target_link_libraries(spicetools_cfg PUBLIC winscard)
 set_target_properties(spicetools_cfg PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg PROPERTIES OUTPUT_NAME "spicecfg")
@@ -894,7 +924,7 @@ set(RESOURCE_FILES cfg/manifest.manifest cfg/manifest.rc cfg/icon.rc cfg/Win32D.
 add_executable(spicetools_cfg_linux WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_link_libraries(spicetools_cfg_linux
         PUBLIC d3d9 ws2_32 version comctl32 shlwapi iphlpapi hid secur32 setupapi psapi winmm winhttp strmiids
-        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg)
+        PRIVATE fmt::fmt-header-only discord-rpc imgui hash-library minhook imm32 dwmapi CpuFeatures::cpu_features spice_jpeg spice_x264)
 set_target_properties(spicetools_cfg_linux PROPERTIES PREFIX "")
 set_target_properties(spicetools_cfg_linux PROPERTIES OUTPUT_NAME "spicecfg_linux")
 target_compile_definitions(spicetools_cfg_linux PRIVATE SPICETOOLS_SPICECFG_STANDALONE=1)

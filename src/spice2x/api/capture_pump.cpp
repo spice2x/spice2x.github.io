@@ -25,7 +25,6 @@ namespace api::capture_pump {
             FramePtr latest;
             uint64_t seq = 0;
             int subscribers = 0;
-            int quality = 70;
             int fps = 30;
             bool started = false;
             std::thread thread;
@@ -43,10 +42,8 @@ namespace api::capture_pump {
 
         void pump_worker(int screen) {
             auto &pump = PUMPS[screen];
-            std::vector<uint8_t> buffer;
 
             while (true) {
-                int quality;
                 int fps;
 
                 {
@@ -59,7 +56,6 @@ namespace api::capture_pump {
                         return;
                     }
 
-                    quality = pump.quality;
                     fps = pump.fps;
                 }
 
@@ -68,13 +64,13 @@ namespace api::capture_pump {
                 uint64_t timestamp = 0;
                 int width = 0;
                 int height = 0;
-                buffer.clear();
+                std::shared_ptr<uint8_t[]> pixels;
                 const bool ok = capture_direct(
-                        screen, buffer, quality, 1, &timestamp, &width, &height);
+                        screen, pixels, 1, &timestamp, &width, &height);
 
-                if (ok && !buffer.empty()) {
+                if (ok && pixels) {
                     auto frame = std::make_shared<Frame>();
-                    frame->jpeg = std::move(buffer);
+                    frame->pixels = std::move(pixels);
                     frame->timestamp = timestamp;
                     frame->width = width;
                     frame->height = height;
@@ -92,7 +88,7 @@ namespace api::capture_pump {
         }
     }
 
-    bool capture_direct(int screen, std::vector<uint8_t> &out, int quality, int divide,
+    bool capture_direct(int screen, std::shared_ptr<uint8_t[]> &out, int divide,
             uint64_t *timestamp, int *width, int *height) {
 
         if (!valid_screen(screen)) {
@@ -101,11 +97,11 @@ namespace api::capture_pump {
 
         std::lock_guard<std::mutex> lock(CONSUMER_M[screen]);
         graphics_capture_trigger(screen);
-        return graphics_capture_receive_jpeg(
-                screen, out, quality, divide, timestamp, width, height);
+        return graphics_capture_receive_raw(
+                screen, out, divide, timestamp, width, height);
     }
 
-    Subscription::Subscription(int screen, int quality, int fps)
+    Subscription::Subscription(int screen, int fps)
         : screen(valid_screen(screen) ? screen : -1)
     {
         if (this->screen < 0 || SHUTDOWN.load()) {
@@ -116,13 +112,10 @@ namespace api::capture_pump {
         auto &pump = PUMPS[this->screen];
         std::lock_guard<std::mutex> lock(pump.m);
 
-        if (pump.subscribers == 0) {
-            // the first subscriber picks encoding parameters; later ones share its frames
-            pump.quality = quality;
-            pump.fps = std::clamp<int>(fps, PUMP_FPS_MIN, PUMP_FPS_MAX);
-        } else {
-            pump.fps = std::max(pump.fps, std::clamp<int>(fps, PUMP_FPS_MIN, PUMP_FPS_MAX));
-        }
+        // the fastest subscriber sets the pace; everyone shares the same frames
+        pump.fps = pump.subscribers == 0
+                ? std::clamp<int>(fps, PUMP_FPS_MIN, PUMP_FPS_MAX)
+                : std::max(pump.fps, std::clamp<int>(fps, PUMP_FPS_MIN, PUMP_FPS_MAX));
 
         pump.subscribers++;
         this->last_seq = pump.seq;
