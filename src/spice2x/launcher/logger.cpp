@@ -30,6 +30,7 @@ namespace logger {
     static std::mutex EVENT_MUTEX;
     static std::condition_variable EVENT_CV;
     static std::thread *THREAD = nullptr;
+    static HANDLE THREAD_FINISHED = nullptr;
     static std::mutex OUTPUT_MUTEX;
     static bool OUTPUT_BUFFER_HOT = false;
     static std::vector<std::pair<std::string, Style>> OUTPUT_BUFFER1;
@@ -151,6 +152,7 @@ namespace logger {
 
         // start logging thread
         RUNNING = true;
+        THREAD_FINISHED = CreateEvent(nullptr, TRUE, FALSE, nullptr);
         THREAD = new std::thread([] {
             std::unique_lock<std::mutex> lock(EVENT_MUTEX);
 
@@ -180,6 +182,10 @@ namespace logger {
                 HANDLE hTerminal = GetStdHandle(STD_OUTPUT_HANDLE);
                 SetConsoleTextAttribute(hTerminal, DEFAULT_ATTRIBUTES);
             }
+
+            if (THREAD_FINISHED) {
+                SetEvent(THREAD_FINISHED);
+            }
         });
     }
 
@@ -194,8 +200,26 @@ namespace logger {
             OUTPUT_BUFFER_HOT = true;
             EVENT_CV.notify_all();
 
-            // join and clean up
-            THREAD->join();
+            // never block forever - this also runs on the fatal/crash path, where the logging
+            // thread may be suspended or wedged and would take the whole process down with it
+            const bool finished = THREAD_FINISHED == nullptr ||
+                    WaitForSingleObject(THREAD_FINISHED, 1000) == WAIT_OBJECT_0;
+
+            if (finished) {
+                THREAD->join();
+
+                CloseHandle(THREAD_FINISHED);
+                THREAD_FINISHED = nullptr;
+            } else {
+                THREAD->detach();
+
+                // write out whatever the logging thread never got to
+                output_buffer_flush();
+                if (LOG_FILE && LOG_FILE != INVALID_HANDLE_VALUE) {
+                    FlushFileBuffers(LOG_FILE);
+                }
+            }
+
             delete THREAD;
             THREAD = nullptr;
         }

@@ -574,7 +574,7 @@ void devicehook_init(HMODULE module) {
     STORE(EscapeCommFunction_orig, detour::iat_try("EscapeCommFunction", EscapeCommFunction_hook, module));
     STORE(GetCommState_orig, detour::iat_try("GetCommState", GetCommState_hook, module));
     STORE(GetFileSize_orig, detour::iat_try("GetFileSize", GetFileSize_hook, module));
-    STORE(GetFileSizeEx_orig, detour::iat_try("GetFileSize", GetFileSizeEx_hook, module));
+    STORE(GetFileSizeEx_orig, detour::iat_try("GetFileSizeEx", GetFileSizeEx_hook, module));
     STORE(GetFileInformationByHandle_orig, detour::iat_try(
                 "GetFileInformationByHandle", GetFileInformationByHandle_hook, module));
     STORE(PurgeComm_orig, detour::iat_try("PurgeComm", PurgeComm_hook, module));

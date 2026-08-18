@@ -129,7 +129,10 @@ void **detour::iat_find(const char *function, HMODULE module, const char *iid_na
     // check signature
     const IMAGE_DOS_HEADER *pImgDosHeaders = (IMAGE_DOS_HEADER *) module;
     if (pImgDosHeaders->e_magic != IMAGE_DOS_SIGNATURE) {
-        log_fatal("detour", "signature mismatch ({} != {})", pImgDosHeaders->e_magic, IMAGE_DOS_SIGNATURE);
+
+        // foreign modules (injected, manually mapped, header wiped) have no import table to
+        // patch - skip them instead of taking the process down
+        return nullptr;
     }
 
     // get import table
@@ -193,7 +196,7 @@ void **detour::iat_find_ordinal(const char *iid_name, DWORD ordinal, HMODULE mod
     // check signature
     const auto pImgDosHeaders = reinterpret_cast<IMAGE_DOS_HEADER *>(module);
     if (pImgDosHeaders->e_magic != IMAGE_DOS_SIGNATURE) {
-        log_fatal("detour", "signature error");
+        return nullptr;
     }
 
     // get import table
@@ -248,7 +251,7 @@ void **detour::iat_find_proc(const char *iid_name, void *proc, HMODULE module) {
     // check signature
     const auto pImgDosHeaders = reinterpret_cast<IMAGE_DOS_HEADER *>(module);
     if (pImgDosHeaders->e_magic != IMAGE_DOS_SIGNATURE) {
-        log_fatal("detour", "signature error");
+        return nullptr;
     }
 
     // get import table
@@ -328,7 +331,6 @@ void *detour::iat_try(const char *function, void *new_func, HMODULE module, cons
 }
 
 void *detour::iat_try_ordinal(const char *iid_name, DWORD ordinal, void *new_func, HMODULE module) {
-
     // fail when no module was specified
     if (module == nullptr) {
         return nullptr;
