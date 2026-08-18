@@ -3,12 +3,12 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <future>
 #include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -26,7 +26,8 @@
 #include "d3d9_device.h"
 #include "d3d9_readback.h"
 
-// genpath picks free filenames by probing the disk, so only one save may run at a time
+// genpath picks filenames by probing the disk, so the whole save has to be serialised:
+// a name is only taken once its file exists, not when genpath hands it out
 static std::mutex SCREENSHOT_SAVE_M;
 
 namespace {
@@ -41,12 +42,15 @@ struct ImageRequest {
     int screen;
 };
 
-// a screen already read out of its surface, so nothing here touches D3D
+// a screen already read out of its surface, so nothing here touches D3D. the bytes
+// are still in the surface's format; converting them is left to the encode
 struct PendingWrite {
     int screen {};
+    D3DFORMAT format {};
     UINT width {};
     UINT height {};
-    std::vector<uint8_t> pixels;
+    size_t pitch {};
+    std::vector<uint8_t> data;
     std::string path;
     bool saved = false;
 };
@@ -66,17 +70,9 @@ constexpr size_t RGB_PIXEL_SIZE = 3;
 // the formats surface_to_rgb knows how to convert; the two must stay in sync
 static std::optional<size_t> surface_pixel_size(D3DFORMAT format) {
     switch (format) {
-        // never valid for a back buffer, carried over from the original capture conversion
-        case D3DFMT_R8G8B8:
-            return 3;
-
         // what back buffers are actually created as in practice
         case D3DFMT_X8R8G8B8:
         case D3DFMT_A8R8G8B8:
-
-        // never valid for a back buffer, carried over from the original capture conversion
-        case D3DFMT_X8B8G8R8:
-        case D3DFMT_A8B8G8R8:
 
         // a valid display format, but no supported game has been seen presenting one
         case D3DFMT_A2R10G10B10:
@@ -165,6 +161,14 @@ CaptureBuffers &capture_buffers() {
     return *instance;
 }
 
+// encodes get their own pool: the dispatch below already occupies a worker on its
+// pool, so queueing onto that one and waiting could starve itself. never destroyed
+// for the same reason as the buffers above
+ThreadPool &encode_pool() {
+    static auto *instance = new ThreadPool(2);
+    return *instance;
+}
+
 // normalize the supported D3D formats to packed 24bpp RGB. callers screen the
 // format through surface_pixel_size first, so the black fill below is a fallback
 void surface_to_rgb(
@@ -178,16 +182,6 @@ void surface_to_rgb(
     for (size_t row = 0; row < height; row++) {
         size_t offset_row = row * width * 3;
         switch (format) {
-            case D3DFMT_R8G8B8: {
-                for (size_t column = 0; column < width; column++) {
-                    auto cell = data + row * pitch + column * 3;
-                    auto pixel = &pixels[offset_row + column * 3];
-                    pixel[0] = cell[0];
-                    pixel[1] = cell[1];
-                    pixel[2] = cell[2];
-                }
-                break;
-            }
             case D3DFMT_X8R8G8B8:
             case D3DFMT_A8R8G8B8: {
                 for (size_t column = 0; column < width; column++) {
@@ -196,17 +190,6 @@ void surface_to_rgb(
                     pixel[0] = cell[2];
                     pixel[1] = cell[1];
                     pixel[2] = cell[0];
-                }
-                break;
-            }
-            case D3DFMT_X8B8G8R8:
-            case D3DFMT_A8B8G8R8: {
-                for (size_t column = 0; column < width; column++) {
-                    auto cell = data + row * pitch + column * 4;
-                    auto pixel = &pixels[offset_row + column * 3];
-                    pixel[0] = cell[0];
-                    pixel[1] = cell[1];
-                    pixel[2] = cell[2];
                 }
                 break;
             }
@@ -271,6 +254,7 @@ using d3d9_readback::BackbufferCopy;
 static void save_capture(PendingCapture capture) {
     const auto size = compute_image_size(capture.width, capture.height, RGB_PIXEL_SIZE);
     if (!size.has_value()) {
+        capture_buffers().give(std::move(capture.data));
         graphics_capture_skip(capture.screen);
         return;
     }
@@ -278,117 +262,75 @@ static void save_capture(PendingCapture capture) {
     auto pixels = std::unique_ptr<uint8_t[]>(new (std::nothrow) uint8_t[size->total_size]);
     if (!pixels) {
         log_warning("graphics::d3d9", "failed to allocate capture image buffer");
+        capture_buffers().give(std::move(capture.data));
         graphics_capture_skip(capture.screen);
         return;
     }
 
-    surface_to_rgb(
-            capture.format,
-            capture.width,
-            capture.height,
-            capture.data.data(),
-            capture.pitch,
-            pixels.get());
+    // a format we cannot read still has to produce a frame, or api clients stall
+    if (capture.data.empty()) {
+        std::memset(pixels.get(), 0, size->total_size);
+    } else {
+        surface_to_rgb(
+                capture.format,
+                capture.width,
+                capture.height,
+                capture.data.data(),
+                capture.pitch,
+                pixels.get());
 
-    capture_buffers().give(std::move(capture.data));
+        capture_buffers().give(std::move(capture.data));
+    }
 
     graphics_capture_enqueue(capture.screen, pixels.release(), capture.width, capture.height);
 }
 
-// reading the surface touches D3D, so it stays on the caller's thread; the
-// resulting pixels are plain memory and can be encoded anywhere
-static bool read_surface_pixels(
-        D3DFORMAT format,
-        UINT width,
-        UINT height,
-        IDirect3DSurface9 *surface,
-        std::vector<uint8_t> &pixels) {
+enum class SurfaceRead {
+    Ok,
+    Unsupported,
+    Failed,
+};
 
-    const auto bytes_per_pixel = surface_pixel_size(format);
-    if (!bytes_per_pixel.has_value()) {
-        log_warning("graphics::d3d9",
-                "unsupported surface format {}",
-                static_cast<uint32_t>(format));
-        return false;
-    }
-
-    const auto source = compute_image_size(width, height, *bytes_per_pixel);
-    const auto rgb = compute_image_size(width, height, RGB_PIXEL_SIZE);
-    if (!source.has_value()
-            || !rgb.has_value()
-            || !resize_pixels(pixels, rgb->total_size)) {
-        return false;
-    }
-
-    D3DLOCKED_RECT locked {};
-    HRESULT hr = surface->LockRect(&locked, nullptr, D3DLOCK_READONLY);
-    if (FAILED(hr)) {
-        log_warning("graphics::d3d9", "failed to lock screenshot surface, hr={}", FMT_HRESULT(hr));
-        return false;
-    }
-
-    if (locked.Pitch < 0 || static_cast<size_t>(locked.Pitch) < source->row_size) {
-        log_warning("graphics::d3d9", "screenshot surface has invalid pitch {}", locked.Pitch);
-        surface->UnlockRect();
-        return false;
-    }
-
-    surface_to_rgb(
-            format,
-            width,
-            height,
-            reinterpret_cast<const uint8_t *>(locked.pBits),
-            static_cast<size_t>(locked.Pitch),
-            pixels.data());
-
-    hr = surface->UnlockRect();
-    if (FAILED(hr)) {
-        log_warning("graphics::d3d9", "failed to unlock screenshot surface, hr={}", FMT_HRESULT(hr));
-        return false;
-    }
-
-    return true;
-}
-
-static bool read_capture_surface(
+// copying the surface touches D3D, so it stays on the caller's thread. the bytes come
+// out in the surface's own format; converting them is plain memory work for later
+static SurfaceRead read_surface_raw(
         const BackbufferCopy &copy,
-        PendingCapture &capture) {
+        size_t &row_size,
+        std::vector<uint8_t> &out) {
 
     const auto bytes_per_pixel = surface_pixel_size(copy.desc.Format);
     if (!bytes_per_pixel.has_value()) {
-        log_warning("graphics::d3d9",
-                "unsupported surface format {}",
-                static_cast<uint32_t>(copy.desc.Format));
-        return false;
+        static std::once_flag warned;
+        std::call_once(warned, [&copy] {
+            log_warning("graphics::d3d9",
+                    "unsupported surface format {}",
+                    static_cast<uint32_t>(copy.desc.Format));
+        });
+        return SurfaceRead::Unsupported;
     }
 
     const auto size = compute_image_size(copy.desc.Width, copy.desc.Height, *bytes_per_pixel);
-    if (!size.has_value()) {
-        return false;
-    }
-
-    capture.data = capture_buffers().take();
-    if (!resize_pixels(capture.data, size->total_size)) {
-        return false;
+    if (!size.has_value() || !resize_pixels(out, size->total_size)) {
+        return SurfaceRead::Failed;
     }
 
     D3DLOCKED_RECT locked {};
     HRESULT hr = copy.surface->LockRect(&locked, nullptr, D3DLOCK_READONLY);
     if (FAILED(hr)) {
         log_warning("graphics::d3d9", "failed to lock capture surface, hr={}", FMT_HRESULT(hr));
-        return false;
+        return SurfaceRead::Failed;
     }
 
     if (locked.Pitch < 0 || static_cast<size_t>(locked.Pitch) < size->row_size) {
         log_warning("graphics::d3d9", "capture surface has invalid pitch {}", locked.Pitch);
         copy.surface->UnlockRect();
-        return false;
+        return SurfaceRead::Failed;
     }
 
     auto data = reinterpret_cast<const uint8_t *>(locked.pBits);
     for (size_t row = 0; row < copy.desc.Height; row++) {
         std::memcpy(
-                capture.data.data() + row * size->row_size,
+                out.data() + row * size->row_size,
                 data + row * locked.Pitch,
                 size->row_size);
     }
@@ -396,15 +338,34 @@ static bool read_capture_surface(
     hr = copy.surface->UnlockRect();
     if (FAILED(hr)) {
         log_warning("graphics::d3d9", "failed to unlock capture surface, hr={}", FMT_HRESULT(hr));
-        return false;
+        return SurfaceRead::Failed;
     }
+
+    row_size = size->row_size;
+    return SurfaceRead::Ok;
+}
+
+static bool read_capture_surface(
+        const BackbufferCopy &copy,
+        PendingCapture &capture) {
 
     capture.screen = copy.screen;
     capture.format = copy.desc.Format;
     capture.width = copy.desc.Width;
     capture.height = copy.desc.Height;
-    capture.pitch = size->row_size;
-    return true;
+
+    capture.data = capture_buffers().take();
+    const auto result = read_surface_raw(copy, capture.pitch, capture.data);
+    if (result == SurfaceRead::Ok) {
+        return true;
+    }
+
+    capture_buffers().give(std::move(capture.data));
+    capture.data.clear();
+
+    // a format we cannot read is reported as a black frame rather than nothing,
+    // so a client polling the api keeps getting responses
+    return result == SurfaceRead::Unsupported;
 }
 
 static bool write_screenshot_png(
@@ -463,7 +424,14 @@ static bool image_processing_must_be_inline() {
 
 static void dispatch_capture_save(PendingCapture capture) {
     auto capture_process = [capture = std::move(capture)]() mutable {
-        save_capture(std::move(capture));
+        // an escape from here would cross a thread boundary and terminate
+        try {
+            save_capture(std::move(capture));
+        } catch (const std::exception &error) {
+            log_warning("graphics::d3d9", "capture save failed: {}", error.what());
+        } catch (...) {
+            log_warning("graphics::d3d9", "capture save failed");
+        }
     };
 
     if (image_processing_must_be_inline()) {
@@ -500,8 +468,27 @@ static void dispatch_screenshot_save(std::vector<PendingWrite> writes, size_t sc
         // a throw here would otherwise reach a thread boundary and terminate
         auto encode_one = [](PendingWrite &write) {
             try {
+                const auto rgb = compute_image_size(write.width, write.height, RGB_PIXEL_SIZE);
+                std::vector<uint8_t> pixels;
+                if (!rgb.has_value() || !resize_pixels(pixels, rgb->total_size)) {
+                    write.saved = false;
+                    return;
+                }
+
+                surface_to_rgb(
+                        write.format,
+                        write.width,
+                        write.height,
+                        write.data.data(),
+                        write.pitch,
+                        pixels.data());
+
+                // the encode below is the long part; the raw copy is dead by now
+                write.data.clear();
+                write.data.shrink_to_fit();
+
                 write.saved = write_screenshot_png(
-                        write.path, write.width, write.height, write.pixels);
+                        write.path, write.width, write.height, pixels);
             } catch (const std::exception &error) {
                 log_warning("graphics::d3d9",
                         "screenshot encode failed for {}: {}", write.path, error.what());
@@ -514,23 +501,28 @@ static void dispatch_screenshot_save(std::vector<PendingWrite> writes, size_t sc
         };
 
         {
-            // jthread so a failure part way through the loop still joins
-            // whatever was already started
-            std::vector<std::jthread> workers;
-            workers.reserve(writes.empty() ? 0 : writes.size() - 1);
+            // sized up front and assigned by index: storing a future must not be able
+            // to throw once its task is queued, or the screen would encode twice
+            std::vector<std::future<void>> pending(writes.empty() ? 0 : writes.size() - 1);
             for (size_t i = 1; i < writes.size(); i++) {
                 try {
-                    workers.emplace_back([&writes, &encode_one, i] {
+                    pending[i - 1] = encode_pool().add([&writes, &encode_one, i] {
                         encode_one(writes[i]);
                     });
                 } catch (const std::exception &) {
-                    // no thread to be had; encoding it here still makes progress
+                    // nothing to queue onto; encoding it here still makes progress
                     encode_one(writes[i]);
                 }
             }
 
             if (!writes.empty()) {
                 encode_one(writes.front());
+            }
+
+            for (auto &task : pending) {
+                if (task.valid()) {
+                    task.wait();
+                }
             }
         }
 
@@ -568,11 +560,23 @@ static void dispatch_screenshot_save(std::vector<PendingWrite> writes, size_t sc
         }
     };
 
+    // genpath and the path building below allocate, so an escape from here would
+    // cross a thread boundary and terminate
+    auto guarded = [process = std::move(screenshot_process)]() mutable {
+        try {
+            process();
+        } catch (const std::exception &error) {
+            log_warning("graphics::d3d9", "screenshot save failed: {}", error.what());
+        } catch (...) {
+            log_warning("graphics::d3d9", "screenshot save failed");
+        }
+    };
+
     if (image_processing_must_be_inline()) {
-        screenshot_process();
+        guarded();
     } else {
         static auto pool = ThreadPool(2);
-        pool.add(std::move(screenshot_process));
+        pool.add(std::move(guarded));
     }
 }
 
@@ -637,15 +641,11 @@ static void process_image_request(
     for (const auto &copy : copies) {
         PendingWrite write;
         write.screen = copy.screen;
+        write.format = copy.desc.Format;
         write.width = copy.desc.Width;
         write.height = copy.desc.Height;
 
-        if (!read_surface_pixels(
-                copy.desc.Format,
-                copy.desc.Width,
-                copy.desc.Height,
-                copy.surface.get(),
-                write.pixels)) {
+        if (read_surface_raw(copy, write.pitch, write.data) != SurfaceRead::Ok) {
             continue;
         }
 

@@ -17,6 +17,7 @@
 
 #include "d3d9_backend.h"
 #include "d3d9_live2d.h"
+#include "d3d9_readback.h"
 #include "d3d9_texture.h"
 
 #ifndef SPICE64
@@ -155,6 +156,8 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() {
                 sc = nullptr;
             }
         }
+
+        d3d9_readback::release_device_resources(this->pReal);
 
         if (overlay::ENABLED) {
             const std::lock_guard<std::mutex> lock(overlay::OVERLAY_MUTEX);

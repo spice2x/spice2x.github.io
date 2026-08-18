@@ -38,4 +38,7 @@ namespace d3d9_readback {
             IDirect3DSwapChain9 *swap_chain,
             int screen,
             bool pooled);
+
+    // pooled surfaces hold references on the device; call this before releasing it
+    void release_device_resources(IDirect3DDevice9 *device);
 }

@@ -25,6 +25,21 @@ SurfacePtr create_readback_surface(IDirect3DDevice9 *device, const D3DSURFACE_DE
     return SurfacePtr(surface);
 }
 
+size_t surface_bytes(const D3DSURFACE_DESC &desc) {
+    size_t bytes_per_pixel = 4;
+    switch (desc.Format) {
+        case D3DFMT_R5G6B5:
+        case D3DFMT_X1R5G5B5:
+        case D3DFMT_A1R5G5B5:
+            bytes_per_pixel = 2;
+            break;
+        default:
+            break;
+    }
+
+    return static_cast<size_t>(desc.Width) * desc.Height * bytes_per_pixel;
+}
+
 // idle surfaces are kept between captures, bucketed by layout so that screens of
 // differing resolution do not evict each other. a new device drops everything,
 // since system memory surfaces outlive Reset but not the device itself
@@ -35,7 +50,7 @@ public:
             std::lock_guard<std::mutex> lock(this->mutex);
 
             if (this->device != device) {
-                this->buckets.clear();
+                this->drop();
                 this->device = device;
             }
 
@@ -43,6 +58,9 @@ public:
             if (bucket && !bucket->idle.empty()) {
                 auto surface = std::move(bucket->idle.back());
                 bucket->idle.pop_back();
+
+                const size_t bytes = surface_bytes(desc);
+                this->idle_bytes = this->idle_bytes > bytes ? this->idle_bytes - bytes : 0;
                 return surface;
             }
         }
@@ -60,8 +78,10 @@ public:
             return;
         }
 
+        const size_t bytes = surface_bytes(desc);
+
         std::lock_guard<std::mutex> lock(this->mutex);
-        if (this->device != device) {
+        if (this->device != device || this->idle_bytes + bytes > MAX_IDLE_BYTES) {
             return;
         }
 
@@ -77,7 +97,20 @@ public:
 
         if (bucket->idle.size() < MAX_IDLE_PER_BUCKET) {
             bucket->idle.push_back(std::move(surface));
+            this->idle_bytes += bytes;
         }
+    }
+
+    // every cached surface holds a reference on the device, so they have to go
+    // before it does or the device never reaches a zero reference count
+    void clear_device(IDirect3DDevice9 *device) {
+        std::lock_guard<std::mutex> lock(this->mutex);
+        if (this->device != device) {
+            return;
+        }
+
+        this->drop();
+        this->device = nullptr;
     }
 
 private:
@@ -94,6 +127,14 @@ private:
     // is several megabytes, so the cap matters
     static constexpr size_t MAX_IDLE_PER_BUCKET = 2;
 
+    // a 4K surface is 33MB, so the per bucket count alone does not bound this
+    static constexpr size_t MAX_IDLE_BYTES = 64u * 1024 * 1024;
+
+    void drop() {
+        this->buckets.clear();
+        this->idle_bytes = 0;
+    }
+
     Bucket *find(const D3DSURFACE_DESC &desc) {
         for (auto &bucket : this->buckets) {
             if (bucket.width == desc.Width
@@ -109,6 +150,7 @@ private:
     std::mutex mutex;
     std::vector<Bucket> buckets;
     IDirect3DDevice9 *device = nullptr;
+    size_t idle_bytes = 0;
 };
 
 // deliberately never destroyed: releasing D3D surfaces during static destruction
@@ -119,6 +161,10 @@ ReadbackPool &pool() {
 }
 
 } // namespace
+
+void release_device_resources(IDirect3DDevice9 *device) {
+    pool().clear_device(device);
+}
 
 BackbufferCopy::~BackbufferCopy() {
     if (this->pooled && this->surface) {
