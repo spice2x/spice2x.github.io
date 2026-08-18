@@ -300,8 +300,8 @@ plus two, in the same way the WebSocket server uses the API port plus one, so
 
 Three formats are served:
 
-    http://host:1339/stream.mp4     H.264 in fragmented MP4
     http://host:1339/stream.mjpg    JPEG frames, multipart/x-mixed-replace
+    http://host:1339/stream.mp4     H.264 in fragmented MP4
     http://host:1339/stream.h264    H.264 annex-b, no container
 
 All accept the same optional query parameters:
@@ -313,17 +313,9 @@ All accept the same optional query parameters:
   and is mapped onto the H.264 rate factor for the other two, so the same
   number does not mean the same thing across formats.
 
-They are all fixed for the life of a connection; changing them means
-reconnecting.
-
 For example:
 
     http://host:1339/stream.mp4?screen=1&fps=30&q=70
-
-Use `stream.mp4` for players and browsers, `stream.mjpg` where nothing can
-handle a container, and `stream.h264` for an app that drives a hardware decoder
-itself. H.264 costs roughly twenty times less bandwidth than MJPEG and phones
-decode it in hardware, which matters for battery life.
 
 See the wiki for format tradeoffs, latency tuning, testing commands and client
 notes.
@@ -331,10 +323,6 @@ notes.
 The stream is view only. Touch and other input still go through the JSON API,
 so a companion app needs both. There is no authentication on the stream port -
 anyone who can reach it can watch the screen.
-
-WinXP builds have no video stream at all. Neither encoder is compiled in, so
-every endpoint returns 404. The JSON API's JPEG screen capture is unavailable
-on those builds for the same reason.
 
 ## Native wrapper libraries
 Spicetools provides wrapper libraries in: Arduino, C++, Dart, and Python.
