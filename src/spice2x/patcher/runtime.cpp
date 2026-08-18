@@ -669,6 +669,11 @@ namespace patcher {
         signature.erase(std::remove(signature.begin(), signature.end(), ' '), signature.end());
         replacement.erase(std::remove(replacement.begin(), replacement.end(), ' '), replacement.end());
 
+        if (signature.empty() || (signature.length() % 2) != 0
+            || replacement.empty() || (replacement.length() % 2) != 0) {
+            return {.fatal_error = true};
+        }
+
         // build pattern
         std::string pattern_str(signature);
         strreplace(pattern_str, "??", "00");
@@ -717,13 +722,26 @@ namespace patcher {
         }
         std::string replace_mask_str = replace_mask.str();
 
-        // find offset
+        // replacement applies at signature_match + offset; must stay inside the signature
+        const size_t sig_len = signature_mask_str.length();
+        const size_t repl_len = replace_mask_str.length();
+        if (offset > sig_len || repl_len == 0 || offset + repl_len > sig_len) {
+            log_warning("patchmanager",
+                        "signature patch '{}': offset {} + replacement {} exceeds signature {}",
+                        patch->name, offset, repl_len, sig_len);
+            return {.fatal_error = true};
+        }
+
+        // Locate signature *start* (find_pattern offset arg = 0). JSON "offset" is applied
+        // below. Old code passed JSON offset into find_pattern but still indexed
+        // signature/replacement from 0 → mis-aligned when offset != 0.
         uint64_t data_offset = 0;
-        uint8_t *data_offset_ptr = nullptr;
-        uintptr_t data_offset_ptr_base = 0;
+        uint8_t *read_ptr = nullptr;
+        HMODULE module = nullptr;
+        bool module_free = false;
+
         if (cfg::CONFIGURATOR_STANDALONE) {
 
-            // load file into dll map if missing
             auto it = DLL_MAP.find(dll_name);
             if (it == DLL_MAP.end()) {
                 DLL_MAP[dll_name] =
@@ -732,16 +750,21 @@ namespace patcher {
                 it = DLL_MAP.find(dll_name);
             }
 
-            // find pattern
-            data_offset = find_pattern(*it->second, 0, pattern_bin.get(), signature_mask_str.c_str(), offset, usage);
-            data_offset_ptr = reinterpret_cast<uint8_t *>(data_offset);
-            data_offset_ptr_base = (uintptr_t) it->second->data();
+            // base=0 → file offset of signature start; 0 also means "not found"
+            const intptr_t match = find_pattern(
+                    *it->second, 0, pattern_bin.get(), signature_mask_str.c_str(), 0, usage);
+            if (match == 0) {
+                return {.fatal_error = true};
+            }
+            data_offset = static_cast<uint64_t>(match) + offset;
+            if (data_offset + repl_len > it->second->size()) {
+                return {.fatal_error = true};
+            }
+            read_ptr = it->second->data() + data_offset;
 
         } else {
 
-            // get module
-            auto module = libutils::try_module(dll_path);
-            bool module_free = false;
+            module = libutils::try_module(dll_path);
             if (!module) {
                 module = libutils::try_library(dll_path);
                 if (module) {
@@ -751,59 +774,71 @@ namespace patcher {
                 }
             }
 
-            // find pattern
-            data_offset_ptr = reinterpret_cast<uint8_t *>(
-                    find_pattern(module, pattern_bin.get(), signature_mask_str.c_str(), offset, usage));
+            const intptr_t match_va = find_pattern(
+                    module, pattern_bin.get(), signature_mask_str.c_str(), 0, usage);
+            auto *match_ptr = reinterpret_cast<uint8_t *>(match_va);
+            if (match_ptr == nullptr) {
+                if (module_free) {
+                    FreeLibrary(module);
+                }
+                return {.fatal_error = true};
+            }
 
-            // convert back to offset
-            data_offset = libutils::rva2offset(dll_path, (intptr_t) (data_offset_ptr - (uint8_t*) module));
+            const intptr_t file_off = libutils::rva2offset(
+                    dll_path, (intptr_t) (match_ptr - (uint8_t *) module));
+            if (file_off < 0) {
+                if (module_free) {
+                    FreeLibrary(module);
+                }
+                return {.fatal_error = true};
+            }
+            data_offset = static_cast<uint64_t>(file_off) + offset;
+            read_ptr = match_ptr + offset;
+        }
 
-            // clean
-            if (module_free) {
-                FreeLibrary(module);
+        // Build disabled/enabled for the replacement window only.
+        std::shared_ptr<uint8_t[]> data_disabled(new uint8_t[repl_len]);
+        std::shared_ptr<uint8_t[]> data_enabled(new uint8_t[repl_len]);
+        {
+            memutils::VProtectGuard data_guard(read_ptr, repl_len);
+            for (size_t i = 0; i < repl_len; ++i) {
+                const size_t si = static_cast<size_t>(offset) + i;
+                if (signature_mask_str[si] != 'X') {
+                    data_disabled.get()[i] = read_ptr[i];
+                } else {
+                    data_disabled.get()[i] = pattern_bin.get()[si];
+                }
+                if (replace_mask_str[i] != 'X') {
+                    data_enabled.get()[i] = read_ptr[i];
+                } else {
+                    data_enabled.get()[i] = replace_data_bin.get()[i];
+                }
             }
         }
 
-        // check pointers
-        if (data_offset_ptr == nullptr) {
-            return {.fatal_error = true};
+        // Drop temporary LoadLibrary mapping only after reads above.
+        if (module_free) {
+            FreeLibrary(module);
         }
 
-        // get disabled/enabled data
-        size_t data_len = std::max(signature_mask_str.length(), replace_mask_str.length());
-        std::shared_ptr<uint8_t[]> data_disabled(new uint8_t[data_len]);
-        std::shared_ptr<uint8_t[]> data_enabled(new uint8_t[data_len]);
-        memutils::VProtectGuard data_guard(data_offset_ptr + data_offset_ptr_base, data_len);
-        for (size_t i = 0; i < data_len; ++i) {
-            if (i >= signature_mask_str.length() || signature_mask_str[i] != 'X') {
-                data_disabled.get()[i] = (data_offset_ptr + data_offset_ptr_base)[i];
-            } else {
-                data_disabled.get()[i] = pattern_bin.get()[i];
-            }
-        }
-        for (size_t i = 0; i < data_len; ++i) {
-            if (i >= replace_mask_str.length() || replace_mask_str[i] != 'X') {
-                data_enabled.get()[i] = (data_offset_ptr + data_offset_ptr_base)[i];
-            } else {
-                data_enabled.get()[i] = replace_data_bin.get()[i];
-            }
-        }
-
-        // log edit
         log_misc("patchmanager", "found {}: {:#08X}: {} -> {}",
                  patch->name, data_offset,
-                 bin2hex(data_disabled.get(), data_len),
-                 bin2hex(data_enabled.get(), data_len));
+                 bin2hex(data_disabled.get(), repl_len),
+                 bin2hex(data_enabled.get(), repl_len));
 
-        // build patch
+        // BUGFIX: never cache a pointer here.
+        // - standalone used to store (uint8_t*)file_offset, so is_patch_active skipped
+        //   re-resolve and memcmp'd a fake address → "neither on or off".
+        // - in-game used to keep a pointer that FreeLibrary may invalidate.
+        // is_patch_active / apply_patch re-resolve from data_offset when ptr is nullptr.
         return MemoryPatch {
                 .dll_name = dll_name,
                 .data_disabled = std::move(data_disabled),
-                .data_disabled_len = data_len,
+                .data_disabled_len = repl_len,
                 .data_enabled = std::move(data_enabled),
-                .data_enabled_len = data_len,
+                .data_enabled_len = repl_len,
                 .data_offset = data_offset,
-                .data_offset_ptr = data_offset_ptr,
+                .data_offset_ptr = nullptr,
         };
     }
 
