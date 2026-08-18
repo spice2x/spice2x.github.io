@@ -119,6 +119,14 @@ static void *pe_offset(void *ptr, size_t offset) {
     return reinterpret_cast<uint8_t *>(ptr) + offset;
 }
 
+// foreign modules (injected, manually mapped, header wiped by AV/EDR or overlays) have no import
+// table to patch - they must be skipped instead of taking the process down
+static bool has_pe_header(HMODULE module) {
+    const auto dos_headers = reinterpret_cast<const IMAGE_DOS_HEADER *>(module);
+
+    return dos_headers->e_magic == IMAGE_DOS_SIGNATURE;
+}
+
 void **detour::iat_find(const char *function, HMODULE module, const char *iid_name) {
 
     // check module
@@ -127,13 +135,12 @@ void **detour::iat_find(const char *function, HMODULE module, const char *iid_na
     }
 
     // check signature
-    const IMAGE_DOS_HEADER *pImgDosHeaders = (IMAGE_DOS_HEADER *) module;
-    if (pImgDosHeaders->e_magic != IMAGE_DOS_SIGNATURE) {
-
-        // foreign modules (injected, manually mapped, header wiped) have no import table to
-        // patch - skip them instead of taking the process down
+    if (!has_pe_header(module)) {
+        log_misc("detour", "no PE header in {}, not looking for {}", fmt::ptr(module), function);
         return nullptr;
     }
+
+    const IMAGE_DOS_HEADER *pImgDosHeaders = (IMAGE_DOS_HEADER *) module;
 
     // get import table
     const auto nt_headers = reinterpret_cast<IMAGE_NT_HEADERS *>(pe_offset(module, pImgDosHeaders->e_lfanew));
@@ -194,10 +201,12 @@ void **detour::iat_find_ordinal(const char *iid_name, DWORD ordinal, HMODULE mod
     }
 
     // check signature
-    const auto pImgDosHeaders = reinterpret_cast<IMAGE_DOS_HEADER *>(module);
-    if (pImgDosHeaders->e_magic != IMAGE_DOS_SIGNATURE) {
+    if (!has_pe_header(module)) {
+        log_misc("detour", "no PE header in {}, not looking for {}:{}", fmt::ptr(module), iid_name, ordinal);
         return nullptr;
     }
+
+    const auto pImgDosHeaders = reinterpret_cast<IMAGE_DOS_HEADER *>(module);
 
     // get import table
     const auto nt_headers = reinterpret_cast<IMAGE_NT_HEADERS *>(pe_offset(module, pImgDosHeaders->e_lfanew));
@@ -249,10 +258,12 @@ void **detour::iat_find_proc(const char *iid_name, void *proc, HMODULE module) {
     }
 
     // check signature
-    const auto pImgDosHeaders = reinterpret_cast<IMAGE_DOS_HEADER *>(module);
-    if (pImgDosHeaders->e_magic != IMAGE_DOS_SIGNATURE) {
+    if (!has_pe_header(module)) {
+        log_misc("detour", "no PE header in {}, not looking for {}", fmt::ptr(module), iid_name);
         return nullptr;
     }
+
+    const auto pImgDosHeaders = reinterpret_cast<IMAGE_DOS_HEADER *>(module);
 
     // get import table
     const auto nt_headers = reinterpret_cast<IMAGE_NT_HEADERS *>(pe_offset(module, pImgDosHeaders->e_lfanew));
@@ -301,7 +312,9 @@ void *detour::iat_try(const char *function, void *new_func, HMODULE module, cons
         while (cur_entry != nullptr) {
             module = reinterpret_cast<HMODULE>(cur_entry->DllBase);
 
-            if (module) {
+            // walking the PEB turns up foreign modules too, and those are expected to have
+            // nothing to patch - filter them here so iat_find only complains about real callers
+            if (module && has_pe_header(module)) {
                 auto old_func = iat_try(function, new_func, module, iid_name);
                 ret = ret != nullptr ? ret : old_func;
             }

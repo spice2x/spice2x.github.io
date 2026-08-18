@@ -32,6 +32,7 @@ namespace logger {
     static std::thread *THREAD = nullptr;
     static HANDLE THREAD_FINISHED = nullptr;
     static std::mutex OUTPUT_MUTEX;
+    static std::mutex FLUSH_MUTEX;
     static bool OUTPUT_BUFFER_HOT = false;
     static std::vector<std::pair<std::string, Style>> OUTPUT_BUFFER1;
     static std::vector<std::pair<std::string, Style>> OUTPUT_BUFFER2;
@@ -72,7 +73,9 @@ namespace logger {
         SetConsoleTextAttribute(hTerminal, info.wAttributes);
     }
 
-    static void output_buffer_flush() {
+    // the buffer is swapped under OUTPUT_MUTEX but drained outside of it, so two concurrent
+    // drains would leave one of them iterating a buffer that push() has started appending to
+    static void output_buffer_flush_locked() {
 
         // get buffer and swap
         auto buffer = output_buffer_swap();
@@ -143,6 +146,12 @@ namespace logger {
         }
     }
 
+    static void output_buffer_flush() {
+        std::lock_guard<std::mutex> guard(FLUSH_MUTEX);
+
+        output_buffer_flush_locked();
+    }
+
     void start() {
 
         // don't start if blocking
@@ -190,10 +199,14 @@ namespace logger {
     }
 
     void stop() {
+
+        // must come before the log call below, so it takes the synchronous path instead of
+        // handing off to a logging thread that may never get scheduled again
+        RUNNING = false;
+
         log_info("logger", "stop");
 
         // clean up thread if required
-        RUNNING = false;
         if (THREAD) {
 
             // fake notify to exit wait loop
@@ -202,7 +215,7 @@ namespace logger {
 
             // never block forever - this also runs on the fatal/crash path, where the logging
             // thread may be suspended or wedged and would take the whole process down with it
-            const bool finished = THREAD_FINISHED == nullptr ||
+            const bool finished = THREAD_FINISHED != nullptr &&
                     WaitForSingleObject(THREAD_FINISHED, 1000) == WAIT_OBJECT_0;
 
             if (finished) {
@@ -213,8 +226,16 @@ namespace logger {
             } else {
                 THREAD->detach();
 
-                // write out whatever the logging thread never got to
-                output_buffer_flush();
+                // THREAD_FINISHED is leaked on purpose: the detached thread can still wake up and
+                // signal it, and closing it here risks signaling an unrelated recycled handle
+
+                // write out whatever the logging thread never got to. don't wait for the lock -
+                // whoever holds it is exactly the thread that may never resume.
+                std::unique_lock<std::mutex> flush_guard(FLUSH_MUTEX, std::try_to_lock);
+                if (flush_guard.owns_lock()) {
+                    output_buffer_flush_locked();
+                }
+
                 if (LOG_FILE && LOG_FILE != INVALID_HANDLE_VALUE) {
                     FlushFileBuffers(LOG_FILE);
                 }
@@ -252,10 +273,6 @@ namespace logger {
 
         // check if blocking or the logging thread is not running
         if (BLOCKING || !RUNNING) {
-
-            // blocking guard
-            static std::mutex blocking_lock;
-            std::lock_guard<std::mutex> blocking_guard(blocking_lock);
 
             // immediately process logs
             output_buffer_flush();
