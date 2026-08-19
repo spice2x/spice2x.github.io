@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <limits>
 #include <map>
 #include <string>
 #include <thread>
@@ -56,13 +57,18 @@ namespace api {
 
             // the socket is blocking with a receive timeout, so poll before touching it
             timeval immediately {};
-            if (select(0, &read_set, nullptr, nullptr, &immediately) <= 0) {
+            const int ready = select(0, &read_set, nullptr, nullptr, &immediately);
+            if (ready == 0) {
                 return false;
             }
+            if (ready < 0) {
+                return true;
+            }
 
-            // readable at all means EOF or a reset; the client never speaks after its request
-            char probe;
-            return recv(socket, &probe, 1, MSG_PEEK) <= 0;
+            // consumed rather than peeked: a stray byte would otherwise sit in front of the
+            // FIN and keep hiding it for as long as the stream runs
+            char discard[256];
+            return recv(socket, discard, sizeof(discard), 0) <= 0;
         }
 
         std::string url_decode(const std::string &input) {
@@ -376,24 +382,28 @@ namespace api {
                     std::vector<int> screens;
                     graphics_screens_get(screens);
 
-                    const auto registered = [&screens](int screen) {
-                        return std::find(screens.begin(), screens.end(), screen)
-                                != screens.end();
+                    // registration takes a raw swapchain index and never bounds it, so the
+                    // capture range has to be enforced here rather than assumed
+                    const auto streamable = [&screens](int screen) {
+                        return screen < static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)
+                                && std::find(screens.begin(), screens.end(), screen)
+                                        != screens.end();
                     };
 
                     // screen 1 is the subscreen in every game that has one; single-screen games
-                    // only ever register screen 0, so resolve the default against what exists
+                    // only ever register screen 0, so resolve the default against what exists.
+                    // left unclamped so a nonsense screen is reported as what was asked for
                     int screen = query_int(request, "screen", -1, 0,
-                            static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO) - 1);
+                            std::numeric_limits<int>::max());
                     if (screen < 0) {
-                        screen = registered(1) ? 1 : 0;
+                        screen = streamable(1) ? 1 : 0;
                     }
 
                     // the default always lands on a screen that exists, so this is only ever
-                    // an explicit request for one the game does not draw
-                    if (!registered(screen)) {
+                    // an explicit request for one that cannot be captured
+                    if (!streamable(screen)) {
                         log_warning("api::stream",
-                                "screen {} is not registered, refusing {}", screen, address);
+                                "screen {} is not available, refusing {}", screen, address);
                         send_error(socket, "404 Not Found");
                     } else if (!capture_pump::claim_screen(screen)) {
                         log_warning("api::stream",

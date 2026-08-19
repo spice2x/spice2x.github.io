@@ -14,7 +14,9 @@ namespace api {
 
     namespace {
 
-        // how long a fresh connection gets to send its handshake before it is dropped
+        // how long a single handshake read may stall before the connection is dropped;
+        // headsocket reads the request a byte at a time, so this is an idle timeout between
+        // bytes rather than a deadline for the whole handshake
         constexpr int handshake_timeout_ms = 5000;
 
         void set_recv_timeout(connection &conn, int milliseconds) {
