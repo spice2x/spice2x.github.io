@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <limits>
 #include <map>
 #include <string>
 #include <thread>
@@ -45,6 +46,29 @@ namespace api {
 
         bool send_all(SOCKET socket, const std::string &text) {
             return send_all(socket, text.data(), text.size());
+        }
+
+        // a viewer leaving is normally noticed by a failing send, so a stream with no frame
+        // to push has to ask the socket instead
+        bool client_gone(SOCKET socket) {
+            fd_set read_set;
+            FD_ZERO(&read_set);
+            FD_SET(socket, &read_set);
+
+            // the socket is blocking with a receive timeout, so poll before touching it
+            timeval immediately {};
+            const int ready = select(0, &read_set, nullptr, nullptr, &immediately);
+            if (ready == 0) {
+                return false;
+            }
+            if (ready < 0) {
+                return true;
+            }
+
+            // consumed rather than peeked: a stray byte would otherwise sit in front of the
+            // FIN and keep hiding it for as long as the stream runs
+            char discard[256];
+            return recv(socket, discard, sizeof(discard), 0) <= 0;
         }
 
         std::string url_decode(const std::string &input) {
@@ -355,18 +379,33 @@ namespace api {
                 if (!writer) {
                     send_error(socket, "404 Not Found");
                 } else {
+                    std::vector<int> screens;
+                    graphics_screens_get(screens);
+
+                    // registration takes a raw swapchain index and never bounds it, so the
+                    // capture range has to be enforced here rather than assumed
+                    const auto streamable = [&screens](int screen) {
+                        return screen < static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)
+                                && std::find(screens.begin(), screens.end(), screen)
+                                        != screens.end();
+                    };
+
                     // screen 1 is the subscreen in every game that has one; single-screen games
-                    // only ever register screen 0, so resolve the default against what exists
+                    // only ever register screen 0, so resolve the default against what exists.
+                    // left unclamped so a nonsense screen is reported as what was asked for
                     int screen = query_int(request, "screen", -1, 0,
-                            static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO) - 1);
+                            std::numeric_limits<int>::max());
                     if (screen < 0) {
-                        std::vector<int> screens;
-                        graphics_screens_get(screens);
-                        screen = std::find(screens.begin(), screens.end(), 1) != screens.end()
-                                ? 1 : 0;
+                        screen = streamable(1) ? 1 : 0;
                     }
 
-                    if (!capture_pump::claim_screen(screen)) {
+                    // the default always lands on a screen that exists, so this is only ever
+                    // an explicit request for one that cannot be captured
+                    if (!streamable(screen)) {
+                        log_warning("api::stream",
+                                "screen {} is not available, refusing {}", screen, address);
+                        send_error(socket, "404 Not Found");
+                    } else if (!capture_pump::claim_screen(screen)) {
                         log_warning("api::stream",
                                 "screen {} is already being streamed, refusing {}",
                                 screen, address);
@@ -399,8 +438,11 @@ namespace api {
                                         screen, frame.pixels, 1,
                                         &frame.timestamp, &frame.width, &frame.height);
 
-                                if (ok && frame.pixels
-                                        && !writer->write(stream_send, frame)) {
+                                if (ok && frame.pixels) {
+                                    if (!writer->write(stream_send, frame)) {
+                                        break;
+                                    }
+                                } else if (client_gone(socket)) {
                                     break;
                                 }
 

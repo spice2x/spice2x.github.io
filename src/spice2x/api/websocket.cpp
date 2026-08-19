@@ -12,6 +12,20 @@ using namespace headsocket;
 
 namespace api {
 
+    namespace {
+
+        // how long a single handshake read may stall before the connection is dropped;
+        // headsocket reads the request a byte at a time, so this is an idle timeout between
+        // bytes rather than a deadline for the whole handshake
+        constexpr int handshake_timeout_ms = 5000;
+
+        void set_recv_timeout(connection &conn, int milliseconds) {
+            DWORD timeout = static_cast<DWORD>(milliseconds);
+            setsockopt(conn.impl()->socket, SOL_SOCKET, SO_RCVTIMEO,
+                    reinterpret_cast<const char *>(&timeout), sizeof(timeout));
+        }
+    }
+
     /*
      * Client class declaration
      */
@@ -37,6 +51,21 @@ namespace api {
         HEADSOCKET_SERVER(WebSocketServer, web_socket_server);
     public:
         WebSocketController *websocket;
+
+    protected:
+        bool handshake(connection &conn) override {
+
+            // headsocket runs the handshake on its single accept thread with a blocking
+            // recv, so a peer that connects and then says nothing would park that thread and
+            // leave every later connection sitting unaccepted in the backlog
+            set_recv_timeout(conn, handshake_timeout_ms);
+            const bool accepted = base_t::handshake(conn);
+
+            // from here the client thread owns the socket and wants to block on reads
+            set_recv_timeout(conn, 0);
+
+            return accepted;
+        }
     };
 
     void api::WebSocketServer::init() {}
