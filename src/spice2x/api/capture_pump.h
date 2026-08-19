@@ -40,8 +40,6 @@ namespace api::capture_pump {
     private:
         int screen;
         int rate = 0;
-        double interval_ms = 0;
-        double next_due = 0;
         uint64_t last_seq = 0;
     };
 

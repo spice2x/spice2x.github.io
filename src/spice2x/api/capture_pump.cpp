@@ -112,7 +112,6 @@ namespace api::capture_pump {
         }
 
         this->rate = std::clamp<int>(fps, PUMP_FPS_MIN, PUMP_FPS_MAX);
-        this->interval_ms = 1000.0 / this->rate;
 
         auto &pump = PUMPS[this->screen];
         std::lock_guard<std::mutex> lock(pump.m);
@@ -175,26 +174,18 @@ namespace api::capture_pump {
             }
 
             this->last_seq = pump.seq;
-            auto frame = pump.latest;
 
-            // frames arrive at the fastest subscriber's rate, so drop the ones this
-            // subscription did not ask for rather than making its encoder pay for them.
-            // the next slot is a fixed step on from the last one, not from the frame that
-            // filled it, or a rate that does not divide the pump rate quantises down to it
-            const double now = static_cast<double>(frame->timestamp);
-            if (this->next_due != 0 && now < this->next_due) {
+            // the pump captures at the fastest subscriber's rate, so a slower one takes every
+            // nth frame instead of making its encoder pay for frames it never asked for.
+            // whole steps mean a rate that does not divide the pump's is rounded up to one
+            // that does: never below what was asked for, and at worst about twice it while a
+            // faster client is connected. exact pacing is not worth the code for that case
+            const auto step = static_cast<uint64_t>(std::max(1, pump.fps / this->rate));
+            if (step > 1 && (pump.seq % step) != 0) {
                 continue;
             }
 
-            this->next_due =
-                    (this->next_due == 0 ? now : this->next_due) + this->interval_ms;
-
-            // a stall leaves the schedule in the past; start again from this frame
-            if (this->next_due <= now) {
-                this->next_due = now + this->interval_ms;
-            }
-
-            return frame;
+            return pump.latest;
         }
     }
 

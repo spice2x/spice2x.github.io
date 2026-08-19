@@ -116,27 +116,28 @@ namespace api {
                     return send(this->annexb.data(), this->annexb.size());
                 }
 
-                // minimp4 names this argument a timestamp but uses it as the sample duration.
-                // capture never hits the requested fps exactly, so timing each frame from its
-                // own capture time keeps the media clock on wall clock instead of drifting
-                const uint64_t nominal = TIMESCALE_90KHZ / this->fps;
-                unsigned frame_duration = static_cast<unsigned>(nominal);
-                if (this->last_timestamp != 0 && frame.timestamp > this->last_timestamp) {
-                    // the gap before a frame really belongs to the one before it, so a capture
-                    // stall would otherwise be charged to the frame that ends it
-                    const uint64_t delta = (frame.timestamp - this->last_timestamp) * 90;
-                    frame_duration = static_cast<unsigned>(
-                            std::clamp<uint64_t>(delta, 900, nominal * 4));
-                }
-                this->last_timestamp = frame.timestamp;
+                // minimp4 names this argument a timestamp but uses it as the sample duration,
+                // and a sample's real duration is only known once the next frame arrives, so
+                // each one is held back a frame instead of being charged the gap before it
+                if (this->has_held) {
+                    const uint64_t delta = frame.timestamp > this->held_timestamp
+                            ? (frame.timestamp - this->held_timestamp) * 90
+                            : 0;
+                    const unsigned duration = static_cast<unsigned>(
+                            std::clamp<uint64_t>(delta, 900, TIMESCALE_90KHZ));
 
-                if (mp4_h26x_write_nal(
-                        &this->muxer, this->annexb.data(),
-                        static_cast<int>(this->annexb.size()), frame_duration)
-                        != MP4E_STATUS_OK) {
-                    log_warning("api::stream", "H.264 muxing failed");
-                    return false;
+                    if (mp4_h26x_write_nal(
+                            &this->muxer, this->held.data(),
+                            static_cast<int>(this->held.size()), duration)
+                            != MP4E_STATUS_OK) {
+                        log_warning("api::stream", "H.264 muxing failed");
+                        return false;
+                    }
                 }
+
+                this->held.swap(this->annexb);
+                this->held_timestamp = frame.timestamp;
+                this->has_held = true;
 
                 return this->flush(send);
             }
@@ -298,9 +299,13 @@ namespace api {
             int width = 0;
             int height = 0;
             int64_t frame_index = 0;
-            uint64_t last_timestamp = 0;
             int64_t written = 0;
             std::vector<uint8_t> annexb;
+
+            // the sample waiting for the next frame to reveal how long it was on screen
+            std::vector<uint8_t> held;
+            uint64_t held_timestamp = 0;
+            bool has_held = false;
 
             x264_t *encoder = nullptr;
             x264_picture_t picture {};
