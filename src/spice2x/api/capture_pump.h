@@ -17,12 +17,8 @@ namespace api::capture_pump {
 
     using FramePtr = std::shared_ptr<const Frame>;
 
-    /*
-     * the graphics layer keeps a single capture slot per screen, so two threads waiting on it
-     * steal each other's frames. everything that wants a captured frame goes through here:
-     * either directly (one at a time, serialized per screen) or by subscribing to a pump that
-     * captures on a timer and shares each frame with every subscriber.
-     */
+    // the graphics layer has one capture slot per screen, so concurrent waiters would steal
+    // each other's frames; everything that captures goes through here to keep it serialized
 
     // trigger + receive under the per-screen consumer lock
     bool capture_direct(int screen, std::shared_ptr<uint8_t[]> &out, int divide,
@@ -37,12 +33,15 @@ namespace api::capture_pump {
         Subscription(const Subscription &) = delete;
         Subscription &operator=(const Subscription &) = delete;
 
-        // waits for a frame newer than the last one this subscription returned. slow callers
-        // skip whatever they missed instead of falling behind
+        // waits for the next frame due at this subscription's own rate. slow callers skip
+        // whatever they missed instead of falling behind
         FramePtr next(unsigned int timeout_ms);
 
     private:
         int screen;
+        int rate = 0;
+        double interval_ms = 0;
+        double next_due = 0;
         uint64_t last_seq = 0;
     };
 

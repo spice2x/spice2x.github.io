@@ -12,11 +12,7 @@ namespace api {
     // writes bytes to the client; false once the connection is gone
     using StreamSend = std::function<bool(const void *, size_t)>;
 
-    /*
-     * one wire format for the video stream. instantiated per connection so a format is free to
-     * keep encoder and muxer state across frames. frames arrive as raw pixels; each format
-     * encodes them itself.
-     */
+    // one wire format, instantiated per connection so it can keep encoder state across frames
     class StreamWriter {
     public:
         virtual ~StreamWriter() = default;

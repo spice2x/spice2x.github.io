@@ -12,10 +12,7 @@ namespace api {
 #ifdef SPICE_JPEG
         constexpr const char *MJPEG_BOUNDARY = "spice2xframe";
 
-        /*
-         * multipart/x-mixed-replace: every frame is a standalone JPEG in its own MIME part.
-         * no container and no inter-frame state, so a client may join at any point.
-         */
+        // multipart/x-mixed-replace: every frame is a standalone JPEG, no inter-frame state
         class MjpegWriter : public StreamWriter {
         public:
 

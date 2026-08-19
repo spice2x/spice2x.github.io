@@ -32,12 +32,8 @@ namespace api {
             return static_cast<uint8_t>(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128);
         }
 
-        /*
-         * H.264 in a fragmented MP4, for browsers via Media Source Extensions and for the
-         * companion app. one encoder and one muxer per connection, so every client gets its
-         * own init segment and starts on a keyframe. with `container` off the same encoder
-         * output goes out as bare annex-b, which is what a hardware decoder takes directly.
-         */
+        // one encoder and muxer per connection, so every client gets its own init segment and
+        // starts on a keyframe. with `container` off the output is bare annex-b instead
         class H264Writer : public StreamWriter {
         public:
 
@@ -123,11 +119,14 @@ namespace api {
                 // minimp4 names this argument a timestamp but uses it as the sample duration.
                 // capture never hits the requested fps exactly, so timing each frame from its
                 // own capture time keeps the media clock on wall clock instead of drifting
-                unsigned frame_duration = static_cast<unsigned>(TIMESCALE_90KHZ / this->fps);
+                const uint64_t nominal = TIMESCALE_90KHZ / this->fps;
+                unsigned frame_duration = static_cast<unsigned>(nominal);
                 if (this->last_timestamp != 0 && frame.timestamp > this->last_timestamp) {
+                    // the gap before a frame really belongs to the one before it, so a capture
+                    // stall would otherwise be charged to the frame that ends it
                     const uint64_t delta = (frame.timestamp - this->last_timestamp) * 90;
                     frame_duration = static_cast<unsigned>(
-                            std::clamp<uint64_t>(delta, 900, TIMESCALE_90KHZ));
+                            std::clamp<uint64_t>(delta, 900, nominal * 4));
                 }
                 this->last_timestamp = frame.timestamp;
 
