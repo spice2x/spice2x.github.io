@@ -60,12 +60,8 @@ namespace api {
 #endif
 
 #ifdef SPICE_H264
-        if (path == "/stream.mp4") {
-            return make_h264_writer(quality, fps);
-        }
-
         if (path == "/stream.h264") {
-            return make_annexb_writer(quality, fps);
+            return make_h264_writer(quality, fps);
         }
 #endif
 

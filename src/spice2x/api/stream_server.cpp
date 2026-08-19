@@ -247,9 +247,6 @@ namespace api {
             }
         }
 
-        // client threads own subscriptions, so the pumps can only stop once they are gone
-        capture_pump::shutdown();
-
         if (this->wsa_started) {
             WSACleanup();
         }
@@ -358,38 +355,52 @@ namespace api {
                                 ? 1 : 0;
                     }
 
-                    log_info("api::stream",
-                            "client connected: {} ({}, screen={}, fps={}, quality={})",
-                            address, request.path, screen, fps, quality);
+                    if (!capture_pump::claim_screen(screen)) {
+                        log_warning("api::stream",
+                                "screen {} is already being streamed, refusing {}",
+                                screen, address);
+                        send_error(socket, "503 Service Unavailable");
+                    } else {
+                        log_info("api::stream",
+                                "client connected: {} ({}, screen={}, fps={}, quality={})",
+                                address, request.path, screen, fps, quality);
 
-                    const std::string header =
-                            "HTTP/1.0 200 OK\r\n"
-                            "Connection: close\r\n"
-                            "Cache-Control: no-store, no-cache, must-revalidate\r\n"
-                            "Pragma: no-cache\r\n"
-                            "Content-Type: " + writer->content_type() + "\r\n"
-                            "\r\n";
+                        const std::string header =
+                                "HTTP/1.0 200 OK\r\n"
+                                "Connection: close\r\n"
+                                "Cache-Control: no-store, no-cache, must-revalidate\r\n"
+                                "Pragma: no-cache\r\n"
+                                "Content-Type: " + writer->content_type() + "\r\n"
+                                "\r\n";
 
-                    const StreamSend stream_send = [socket](const void *data, size_t size) {
-                        return send_all(socket, data, size);
-                    };
+                        const StreamSend stream_send = [socket](const void *data, size_t size) {
+                            return send_all(socket, data, size);
+                        };
 
-                    if (send_all(socket, header) && writer->begin(stream_send)) {
-                        capture_pump::Subscription subscription(screen, fps);
+                        if (send_all(socket, header) && writer->begin(stream_send)) {
+                            const auto interval = std::chrono::microseconds(1000000 / fps);
 
-                        while (this->running) {
-                            auto frame = subscription.next(1000);
-                            if (!frame) {
-                                continue;
-                            }
+                            while (this->running) {
+                                const auto started = std::chrono::steady_clock::now();
 
-                            if (!writer->write(stream_send, *frame)) {
-                                break;
+                                capture_pump::Frame frame;
+                                const bool ok = capture_pump::capture_direct(
+                                        screen, frame.pixels, 1,
+                                        &frame.timestamp, &frame.width, &frame.height);
+
+                                if (ok && frame.pixels
+                                        && !writer->write(stream_send, frame)) {
+                                    break;
+                                }
+
+                                // a failed capture still paces, or a stalled game spins this
+                                std::this_thread::sleep_until(started + interval);
                             }
                         }
-                    }
 
-                    log_info("api::stream", "client disconnected: {}", address);
+                        capture_pump::release_screen(screen);
+                        log_info("api::stream", "client disconnected: {}", address);
+                    }
                 }
             }
         }

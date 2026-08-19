@@ -2,13 +2,9 @@
 
 #ifdef SPICE_H264
 
-#include <algorithm>
 #include <vector>
 
 #include <x264.h>
-
-#define MINIMP4_IMPLEMENTATION
-#include "external/minimp4/minimp4.h"
 
 #include "util/logging.h"
 
@@ -16,9 +12,7 @@ namespace api {
 
     namespace {
 
-        constexpr int TIMESCALE_90KHZ = 90000;
-
-        // BT.601 limited range, the range every browser assumes for H.264 without
+        // BT.601 limited range, the range every decoder assumes for H.264 without
         // explicit colour metadata
         inline uint8_t rgb_to_y(int r, int g, int b) {
             return static_cast<uint8_t>(((66 * r + 129 * g + 25 * b + 128) >> 8) + 16);
@@ -32,20 +26,19 @@ namespace api {
             return static_cast<uint8_t>(((112 * r - 94 * g - 18 * b + 128) >> 8) + 128);
         }
 
-        // one encoder and muxer per connection, so every client gets its own init segment and
-        // starts on a keyframe. with `container` off the output is bare annex-b instead
+        // a bare annex-b elementary stream, one encoder per connection so every client
+        // starts on its own keyframe. no container, so nothing here keeps a media clock
         class H264Writer : public StreamWriter {
         public:
 
-            H264Writer(int quality, int fps, bool container)
-                : quality(quality), fps(fps), container(container) {}
+            H264Writer(int quality, int fps) : quality(quality), fps(fps) {}
 
             ~H264Writer() override {
                 this->close();
             }
 
             std::string content_type() const override {
-                return this->container ? "video/mp4" : "video/h264";
+                return "video/h264";
             }
 
             bool write(const StreamSend &send, const capture_pump::Frame &frame) override {
@@ -88,11 +81,8 @@ namespace api {
                     return true;
                 }
 
-                // annex-b: x264 lays every NAL of the frame out back to back.
-                // in fragmentation mode minimp4 makes a separate sample out of every NAL it is
-                // given, so an SEI or delimiter becomes a fragment holding no picture and
-                // decoders reject it. only the parameter sets and the slice itself go through,
-                // which a raw decoder is equally happy with
+                // x264 lays every NAL of the frame out back to back. an SEI or delimiter
+                // carries no picture, so only the parameter sets and the slice go through
                 this->annexb.clear();
                 for (int i = 0; i < nal_count; i++) {
                     switch (nals[i].i_type) {
@@ -111,35 +101,7 @@ namespace api {
                     return true;
                 }
 
-                // no container, so no media clock to keep: the client shows each frame on decode
-                if (!this->container) {
-                    return send(this->annexb.data(), this->annexb.size());
-                }
-
-                // minimp4 names this argument a timestamp but uses it as the sample duration,
-                // and a sample's real duration is only known once the next frame arrives, so
-                // each one is held back a frame instead of being charged the gap before it
-                if (this->has_held) {
-                    const uint64_t delta = frame.timestamp > this->held_timestamp
-                            ? (frame.timestamp - this->held_timestamp) * 90
-                            : 0;
-                    const unsigned duration = static_cast<unsigned>(
-                            std::clamp<uint64_t>(delta, 900, TIMESCALE_90KHZ));
-
-                    if (mp4_h26x_write_nal(
-                            &this->muxer, this->held.data(),
-                            static_cast<int>(this->held.size()), duration)
-                            != MP4E_STATUS_OK) {
-                        log_warning("api::stream", "H.264 muxing failed");
-                        return false;
-                    }
-                }
-
-                this->held.swap(this->annexb);
-                this->held_timestamp = frame.timestamp;
-                this->has_held = true;
-
-                return this->flush(send);
+                return send(this->annexb.data(), this->annexb.size());
             }
 
         private:
@@ -158,7 +120,7 @@ namespace api {
                 param.i_fps_den = 1;
                 param.i_threads = 1;
                 param.b_annexb = 1;
-                // SPS/PPS ahead of every IDR, which is where minimp4 picks them up
+                // SPS/PPS ahead of every IDR, so a client can start decoding cold
                 param.b_repeat_headers = 1;
                 // a keyframe every two seconds bounds how long a new client waits
                 param.i_keyint_max = this->fps * 2;
@@ -183,35 +145,12 @@ namespace api {
                 }
                 this->picture_ready = true;
 
-                if (this->container) {
-                    this->mux = MP4E_open(1, 1, this, &H264Writer::write_callback);
-                    if (this->mux == nullptr) {
-                        this->close();
-                        return false;
-                    }
-
-                    if (mp4_h26x_write_init(&this->muxer, this->mux, width, height, 0)
-                            != MP4E_STATUS_OK) {
-                        this->close();
-                        return false;
-                    }
-                    this->muxer_ready = true;
-                }
-
                 this->width = width;
                 this->height = height;
                 return true;
             }
 
             void close() {
-                if (this->muxer_ready) {
-                    mp4_h26x_write_close(&this->muxer);
-                    this->muxer_ready = false;
-                }
-                if (this->mux != nullptr) {
-                    MP4E_close(this->mux);
-                    this->mux = nullptr;
-                }
                 if (this->picture_ready) {
                     x264_picture_clean(&this->picture);
                     this->picture_ready = false;
@@ -264,67 +203,21 @@ namespace api {
                 }
             }
 
-            bool flush(const StreamSend &send) {
-                if (this->pending.empty()) {
-                    return true;
-                }
-
-                const bool ok = send(this->pending.data(), this->pending.size());
-                this->pending.clear();
-                return ok;
-            }
-
-            static int write_callback(
-                    int64_t offset, const void *buffer, size_t size, void *token) {
-
-                auto self = static_cast<H264Writer *>(token);
-
-                // a socket cannot seek; fragmented output should only ever append
-                if (offset != self->written) {
-                    log_warning("api::stream",
-                            "H.264 muxer seeked to {} instead of {}, ending client",
-                            offset, self->written);
-                    return 1;
-                }
-
-                auto bytes = static_cast<const uint8_t *>(buffer);
-                self->pending.insert(self->pending.end(), bytes, bytes + size);
-                self->written += static_cast<int64_t>(size);
-                return 0;
-            }
-
             int quality;
             int fps;
-            bool container;
             int width = 0;
             int height = 0;
             int64_t frame_index = 0;
-            int64_t written = 0;
             std::vector<uint8_t> annexb;
-
-            // the sample waiting for the next frame to reveal how long it was on screen
-            std::vector<uint8_t> held;
-            uint64_t held_timestamp = 0;
-            bool has_held = false;
 
             x264_t *encoder = nullptr;
             x264_picture_t picture {};
             bool picture_ready = false;
-
-            MP4E_mux_t *mux = nullptr;
-            mp4_h26x_writer_t muxer {};
-            bool muxer_ready = false;
-
-            std::vector<uint8_t> pending;
         };
     }
 
     std::unique_ptr<StreamWriter> make_h264_writer(int quality, int fps) {
-        return std::make_unique<H264Writer>(quality, fps, true);
-    }
-
-    std::unique_ptr<StreamWriter> make_annexb_writer(int quality, int fps) {
-        return std::make_unique<H264Writer>(quality, fps, false);
+        return std::make_unique<H264Writer>(quality, fps);
     }
 }
 

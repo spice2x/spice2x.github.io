@@ -307,13 +307,6 @@ if(NOT MSVC)
             COMPILE_OPTIONS "-fno-strict-aliasing")
 endif()
 
-# minimp4 is a vendored single-header library and does not build warning clean,
-# so silence those warnings on the unit that instantiates it
-if(NOT MSVC)
-    set_source_files_properties(api/h264_stream.cpp PROPERTIES
-            COMPILE_OPTIONS "-Wno-sign-compare;-Wno-unused-variable;-Wno-implicit-fallthrough;-Wno-unused-function")
-endif()
-
 # set link time optimizations (disabled for Debug builds for speed, disabled
 # for RelWithDebInfo builds due to "lto1: error: two or more sections for"
 # errors)

@@ -298,10 +298,9 @@ stream over plain HTTP. Enable it with `-apistream`. It listens on the API port
 plus two, in the same way the WebSocket server uses the API port plus one, so
 `-api 1337` puts the stream on 1339. This means `-api` has to be enabled too.
 
-Three formats are served:
+Two formats are served:
 
     http://host:1339/stream.mjpg    JPEG frames, multipart/x-mixed-replace
-    http://host:1339/stream.mp4     H.264 in fragmented MP4
     http://host:1339/stream.h264    H.264 annex-b, no container
 
 All accept the same optional query parameters:
@@ -310,12 +309,12 @@ All accept the same optional query parameters:
   game has one, otherwise the main screen.
 - `fps` - frames per second, 1-60. Default 30.
 - `q` - quality, 1-100. Default 70. This is the JPEG quality for `stream.mjpg`
-  and is mapped onto the H.264 rate factor for the other two, so the same
-  number does not mean the same thing across formats.
+  and is mapped onto the H.264 rate factor for `stream.h264`, so the same number
+  does not mean the same thing for both.
 
 For example:
 
-    http://host:1339/stream.mp4?screen=1&fps=30&q=70
+    http://host:1339/stream.h264?screen=1&fps=30&q=70
 
 See the wiki for format tradeoffs, latency tuning, testing commands and client
 notes.
