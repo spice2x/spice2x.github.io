@@ -1035,7 +1035,7 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::APIScreenMirrorDivide].is_active()) {
         api::modules::CAPTURE_DIVIDE = options[launcher::Options::APIScreenMirrorDivide].value_uint32();
     }
-    if (options[launcher::Options::APIStreamEnable].value_bool()) {
+    if (options[launcher::Options::APIStreamEnable].value_bool() && !cfg::CONFIGURATOR_STANDALONE) {
         api_stream_enable = true;
     }
 
@@ -2740,12 +2740,12 @@ int main_implementation(int argc, char *argv[]) {
     // the websocket already sits on the API port plus one, so the stream takes plus two
     if (api_stream_enable) {
         if (!api_enable) {
-            log_warning("launcher",
-                    "ignoring the video stream, it needs the API to be enabled (-api)");
+            log_fatal("launcher", "video stream requires API port to be set (-api)");
         } else if (api_port + 2 > 65535) {
-            log_warning("launcher",
-                    "ignoring the video stream, API port {} leaves no room for port plus two",
-                    api_port);
+            log_fatal(
+                "launcher",
+                "ignoring the video stream, API port {} leaves no room for port plus two",
+                api_port);
         } else {
             API_STREAM_SERVER = std::make_unique<api::StreamServer>(
                     static_cast<unsigned short>(api_port + 2));
