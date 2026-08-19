@@ -46,8 +46,5 @@ namespace api::capture_pump {
         uint64_t last_seq = 0;
     };
 
-    // most recent frame of a running pump, or null when no pump owns the screen
-    FramePtr latest(int screen);
-
     void shutdown();
 }

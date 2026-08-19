@@ -9,12 +9,12 @@
 #include <map>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "capture_pump.h"
 #include "hooks/graphics/graphics.h"
 #include "stream_format.h"
 #include "util/logging.h"
-#include "util/time.h"
 #include "util/utils.h"
 
 namespace api {
@@ -94,11 +94,13 @@ namespace api {
             char buffer[1024];
 
             while (head.find("\r\n\r\n") == std::string::npos) {
-                if (head.size() > size_limit) {
+                if (head.size() >= size_limit) {
                     return false;
                 }
 
-                const int received = recv(socket, buffer, sizeof(buffer), 0);
+                // read no further than the limit, so the head cannot overshoot it
+                const size_t budget = std::min(sizeof(buffer), size_limit - head.size());
+                const int received = recv(socket, buffer, static_cast<int>(budget), 0);
                 if (received <= 0) {
                     return false;
                 }
@@ -227,8 +229,10 @@ namespace api {
         // drops the client threads out of their blocking send/recv
         {
             std::lock_guard<std::mutex> lock(this->clients_m);
-            for (auto client : this->clients) {
-                ::shutdown(client, SD_BOTH);
+            for (auto &client : this->clients) {
+                if (client.socket != INVALID_SOCKET) {
+                    ::shutdown(client.socket, SD_BOTH);
+                }
             }
         }
 
@@ -236,8 +240,11 @@ namespace api {
             this->acceptor.join();
         }
 
-        while (this->client_count.load() > 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        // joining is what guarantees no client thread outlives this object
+        for (auto &client : this->clients) {
+            if (client.thread.joinable()) {
+                client.thread.join();
+            }
         }
 
         // client threads own subscriptions, so the pumps can only stop once they are gone
@@ -269,31 +276,44 @@ namespace api {
                 break;
             }
 
+            char address_data[INET_ADDRSTRLEN] {};
+            inet_ntop(AF_INET, &client_address.sin_addr, address_data, INET_ADDRSTRLEN);
+            std::string address(address_data);
+
             // every client costs an encode and real bandwidth, so the cap protects the game
-            if (this->client_count.load() >= client_limit) {
+            int slot = -1;
+            {
+                std::lock_guard<std::mutex> lock(this->clients_m);
+                for (size_t i = 0; i < this->clients.size(); i++) {
+                    if (!this->clients[i].active) {
+                        this->clients[i].active = true;
+                        this->clients[i].socket = client;
+                        slot = static_cast<int>(i);
+                        break;
+                    }
+                }
+            }
+
+            if (slot < 0) {
                 log_warning("api::stream", "client limit of {} hit", client_limit);
                 send_error(client, "503 Service Unavailable");
                 closesocket(client);
                 continue;
             }
 
-            char address_data[INET_ADDRSTRLEN] {};
-            inet_ntop(AF_INET, &client_address.sin_addr, address_data, INET_ADDRSTRLEN);
-            std::string address(address_data);
-
-            this->client_count++;
-            {
-                std::lock_guard<std::mutex> lock(this->clients_m);
-                this->clients.push_back(client);
+            // this thread is the only one that touches the thread objects, so the slot's
+            // previous occupant gets reaped here rather than being detached
+            if (this->clients[slot].thread.joinable()) {
+                this->clients[slot].thread.join();
             }
 
-            std::thread([this, client, address] {
-                this->client_worker(client, address);
-            }).detach();
+            this->clients[slot].thread = std::thread([this, slot, client, address] {
+                this->client_worker(slot, client, address);
+            });
         }
     }
 
-    void StreamServer::client_worker(SOCKET socket, std::string address) {
+    void StreamServer::client_worker(int slot, SOCKET socket, std::string address) {
 
         DWORD timeout = request_timeout_ms;
         setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO,
@@ -357,12 +377,6 @@ namespace api {
                     if (send_all(socket, header) && writer->begin(stream_send)) {
                         capture_pump::Subscription subscription(screen, fps);
 
-                        // how far behind the capture we are by the time the bytes are gone.
-                        // anything past this point belongs to the network and the player
-                        double age_total = 0;
-                        double age_worst = 0;
-                        int age_count = 0;
-
                         while (this->running) {
                             auto frame = subscription.next(1000);
                             if (!frame) {
@@ -371,19 +385,6 @@ namespace api {
 
                             if (!writer->write(stream_send, *frame)) {
                                 break;
-                            }
-
-                            const double age =
-                                    get_performance_milliseconds() - frame->timestamp;
-                            age_total += age;
-                            age_worst = std::max(age_worst, age);
-                            if (++age_count >= 150) {
-                                log_misc("api::stream",
-                                        "frame age at send: {:.0f} ms average, {:.0f} ms worst",
-                                        age_total / age_count, age_worst);
-                                age_total = 0;
-                                age_worst = 0;
-                                age_count = 0;
                             }
                         }
                     }
@@ -395,12 +396,10 @@ namespace api {
 
         {
             std::lock_guard<std::mutex> lock(this->clients_m);
-            this->clients.erase(
-                    std::remove(this->clients.begin(), this->clients.end(), socket),
-                    this->clients.end());
+            this->clients[slot].socket = INVALID_SOCKET;
+            this->clients[slot].active = false;
         }
 
         closesocket(socket);
-        this->client_count--;
     }
 }

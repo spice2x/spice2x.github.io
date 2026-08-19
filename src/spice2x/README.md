@@ -324,6 +324,10 @@ The stream is view only. Touch and other input still go through the JSON API,
 so a companion app needs both. There is no authentication on the stream port -
 anyone who can reach it can watch the screen.
 
+WinXP builds have no video stream. Neither encoder is compiled in, so every
+endpoint returns 404, and the JSON API's JPEG screen capture is unavailable for
+the same reason.
+
 ## Native wrapper libraries
 Spicetools provides wrapper libraries in: Arduino, C++, Dart, and Python.
 Python is the only one that is fully spec compliant.

@@ -121,21 +121,6 @@ namespace api::modules {
         int width = 0;
         int height = 0;
 
-        // a stream owns this screen's capture slot while it runs, so share its frame instead
-        // of triggering a second capture that would steal from it
-        if (auto frame = capture_pump::latest(screen)) {
-            CAPTURE_BUFFER.clear();
-            if (jpeg_encoder::encode(
-                    CAPTURE_BUFFER, frame->pixels.get(),
-                    frame->width, frame->height, quality)) {
-                add_jpeg_response(
-                        screen, frame->timestamp, frame->width, frame->height,
-                        CAPTURE_BUFFER, res);
-                CAPTURE_BUFFER.clear();
-                return;
-            }
-        }
-
         std::shared_ptr<uint8_t[]> pixels;
         bool success = capture_pump::capture_direct(
                 screen, pixels, divide, &timestamp, &width, &height);

@@ -165,21 +165,6 @@ namespace api::capture_pump {
         return pump.latest;
     }
 
-    FramePtr latest(int screen) {
-        if (!valid_screen(screen)) {
-            return nullptr;
-        }
-
-        auto &pump = PUMPS[screen];
-        std::lock_guard<std::mutex> lock(pump.m);
-
-        if (pump.subscribers <= 0) {
-            return nullptr;
-        }
-
-        return pump.latest;
-    }
-
     void shutdown() {
         std::lock_guard<std::mutex> shutdown_lock(SHUTDOWN_M);
 
