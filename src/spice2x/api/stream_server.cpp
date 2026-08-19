@@ -47,6 +47,24 @@ namespace api {
             return send_all(socket, text.data(), text.size());
         }
 
+        // a viewer leaving is normally noticed by a failing send, so a stream with no frame
+        // to push has to ask the socket instead
+        bool client_gone(SOCKET socket) {
+            fd_set read_set;
+            FD_ZERO(&read_set);
+            FD_SET(socket, &read_set);
+
+            // the socket is blocking with a receive timeout, so poll before touching it
+            timeval immediately {};
+            if (select(0, &read_set, nullptr, nullptr, &immediately) <= 0) {
+                return false;
+            }
+
+            // readable at all means EOF or a reset; the client never speaks after its request
+            char probe;
+            return recv(socket, &probe, 1, MSG_PEEK) <= 0;
+        }
+
         std::string url_decode(const std::string &input) {
             std::string out;
             out.reserve(input.size());
@@ -355,18 +373,29 @@ namespace api {
                 if (!writer) {
                     send_error(socket, "404 Not Found");
                 } else {
+                    std::vector<int> screens;
+                    graphics_screens_get(screens);
+
+                    const auto registered = [&screens](int screen) {
+                        return std::find(screens.begin(), screens.end(), screen)
+                                != screens.end();
+                    };
+
                     // screen 1 is the subscreen in every game that has one; single-screen games
                     // only ever register screen 0, so resolve the default against what exists
                     int screen = query_int(request, "screen", -1, 0,
                             static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO) - 1);
                     if (screen < 0) {
-                        std::vector<int> screens;
-                        graphics_screens_get(screens);
-                        screen = std::find(screens.begin(), screens.end(), 1) != screens.end()
-                                ? 1 : 0;
+                        screen = registered(1) ? 1 : 0;
                     }
 
-                    if (!capture_pump::claim_screen(screen)) {
+                    // the default always lands on a screen that exists, so this is only ever
+                    // an explicit request for one the game does not draw
+                    if (!registered(screen)) {
+                        log_warning("api::stream",
+                                "screen {} is not registered, refusing {}", screen, address);
+                        send_error(socket, "404 Not Found");
+                    } else if (!capture_pump::claim_screen(screen)) {
                         log_warning("api::stream",
                                 "screen {} is already being streamed, refusing {}",
                                 screen, address);
@@ -399,8 +428,11 @@ namespace api {
                                         screen, frame.pixels, 1,
                                         &frame.timestamp, &frame.width, &frame.height);
 
-                                if (ok && frame.pixels
-                                        && !writer->write(stream_send, frame)) {
+                                if (ok && frame.pixels) {
+                                    if (!writer->write(stream_send, frame)) {
+                                        break;
+                                    }
+                                } else if (client_gone(socket)) {
                                     break;
                                 }
 
