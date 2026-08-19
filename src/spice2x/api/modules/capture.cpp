@@ -2,8 +2,10 @@
 #include <functional>
 #include <mutex>
 #include <unordered_map>
+#include "api/capture_pump.h"
 #include "external/rapidjson/document.h"
 #include "hooks/graphics/graphics.h"
+#include "hooks/graphics/jpeg_encoder.h"
 #include "util/crypt.h"
 
 using namespace std::placeholders;
@@ -118,9 +120,16 @@ namespace api::modules {
         uint64_t timestamp = 0;
         int width = 0;
         int height = 0;
-        graphics_capture_trigger(screen);
-        bool success = graphics_capture_receive_jpeg(
-                screen, CAPTURE_BUFFER, quality, divide, &timestamp, &width, &height);
+
+        std::shared_ptr<uint8_t[]> pixels;
+        bool success = capture_pump::capture_direct(
+                screen, pixels, divide, &timestamp, &width, &height);
+
+        if (success) {
+            CAPTURE_BUFFER.clear();
+            success = jpeg_encoder::encode(
+                    CAPTURE_BUFFER, pixels.get(), width, height, quality);
+        }
 
         if (success) {
             add_jpeg_response(screen, timestamp, width, height, CAPTURE_BUFFER, res);

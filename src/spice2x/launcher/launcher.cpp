@@ -14,6 +14,7 @@
 #include "acio/icca/icca.h"
 #include "acio/mdxf/mdxf.h"
 #include "api/controller.h"
+#include "api/stream_server.h"
 #include "avs/automap.h"
 #include "avs/core.h"
 #include "avs/ea3.h"
@@ -150,6 +151,7 @@ std::string CARD_OVERRIDES[2];
 
 // sub-systems
 std::unique_ptr<api::Controller> API_CONTROLLER;
+std::unique_ptr<api::StreamServer> API_STREAM_SERVER;
 std::unique_ptr<rawinput::RawInputManager> RI_MGR;
 
 // trigger NVIDIA Optimus & AMD Enduro High Performance Graphics
@@ -198,6 +200,7 @@ int main_implementation(int argc, char *argv[]) {
     bool api_pretty = false;
     bool api_debug = false;
     unsigned short api_port = 1337;
+    bool api_stream_enable = false;
     std::string api_pass = "";
     std::vector<std::string> api_serial_port;
     std::vector<DWORD> api_serial_baud;
@@ -1031,6 +1034,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::APIScreenMirrorDivide].is_active()) {
         api::modules::CAPTURE_DIVIDE = options[launcher::Options::APIScreenMirrorDivide].value_uint32();
+    }
+    if (options[launcher::Options::APIStreamEnable].value_bool() && !cfg::CONFIGURATOR_STANDALONE) {
+        api_stream_enable = true;
     }
 
     if (options[launcher::Options::DisableDebugHooks].value_bool()) {
@@ -2731,6 +2737,20 @@ int main_implementation(int argc, char *argv[]) {
     for (size_t i = 0; i < std::min(api_serial_port.size(), api_serial_baud.size()); i++) {
         API_CONTROLLER->listen_serial(api_serial_port[i], api_serial_baud[i]);
     }
+    // the websocket already sits on the API port plus one, so the stream takes plus two
+    if (api_stream_enable) {
+        if (!api_enable) {
+            log_fatal("launcher", "video stream requires API port to be set (-api)");
+        } else if (api_port + 2 > 65535) {
+            log_fatal(
+                "launcher",
+                "ignoring the video stream, API port {} leaves no room for port plus two",
+                api_port);
+        } else {
+            API_STREAM_SERVER = std::make_unique<api::StreamServer>(
+                    static_cast<unsigned short>(api_port + 2));
+        }
+    }
 
     // pin macro
     if (!cfg::CONFIGURATOR_STANDALONE && PIN_MACRO_ENABLED) {
@@ -2819,6 +2839,7 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // free api controller
+    API_STREAM_SERVER.reset();
     API_CONTROLLER.reset();
 
     eamuse_pin_macro_stop_thread();

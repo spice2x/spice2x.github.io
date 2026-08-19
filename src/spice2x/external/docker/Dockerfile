@@ -28,3 +28,7 @@ RUN curl -fsSL "https://github.com/mon/windows-dll-compat-checker/releases/downl
 # libjpeg-turbo for JPEG encoding. Only the mingw-w64 toolchains get it;
 # the WinXP targets build without JPEG support entirely.
 RUN su user -c "yay --noconfirm -S mingw-w64-libjpeg-turbo"
+
+# x264 for the API H.264 video stream. Only the mingw-w64 toolchains need it;
+# the WinXP targets build without the stream encoder.
+RUN su user -c "yay --noconfirm -S mingw-w64-x264"
