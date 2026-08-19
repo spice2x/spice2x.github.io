@@ -39,6 +39,7 @@ namespace api {
         };
 
         void accept_worker();
+        bool open_listener();
         void client_worker(int slot, SOCKET socket, std::string address);
 
         unsigned short port;

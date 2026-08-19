@@ -162,11 +162,31 @@ namespace api {
     StreamServer::StreamServer(unsigned short port)
         : port(port)
     {
+        if (!this->open_listener()) {
+            // the stream was asked for explicitly, so say plainly that it is not there
+            log_warning("api::stream",
+                    "the video stream is not available on port {}", this->port);
+            return;
+        }
+
+        this->running = true;
+        this->acceptor = std::thread([this] {
+            this->accept_worker();
+        });
+
+        // deliberately not logging a full URL; local IPs would leak into shared logs
+        log_info("api::stream", "video stream is listening on port: {}", this->port);
+        log_warning("api::stream",
+                "the video stream is unauthenticated - anyone who can reach port {} can watch "
+                "the game screen", this->port);
+    }
+
+    bool StreamServer::open_listener() {
         WSADATA wsa_data;
         const int error = WSAStartup(MAKEWORD(2, 2), &wsa_data);
         if (error != 0) {
             log_warning("api::stream", "WSAStartup() returned {}", error);
-            return;
+            return false;
         }
         this->wsa_started = true;
 
@@ -174,7 +194,7 @@ namespace api {
         if (this->listener == INVALID_SOCKET) {
             log_warning("api::stream", "could not create listener socket: {}",
                     get_last_error_string());
-            return;
+            return false;
         }
 
         int opt_enable = 1;
@@ -194,7 +214,7 @@ namespace api {
                     this->port, get_last_error_string());
             closesocket(this->listener);
             this->listener = INVALID_SOCKET;
-            return;
+            return false;
         }
 
         if (listen(this->listener, server_backlog) == -1) {
@@ -202,19 +222,10 @@ namespace api {
                     this->port, get_last_error_string());
             closesocket(this->listener);
             this->listener = INVALID_SOCKET;
-            return;
+            return false;
         }
 
-        this->running = true;
-        this->acceptor = std::thread([this] {
-            this->accept_worker();
-        });
-
-        // deliberately not logging a full URL; local IPs would leak into shared logs
-        log_info("api::stream", "video stream is listening on port: {}", this->port);
-        log_warning("api::stream",
-                "the video stream is unauthenticated - anyone who can reach port {} can watch "
-                "the game screen", this->port);
+        return true;
     }
 
     StreamServer::~StreamServer() {
