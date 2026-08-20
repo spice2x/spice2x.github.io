@@ -173,9 +173,15 @@ namespace api {
             }
         }
 
+        // an <img> can show a cross-origin stream without this, but a browser client that
+        // decodes the bytes itself has to fetch() them, and fetch is subject to CORS. errors
+        // carry it too, or the client sees an opaque failure instead of the status.
+        constexpr const char *cors_header = "Access-Control-Allow-Origin: *\r\n";
+
         void send_error(SOCKET socket, const char *status) {
             const std::string response =
                     std::string("HTTP/1.0 ") + status + "\r\n"
+                    + cors_header +
                     "Content-Length: 0\r\n"
                     "Connection: close\r\n"
                     "\r\n";
@@ -418,6 +424,7 @@ namespace api {
                         const std::string header =
                                 "HTTP/1.0 200 OK\r\n"
                                 "Connection: close\r\n"
+                                + std::string(cors_header) +
                                 "Cache-Control: no-store, no-cache, must-revalidate\r\n"
                                 "Pragma: no-cache\r\n"
                                 "Content-Type: " + writer->content_type() + "\r\n"
