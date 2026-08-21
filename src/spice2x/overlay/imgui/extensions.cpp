@@ -21,12 +21,36 @@ namespace ImGui {
                 base.y + overlay::apply_scaling(1.0f));
     }
 
+    // Tooltips follow the mouse and only avoid a small box around the cursor, so
+    // they can cover the option they describe. Anchor to the hovered item and let
+    // ImGui's popup placer pick a side that clears it and stays on-screen. The
+    // size is taken from the tooltip window, so it covers any content.
+    static void SetNextTooltipPos() {
+        ImGuiContext& g = *GImGui;
+        char name[32];
+        ImFormatString(name, IM_COUNTOF(name), "##Tooltip_%02d", g.TooltipOverrideCount);
+        ImGuiWindow *tooltip = ImGui::FindWindowByName(name);
+        if (tooltip == nullptr || !tooltip->WasActive) {
+            // Reopened tooltips are hidden for one frame while measuring size.
+            return;
+        }
+        const ImRect item(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+        ImGui::SetNextWindowPos(ImGui::FindBestWindowPosForPopupEx(
+                item.Min,
+                ImGui::CalcWindowNextAutoFitSize(tooltip),
+                &tooltip->AutoPosLastDirection,
+                ImGui::GetPopupAllowedExtentRect(tooltip),
+                item,
+                ImGuiPopupPositionPolicy_Tooltip));
+    }
+
     void HelpTooltip(const char* desc) {
         ImGui::PushStyleColor(ImGuiCol_Border, bg);
         ImGui::PushStyleColor(ImGuiCol_BorderShadow, bg);
         ImGui::PushStyleColor(ImGuiCol_PopupBg, bg);
         ImGui::PushStyleColor(ImGuiCol_Text, fg);
 
+        SetNextTooltipPos();
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
         ImGui::TextUnformatted(desc);
@@ -49,6 +73,7 @@ namespace ImGui {
         ImGui::PushStyleColor(ImGuiCol_PopupBg, bg);
         ImGui::PushStyleColor(ImGuiCol_Text, fg);
 
+        SetNextTooltipPos();
         ImGui::BeginTooltip();
         ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
         if (desc && desc[0]) {
