@@ -230,6 +230,16 @@ namespace overlay::windows {
                 ImGui::GetStyle().FrameRounding);
         }
 
+        // the state text next to a toggle is the checkbox label, so it has to dim itself instead
+        // of being wrapped in BeginDisabled (which would also kill the click area)
+        void push_toggle_label_color(bool checked) {
+            auto color = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+            if (!checked) {
+                color.w *= ImGui::GetStyle().DisabledAlpha;
+            }
+            ImGui::PushStyleColor(ImGuiCol_Text, color);
+        }
+
         // render a tri-state checkbox for groups
         // user can interact with this to enable or disable all child patches
         bool render_patch_group_checkbox(
@@ -237,11 +247,20 @@ namespace overlay::windows {
             const std::vector<size_t>& members,
             bool& checked) {
             const bool mixed = state.status == PatchGroupStatus::Mixed;
-            ImGui::BeginDisabled(state.status == PatchGroupStatus::Error);
+            const bool error = state.status == PatchGroupStatus::Error;
+            ImGui::BeginDisabled(error);
             if (mixed) {
                 ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.f, 0.f, 0.f, 0.f));
             }
-            const bool changed = ImGui::Checkbox("##group_checked_checkbox", &checked);
+            // the state text doubles as the checkbox label so clicking it toggles the group;
+            // errored groups show the failing patch there instead
+            const char *label = "##group_checked_checkbox";
+            if (!error) {
+                label = mixed ? "mixed" : (checked ? "ON" : "off");
+            }
+            push_toggle_label_color(checked);
+            const bool changed = ImGui::Checkbox(label, &checked);
+            ImGui::PopStyleColor();
             if (mixed) {
                 ImGui::PopStyleColor();
             }
@@ -266,11 +285,11 @@ namespace overlay::windows {
             return true;
         }
 
-        // render aggregate status or error text beside the group checkbox
-        void render_patch_group_status(const PatchGroupState& state, bool checked) {
-            ImGui::SameLine();
-            ImGui::AlignTextToFramePadding();
+        // render error text beside the group checkbox; other states are shown as its label
+        void render_patch_group_status(const PatchGroupState& state) {
             if (state.status == PatchGroupStatus::Error) {
+                ImGui::SameLine();
+                ImGui::AlignTextToFramePadding();
                 const auto& error_patch = patcher::patches[state.first_error_index];
                 const auto error_reason = error_patch.error_reason.empty()
                     ? "Unknown error"
@@ -279,12 +298,6 @@ namespace overlay::windows {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.f, 0.f, 1.f));
                 ImGui::TextUnformatted(error_text.c_str());
                 ImGui::PopStyleColor();
-            } else if (state.status == PatchGroupStatus::Mixed) {
-                ImGui::TextUnformatted("mixed");
-            } else {
-                ImGui::BeginDisabled(!checked);
-                ImGui::TextUnformatted(checked ? "ON" : "off");
-                ImGui::EndDisabled();
             }
         }
 
@@ -311,7 +324,7 @@ namespace overlay::windows {
             if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                 show_patch_group_tooltip(group);
             }
-            render_patch_group_status(group_state, group_checked);
+            render_patch_group_status(group_state);
 
             ImGui::TableSetColumnIndex(0);
             const auto group_name = get_patch_group_display_name(
@@ -874,8 +887,18 @@ namespace overlay::windows {
                         render_patch_group_child_gutter(last_group_child);
                         ImGui::SameLine();
                     }
+                    // plain on/off patches have no extra widget, so the state text doubles as the
+                    // checkbox label - clicking the text toggles it, like the Options tab
+                    const bool has_extra_widget =
+                        patch_status == patcher::PatchStatus::Error
+                        || patch.type == patcher::PatchType::Union
+                        || patch.type == patcher::PatchType::Integer;
+                    const char *checkbox_label = has_extra_widget
+                        ? "##patch_checked_checkbox"
+                        : (patch_checked ? "ON" : "off");
+                    push_toggle_label_color(patch_checked);
                     ImGui::BeginDisabled(patch_status == patcher::PatchStatus::Error);
-                    if (ImGui::Checkbox("##patch_checked_checkbox", &patch_checked)) {
+                    if (ImGui::Checkbox(checkbox_label, &patch_checked)) {
                         patcher::config_dirty = true;
                         switch (patch_status) {
                             case patcher::PatchStatus::Enabled:
@@ -901,13 +924,14 @@ namespace overlay::windows {
                         patch.last_status = patcher::is_patch_active(patch);
                     }
                     ImGui::EndDisabled();
+                    ImGui::PopStyleColor();
                     if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                         show_patch_tooltip(patch);
                     }
 
                     // second column, part 2: additional options UI (dropdown, text input)
-                    ImGui::SameLine();
                     if (patch_status == patcher::PatchStatus::Error){
+                        ImGui::SameLine();
                         ImGui::AlignTextToFramePadding();
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.f, 0.f, 1.f));
                         if (patch.error_reason.empty()) {
@@ -917,6 +941,7 @@ namespace overlay::windows {
                         }
                         ImGui::PopStyleColor();
                     } else if (patch.type == patcher::PatchType::Union || patch.type == patcher::PatchType::Integer) {
+                        ImGui::SameLine();
                         if (patch_status == patcher::PatchStatus::Enabled) {
                             if (patch.type == patcher::PatchType::Union) {
                                 set_patch_option_width();
@@ -970,11 +995,6 @@ namespace overlay::windows {
                                 show_patch_tooltip(patch);
                             }
                         }
-                    } else {
-                        ImGui::AlignTextToFramePadding();
-                        ImGui::BeginDisabled(!patch_checked);
-                        ImGui::TextUnformatted(patch_checked ? "ON" : "off");
-                        ImGui::EndDisabled();
                     }
 
                     ImGui::HighlightTableRowOnHover();
