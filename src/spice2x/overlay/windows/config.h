@@ -141,6 +141,7 @@ namespace overlay::windows {
         int options_category = 0;
         std::string search_filter = "";
         std::string search_filter_in_lower_case = "";
+        bool search_active_only = false;
 
         // Options tab left-nav: selected group, currently highlighted category, and a pending scroll
         std::string options_group_selected = "";
@@ -216,7 +217,7 @@ namespace overlay::windows {
         void build_option_value_picker(Option& option);
         void build_options(
             std::vector<Option> *options, const std::string &category, const std::string *filter=nullptr,
-            bool quick_only=false);
+            bool quick_only=false, bool active_only=false);
         void build_options_tab(float page_offset);
         void build_controller_tab(float page_offset, ControllerPage *page_selected_new);
         bool build_nav_header(const char *label, bool active);
