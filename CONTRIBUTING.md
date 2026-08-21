@@ -22,6 +22,7 @@ To contribute, fork the repo (just the main branch), make changes in your fork, 
 * Any additions to built-in patches (modifications / removals are OK if we have a good reason).
 * Changes to the software license terms.
 * Localization / translation for UI text. It becomes too difficult to manage by the maintainers.
+* Bundling third party DLL binary; e.g., Discord Social SDK, PC light control integration, and so on. These should be built as hook DLLs instead, optionally with [Spice SDK](https://github.com/spice2x/spice2x.github.io/wiki/Spice-SDK).
 
 ### Avoiding regressions
 
