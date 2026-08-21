@@ -450,6 +450,8 @@ namespace overlay::windows {
                     ImGuiInputTextFlags_EscapeClearsAll)) {
                 this->search_filter_in_lower_case = strtolower(this->search_filter);
             }
+
+            // clear search terms
             if (!this->search_filter.empty()) {
                 ImGui::SameLine();
                 if (ImGui::Button("Clear")) {
@@ -457,15 +459,22 @@ namespace overlay::windows {
                     this->search_filter_in_lower_case.clear();
                 }
             }
+
+            // active only checkbox
+            ImGui::SameLine();
+            ImGui::Checkbox("Active Only", &this->search_active_only);
+
             ImGui::Spacing();
 
             // draw matching options
-            if (!this->search_filter.empty()) {
+            if (!this->search_filter.empty() || this->search_active_only) {
                 for (auto category : launcher::get_categories(launcher::Options::OptionsCategory::Everything)) {
                     this->build_options(
                         options,
                         category,
-                        const_cast<std::string *>(&this->search_filter_in_lower_case));
+                        const_cast<std::string *>(&this->search_filter_in_lower_case),
+                        false,
+                        this->search_active_only);
                 }
             }
         } else if (this->options_group_selected == OPTIONS_TAB_QUICK) {
@@ -5041,7 +5050,8 @@ namespace overlay::windows {
     }
 
     void Config::build_options(
-        std::vector<Option> *options, const std::string &category, const std::string *filter, bool quick_only) {
+        std::vector<Option> *options, const std::string &category, const std::string *filter,
+        bool quick_only, bool active_only) {
 
         // collect the options that match the current filters. doing this once lets us
         // skip rendering an empty header + table for categories with no matches, and
@@ -5066,8 +5076,11 @@ namespace overlay::windows {
             if (!definition.game_name.empty() && definition.game_name != this->games_selected_name) {
                 continue;
             }
-            if (filter != nullptr) {
-                if (filter->empty() || !option.search_match(*filter)) {
+            if (active_only && !option.is_active()) {
+                continue;
+            }
+            if (filter != nullptr && !filter->empty()) {
+                if (!option.search_match(*filter)) {
                     continue;
                 }
                 // limit to 30 results
