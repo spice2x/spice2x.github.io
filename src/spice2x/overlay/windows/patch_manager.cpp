@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include "avs/game.h"
 #include "cfg/configurator.h"
+#include "external/imgui/imgui_internal.h"
 #include "games/io.h"
 #include "launcher/launcher.h"
 #include "misc/clipboard.h"
@@ -215,21 +216,6 @@ namespace overlay::windows {
             return name;
         }
 
-        // draw a square checkmark for mixed-state groups (neither checked or unchecked)
-        void render_patch_group_mixed_checkbox_mark() {
-            const auto check_min = ImGui::GetItemRectMin();
-            const float check_size = ImGui::GetFrameHeight();
-            const float calculated_padding = check_size / 3.6f;
-            const float padding = calculated_padding < 1.0f ? 1.0f : calculated_padding;
-            ImGui::GetWindowDrawList()->AddRectFilled(
-                ImVec2(check_min.x + padding, check_min.y + padding),
-                ImVec2(
-                    check_min.x + check_size - padding,
-                    check_min.y + check_size - padding),
-                ImGui::GetColorU32(ImGuiCol_CheckMark),
-                ImGui::GetStyle().FrameRounding);
-        }
-
         // the state text next to a toggle is the checkbox label, so it has to dim itself instead
         // of being wrapped in BeginDisabled (which would also kill the click area)
         void push_toggle_label_color(bool checked) {
@@ -250,7 +236,7 @@ namespace overlay::windows {
             const bool error = state.status == PatchGroupStatus::Error;
             ImGui::BeginDisabled(error);
             if (mixed) {
-                ImGui::PushStyleColor(ImGuiCol_CheckMark, ImVec4(0.f, 0.f, 0.f, 0.f));
+                ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true);
             }
             // the state text doubles as the checkbox label so clicking it toggles the group;
             // errored groups show the failing patch there instead
@@ -262,12 +248,9 @@ namespace overlay::windows {
             const bool changed = ImGui::Checkbox(label, &checked);
             ImGui::PopStyleColor();
             if (mixed) {
-                ImGui::PopStyleColor();
+                ImGui::PopItemFlag();
             }
             ImGui::EndDisabled();
-            if (mixed && !changed) {
-                render_patch_group_mixed_checkbox_mark();
-            }
             if (!changed) {
                 return false;
             }
