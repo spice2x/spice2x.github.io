@@ -55,4 +55,13 @@ namespace api::capture_pump {
         std::lock_guard<std::mutex> lock(CLAIMED_M);
         CLAIMED[screen] = false;
     }
+
+    bool screen_claimed(int screen) {
+        if (!valid_screen(screen)) {
+            return false;
+        }
+
+        std::lock_guard<std::mutex> lock(CLAIMED_M);
+        return CLAIMED[screen];
+    }
 }

@@ -15,6 +15,7 @@
 #include <external/robin_hood.h>
 #include <external/fpng/fpng.h>
 
+#include "api/capture_pump.h"
 #include "avs/game.h"
 #include "hooks/graphics/graphics.h"
 #include "misc/clipboard.h"
@@ -442,6 +443,31 @@ static void dispatch_capture_save(PendingCapture capture) {
     }
 }
 
+// destroying the BackbufferCopy returns its surface to the pool, which is a device call, so
+// it has to happen on whichever thread was cleared to do the read
+static void read_and_dispatch_capture(int screen, BackbufferCopy copy) {
+    PendingCapture capture;
+    if (!read_capture_surface(copy, capture)) {
+        graphics_capture_skip(screen);
+        return;
+    }
+
+    dispatch_capture_save(std::move(capture));
+}
+
+// only streaming pays the lock and memcpy every frame, so only streaming is worth taking off
+// the present thread - touching the device from elsewhere deadlocked DDR X2, whose device has
+// no internal locking
+static bool capture_read_off_thread(int screen) {
+    return api::capture_pump::screen_claimed(screen) && !image_processing_must_be_inline();
+}
+
+ThreadPool &capture_read_pool() {
+    // never destroyed, so a read still running at process exit cannot touch a dead pool
+    static auto *instance = new ThreadPool(2);
+    return *instance;
+}
+
 // by this point the pixels are plain memory, so none of this needs the device
 static void dispatch_screenshot_save(std::vector<PendingWrite> writes, size_t screen_count) {
     auto screenshot_process = [writes = std::move(writes), screen_count]() mutable {
@@ -623,14 +649,31 @@ static void process_image_request(
     }
 
     if (!screenshot) {
-        PendingCapture capture;
-        if (!read_capture_surface(copies.front(), capture)) {
-            graphics_capture_skip(request.screen);
-            return;
+        auto copy = std::move(copies.front());
+        copies.clear();
+
+        if (capture_read_off_thread(request.screen)) {
+            try {
+                capture_read_pool().add(
+                        [screen = request.screen, copy = std::move(copy)]() mutable {
+                    // an escape from here would cross a thread boundary and terminate
+                    try {
+                        read_and_dispatch_capture(screen, std::move(copy));
+                    } catch (const std::exception &error) {
+                        log_warning("graphics::d3d9", "capture read failed: {}", error.what());
+                        graphics_capture_skip(screen);
+                    } catch (...) {
+                        log_warning("graphics::d3d9", "capture read failed");
+                        graphics_capture_skip(screen);
+                    }
+                });
+                return;
+            } catch (const std::exception &) {
+                // nothing to queue onto; reading it here still makes progress
+            }
         }
 
-        copies.clear();
-        dispatch_capture_save(std::move(capture));
+        read_and_dispatch_capture(request.screen, std::move(copy));
         return;
     }
 
