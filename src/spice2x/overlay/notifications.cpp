@@ -172,7 +172,9 @@ namespace overlay::notifications {
             // small gutter past the accent bar, then wrapped text
             ImGui::Dummy(ImVec2(apply_scaling(2.0f), 0.f));
             ImGui::SameLine();
-            ImGui::PushTextWrapPos(win_pos.x + win_size.x - apply_scaling(TOAST_PAD_X));
+            // wrap pos is in window-local space, not screen space - adding win_pos.x here
+            // pushed the boundary far past the window's own width, so it never wrapped
+            ImGui::PushTextWrapPos(win_size.x - apply_scaling(TOAST_PAD_X));
             ImGui::TextUnformatted(n.text.c_str());
             ImGui::PopTextWrapPos();
 

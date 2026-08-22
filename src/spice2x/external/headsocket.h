@@ -1450,7 +1450,10 @@ void basic_tcp_server::accept_thread()
   while (_p->isRunning)
   {
     detail::connection_impl conn_impl;
-    conn_impl.socket = ::accept(_p->serverSocket, reinterpret_cast<struct sockaddr *>(&conn_impl.from), nullptr);
+    // addrlen must be a valid in/out pointer or the OS leaves conn_impl.from untouched,
+    // so the peer address silently reads back as 0.0.0.0
+    int from_len = sizeof(conn_impl.from);
+    conn_impl.socket = ::accept(_p->serverSocket, reinterpret_cast<struct sockaddr *>(&conn_impl.from), &from_len);
     conn_impl.id = _p->nextClientID++;
 
     if (!_p->nextClientID)
