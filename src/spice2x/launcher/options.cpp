@@ -1745,7 +1745,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
     },
     {
         // APIStreamEnable
-        .title = "API Video Stream Server Enable",
+        .title = "API Video Stream Server Enable (EXPERIMENTAL)",
         .name = "apistream",
         .desc = "Serves the mirrored screen as a video stream, on the API port plus two; "
             "alternative to API screen capture. Requires -api.\n\n"
@@ -1754,7 +1754,8 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Parameters: screen (0-3), fps (1-60, default 30), q (1-100, default 70).\n\n"
             "Example with -api 1337: http://host:1339/stream.h264?fps=30&q=70\n\n"
             "VIEW ONLY - touch input still requires -api. "
-            "No password protection or encryption of any kind; video sent in the clear!",
+            "No password protection or encryption of any kind; video sent in the clear!\n\n"
+            "Streaming is known to cause older games to hang and crash.",
         .type = OptionType::Bool,
         .category = "Companion & API",
     },

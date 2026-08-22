@@ -21,4 +21,7 @@ namespace api::capture_pump {
     // a screen carries one stream at a time; false when another connection already holds it
     bool claim_screen(int screen);
     void release_screen(int screen);
+
+    // true while a video stream client holds this screen
+    bool screen_claimed(int screen);
 }
