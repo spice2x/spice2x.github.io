@@ -170,6 +170,13 @@ ThreadPool &encode_pool() {
     return *instance;
 }
 
+// where a capture's pixels are converted and handed to the api. never destroyed: the read
+// pool below can still be working at process exit, and it queues onto this one
+ThreadPool &capture_save_pool() {
+    static auto *instance = new ThreadPool(2);
+    return *instance;
+}
+
 // normalize the supported D3D formats to packed 24bpp RGB. callers screen the
 // format through surface_pixel_size first, so the black fill below is a fallback
 void surface_to_rgb(
@@ -438,8 +445,7 @@ static void dispatch_capture_save(PendingCapture capture) {
     if (image_processing_must_be_inline()) {
         capture_process();
     } else {
-        static auto pool = ThreadPool(2);
-        pool.add(std::move(capture_process));
+        capture_save_pool().add(std::move(capture_process));
     }
 }
 
@@ -475,8 +481,10 @@ static bool capture_read_off_thread(int screen) {
 }
 
 ThreadPool &capture_read_pool() {
-    // never destroyed, so a read still running at process exit cannot touch a dead pool
-    static auto *instance = new ThreadPool(2);
+    // one worker, so reads finish in the order they were submitted: a second worker could
+    // overtake a descheduled one and enqueue a stale frame over a newer one. never destroyed,
+    // so a read still running at process exit cannot touch a dead pool
+    static auto *instance = new ThreadPool(1);
     return *instance;
 }
 
@@ -679,10 +687,13 @@ static void process_image_request(
                         graphics_capture_skip(screen);
                     }
                 });
-                return;
             } catch (const std::exception &) {
-                // nothing to queue onto; reading it here still makes progress
+                // the copy went into the lambda before the queue could fail, so there is
+                // nothing left to read here and the client misses this frame
+                graphics_capture_skip(request.screen);
             }
+
+            return;
         }
 
         read_and_dispatch_capture(request.screen, std::move(copy));

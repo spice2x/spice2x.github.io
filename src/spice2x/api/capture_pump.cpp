@@ -1,6 +1,7 @@
 #include "capture_pump.h"
 
 #include <array>
+#include <atomic>
 #include <mutex>
 
 #include "hooks/graphics/graphics.h"
@@ -11,8 +12,8 @@ namespace api::capture_pump {
 
         std::array<std::mutex, GRAPHICS_CAPTURE_SCREEN_NO> CONSUMER_M;
 
-        std::mutex CLAIMED_M;
-        std::array<bool, GRAPHICS_CAPTURE_SCREEN_NO> CLAIMED {};
+        // read once per capture from the present thread, so it stays lock free
+        std::atomic<bool> CLAIMED[GRAPHICS_CAPTURE_SCREEN_NO] {};
 
         bool valid_screen(int screen) {
             return 0 <= screen && screen < static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO);
@@ -37,14 +38,7 @@ namespace api::capture_pump {
             return false;
         }
 
-        std::lock_guard<std::mutex> lock(CLAIMED_M);
-
-        if (CLAIMED[screen]) {
-            return false;
-        }
-
-        CLAIMED[screen] = true;
-        return true;
+        return !CLAIMED[screen].exchange(true);
     }
 
     void release_screen(int screen) {
@@ -52,7 +46,6 @@ namespace api::capture_pump {
             return;
         }
 
-        std::lock_guard<std::mutex> lock(CLAIMED_M);
         CLAIMED[screen] = false;
     }
 
@@ -61,7 +54,6 @@ namespace api::capture_pump {
             return false;
         }
 
-        std::lock_guard<std::mutex> lock(CLAIMED_M);
         return CLAIMED[screen];
     }
 }
