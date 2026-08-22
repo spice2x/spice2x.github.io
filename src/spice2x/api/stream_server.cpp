@@ -14,6 +14,7 @@
 
 #include "capture_pump.h"
 #include "hooks/graphics/graphics.h"
+#include "overlay/notifications.h"
 #include "stream_format.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -178,6 +179,10 @@ namespace api {
         // carry it too, or the client sees an opaque failure instead of the status.
         constexpr const char *cors_header = "Access-Control-Allow-Origin: *\r\n";
 
+        // the port is unauthenticated, so a scanner retrying against a busy/missing screen
+        // could otherwise flood the overlay; throttle failure toasts per distinct cause
+        constexpr double notification_throttle_seconds = 3.0;
+
         void send_error(SOCKET socket, const char *status) {
             const std::string response =
                     std::string("HTTP/1.0 ") + status + "\r\n"
@@ -334,6 +339,11 @@ namespace api {
 
             if (slot < 0) {
                 log_warning("api::stream", "client limit of {} hit", client_limit);
+                overlay::notifications::add_throttled(
+                        overlay::notifications::Severity::Warning,
+                        "api::stream.client_limit",
+                        notification_throttle_seconds,
+                        fmt::format("Video stream refused: client limit reached ({})", address));
                 send_error(client, "503 Service Unavailable");
                 closesocket(client);
                 continue;
@@ -410,16 +420,32 @@ namespace api {
                     if (!streamable(screen)) {
                         log_warning("api::stream",
                                 "screen {} is not available, refusing {}", screen, address);
+                        overlay::notifications::add_throttled(
+                                overlay::notifications::Severity::Warning,
+                                fmt::format("api::stream.screen_unavailable.{}", screen),
+                                notification_throttle_seconds,
+                                fmt::format("Video stream refused: screen {} not available ({})",
+                                        screen, address));
                         send_error(socket, "404 Not Found");
                     } else if (!capture_pump::claim_screen(screen)) {
                         log_warning("api::stream",
                                 "screen {} is already being streamed, refusing {}",
                                 screen, address);
+                        overlay::notifications::add_throttled(
+                                overlay::notifications::Severity::Warning,
+                                fmt::format("api::stream.screen_claimed.{}", screen),
+                                notification_throttle_seconds,
+                                fmt::format("Video stream refused: screen {} already streaming ({})",
+                                        screen, address));
                         send_error(socket, "503 Service Unavailable");
                     } else {
                         log_info("api::stream",
                                 "client connected: {} ({}, screen={}, fps={}, quality={})",
                                 address, request.path, screen, fps, quality);
+                        overlay::notifications::add(
+                                overlay::notifications::Severity::Success,
+                                fmt::format("Video stream client connected ({}, screen {})",
+                                        address, screen));
 
                         const std::string header =
                                 "HTTP/1.0 200 OK\r\n"
@@ -460,6 +486,9 @@ namespace api {
 
                         capture_pump::release_screen(screen);
                         log_info("api::stream", "client disconnected: {}", address);
+                        overlay::notifications::add(
+                                overlay::notifications::Severity::Info,
+                                fmt::format("Video stream client disconnected ({})", address));
                     }
                 }
             }
