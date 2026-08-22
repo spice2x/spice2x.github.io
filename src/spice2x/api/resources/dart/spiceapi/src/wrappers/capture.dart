@@ -17,7 +17,7 @@ Future<List> captureGetScreens(Connection con) {
 
 Future<CaptureData> captureGetJPG(Connection con, {
   int screen = 0,
-  int quality = 60,
+  int quality = 70,
   int divide = 1,
 }) {
   var req = Request("capture", "get_jpg");
@@ -34,5 +34,14 @@ Future<CaptureData> captureGetJPG(Connection con, {
       captureData.data = _base64DecoderInstance.convert(data[3]);
     }
     return captureData;
+  });
+}
+
+/// Describes the HTTP video stream, or null when this spice2x serves none.
+Future<Map> captureGetStreams(Connection con) {
+  var req = Request("capture", "get_streams");
+  return con.request(req).then((res) {
+    var data = res.getData();
+    return data.length > 0 ? data[0] : null;
   });
 }

@@ -1481,6 +1481,27 @@ void graphics_capture_skip(int screen) {
     GRAPHICS_CAPTURE_CV[screen].notify_one();
 }
 
+bool graphics_capture_last_size(int screen, int *width, int *height) {
+    if (screen < 0 || screen >= static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)) {
+        return false;
+    }
+
+    // consuming a frame clears the pixels but leaves the size, so this survives the read
+    std::lock_guard<std::mutex> lock(GRAPHICS_CAPTURE_BUFFER_M[screen]);
+    const auto &capture = GRAPHICS_CAPTURE_BUFFER[screen];
+    if (!capture.width || !capture.height) {
+        return false;
+    }
+
+    if (width != nullptr) {
+        *width = capture.width;
+    }
+    if (height != nullptr) {
+        *height = capture.height;
+    }
+    return true;
+}
+
 bool graphics_capture_receive_raw(int screen, std::shared_ptr<uint8_t[]> &out,
         int divide, uint64_t *timestamp,
         int *width, int *height) {

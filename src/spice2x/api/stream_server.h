@@ -11,6 +11,9 @@
 
 namespace api {
 
+    // 0 while no stream server is listening, so the API can tell clients not to look for one
+    unsigned short stream_server_port();
+
     class StreamServer {
     public:
 

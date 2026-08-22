@@ -2,6 +2,7 @@ from .connection import Connection
 from .request import Request
 from .analogs import *
 from .buttons import *
+from .capture import *
 from .card import *
 from .coin import *
 from .control import *

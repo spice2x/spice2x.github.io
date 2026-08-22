@@ -195,11 +195,25 @@ namespace api {
                     "\r\n";
             send_all(socket, response);
         }
+
+        std::atomic<unsigned short> LISTENING_PORT { 0 };
+    }
+
+    unsigned short stream_server_port() {
+        return LISTENING_PORT.load();
     }
 
     StreamServer::StreamServer(unsigned short port)
         : port(port)
     {
+        // WinXP builds compile in neither encoder, so there would be nothing to serve and
+        // every request would 404; taking the port instead only invites confused clients
+        if (stream_formats().empty()) {
+            log_warning("api::stream",
+                    "this build has no video encoders, the video stream is unavailable");
+            return;
+        }
+
         if (!this->open_listener()) {
             // the stream was asked for explicitly, so say plainly that it is not there
             log_warning("api::stream",
@@ -211,6 +225,8 @@ namespace api {
         this->acceptor = std::thread([this] {
             this->accept_worker();
         });
+
+        LISTENING_PORT = this->port;
 
         // deliberately not logging a full URL; local IPs would leak into shared logs
         log_info("api::stream", "video stream is listening on port: {}", this->port);
@@ -269,6 +285,7 @@ namespace api {
     StreamServer::~StreamServer() {
 
         this->running = false;
+        LISTENING_PORT = 0;
 
         if (this->listener != INVALID_SOCKET) {
             closesocket(this->listener);
