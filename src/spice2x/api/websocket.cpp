@@ -37,6 +37,15 @@ namespace api {
     private:
         ClientState *state = nullptr;
 
+        // headsocket doesn't expose the peer address on its own client API, but the
+        // sockaddr_in captured at accept time is sitting right there in the impl
+        std::string remote_address() const {
+            char address_data[INET_ADDRSTRLEN] {};
+            inet_ntop(AF_INET, &this->_p->conn.impl()->from.sin_addr,
+                    address_data, INET_ADDRSTRLEN);
+            return std::string(address_data);
+        }
+
     protected:
         bool async_received_data(const data_block &db, uint8_t *ptr, size_t length) override;
 
@@ -120,19 +129,21 @@ namespace api {
         srv->websocket->controller->init_state(state);
 
         // log connection
-        log_info("api::websocket", "client connected");
+        const auto address = this->remote_address();
+        log_info("api::websocket", "client connected: {}", address);
         overlay::notifications::add(
                 overlay::notifications::Severity::Success,
-                "API websocket client connected");
+                fmt::format("API websocket client connected ({})", address));
     }
 
     void WebSocketClient::on_disconnect() {
 
         // log disconnection
-        log_info("api::websocket", "client disconnected");
+        const auto address = this->remote_address();
+        log_info("api::websocket", "client disconnected: {}", address);
         overlay::notifications::add(
                 overlay::notifications::Severity::Info,
-                "API websocket client disconnected");
+                fmt::format("API websocket client disconnected ({})", address));
 
         // get pointer to server
         auto srv = reinterpret_cast<WebSocketServer *>(server().get());
