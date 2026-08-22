@@ -179,9 +179,12 @@ namespace api {
         // carry it too, or the client sees an opaque failure instead of the status.
         constexpr const char *cors_header = "Access-Control-Allow-Origin: *\r\n";
 
-        // the port is unauthenticated, so a scanner retrying against a busy/missing screen
-        // could otherwise flood the overlay; throttle failure toasts per distinct cause
-        constexpr double notification_throttle_seconds = 3.0;
+        // the port is unauthenticated, so a scanner hammering a busy/missing screen could
+        // otherwise flood the overlay; throttle failure toasts per distinct cause. kept under
+        // a second so it only swallows that, not a legitimate reconnect - substream itself
+        // switches screens with a 300ms gap, and only backs off to a full second once a
+        // retry has actually failed
+        constexpr double notification_throttle_seconds = 0.5;
 
         void send_error(SOCKET socket, const char *status) {
             const std::string response =
