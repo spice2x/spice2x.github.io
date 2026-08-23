@@ -1729,7 +1729,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Value must be between 0 (poor quality) and 100 (best quality), inclusive. Default: 70.",
         .type = OptionType::Integer,
         .setting_name = "(0-100)",
-        .category = "Companion & API",
+        .category = "API Dev",
     },
     {
         // APIScreenMirrorDivide
@@ -1741,21 +1741,17 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
             "Value must be 1 or greater. Default: 1.",
         .type = OptionType::Integer,
         .setting_name = "1",
-        .category = "Companion & API",
+        .category = "API Dev",
     },
     {
         // APIStreamEnable
         .title = "API Video Stream Server Enable (EXPERIMENTAL)",
         .name = "apistream",
-        .desc = "Serves the mirrored screen as a video stream, on the API port plus two; "
-            "alternative to API screen capture. Requires -api.\n\n"
-            "http://host:apiport+2/stream.mjpg - MJPEG\n\n"
-            "http://host:apiport+2/stream.h264 - H.264\n\n"
-            "Parameters: screen (0-3), fps (1-60, default 30), q (1-100, default 70).\n\n"
-            "Example with -api 1337: http://host:1339/stream.h264?fps=30&q=70\n\n"
-            "VIEW ONLY - touch input still requires -api. "
-            "No password protection or encryption of any kind; video sent in the clear!\n\n"
-            "Streaming is known to cause older games to hang and crash.",
+        .desc = "Allows companion apps to receive compressed video streams over the API. "
+            "Companion app must support this feature to take advantage of it.\n\n"
+            "Video is served unencrypted over the network. "
+            "May cause older games to hang and crash.\n\n"
+            "Developers: see the wiki page for more details.",
         .type = OptionType::Bool,
         .category = "Companion & API",
     },
