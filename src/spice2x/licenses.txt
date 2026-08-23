@@ -1428,7 +1428,6 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Wslay UTF-8 decoder (MIT)
 -------------------------------------------
 Copyright (c) 2008-2010 Bjoern Hoehrmann <bjoern@hoehrmann.de>
-Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1447,11 +1446,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-Contributions
--------------------------------------------
-cardio - Felix - MIT License
-scard - nolm - MIT License
 
 x264 (GPL-2.0-or-later)
 -------------------------------------------
@@ -1472,3 +1466,8 @@ FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
+Contributions
+-------------------------------------------
+cardio - Felix - MIT License
+scard - nolm - MIT License
