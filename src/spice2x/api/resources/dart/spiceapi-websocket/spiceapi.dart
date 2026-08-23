@@ -11,6 +11,7 @@ part "src/exceptions.dart";
 part "src/rc4.dart";
 part "src/wrappers/analogs.dart";
 part "src/wrappers/buttons.dart";
+part "src/wrappers/capture.dart";
 part "src/wrappers/card.dart";
 part "src/wrappers/coin.dart";
 part "src/wrappers/control.dart";

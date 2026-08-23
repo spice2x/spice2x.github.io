@@ -1,4 +1,5 @@
 #include "capture.h"
+#include <chrono>
 #include <functional>
 #include <mutex>
 #include <unordered_map>
@@ -169,6 +170,12 @@ namespace api::modules {
         std::vector<int> screen_numbers;
         graphics_screens_get(screen_numbers);
 
+        // a capture waits up to two seconds for a frame from a game that is not presenting,
+        // and the bundled clients give up on the whole call after three, so spend at most one
+        // of those waits here; screens left unmeasured are reported null and settled later
+        const auto capture_deadline =
+                std::chrono::steady_clock::now() + std::chrono::seconds(2);
+
         Value screens(kArrayType);
         for (const auto screen : screen_numbers) {
             if (screen >= static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)) {
@@ -189,7 +196,8 @@ namespace api::modules {
             int width = 0;
             int height = 0;
             bool known = graphics_capture_last_size(screen, &width, &height);
-            if (!known && !busy) {
+
+            if (!known && !busy && std::chrono::steady_clock::now() < capture_deadline) {
                 std::shared_ptr<uint8_t[]> pixels;
                 known = capture_pump::capture_direct(
                         screen, pixels, 1, nullptr, &width, &height);
