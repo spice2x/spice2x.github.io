@@ -118,7 +118,13 @@ namespace api {
                 param.i_height = height;
                 param.i_fps_num = this->fps;
                 param.i_fps_den = 1;
-                param.i_threads = 1;
+
+                // sliced threading, which zerolatency already selected, so a frame is split
+                // across workers rather than held back to be reordered. deliberately not the
+                // automatic count: this shares a machine with the game it is capturing, and
+                // taking every core to encode would win back frames at the game's expense
+                param.i_threads = 4;
+
                 param.b_annexb = 1;
                 // SPS/PPS ahead of every IDR, so a client can start decoding cold
                 param.b_repeat_headers = 1;

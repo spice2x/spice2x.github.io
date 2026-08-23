@@ -634,6 +634,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         overlay::OVERLAY->reset_invalidate();
     }
 
+    // Reset refuses to run while any default pool resource is outstanding
+    d3d9_readback::discard_snapshot_targets(pReal);
+
     HRESULT res = pReal->Reset(pPresentationParameters);
 
     // recreate overlay
@@ -2320,6 +2323,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal)) {
         overlay::OVERLAY->reset_invalidate();
     }
+
+    // ResetEx refuses to run while any default pool resource is outstanding
+    d3d9_readback::discard_snapshot_targets(pReal);
 
     HRESULT res = static_cast<IDirect3DDevice9Ex *>(pReal)->ResetEx(
             gfdm_parameters.presentation_parameters,

@@ -488,6 +488,63 @@ ThreadPool &capture_read_pool() {
     return *instance;
 }
 
+// Takes the frame on the present thread as a queued GPU blit and hands the readback to a pool
+// thread, so the game waits for neither. Only viable where the whole read can go off thread,
+// since the back buffer is overwritten right after Present and a snapshot the present thread
+// then had to read itself would cost more than reading the back buffer directly.
+//
+// Returns false when the frame could not be taken, including the ordinary case of the previous
+// snapshot of this screen still being read, which paces capture to what the reader sustains.
+static bool snapshot_capture(
+        IDirect3DDevice9 *device,
+        WrappedIDirect3DDevice9 *wrapped_device,
+        int screen) {
+
+    IDirect3DSwapChain9 *swap_chain = nullptr;
+    const HRESULT hr = wrapped_device->get_screenshot_swap_chain(screen, &swap_chain);
+    if (FAILED(hr) || swap_chain == nullptr) {
+        log_warning("graphics::d3d9",
+                "failed to get swap chain for screen {}, hr={}",
+                screen,
+                FMT_HRESULT(hr));
+        return false;
+    }
+
+    auto snapshot = d3d9_readback::snapshot_backbuffer(device, swap_chain, screen);
+    swap_chain->Release();
+
+    if (!snapshot.has_value()) {
+        return false;
+    }
+
+    try {
+        capture_read_pool().add([screen, snapshot = std::move(*snapshot)]() mutable {
+            // an escape from here would cross a thread boundary and terminate
+            try {
+                auto copy = d3d9_readback::read_snapshot(std::move(snapshot));
+                if (!copy.has_value()) {
+                    graphics_capture_skip(screen);
+                    return;
+                }
+
+                read_and_dispatch_capture(screen, std::move(*copy));
+            } catch (const std::exception &error) {
+                log_warning("graphics::d3d9", "capture read failed: {}", error.what());
+                graphics_capture_skip(screen);
+            } catch (...) {
+                log_warning("graphics::d3d9", "capture read failed");
+                graphics_capture_skip(screen);
+            }
+        });
+    } catch (const std::exception &) {
+        // the snapshot went into the lambda before the queue could fail, so it is already
+        // destroyed and its target handed back; the client just misses this frame
+        return false;
+    }
+
+    return true;
+}
+
 // by this point the pixels are plain memory, so none of this needs the device
 static void dispatch_screenshot_save(std::vector<PendingWrite> writes, size_t screen_count) {
     auto screenshot_process = [writes = std::move(writes), screen_count]() mutable {
@@ -631,6 +688,18 @@ static void process_image_request(
         WrappedIDirect3DDevice9 *wrapped_device,
         const ImageRequest &request) {
     const bool screenshot = request.kind == ImageRequestKind::Screenshot;
+
+    if (!screenshot
+            && wrapped_device->device_multithreaded
+            && capture_read_off_thread(request.screen)
+            && d3d9_readback::snapshots_supported()) {
+
+        if (!snapshot_capture(device, wrapped_device, request.screen)) {
+            graphics_capture_skip(request.screen);
+        }
+
+        return;
+    }
 
     std::vector<int> screens { request.screen };
     if (screenshot && GRAPHICS_SCREENSHOT_SUBSCREENS) {

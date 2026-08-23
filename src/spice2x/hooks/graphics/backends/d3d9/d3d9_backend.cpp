@@ -944,9 +944,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDevice(
     } else if (!D3D9_DEVICE_HOOK_DISABLE) {
         graphics_hook_window(hFocusWindow, pPresentationParameters);
 
-        *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(
+        auto *wrapped = new WrappedIDirect3DDevice9(
                 hFocusWindow,
                 *ppReturnedDeviceInterface);
+
+        wrapped->device_multithreaded = (BehaviorFlags & D3DCREATE_MULTITHREADED) != 0;
+        *ppReturnedDeviceInterface = wrapped;
     }
 
     // return result
@@ -1307,12 +1310,15 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
     } else if (!D3D9_DEVICE_HOOK_DISABLE) {
         graphics_hook_window(hFocusWindow, pPresentationParameters);
 
-        *ppReturnedDeviceInterface = new WrappedIDirect3DDevice9(
+        auto *wrapped = new WrappedIDirect3DDevice9(
                 hFocusWindow,
                 *ppReturnedDeviceInterface,
                 gfdm_parameters.logical_small_swapchain,
                 gfdm_two_head_exclusive() ? static_cast<IDirect3D9 *>(this) : nullptr,
                 gfdm_two_head_exclusive() ? pPresentationParameters : nullptr);
+
+        wrapped->device_multithreaded = (BehaviorFlags & D3DCREATE_MULTITHREADED) != 0;
+        *ppReturnedDeviceInterface = wrapped;
 
         // initialize sub screen if the game requested a multi-head context
         if (avs::game::is_model({"LDJ", "KFC", "M39", "M32"}) &&

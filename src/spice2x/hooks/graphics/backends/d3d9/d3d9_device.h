@@ -264,6 +264,10 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     IDirect3DDevice9 *pReal;
     bool is_d3d9ex = false;
 
+    // set from the creation flags; without it the runtime does no locking of its own, so
+    // nothing but the present thread may touch the device
+    bool device_multithreaded = false;
+
     std::atomic_ulong refs = 1;
 
     WrappedIDirect3DSwapChain9 *main_swapchain = nullptr;
