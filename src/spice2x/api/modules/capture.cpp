@@ -1,5 +1,5 @@
 #include "capture.h"
-#include <chrono>
+#include <atomic>
 #include <functional>
 #include <mutex>
 #include <unordered_map>
@@ -170,11 +170,27 @@ namespace api::modules {
         std::vector<int> screen_numbers;
         graphics_screens_get(screen_numbers);
 
-        // a capture waits up to two seconds for a frame from a game that is not presenting,
-        // and the bundled clients give up on the whole call after three, so spend at most one
-        // of those waits here; screens left unmeasured are reported null and settled later
-        const auto capture_deadline =
-                std::chrono::steady_clock::now() + std::chrono::seconds(2);
+        // measuring a screen nobody has captured yet waits for the game to present, which can
+        // take as long as the whole request is allowed, so only one screen is measured per
+        // call and the rest are reported null until a later one settles them. which screen
+        // gets the attempt rotates, otherwise one that never presents would take every
+        // request and the screens behind it would stay unmeasured forever
+        int probe_screen = -1;
+        {
+            std::vector<int> unmeasured;
+            for (const auto screen : screen_numbers) {
+                if (screen < static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)
+                        && !graphics_capture_last_size(screen, nullptr, nullptr)
+                        && !capture_pump::screen_claimed(screen)) {
+                    unmeasured.push_back(screen);
+                }
+            }
+
+            if (!unmeasured.empty()) {
+                static std::atomic<unsigned> probe_cursor { 0 };
+                probe_screen = unmeasured[probe_cursor.fetch_add(1) % unmeasured.size()];
+            }
+        }
 
         Value screens(kArrayType);
         for (const auto screen : screen_numbers) {
@@ -182,34 +198,31 @@ namespace api::modules {
                 continue;
             }
 
-            Value entry(kObjectType);
-            entry.AddMember("screen", screen, alloc);
-
-            // a screen carries one viewer at a time, so this is what decides whether a client
-            // can connect at all; still racy by the time it does, only more honest than not
-            const bool busy = capture_pump::screen_claimed(screen);
-            entry.AddMember("busy", busy, alloc);
-
-            // nothing captures a screen until something asks, so on a cold start there is no
-            // size to report yet - take one frame to learn it, then every later call is free.
-            // a busy screen is already being captured, so it never needs the extra frame
             int width = 0;
             int height = 0;
             bool known = graphics_capture_last_size(screen, &width, &height);
 
-            if (!known && !busy && std::chrono::steady_clock::now() < capture_deadline) {
+            if (!known && screen == probe_screen) {
                 std::shared_ptr<uint8_t[]> pixels;
                 known = capture_pump::capture_direct(
                         screen, pixels, 1, nullptr, &width, &height);
             }
 
-            if (known) {
-                entry.AddMember("width", width, alloc);
-                entry.AddMember("height", height, alloc);
-            } else {
-                entry.AddMember("width", Value(), alloc);
-                entry.AddMember("height", Value(), alloc);
+            // a screen of unknown size cannot be described, and a client told about it could
+            // not size its decoder anyway; leaving it out until it has been measured beats
+            // handing over an entry that has to be treated as absent
+            if (!known) {
+                continue;
             }
+
+            Value entry(kObjectType);
+            entry.AddMember("screen", screen, alloc);
+            entry.AddMember("width", width, alloc);
+            entry.AddMember("height", height, alloc);
+
+            // a screen carries one viewer at a time, so this is what decides whether a client
+            // can connect at all; still racy by the time it does, only more honest than not
+            entry.AddMember("busy", capture_pump::screen_claimed(screen), alloc);
 
             screens.PushBack(entry, alloc);
         }

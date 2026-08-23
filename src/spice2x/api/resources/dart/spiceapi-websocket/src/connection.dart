@@ -4,8 +4,8 @@ part of spiceapi;
 class Connection {
 
   // settings
-  static const _TIMEOUT = Duration(seconds: 2);
-  static const _BUFFER_SIZE = 1024 * 8;
+  static const _TIMEOUT = Duration(seconds: 3);
+  static const _BUFFER_SIZE = 1024 * 1024 * 8;
 
   // state
   final String host, pass;

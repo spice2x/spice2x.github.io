@@ -140,9 +140,8 @@ restriction is that the ID has to be a valid 64-bit unsigned integer.
   - `port` is the stream server port
   - `formats` lists the wire formats this build serves, each with a `name`
     (`h264` or `mjpeg`) and the `path` to request them on
-  - `screens` lists every capturable screen with `busy`, which is true while
-    another client already holds it, and `width`/`height`, which are null only
-    for a screen the game has never drawn
+  - `screens` lists every capturable screen with its `width`, `height`, and
+    `busy`
 
 #### Card
 - insert(index: uint, card_id: hex)
