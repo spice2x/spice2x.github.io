@@ -202,10 +202,15 @@ namespace api::modules {
             int height = 0;
             bool known = graphics_capture_last_size(screen, &width, &height);
 
-            if (!known && screen == probe_screen) {
+            // a probe holds the screen for as long as it waits, so a second caller arriving
+            // during one would queue behind it and then take a wait of its own; let it report
+            // the screen as unmeasured instead and pick the size up once the first is done
+            static std::atomic<bool> probe_running { false };
+            if (!known && screen == probe_screen && !probe_running.exchange(true)) {
                 std::shared_ptr<uint8_t[]> pixels;
                 known = capture_pump::capture_direct(
                         screen, pixels, 1, nullptr, &width, &height);
+                probe_running = false;
             }
 
             // a screen of unknown size cannot be described, and a client told about it could
