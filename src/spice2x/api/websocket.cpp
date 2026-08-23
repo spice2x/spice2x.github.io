@@ -14,6 +14,7 @@
 #include <thread>
 #include <vector>
 
+#include "external/wslay/msvc_compat.h"
 #include <wslay/wslay.h>
 
 #include "controller.h"
@@ -32,6 +33,7 @@ namespace api {
         // a peer that connects and then says nothing must not hold a slot forever
         constexpr int handshake_timeout_ms = 5000;
         constexpr size_t request_size_limit = 8 * 1024;
+        constexpr uint64_t message_size_limit = 64 * 1024;
 
         // how long a quiet connection waits before the loop rechecks whether we are stopping
         constexpr int idle_poll_ms = 500;
@@ -54,6 +56,36 @@ namespace api {
                 return static_cast<char>(std::tolower(c));
             });
             return text;
+        }
+
+        bool contains_token(const std::string &value, const std::string &expected) {
+            size_t pos = 0;
+            while (pos < value.size()) {
+                const size_t end = value.find(',', pos);
+                if (to_lower(trim(value.substr(pos, end - pos))) == expected) {
+                    return true;
+                }
+                if (end == std::string::npos) {
+                    break;
+                }
+                pos = end + 1;
+            }
+            return false;
+        }
+
+        bool valid_websocket_key(const std::string &key) {
+            if (key.size() != 24 || key[22] != '=' || key[23] != '=') {
+                return false;
+            }
+
+            const std::string alphabet =
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            for (size_t i = 0; i < 22; i++) {
+                if (alphabet.find(key[i]) == std::string::npos) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         bool send_all(SOCKET socket, const std::string &text) {
@@ -92,6 +124,7 @@ namespace api {
         bool handshake(SOCKET socket) {
             std::string request;
             char byte = 0;
+            bool complete = false;
 
             while (request.size() < request_size_limit) {
                 const int read = recv(socket, &byte, 1, 0);
@@ -102,13 +135,25 @@ namespace api {
                 request.push_back(byte);
                 if (request.size() >= 4
                         && request.compare(request.size() - 4, 4, "\r\n\r\n") == 0) {
+                    complete = true;
                     break;
                 }
             }
 
             std::string key;
+            std::string version;
+            bool connection_upgrade = false;
             bool upgrade = false;
-            size_t pos = request.find("\r\n");
+            const size_t request_line_end = request.find("\r\n");
+                const std::string request_line = request.substr(0, request_line_end);
+                const size_t target_end = request_line.find(' ', 4);
+                const bool valid_request_line = request_line_end != std::string::npos
+                    && request_line.compare(0, 4, "GET ") == 0
+                        && target_end != std::string::npos
+                    && target_end > 4
+                    && target_end == request_line.rfind(' ')
+                    && request_line.substr(target_end + 1) == "HTTP/1.1";
+            size_t pos = request_line_end;
 
             while (pos != std::string::npos) {
                 const size_t end = request.find("\r\n", pos + 2);
@@ -124,15 +169,21 @@ namespace api {
 
                     if (name == "sec-websocket-key") {
                         key = value;
+                    } else if (name == "sec-websocket-version") {
+                        version = value;
+                    } else if (name == "connection") {
+                        connection_upgrade = connection_upgrade
+                                || contains_token(value, "upgrade");
                     } else if (name == "upgrade") {
-                        upgrade = to_lower(value) == "websocket";
+                        upgrade = upgrade || contains_token(value, "websocket");
                     }
                 }
 
                 pos = end;
             }
 
-            if (key.empty() || !upgrade) {
+                if (!complete || !valid_request_line || !connection_upgrade || !upgrade
+                    || version != "13" || !valid_websocket_key(key)) {
                 send_all(socket,
                         "HTTP/1.1 400 Bad Request\r\n"
                         "Connection: close\r\n"
@@ -408,6 +459,7 @@ namespace api {
 
             wslay_event_context_ptr ctx = nullptr;
             if (wslay_event_context_server_init(&ctx, &callbacks, &session) == 0) {
+                wslay_event_config_set_max_recv_msg_length(ctx, message_size_limit);
                 while (this->running && !session.failed
                         && (wslay_event_want_read(ctx) || wslay_event_want_write(ctx))) {
 
@@ -461,9 +513,7 @@ namespace api {
     }
 
     void WebSocketControllerState::stop() {
-        if (!this->running.exchange(false)) {
-            return;
-        }
+        this->running = false;
 
         if (this->listener != INVALID_SOCKET) {
             closesocket(this->listener);
