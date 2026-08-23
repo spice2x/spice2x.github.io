@@ -172,9 +172,9 @@ namespace api {
                 return read;
             }
 
-            // the receive timeout is how this loop gets a chance to notice shutdown, so it
-            // has to read as "nothing yet" rather than as a dead peer
-            if (read < 0 && WSAGetLastError() == WSAETIMEDOUT) {
+            // the socket is non-blocking, so an empty one has to read as "nothing yet"
+            // rather than as a dead peer
+            if (read < 0 && WSAGetLastError() == WSAEWOULDBLOCK) {
                 wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
                 return -1;
             }
@@ -195,6 +195,11 @@ namespace api {
 
             if (sent > 0) {
                 return sent;
+            }
+
+            if (sent < 0 && WSAGetLastError() == WSAEWOULDBLOCK) {
+                wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
+                return -1;
             }
 
             wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
@@ -370,10 +375,20 @@ namespace api {
 
     void WebSocketControllerState::client_worker(int slot, SOCKET socket, std::string address) {
 
+        // wslay writes a frame header and its payload as separate sends, so leaving Nagle on
+        // holds the payload back until the peer acknowledges the header, costing a delayed
+        // ack per message; requests here are small and latency sensitive
+        int nodelay = 1;
+        setsockopt(socket, IPPROTO_TCP, TCP_NODELAY,
+                reinterpret_cast<const char *>(&nodelay), sizeof(nodelay));
+
         set_recv_timeout(socket, handshake_timeout_ms);
 
         if (handshake(socket)) {
-            set_recv_timeout(socket, idle_poll_ms);
+            // wslay reads until the socket would block, so leaving it blocking would make
+            // every reply wait out a receive timeout before the send got a turn
+            u_long non_blocking = 1;
+            ioctlsocket(socket, FIONBIO, &non_blocking);
 
             Session session;
             session.socket = socket;
@@ -396,7 +411,32 @@ namespace api {
                 while (this->running && !session.failed
                         && (wslay_event_want_read(ctx) || wslay_event_want_write(ctx))) {
 
-                    if (wslay_event_recv(ctx) != 0 || wslay_event_send(ctx) != 0) {
+                    fd_set read_set;
+                    fd_set write_set;
+                    FD_ZERO(&read_set);
+                    FD_ZERO(&write_set);
+
+                    if (wslay_event_want_read(ctx)) {
+                        FD_SET(socket, &read_set);
+                    }
+                    if (wslay_event_want_write(ctx)) {
+                        FD_SET(socket, &write_set);
+                    }
+
+                    // bounded so a silent connection still notices us shutting down
+                    timeval timeout {};
+                    timeout.tv_usec = idle_poll_ms * 1000;
+
+                    if (select(0, &read_set, &write_set, nullptr, &timeout) < 0) {
+                        break;
+                    }
+
+                    if (FD_ISSET(socket, &read_set) && wslay_event_recv(ctx) != 0) {
+                        break;
+                    }
+
+                    // unconditional, so a reply queued by the read above goes out now
+                    if (wslay_event_send(ctx) != 0) {
                         break;
                     }
                 }
