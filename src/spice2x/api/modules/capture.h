@@ -19,5 +19,6 @@ namespace api::modules {
         // function definitions
         void get_screens(Request &req, Response &res);
         void get_jpg(Request &req, Response &res);
+        void get_streams(Request &req, Response &res);
     };
 }

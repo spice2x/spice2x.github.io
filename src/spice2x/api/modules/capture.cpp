@@ -1,8 +1,11 @@
 #include "capture.h"
+#include <atomic>
 #include <functional>
 #include <mutex>
 #include <unordered_map>
 #include "api/capture_pump.h"
+#include "api/stream_format.h"
+#include "api/stream_server.h"
 #include "external/rapidjson/document.h"
 #include "hooks/graphics/graphics.h"
 #include "hooks/graphics/jpeg_encoder.h"
@@ -71,6 +74,7 @@ namespace api::modules {
     Capture::Capture() : Module("capture") {
         functions["get_screens"] = std::bind(&Capture::get_screens, this, _1, _2);
         functions["get_jpg"] = std::bind(&Capture::get_jpg, this, _1, _2);
+        functions["get_streams"] = std::bind(&Capture::get_streams, this, _1, _2);
     }
 
     /**
@@ -140,5 +144,99 @@ namespace api::modules {
         // fall back to the last successful frame while the game is busy loading
         CAPTURE_BUFFER.clear();
         try_cached_response(screen, res);
+    }
+
+    /**
+     * get_streams()
+     */
+    void Capture::get_streams(Request &req, Response &res) {
+
+        auto &alloc = res.doc()->GetAllocator();
+
+        // nothing is listening without -apistream, so there is no stream to describe
+        const unsigned short port = stream_server_port();
+        if (port == 0) {
+            return;
+        }
+
+        Value formats(kArrayType);
+        for (const auto &[name, path] : stream_formats()) {
+            Value entry(kObjectType);
+            entry.AddMember("name", Value(name.c_str(), alloc), alloc);
+            entry.AddMember("path", Value(path.c_str(), alloc), alloc);
+            formats.PushBack(entry, alloc);
+        }
+
+        std::vector<int> screen_numbers;
+        graphics_screens_get(screen_numbers);
+
+        // measuring a screen nobody has captured yet waits for the game to present, which can
+        // take as long as the whole request is allowed, so only one screen is measured per
+        // call and the rest are reported null until a later one settles them. which screen
+        // gets the attempt rotates, otherwise one that never presents would take every
+        // request and the screens behind it would stay unmeasured forever
+        int probe_screen = -1;
+        {
+            std::vector<int> unmeasured;
+            for (const auto screen : screen_numbers) {
+                if (screen < static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)
+                        && !graphics_capture_last_size(screen, nullptr, nullptr)
+                        && !capture_pump::screen_claimed(screen)) {
+                    unmeasured.push_back(screen);
+                }
+            }
+
+            if (!unmeasured.empty()) {
+                static std::atomic<unsigned> probe_cursor { 0 };
+                probe_screen = unmeasured[probe_cursor.fetch_add(1) % unmeasured.size()];
+            }
+        }
+
+        Value screens(kArrayType);
+        for (const auto screen : screen_numbers) {
+            if (screen >= static_cast<int>(GRAPHICS_CAPTURE_SCREEN_NO)) {
+                continue;
+            }
+
+            int width = 0;
+            int height = 0;
+            bool known = graphics_capture_last_size(screen, &width, &height);
+
+            // a probe holds the screen for as long as it waits, so a second caller arriving
+            // during one would queue behind it and then take a wait of its own; let it report
+            // the screen as unmeasured instead and pick the size up once the first is done
+            static std::atomic<bool> probe_running { false };
+            if (!known && screen == probe_screen && !probe_running.exchange(true)) {
+                std::shared_ptr<uint8_t[]> pixels;
+                known = capture_pump::capture_direct(
+                        screen, pixels, 1, nullptr, &width, &height);
+                probe_running = false;
+            }
+
+            // a screen of unknown size cannot be described, and a client told about it could
+            // not size its decoder anyway; leaving it out until it has been measured beats
+            // handing over an entry that has to be treated as absent
+            if (!known) {
+                continue;
+            }
+
+            Value entry(kObjectType);
+            entry.AddMember("screen", screen, alloc);
+            entry.AddMember("width", width, alloc);
+            entry.AddMember("height", height, alloc);
+
+            // a screen carries one viewer at a time, so this is what decides whether a client
+            // can connect at all; still racy by the time it does, only more honest than not
+            entry.AddMember("busy", capture_pump::screen_claimed(screen), alloc);
+
+            screens.PushBack(entry, alloc);
+        }
+
+        Value info(kObjectType);
+        info.AddMember("port", port, alloc);
+        info.AddMember("formats", formats, alloc);
+        info.AddMember("screens", screens, alloc);
+
+        res.add_data(info);
     }
 }

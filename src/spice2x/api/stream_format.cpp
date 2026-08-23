@@ -67,4 +67,18 @@ namespace api {
 
         return nullptr;
     }
+
+    std::vector<std::pair<std::string, std::string>> stream_formats() {
+        std::vector<std::pair<std::string, std::string>> formats;
+
+#ifdef SPICE_JPEG
+        formats.emplace_back("mjpeg", "/stream.mjpg");
+#endif
+
+#ifdef SPICE_H264
+        formats.emplace_back("h264", "/stream.h264");
+#endif
+
+        return formats;
+    }
 }

@@ -127,6 +127,22 @@ doesn't matter since the TCP protocol doesn't allow for out of order data,
 however this may change when/if support for UDP is being introduced. The only
 restriction is that the ID has to be a valid 64-bit unsigned integer.
 
+#### Capture
+- get_screens()
+  - returns the screen numbers the game has registered for capture
+- get_jpg(screen: uint, quality: uint, divide: uint)
+  - returns the timestamp, width, height and base64 encoded JPEG of one screen
+  - all parameters are optional and default to screen 0, quality 70, divide 1
+  - divide shrinks the image by that factor before encoding
+- get_streams()
+  - returns a dict describing the HTTP video stream, or no data at all when
+    `-apistream` is not enabled and there is nothing to describe
+  - `port` is the stream server port
+  - `formats` lists the wire formats this build serves, each with a `name`
+    (`h264` or `mjpeg`) and the `path` to request them on
+  - `screens` lists every capturable screen with its `width`, `height`, and
+    `busy`
+
 #### Card
 - insert(index: uint, card_id: hex)
   - inserts a card which gets read by the emulated card readers for the game
@@ -298,6 +314,10 @@ stream over plain HTTP. Enable it with `-apistream`. It listens on the API port
 plus two, in the same way the WebSocket server uses the API port plus one, so
 `-api 1337` puts the stream on 1339. This means `-api` has to be enabled too.
 
+Rather than working the port out, clients should ask the JSON API for it with
+`capture.get_streams()`, which also reports which of the formats below this
+build serves, the size of each screen and whether one is already taken.
+
 Two formats are served:
 
     http://host:1339/stream.mjpg    JPEG frames, multipart/x-mixed-replace
@@ -323,9 +343,10 @@ The stream is view only. Touch and other input still go through the JSON API,
 so a companion app needs both. There is no authentication on the stream port -
 anyone who can reach it can watch the screen.
 
-WinXP builds have no video stream. Neither encoder is compiled in, so every
-endpoint returns 404, and the JSON API's JPEG screen capture is unavailable for
-the same reason.
+WinXP builds have no video stream. Neither encoder is compiled in, so nothing
+listens on the stream port even with `-apistream`, `capture.get_streams()`
+returns no data, and the JSON API's JPEG screen capture is unavailable for the
+same reason.
 
 ## Native wrapper libraries
 Spicetools provides wrapper libraries in: Arduino, C++, Dart, and Python.

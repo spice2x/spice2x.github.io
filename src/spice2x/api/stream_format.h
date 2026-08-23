@@ -4,6 +4,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "capture_pump.h"
 
@@ -35,4 +37,7 @@ namespace api {
     // null when the path does not name a format this build supports
     std::unique_ptr<StreamWriter> make_stream_writer(
             const std::string &path, int quality, int fps);
+
+    // name and path of every format compiled into this build, for clients to pick from
+    std::vector<std::pair<std::string, std::string>> stream_formats();
 }

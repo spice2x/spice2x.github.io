@@ -146,6 +146,9 @@ void graphics_capture_trigger(int screen);
 bool graphics_capture_consume(int *screen);
 void graphics_capture_enqueue(int screen, uint8_t *data, size_t width, size_t height);
 void graphics_capture_skip(int screen);
+// size of the last frame captured off this screen, before any caller side downscale; false
+// until one has been captured, so it cannot report a size for a screen the game never drew
+bool graphics_capture_last_size(int screen, int *width, int *height);
 // on success `out` owns packed 24bpp RGB pixels, width * height * 3 bytes
 bool graphics_capture_receive_raw(int screen, std::shared_ptr<uint8_t[]> &out,
         int divide = 0,
