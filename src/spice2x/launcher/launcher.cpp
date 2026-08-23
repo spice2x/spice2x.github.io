@@ -2483,7 +2483,6 @@ int main_implementation(int argc, char *argv[]) {
 
     // initialize raw input
     RI_MGR = std::make_unique<rawinput::RawInputManager>();
-    hotkeys::enable_raw_input();
     for (const auto &device : sextet_devices) {
         RI_MGR->sextet_register(device);
     }
@@ -2507,6 +2506,7 @@ int main_implementation(int argc, char *argv[]) {
     dump_analog_bindings();
 
     // mappings are ready; begin screenshot and coin polling during late startup
+    hotkeys::enable_raw_input();
     hotkeys::enable_input();
 
     // for certain games, show cursor if no touch is available (must be called after RI_MGR is available)
