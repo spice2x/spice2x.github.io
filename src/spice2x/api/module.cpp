@@ -16,6 +16,14 @@ namespace api {
         this->password_force = password_force;
     }
 
+    void Module::require_password(const std::string &function) {
+        this->password_force_functions.emplace(function);
+    }
+
+    bool Module::requires_password(const std::string &function) const {
+        return this->password_force || this->password_force_functions.contains(function);
+    }
+
     void Module::handle(Request &req, Response &res) {
 
         // log module access

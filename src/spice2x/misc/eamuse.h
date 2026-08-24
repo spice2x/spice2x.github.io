@@ -43,6 +43,8 @@ extern std::string AUTO_PIN_MACRO_TRIGGER[2];
 bool eamuse_get_card(int active_count, int unit_id, uint8_t *card);
 bool eamuse_get_card(const std::filesystem::path &path, uint8_t *card, int unit_id);
 bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card, int index);
+std::filesystem::path eamuse_get_card_path(size_t index);
+std::string eamuse_get_card_override(size_t index);
 
 void eamuse_card_insert(int unit);
 void eamuse_card_insert(int unit, const uint8_t *card);

@@ -12,6 +12,7 @@ namespace api::modules {
     private:
 
         // function definitions
+        void get_cards(Request &req, Response &res);
         void insert(Request &req, Response &res);
     };
 }
