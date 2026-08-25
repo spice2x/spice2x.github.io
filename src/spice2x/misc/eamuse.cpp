@@ -34,6 +34,7 @@ static uint16_t KEYPAD_STATE_OVERRIDES_READER[] = {0, 0};
 static uint16_t KEYPAD_STATE_OVERRIDES_OVERLAY[] = {0, 0};
 static std::string EAMUSE_GAME_NAME;
 static ConfigKeypadBindings KEYPAD_BINDINGS {};
+static std::mutex KEYPAD_BINDINGS_LOCK;
 
 // auto card
 bool AUTO_INSERT_CARD[2] = {false, false};
@@ -87,23 +88,23 @@ bool eamuse_get_card(int active_count, int unit_id, uint8_t *card) {
         return true;
     }
 
-    // get file path
-    std::filesystem::path path;
-    if (!KEYPAD_BINDINGS.card_paths[index].empty()) {
-        path = KEYPAD_BINDINGS.card_paths[index];
-    } else {
-        path = index > 0 ? "card1.txt" : "card0.txt";
-    }
-
     // call the next function
-    return eamuse_get_card(path, card, index);
+    return eamuse_get_card(eamuse_get_card_path(index), card, index);
+}
+
+std::filesystem::path eamuse_get_card_path(size_t index) {
+    std::lock_guard<std::mutex> lock(KEYPAD_BINDINGS_LOCK);
+    if (index >= std::size(KEYPAD_BINDINGS.card_paths)) {
+        return {};
+    }
+    if (!KEYPAD_BINDINGS.card_paths[index].empty()) {
+        return KEYPAD_BINDINGS.card_paths[index];
+    }
+    return index > 0 ? "card1.txt" : "card0.txt";
 }
 
 bool eamuse_get_card(const std::filesystem::path &path, uint8_t *card, int index) {
-    // do a quick copy under lock
-    std::unique_lock<std::mutex> lock(CARD_OVERRIDES_LOCK);
-    const auto card_override = CARD_OVERRIDES[index];
-    lock.unlock();
+    const auto card_override = eamuse_get_card_override(index);
 
     // Check if card overrides are present
     if (!card_override.empty()) {
@@ -147,6 +148,14 @@ bool eamuse_get_card(const std::filesystem::path &path, uint8_t *card, int index
     }
     // Overrides are not present. Use the standard file reading method.
     return eamuse_get_card_from_file(path, card, index);
+}
+
+std::string eamuse_get_card_override(size_t index) {
+    std::lock_guard<std::mutex> lock(CARD_OVERRIDES_LOCK);
+    if (index >= std::size(CARD_OVERRIDES)) {
+        return {};
+    }
+    return CARD_OVERRIDES[index];
 }
 
 bool eamuse_get_card_from_file(const std::filesystem::path &path, uint8_t *card, int index) {
@@ -584,6 +593,7 @@ std::string eamuse_get_keypad_state_str(size_t unit) {
 }
 
 bool eamuse_keypad_state_naive() {
+    std::lock_guard<std::mutex> lock(KEYPAD_BINDINGS_LOCK);
     return KEYPAD_BINDINGS.keypads[0].empty() && KEYPAD_BINDINGS.keypads[1].empty();
 }
 
@@ -595,7 +605,9 @@ void eamuse_set_game(std::string game) {
 }
 
 void eamuse_update_keypad_bindings() {
-    KEYPAD_BINDINGS = Config::getInstance().getKeypadBindings(EAMUSE_GAME_NAME);
+    auto bindings = Config::getInstance().getKeypadBindings(EAMUSE_GAME_NAME);
+    std::lock_guard<std::mutex> lock(KEYPAD_BINDINGS_LOCK);
+    KEYPAD_BINDINGS = std::move(bindings);
 }
 
 const std::string &eamuse_get_game() {

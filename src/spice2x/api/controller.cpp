@@ -337,9 +337,11 @@ bool Controller::process_request(ClientState *state, const char *in, size_t in_s
             if (module->name == request.module) {
                 module_found = true;
 
-                // check password force
-                if (module->password_force && this->password.empty() && request.function != "session_refresh") {
-                    Value err("Module requires the password to be set.");
+                // check password requirement
+                if (module->requires_password(request.function)
+                        && this->password.empty()
+                        && request.function != "session_refresh") {
+                    Value err("Function requires the password to be set.");
                     response.add_error(err);
                     break;
                 }

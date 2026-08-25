@@ -144,6 +144,13 @@ restriction is that the ID has to be a valid 64-bit unsigned integer.
     `busy`
 
 #### Card
+- get_cards()
+  - returns the current card ID and source for each active card reader
+  - each entry contains `index`, `card_id`, and `source`
+  - `source` is `file` or `override`
+  - file entries also contain `file_name`, without the full configured path
+  - `-card0` and `-card1` overrides do not contain `file_name`
+  - this function only works when an API password is configured
 - insert(index: uint, card_id: hex)
   - inserts a card which gets read by the emulated card readers for the game
   - index has to be either 0 (for P1) or 1 (for P2)

@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <sstream>
+#include <unordered_set>
 #include <external/robin_hood.h>
 
 #include "response.h"
@@ -26,6 +27,13 @@ namespace api {
         // default constructor
         explicit Module(std::string name, bool password_force=false);
 
+        void require_password(const std::string &function);
+
+    private:
+
+        // functions which expose sensitive data or actions
+        std::unordered_set<std::string> password_force_functions;
+
     public:
 
         // virtual deconstructor
@@ -34,6 +42,8 @@ namespace api {
         // name of the module (should match namespace)
         std::string name;
         bool password_force;
+
+        bool requires_password(const std::string &function) const;
 
         // the magic
         void handle(Request &req, Response &res);
