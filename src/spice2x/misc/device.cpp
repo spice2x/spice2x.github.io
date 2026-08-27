@@ -285,8 +285,10 @@ static int __cdecl device_read_secplug(int a1, int a2, int a3) {
     return 1;
 }
 
-static int __cdecl device_set_coinblocker_open(char number, char open) {
-    return 0;
+static void __cdecl device_set_coinblocker_open(char slot1_open, char slot2_open) {
+    // libdevice exposes one open flag per coin slot. Since spice has a shared
+    // software coin stock, consider it blocked only when both slots are closed.
+    eamuse_coin_set_block(!slot1_open && !slot2_open);
 }
 
 static void __cdecl device_set_coincounter_merge() {
@@ -617,7 +619,9 @@ void spicedevice_attach() {
     detour::inline_hook((void *) device_finalize, libutils::try_proc_list(
             DEVICE_INSTANCE, {"device_finalize", "?device_finalize@@YAXXZ"}));
     detour::inline_hook((void *) device_get_coinstock, libutils::try_proc_list(
-            DEVICE_INSTANCE, {"device_get_coinstock", "?device_get_coinstock@@YAXPEAG0@Z"}));
+            DEVICE_INSTANCE, {"device_get_coinstock",
+                              "?device_get_coinstock@@YAXPEAG0@Z",
+                              "?device_get_coinstock@@YAXPAG0@Z"}));
     detour::inline_hook((void *) device_get_coinstock_all, libutils::try_proc_list(
             DEVICE_INSTANCE, {"device_get_coinstock_all",
                               "?device_get_coinstock_all@@YAXPEAG0@Z",
