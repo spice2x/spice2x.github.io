@@ -1,5 +1,7 @@
 #include "bmpu.h"
 
+#include <algorithm>
+
 #include "acio/icca/icca.h"
 #include "avs/game.h"
 #include "cfg/api.h"
@@ -11,6 +13,7 @@
 #include "games/silentscope/io.h"
 #include "launcher/launcher.h"
 #include "misc/eamuse.h"
+#include "overlay/overlay.h"
 
 using namespace GameAPI;
 
@@ -530,15 +533,39 @@ static bool __cdecl ac_io_bmpu_update_control_status_buffer() {
             STATUS_BUFFER[4] |= 0x20;
         }
 
-        // joy stick raw input
+        // gun position, sent big endian; the game keeps the top 12 bits of each pair
         auto &analogs = games::silentscope::get_analogs();
+        auto &gun_x = analogs.at(games::silentscope::Analogs::GUN_X);
+        auto &gun_y = analogs.at(games::silentscope::Analogs::GUN_Y);
         unsigned short joy_x = 0x7FFF;
         unsigned short joy_y = 0x7FFF;
-        if (analogs.at(games::silentscope::Analogs::GUN_X).isSet()) {
-            joy_x = (unsigned short) (Analogs::getState(RI_MGR, analogs.at(games::silentscope::Analogs::GUN_X)) * USHRT_MAX);
-        }
-        if (analogs.at(games::silentscope::Analogs::GUN_Y).isSet()) {
-            joy_y = (unsigned short) (Analogs::getState(RI_MGR, analogs.at(games::silentscope::Analogs::GUN_Y)) * USHRT_MAX);
+
+        if (gun_x.isSet() || gun_y.isSet()) {
+            if (gun_x.isSet()) {
+                joy_x = (unsigned short) (Analogs::getState(RI_MGR, gun_x) * USHRT_MAX);
+            }
+            if (gun_y.isSet()) {
+                joy_y = (unsigned short) (Analogs::getState(RI_MGR, gun_y) * USHRT_MAX);
+            }
+        } else {
+
+            // the gun reports where it is aimed, which a relative pointer cannot express - the
+            // calibration screen asks for the screen centre and two corners, so read the cursor
+            POINT cursor {};
+            RECT client {};
+            POINT origin {};
+            HWND hwnd = overlay::OVERLAY ? overlay::OVERLAY->get_window() : nullptr;
+            if (hwnd != nullptr &&
+                GetCursorPos(&cursor) &&
+                GetClientRect(hwnd, &client) &&
+                ClientToScreen(hwnd, &origin) &&
+                client.right > 1 && client.bottom > 1)
+            {
+                const LONG x = std::clamp(cursor.x - origin.x, 0L, client.right - 1);
+                const LONG y = std::clamp(cursor.y - origin.y, 0L, client.bottom - 1);
+                joy_x = (unsigned short) (x * USHRT_MAX / (client.right - 1));
+                joy_y = (unsigned short) (y * USHRT_MAX / (client.bottom - 1));
+            }
         }
 
         // invert X axis
