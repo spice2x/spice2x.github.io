@@ -2,6 +2,8 @@
 
 #if SPICE64 && !SPICE_XP
 
+#include <array>
+#include <mutex>
 #include <optional>
 #include <cstdint>
 #include "util/detour.h"
@@ -141,9 +143,95 @@ namespace games::popn {
     static AIO_SCI_COMM *aioSciComm;
     static AIO_IOB5_BI3A *aioIob5Bi3a;
 
+    static constexpr size_t PIKA_BUTTON_COUNT = 9;
+    static constexpr size_t PIKA_BUTTON_DATA_SIZE = PIKA_BUTTON_COUNT * 3;
+    static std::array<uint8_t, PIKA_BUTTON_DATA_SIZE> pika_button_staging{};
+    static bool pika_button_staging_dirty = false;
+    static std::mutex pika_button_staging_mutex;
+
     /*
      * implementations
      */
+
+    static void publish_pika_button_staging() {
+        std::array<uint8_t, PIKA_BUTTON_DATA_SIZE> data;
+        {
+            std::lock_guard<std::mutex> lock(pika_button_staging_mutex);
+            if (!pika_button_staging_dirty) {
+                return;
+            }
+            data = pika_button_staging;
+            pika_button_staging_dirty = false;
+        }
+
+        constexpr Lights::popn_lights_t legacy_button_lights[] = {
+            Lights::popn_lights_t::Button1,
+            Lights::popn_lights_t::Button2,
+            Lights::popn_lights_t::Button3,
+            Lights::popn_lights_t::Button4,
+            Lights::popn_lights_t::Button5,
+            Lights::popn_lights_t::Button6,
+            Lights::popn_lights_t::Button7,
+            Lights::popn_lights_t::Button8,
+            Lights::popn_lights_t::Button9
+        };
+        constexpr Lights::popn_lights_t button_lights[] = {
+            Lights::popn_lights_t::PikaButton1_R,
+            Lights::popn_lights_t::PikaButton1_G,
+            Lights::popn_lights_t::PikaButton1_B,
+            Lights::popn_lights_t::PikaButton2_R,
+            Lights::popn_lights_t::PikaButton2_G,
+            Lights::popn_lights_t::PikaButton2_B,
+            Lights::popn_lights_t::PikaButton3_R,
+            Lights::popn_lights_t::PikaButton3_G,
+            Lights::popn_lights_t::PikaButton3_B,
+            Lights::popn_lights_t::PikaButton4_R,
+            Lights::popn_lights_t::PikaButton4_G,
+            Lights::popn_lights_t::PikaButton4_B,
+            Lights::popn_lights_t::PikaButton5_R,
+            Lights::popn_lights_t::PikaButton5_G,
+            Lights::popn_lights_t::PikaButton5_B,
+            Lights::popn_lights_t::PikaButton6_R,
+            Lights::popn_lights_t::PikaButton6_G,
+            Lights::popn_lights_t::PikaButton6_B,
+            Lights::popn_lights_t::PikaButton7_R,
+            Lights::popn_lights_t::PikaButton7_G,
+            Lights::popn_lights_t::PikaButton7_B,
+            Lights::popn_lights_t::PikaButton8_R,
+            Lights::popn_lights_t::PikaButton8_G,
+            Lights::popn_lights_t::PikaButton8_B,
+            Lights::popn_lights_t::PikaButton9_R,
+            Lights::popn_lights_t::PikaButton9_G,
+            Lights::popn_lights_t::PikaButton9_B
+        };
+
+        static_assert(std::size(legacy_button_lights) == PIKA_BUTTON_COUNT);
+        static_assert(std::size(button_lights) == PIKA_BUTTON_DATA_SIZE);
+
+        auto &lights = get_lights();
+        for (size_t button = 0; button < PIKA_BUTTON_COUNT; button++) {
+            const auto data_offset = button * 3;
+            const auto light_value = std::max({
+                data[data_offset],
+                data[data_offset + 1],
+                data[data_offset + 2]
+            });
+
+            // New-cab buttons use colorless plastic and rely on RGB for all illumination,
+            // including their dim "off" state.
+            GameAPI::Lights::writeLight(
+                RI_MGR,
+                lights.at(legacy_button_lights[button]),
+                light_value > 150 ? 1.f : 0.f);
+        }
+
+        for (size_t light = 0; light < data.size(); light++) {
+            GameAPI::Lights::writeLight(
+                RI_MGR,
+                lights.at(button_lights[light]),
+                data[light] / 255.f);
+        }
+    }
 
     // libaio.dll
 
@@ -260,6 +348,11 @@ namespace games::popn {
         log_info("bi3a_hook", "aioIob5Bi3a_Create called with i_pNodeMgr={}, i={}, p={}", fmt::ptr(i_pNodeMgr), i, fmt::ptr(p));
 
         if (i_pNodeMgr == aioNmgrIob5) {
+            {
+                std::lock_guard<std::mutex> lock(pika_button_staging_mutex);
+                pika_button_staging.fill(0);
+                pika_button_staging_dirty = false;
+            }
             aioIob5Bi3a = new AIO_IOB5_BI3A;
             log_info("bi3a_hook", "aioIob5Bi3a_Create: returning custom AIO_IOB5_BI3A: {}", fmt::ptr(aioIob5Bi3a));
             return aioIob5Bi3a;
@@ -269,10 +362,13 @@ namespace games::popn {
     }
 
     static void __fastcall aioIob5Bi3a_GetDeviceStatus(AIO_IOB5_BI3A *i_pNodeCtl, AIO_IOB5_BI3A__DEVSTATUS *o_DevStatus) {
-        RI_MGR->devices_flush_output();
         if (i_pNodeCtl != aioIob5Bi3a) {
             return aioIob5Bi3a_GetDeviceStatus_orig(i_pNodeCtl, o_DevStatus);
         }
+
+        // Real BI3A hardware snapshots setter staging when device status advances.
+        publish_pika_button_staging();
+        RI_MGR->devices_flush_output();
 
         memset(o_DevStatus, 0, sizeof(*o_DevStatus));
         auto &buttons = get_buttons();
@@ -413,61 +509,10 @@ namespace games::popn {
                 i_CnPin, number_of_leds, (uint8_t)i_LedType, fmt::ptr(i_pData), data);
         }
 
-        auto &lights = get_lights();
         if (i_CnPin == 0 && number_of_leds == 9 * 3) {
-            // special handling converting to non-RGB lights
-            // take the max(R, G, B) and use it to write the light value
-            uint8_t light_value[9] = { 0 };
-            for (uint32_t i = 0; i < number_of_leds; i += 3) {
-                light_value[i / 3] =
-                    std::max({ ((uint8_t *)i_pData)[i], ((uint8_t *)i_pData)[i + 1], ((uint8_t *)i_pData)[i + 2] });
-            }
-
-            constexpr Lights::popn_lights_t legacy_button_lights[] = {
-                Lights::popn_lights_t::Button1,
-                Lights::popn_lights_t::Button2,
-                Lights::popn_lights_t::Button3,
-                Lights::popn_lights_t::Button4,
-                Lights::popn_lights_t::Button5,
-                Lights::popn_lights_t::Button6,
-                Lights::popn_lights_t::Button7,
-                Lights::popn_lights_t::Button8,
-                Lights::popn_lights_t::Button9
-            };
-
-            static_assert(std::size(legacy_button_lights) == 9);
-
-            for (size_t light = 0; light < 9; light++) {
-                // on the new cab, buttons are colorless plastic and they rely on RGB to be lit at all times, even when "off"
-                // when translating to legacy on/off lights, treat anything above ~60% brightness as fully on,
-                // otherwise off, to avoid dimly lit "off" state
-                GameAPI::Lights::writeLight(
-                    RI_MGR,
-                    lights.at(legacy_button_lights[light]),
-                    light_value[light] > 150 ? 1.f : 0.f);
-            }
-
-            // color buttons
-            constexpr Lights::popn_lights_t button_lights[] = {
-                Lights::popn_lights_t::PikaButton1_R, Lights::popn_lights_t::PikaButton1_G, Lights::popn_lights_t::PikaButton1_B,
-                Lights::popn_lights_t::PikaButton2_R, Lights::popn_lights_t::PikaButton2_G, Lights::popn_lights_t::PikaButton2_B,
-                Lights::popn_lights_t::PikaButton3_R, Lights::popn_lights_t::PikaButton3_G, Lights::popn_lights_t::PikaButton3_B,
-                Lights::popn_lights_t::PikaButton4_R, Lights::popn_lights_t::PikaButton4_G, Lights::popn_lights_t::PikaButton4_B,
-                Lights::popn_lights_t::PikaButton5_R, Lights::popn_lights_t::PikaButton5_G, Lights::popn_lights_t::PikaButton5_B,
-                Lights::popn_lights_t::PikaButton6_R, Lights::popn_lights_t::PikaButton6_G, Lights::popn_lights_t::PikaButton6_B,
-                Lights::popn_lights_t::PikaButton7_R, Lights::popn_lights_t::PikaButton7_G, Lights::popn_lights_t::PikaButton7_B,
-                Lights::popn_lights_t::PikaButton8_R, Lights::popn_lights_t::PikaButton8_G, Lights::popn_lights_t::PikaButton8_B,
-                Lights::popn_lights_t::PikaButton9_R, Lights::popn_lights_t::PikaButton9_G, Lights::popn_lights_t::PikaButton9_B
-            };
-
-            static_assert(std::size(button_lights) == 9 * 3);
-
-            for (size_t light = 0; light < number_of_leds; light++) {
-                GameAPI::Lights::writeLight(
-                    RI_MGR,
-                    lights.at(button_lights[light]),
-                    ((uint8_t *)i_pData)[light] / 255.f);
-            }
+            std::lock_guard<std::mutex> lock(pika_button_staging_mutex);
+            memcpy(pika_button_staging.data(), i_pData, pika_button_staging.size());
+            pika_button_staging_dirty = true;
         }
 
         if (tapeledutils::is_enabled() && i_CnPin > 0 && i_CnPin < std::size(TAPELED_MAPPING)) {
