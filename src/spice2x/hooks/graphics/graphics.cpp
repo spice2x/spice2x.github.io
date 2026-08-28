@@ -52,8 +52,8 @@ static HWND GFDM_RIGHT_WINDOW = nullptr;
 static HMONITOR GFDM_TWO_HEAD_SMALL_MONITOR = nullptr;
 static HWND GFDM_TWO_HEAD_SMALL_WINDOW = nullptr;
 HWND POPN_SUBSCREEN_WINDOW = nullptr;
-HWND NDD_SUBSCREEN_WINDOW = nullptr;
-static HWND NDD_MAIN_WINDOW = nullptr;
+static HWND NDD_SUBSCREEN_WINDOW = nullptr;
+HWND NDD_MAIN_WINDOW = nullptr;
 bool FAKE_SUBSCREEN_ADAPTER = false;
 
 // icon

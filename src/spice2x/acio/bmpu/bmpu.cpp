@@ -11,9 +11,9 @@
 #include "games/ftt/io.h"
 #include "games/museca/io.h"
 #include "games/silentscope/io.h"
+#include "hooks/graphics/graphics.h"
 #include "launcher/launcher.h"
 #include "misc/eamuse.h"
-#include "overlay/overlay.h"
 
 using namespace GameAPI;
 
@@ -554,11 +554,10 @@ static bool __cdecl ac_io_bmpu_update_control_status_buffer() {
             POINT cursor {};
             RECT client {};
             POINT origin {};
-            HWND hwnd = overlay::OVERLAY ? overlay::OVERLAY->get_window() : nullptr;
-            if (hwnd != nullptr &&
+            if (NDD_MAIN_WINDOW != nullptr &&
                 GetCursorPos(&cursor) &&
-                GetClientRect(hwnd, &client) &&
-                ClientToScreen(hwnd, &origin) &&
+                GetClientRect(NDD_MAIN_WINDOW, &client) &&
+                ClientToScreen(NDD_MAIN_WINDOW, &origin) &&
                 client.right > 1 && client.bottom > 1)
             {
                 const LONG x = std::clamp(cursor.x - origin.x, 0L, client.right - 1);
