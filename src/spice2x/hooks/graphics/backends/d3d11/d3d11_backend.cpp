@@ -30,6 +30,7 @@ void graphics_d3d11_shutdown() {}
 #include <dxgi.h>
 #include <dxgi1_2.h>
 
+#include "avs/game.h"
 #include "d3d11_internal.h"
 #include "util/nt_loader.h"
 
@@ -237,10 +238,11 @@ bool d3dcompiler_available() {
 } // namespace
 
 void graphics_d3d11_init() {
-    // dx11 titles always run under execexe. skipping on pure-dx9 games keeps
-    // their startup path completely untouched (no exports patched, no poll
-    // thread, no LDR callback).
-    if (!GetModuleHandleW(L"execexe.dll")) {
+    // dx11 titles run under execexe, except Silent Scope: Bone Eater, whose Aska
+    // engine LoadLibrary's d3d11 itself. skipping on pure-dx9 games keeps their
+    // startup path completely untouched (no exports patched, no poll thread, no
+    // LDR callback).
+    if (!GetModuleHandleW(L"execexe.dll") && !avs::game::is_model("NDD")) {
         return;
     }
 

@@ -336,9 +336,11 @@ void hooks::lang::early_init() {
             &GetLocaleInfoA_orig);
     }
 
-    // for TDJ subscreen search keyboard and T44 narrow-string handling
+    // for TDJ subscreen search keyboard
+    // T44 narrow-string handling
+    // NDD text measuring
     if ((avs::game::is_model("LDJ") && games::iidx::TDJ_MODE) ||
-        avs::game::is_model("T44")) {
+        avs::game::is_model({ "T44", "NDD" })) {
         log_info("hooks::lang", "hooking IsDBCSLeadByte");
         detour::trampoline_try(
             "kernel32.dll",
@@ -358,8 +360,9 @@ void hooks::lang::early_init() {
 #endif
 
 #ifdef SPICE64
+    // NDD renders through GetTextExtentPoint32A, so its wide strings go back through CP_ACP first
     const auto hook_wide_char_to_multi_byte =
-        games::gitadora::is_arena_model() || avs::game::is_model("T44");
+        games::gitadora::is_arena_model() || avs::game::is_model({ "T44", "NDD" });
 #else
     // XG2 converts UTF-8 property strings through CP_ACP before rendering.
     const auto hook_wide_char_to_multi_byte = avs::game::is_model({ "K32", "K33" });
