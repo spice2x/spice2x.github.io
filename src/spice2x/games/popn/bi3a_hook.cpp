@@ -211,14 +211,18 @@ namespace games::popn {
         auto &lights = get_lights();
         for (size_t button = 0; button < PIKA_BUTTON_COUNT; button++) {
             const auto data_offset = button * 3;
+            // special handling converting RGB data to non-RGB lights
+            // take the max(R, G, B) and use it to write the light value
             const auto light_value = std::max({
                 data[data_offset],
                 data[data_offset + 1],
                 data[data_offset + 2]
             });
 
-            // New-cab buttons use colorless plastic and rely on RGB for all illumination,
-            // including their dim "off" state.
+            // on the new cab, buttons are colorless plastic and rely on RGB to be lit
+            // at all times, even when "off". When translating to legacy on/off lights,
+            // treat only values above about 60% brightness as fully on to preserve the
+            // dim "off" state.
             GameAPI::Lights::writeLight(
                 RI_MGR,
                 lights.at(legacy_button_lights[button]),
@@ -366,7 +370,8 @@ namespace games::popn {
             return aioIob5Bi3a_GetDeviceStatus_orig(i_pNodeCtl, o_DevStatus);
         }
 
-        // Real BI3A hardware snapshots setter staging when device status advances.
+        // snapshot the current state of lights and flush the output
+        // this closely mirrors what the game does with real I/O
         publish_pika_button_staging();
         RI_MGR->devices_flush_output();
 
@@ -510,6 +515,11 @@ namespace games::popn {
         }
 
         if (i_CnPin == 0 && number_of_leds == 9 * 3) {
+            // SetTapeLedDataPart is meant to be a temporary staging buffer, so the game occasionally
+            // clears the buffer (set to 0 / lights off) between animations but they are not meant
+            // to be seen by the I/O
+            // therefore, instead of writing the lights out directly here, we stage them in a buffer
+            // and wait for GetDeviceStatus to be called
             std::lock_guard<std::mutex> lock(pika_button_staging_mutex);
             memcpy(pika_button_staging.data(), i_pData, pika_button_staging.size());
             pika_button_staging_dirty = true;
