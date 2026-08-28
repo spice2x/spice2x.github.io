@@ -531,6 +531,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/otoca/p4io.cpp
         games/silentscope/silentscope.cpp
         games/silentscope/io.cpp
+        games/silentscope/projector.cpp
         games/pcm/pcm.cpp
         games/pcm/io.cpp
         games/onpara/onpara.cpp
