@@ -52,6 +52,8 @@ static HWND GFDM_RIGHT_WINDOW = nullptr;
 static HMONITOR GFDM_TWO_HEAD_SMALL_MONITOR = nullptr;
 static HWND GFDM_TWO_HEAD_SMALL_WINDOW = nullptr;
 HWND POPN_SUBSCREEN_WINDOW = nullptr;
+HWND NDD_SUBSCREEN_WINDOW = nullptr;
+static HWND NDD_MAIN_WINDOW = nullptr;
 bool FAKE_SUBSCREEN_ADAPTER = false;
 
 // icon
@@ -634,6 +636,9 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
     bool is_sdvx_sub_window = is_sdvx && window_name.ends_with(" Sub Screen");
     bool is_sdvx_main_window = is_sdvx && window_name.ends_with(" Main Screen");
     bool is_popn_sub_window = avs::game::is_model("M39") && window_name.ends_with("Sub Screen");
+    const bool is_ndd = avs::game::is_model("NDD");
+    bool is_ndd_sub_window = is_ndd && window_name.starts_with("Aska MultiDisplay");
+    bool is_ndd_main_window = is_ndd && window_name == "ASKA";
     const std::string gfdm_window_name = games::gitadora::is_arena_model()
         ? gitadora_canonical_window_name(effective_window_name)
         : "";
@@ -777,6 +782,14 @@ static HWND WINAPI CreateWindowExA_hook(DWORD dwExStyle, LPCSTR lpClassName, LPC
         }
     }
 
+    if (is_ndd_sub_window) {
+        NDD_SUBSCREEN_WINDOW = result;
+    }
+
+    if (is_ndd_main_window) {
+        NDD_MAIN_WINDOW = result;
+    }
+
     disable_touch_gestures(result);
     log_misc(
         "graphics",
@@ -902,6 +915,26 @@ static BOOL WINAPI EnumDisplayDevicesA_hook(LPCTSTR lpDevice, DWORD iDevNum,
     return value;
 }
 
+// the sub screen renders into a fixed 800x480 buffer, but the game's saved layout asks for rects
+// that do not match it, and dxgi stretches the buffer to fill whatever the client area ends up as
+static void ndd_subscreen_size(HWND hWnd, int &width, int &height) {
+    RECT rect {};
+    SetRect(&rect, 0, 0, 800, 480);
+    AdjustWindowRect(&rect, GetWindowLongA(hWnd, GWL_STYLE), 0);
+
+    width = rect.right - rect.left;
+    height = rect.bottom - rect.top;
+}
+
+// the saved layout drops the sub window wherever it sat on the machine that wrote the file
+static void ndd_subscreen_position(int &x, int &y) {
+    RECT main {};
+    if (NDD_MAIN_WINDOW != nullptr && GetWindowRect(NDD_MAIN_WINDOW, &main)) {
+        x = main.right;
+        y = main.top;
+    }
+}
+
 static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHeight, BOOL bRepaint) {
     log_misc("graphics", "MoveWindow hook hit ({}, {}, {}, {}, {}, {})",
         fmt::ptr(hWnd),
@@ -929,6 +962,11 @@ static BOOL WINAPI MoveWindow_hook(HWND hWnd, int X, int Y, int nWidth, int nHei
 
         nWidth = rect.right - rect.left;
         nHeight = rect.bottom - rect.top;
+    }
+
+    if (GRAPHICS_WINDOWED && NDD_SUBSCREEN_WINDOW && hWnd == NDD_SUBSCREEN_WINDOW) {
+        ndd_subscreen_size(hWnd, nWidth, nHeight);
+        ndd_subscreen_position(X, Y);
     }
 
     // iidx windowed TDJ mode
@@ -1072,6 +1110,15 @@ static LONG WINAPI SetWindowLongW_hook(HWND hWnd, int nIndex, LONG dwNewLong) {
 
 static BOOL WINAPI SetWindowPos_hook(HWND hWnd, HWND hWndInsertAfter,
         int X, int Y, int cx, int cy, UINT uFlags) {
+
+    if (GRAPHICS_WINDOWED && NDD_SUBSCREEN_WINDOW && hWnd == NDD_SUBSCREEN_WINDOW) {
+        if (!(uFlags & SWP_NOSIZE)) {
+            ndd_subscreen_size(hWnd, cx, cy);
+        }
+        if (!(uFlags & SWP_NOMOVE)) {
+            ndd_subscreen_position(X, Y);
+        }
+    }
 
     if (is_gfdm_two_head_small_window(hWnd) &&
             ((uFlags & SWP_HIDEWINDOW) ||
