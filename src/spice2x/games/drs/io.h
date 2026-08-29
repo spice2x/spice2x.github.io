@@ -20,7 +20,8 @@ namespace games::drs {
             P2_Up,
             P2_Down,
             P2_Left,
-            P2_Right
+            P2_Right,
+            DownMotion
         };
     }
 
