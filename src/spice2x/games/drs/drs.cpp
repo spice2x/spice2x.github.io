@@ -9,8 +9,8 @@
 #include "util/logging.h"
 #include "util/precise_timer.h"
 #include "util/memutils.h"
-#include "util/sigscan.h"
 #include "io.h"
+#include "motion_cam.h"
 #include "rgb_cam.h"
 
 #pragma pack(push)
@@ -272,106 +272,52 @@ namespace games::drs {
         t.detach();
     }
 
-    /*
-     * DOWN motion
-     *
-     * The cabinet detects a squat with an Intel RealSense SR300 depth camera. Its driver is
-     * compiled into the game DLL rather than being a separate library, so there is no import to
-     * replace; the whole pipeline is reached instead at its single exit point,
-     * CInputManager::IsDown, which CNote::Update calls for every DOWN note in its judge window.
-     *
-     * IsDown reports whether the smoothed player height was falling on this frame or the previous
-     * one. Without a camera the height reading never changes, so the state is permanently "stable"
-     * and no DOWN note can ever be hit. Reading the two state ints and OR-ing a button in keeps
-     * real hardware working for anyone who has it.
-     */
-    static const int32_t *MOTION_STATE = nullptr;
-    static const int32_t *MOTION_STATE_PREV = nullptr;
-    static const int32_t MOTION_STATE_DOWN = 2;
-
-    static bool InputManager_IsDown(void *) {
-        if (*MOTION_STATE == MOTION_STATE_DOWN || *MOTION_STATE_PREV == MOTION_STATE_DOWN) {
-            return true;
-        }
-
-        auto &buttons = get_buttons();
-
-        return GameAPI::Buttons::getState(RI_MGR, buttons.at(Buttons::DownMotion));
-    }
-
-    static void init_down_motion_hook() {
-
-        // cmp [rip+prev], 2 / je / cmp [rip+cur], 2 / jne / mov al, 1 / ret / xor al, al / ret
-        auto address = reinterpret_cast<uint8_t *>(find_pattern(
-                avs::game::DLL_INSTANCE,
-                "833D0000000002740C833D00000000027503B001C332C0C3",
-                "XX????XXXXX????XXXXXXXXX",
-                0, 0));
-
-        if (address == nullptr) {
-            log_warning("drs", "motion sensor state not found, DOWN motion button unavailable");
-            return;
-        }
-
-        // resolve both rip-relative operands before the detour overwrites them
-        MOTION_STATE_PREV = (const int32_t *) (address + 7 + *(int32_t *) (address + 2));
-        MOTION_STATE = (const int32_t *) (address + 16 + *(int32_t *) (address + 11));
-
-        // build the button list here so the hook never races on it from the game thread
-        get_buttons();
-
-        detour::inline_hook((void *) InputManager_IsDown, address);
-
-        log_info("drs", "hooked DOWN motion detection at +{:#x}",
-                (size_t) (address - (uint8_t *) avs::game::DLL_INSTANCE));
-    }
-
     DRSGame::DRSGame() : Game("DANCERUSH") {
     }
 
     void DRSGame::attach() {
         Game::attach();
 
-        // TouchSDK hooks
-        detour::iat("??0TouchSDK@@QEAA@XZ",
-                (void *) &TouchSDK_Constructor, avs::game::DLL_INSTANCE);
-        detour::iat("?SendData@TouchSDK@@QEAA_NU_DeviceInfo@@QEAEH1HH@Z",
-                (void *) &TouchSDK_SendData, avs::game::DLL_INSTANCE);
-        detour::iat("?SetSignalInit@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_SetSignalInit, avs::game::DLL_INSTANCE);
-        detour::iat("??1TouchSDK@@QEAA@XZ",
-                (void *) &TouchSDK_Destructor, avs::game::DLL_INSTANCE);
-        detour::iat("?GetYLedTotal@TouchSDK@@QEAAHU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_GetYLedTotal, avs::game::DLL_INSTANCE);
-        detour::iat("?GetXLedTotal@TouchSDK@@QEAAHU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_GetXLedTotal, avs::game::DLL_INSTANCE);
-        detour::iat("?DisableTouch@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_DisableTouch, avs::game::DLL_INSTANCE);
-        detour::iat("?DisableDrag@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_DisableDrag, avs::game::DLL_INSTANCE);
-        detour::iat("?DisableWheel@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_DisableWheel, avs::game::DLL_INSTANCE);
-        detour::iat("?DisableRightClick@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_DisableRightClick, avs::game::DLL_INSTANCE);
-        detour::iat("?SetMultiTouchMode@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_SetMultiTouchMode, avs::game::DLL_INSTANCE);
-        detour::iat("?EnableTouchWidthData@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_EnableTouchWidthData, avs::game::DLL_INSTANCE);
-        detour::iat("?EnableRawData@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_EnableRawData, avs::game::DLL_INSTANCE);
-        detour::iat("?SetAllEnable@TouchSDK@@QEAA_NU_DeviceInfo@@_NH@Z",
-                (void *) &TouchSDK_SetAllEnable, avs::game::DLL_INSTANCE);
-        detour::iat("?GetTouchDeviceCount@TouchSDK@@QEAAHXZ",
-                (void *) &TouchSDK_GetTouchDeviceCount, avs::game::DLL_INSTANCE);
-        detour::iat("?GetTouchSDKVersion@TouchSDK@@QEAAIXZ",
-                (void *) &TouchSDK_GetTouchSDKVersion, avs::game::DLL_INSTANCE);
-        detour::iat("?InitTouch@TouchSDK@@QEAAHPEAU_DeviceInfo@@HP6AXU2@PEBU_TouchPointData@@HHPEBX@ZP6AX1_N3@ZPEAX@Z",
-                (void *) &TouchSDK_InitTouch, avs::game::DLL_INSTANCE);
-
         if (!DISABLE_TOUCH) {
+            // TouchSDK hooks
+            detour::iat("??0TouchSDK@@QEAA@XZ",
+                    (void *) &TouchSDK_Constructor, avs::game::DLL_INSTANCE);
+            detour::iat("?SendData@TouchSDK@@QEAA_NU_DeviceInfo@@QEAEH1HH@Z",
+                    (void *) &TouchSDK_SendData, avs::game::DLL_INSTANCE);
+            detour::iat("?SetSignalInit@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_SetSignalInit, avs::game::DLL_INSTANCE);
+            detour::iat("??1TouchSDK@@QEAA@XZ",
+                    (void *) &TouchSDK_Destructor, avs::game::DLL_INSTANCE);
+            detour::iat("?GetYLedTotal@TouchSDK@@QEAAHU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_GetYLedTotal, avs::game::DLL_INSTANCE);
+            detour::iat("?GetXLedTotal@TouchSDK@@QEAAHU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_GetXLedTotal, avs::game::DLL_INSTANCE);
+            detour::iat("?DisableTouch@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_DisableTouch, avs::game::DLL_INSTANCE);
+            detour::iat("?DisableDrag@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_DisableDrag, avs::game::DLL_INSTANCE);
+            detour::iat("?DisableWheel@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_DisableWheel, avs::game::DLL_INSTANCE);
+            detour::iat("?DisableRightClick@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_DisableRightClick, avs::game::DLL_INSTANCE);
+            detour::iat("?SetMultiTouchMode@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_SetMultiTouchMode, avs::game::DLL_INSTANCE);
+            detour::iat("?EnableTouchWidthData@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_EnableTouchWidthData, avs::game::DLL_INSTANCE);
+            detour::iat("?EnableRawData@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_EnableRawData, avs::game::DLL_INSTANCE);
+            detour::iat("?SetAllEnable@TouchSDK@@QEAA_NU_DeviceInfo@@_NH@Z",
+                    (void *) &TouchSDK_SetAllEnable, avs::game::DLL_INSTANCE);
+            detour::iat("?GetTouchDeviceCount@TouchSDK@@QEAAHXZ",
+                    (void *) &TouchSDK_GetTouchDeviceCount, avs::game::DLL_INSTANCE);
+            detour::iat("?GetTouchSDKVersion@TouchSDK@@QEAAIXZ",
+                    (void *) &TouchSDK_GetTouchSDKVersion, avs::game::DLL_INSTANCE);
+            detour::iat("?InitTouch@TouchSDK@@QEAAHPEAU_DeviceInfo@@HP6AXU2@PEBU_TouchPointData@@HHPEBX@ZP6AX1_N3@ZPEAX@Z",
+                    (void *) &TouchSDK_InitTouch, avs::game::DLL_INSTANCE);
+
             start_touch();
         } else {
-            log_info("drs", "no native input method detected");
+            log_info("drs", "touch input for dnace floor disabled");
         }
 
         init_down_motion_hook();

@@ -31,9 +31,8 @@ std::vector<Button> &games::drs::get_buttons() {
 std::string games::drs::get_buttons_help() {
     // keep to max 100 characters wide
     return
-        "Down Motion stands in for the cabinet's depth camera. The game tracks only one player\n"
-        "height, so this button triggers DOWN notes for both sides at once.\n"
-        "Touchscreen supported for dance floor."
+        "Touchscreen supported for dance floor.\n"
+        "Down Motion applies to both players."
         ;
 }
 
