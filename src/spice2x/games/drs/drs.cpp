@@ -317,7 +317,7 @@ namespace games::drs {
 
             start_touch();
         } else {
-            log_info("drs", "touch input for dnace floor disabled");
+            log_info("drs", "touch input for dance floor disabled");
         }
 
         init_down_motion_hook();
