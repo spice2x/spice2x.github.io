@@ -21,8 +21,10 @@
     } \
     return ret
 
-bool WrappedIDirect3DSwapChain9::scales_small_head() const {
-    return native_group_head == NativeGroupHead::Small && pDev->is_gfdm_small_head_scaled();
+// inert unless this is the SMALL head and it is being scaled onto a differently sized monitor
+static bool scales_small_head(const WrappedIDirect3DSwapChain9 *chain) {
+    return chain->native_group_head == WrappedIDirect3DSwapChain9::NativeGroupHead::Small
+            && chain->pDev->gfdm_small_head.scaled();
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::QueryInterface(REFIID riid, void **ppvObj) {
@@ -93,8 +95,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
         graphics_d3d9_on_present(pDev->hFocusWindow, pDev->pReal, pDev);
     }
 
-    if (scales_small_head()) {
-        pDev->gfdm_compose_small_head();
+    if (scales_small_head(this)) {
+        pDev->gfdm_small_head.compose(pDev->pReal);
     }
 
     HRESULT result = pReal->Present(
@@ -146,8 +148,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetFrontBufferData(IDirect
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetBackBuffer(UINT iBackBuffer, D3DBACKBUFFER_TYPE Type,
         IDirect3DSurface9 **ppBackBuffer)
 {
-    if (scales_small_head() && iBackBuffer == 0 && Type == D3DBACKBUFFER_TYPE_MONO) {
-        CHECK_RESULT(pDev->gfdm_small_proxy_backbuffer(ppBackBuffer));
+    if (scales_small_head(this) && iBackBuffer == 0 && Type == D3DBACKBUFFER_TYPE_MONO) {
+        CHECK_RESULT(pDev->gfdm_small_head.backbuffer(pDev->pReal, ppBackBuffer));
     }
 
     CHECK_RESULT(pReal->GetBackBuffer(iBackBuffer, Type, ppBackBuffer));
@@ -156,12 +158,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_
     CHECK_RESULT(pReal->GetRasterStatus(pRasterStatus));
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDisplayMode(D3DDISPLAYMODE *pMode) {
-    HRESULT result = pReal->GetDisplayMode(pMode);
-    if (SUCCEEDED(result) && pMode != nullptr && scales_small_head()) {
-        pDev->gfdm_apply_small_logical_size(&pMode->Width, &pMode->Height);
-    }
-
-    CHECK_RESULT(result);
+    CHECK_RESULT(pReal->GetDisplayMode(pMode));
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDevice(IDirect3DDevice9 **ppDevice) {
     if (ppDevice == nullptr) {
@@ -177,8 +174,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetPresentParameters(
         D3DPRESENT_PARAMETERS *pPresentationParameters)
 {
     HRESULT result = pReal->GetPresentParameters(pPresentationParameters);
-    if (SUCCEEDED(result) && pPresentationParameters != nullptr && scales_small_head()) {
-        pDev->gfdm_apply_small_logical_size(
+    if (SUCCEEDED(result) && pPresentationParameters != nullptr && scales_small_head(this)) {
+        pDev->gfdm_small_head.apply_logical_size(
                 &pPresentationParameters->BackBufferWidth,
                 &pPresentationParameters->BackBufferHeight);
     }
@@ -202,10 +199,5 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDisplayModeEx(D3DDISPLA
         D3DDISPLAYROTATION *pRotation)
 {
     assert(is_d3d9ex);
-    HRESULT result = static_cast<IDirect3DSwapChain9Ex *>(pReal)->GetDisplayModeEx(pMode, pRotation);
-    if (SUCCEEDED(result) && pMode != nullptr && scales_small_head()) {
-        pDev->gfdm_apply_small_logical_size(&pMode->Width, &pMode->Height);
-    }
-
-    CHECK_RESULT(result);
+    CHECK_RESULT(static_cast<IDirect3DSwapChain9Ex *>(pReal)->GetDisplayModeEx(pMode, pRotation));
 }

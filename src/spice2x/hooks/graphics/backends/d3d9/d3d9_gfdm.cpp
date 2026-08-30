@@ -16,47 +16,51 @@ bool gfdm_two_head_exclusive() {
             && !GRAPHICS_WINDOWED;
 }
 
-void gfdm_small_head_size(UINT *width, UINT *height) {
-    if (width == nullptr || height == nullptr) {
-        return;
-    }
+static std::pair<UINT, UINT> gfdm_small_head_size() {
     if (!gfdm_two_head_exclusive()) {
-        *width = GFDM_SMALL_WIDTH;
-        *height = GFDM_SMALL_HEIGHT;
-        return;
+        return { GFDM_SMALL_WIDTH, GFDM_SMALL_HEIGHT };
     }
-
-    const auto host_size = games::gitadora::arena_subscreen_host_size();
-    *width = host_size.first;
-    *height = host_size.second;
+    return games::gitadora::arena_subscreen_host_size();
 }
 
 // scaling is only needed when the head is not the panel size the game draws into
-bool gfdm_small_head_scaled() {
-    UINT width = 0;
-    UINT height = 0;
-    gfdm_small_head_size(&width, &height);
-    return gfdm_two_head_exclusive()
-            && (width != GFDM_SMALL_WIDTH || height != GFDM_SMALL_HEIGHT);
+static bool gfdm_small_head_scaled() {
+    const auto [width, height] = gfdm_small_head_size();
+    return width != GFDM_SMALL_WIDTH || height != GFDM_SMALL_HEIGHT;
 }
 
-// device creation and reset hand the resolved head parameters back to the game; the
-// SMALL entry has to stay portrait there, both because that is what the game renders
-// and because the next reset locates the SMALL head by that size
-void gfdm_restore_small_logical_size(
-        D3DPRESENT_PARAMETERS *presentation_parameters,
-        D3DDISPLAYMODEEX *fullscreen_display_mode)
+// Hand the resolved MAIN/SMALL heads back to the game's own array. The SMALL entry keeps
+// the portrait size the game asked for: that is what it renders, and the next reset finds
+// the SMALL head by matching it.
+void gfdm_publish_two_head_parameters(
+        D3DPRESENT_PARAMETERS *logical_presentation_parameters,
+        D3DDISPLAYMODEEX *logical_fullscreen_display_modes,
+        const GfdmTwoHeadDeviceState &state)
 {
+    if (logical_presentation_parameters == nullptr) {
+        return;
+    }
+
+    const UINT small = state.logical_small_swapchain;
+    const bool publish_modes = logical_fullscreen_display_modes != nullptr
+            && state.fullscreen_display_modes != nullptr;
+
+    logical_presentation_parameters[0] = state.presentation_parameters[0];
+    logical_presentation_parameters[small] = state.presentation_parameters[1];
+    if (publish_modes) {
+        logical_fullscreen_display_modes[0] = state.fullscreen_display_modes[0];
+        logical_fullscreen_display_modes[small] = state.fullscreen_display_modes[1];
+    }
+
     if (!gfdm_small_head_scaled()) {
         return;
     }
-    if (presentation_parameters != nullptr) {
-        presentation_parameters->BackBufferWidth = GFDM_SMALL_WIDTH;
-        presentation_parameters->BackBufferHeight = GFDM_SMALL_HEIGHT;
-    }
-    if (fullscreen_display_mode != nullptr) {
-        fullscreen_display_mode->Width = GFDM_SMALL_WIDTH;
-        fullscreen_display_mode->Height = GFDM_SMALL_HEIGHT;
+
+    logical_presentation_parameters[small].BackBufferWidth = GFDM_SMALL_WIDTH;
+    logical_presentation_parameters[small].BackBufferHeight = GFDM_SMALL_HEIGHT;
+    if (publish_modes) {
+        logical_fullscreen_display_modes[small].Width = GFDM_SMALL_WIDTH;
+        logical_fullscreen_display_modes[small].Height = GFDM_SMALL_HEIGHT;
     }
 }
 
@@ -233,9 +237,7 @@ HRESULT graphics_d3d9_gfdm_remap_two_head_group_parameters(
     // the game keeps rendering the portrait subscreen; only the head it is scanned out
     // on changes size, and the scaling happens when the head is presented
     if (gfdm_small_head_scaled()) {
-        UINT host_width = 0;
-        UINT host_height = 0;
-        gfdm_small_head_size(&host_width, &host_height);
+        const auto [host_width, host_height] = gfdm_small_head_size();
         log_info(
                 "graphics::d3d9",
                 "two-head exclusive: {} SMALL head {}x{} -> {}x{}",
@@ -384,9 +386,7 @@ HRESULT validate_gfdm_two_head_exclusive(
 
     const auto &main = presentation_parameters[0];
     const auto &small_params = presentation_parameters[1];
-    UINT expected_small_width = 0;
-    UINT expected_small_height = 0;
-    gfdm_small_head_size(&expected_small_width, &expected_small_height);
+    const auto [expected_small_width, expected_small_height] = gfdm_small_head_size();
     if (main.Windowed || small_params.Windowed) {
         log_warning(
                 "graphics::d3d9",
@@ -614,13 +614,9 @@ size_t WrappedIDirect3DDevice9::gfdm_hidden_side_swapchain_slot(
 void WrappedIDirect3DDevice9::set_gfdm_logical_group_parameters(
         const D3DPRESENT_PARAMETERS *presentation_parameters)
 {
-    // resolved with the device: an Arena run that leaves the SMALL head at the panel
-    // resolution must never enter the proxy/scaling path, and the answer cannot change
-    // for the lifetime of the device
-    gfdm_scale_small_head = ::gfdm_small_head_scaled();
-
     if (presentation_parameters == nullptr) {
         gfdm_logical_group_parameters_valid = false;
+        gfdm_small_head.resolve(nullptr);
         return;
     }
     std::copy_n(
@@ -628,6 +624,8 @@ void WrappedIDirect3DDevice9::set_gfdm_logical_group_parameters(
             gfdm_logical_group_parameters.size(),
             gfdm_logical_group_parameters.begin());
     gfdm_logical_group_parameters_valid = true;
+    gfdm_small_head.resolve(
+            &gfdm_logical_group_parameters[gfdm_logical_small_swapchain]);
 }
 
 FakeIDirect3DSwapChain9 *
@@ -673,17 +671,26 @@ void WrappedIDirect3DDevice9::release_gfdm_hidden_side_swapchains() {
     }
 }
 
-bool WrappedIDirect3DDevice9::is_gfdm_small_head_scaled() const {
-    return gfdm_scale_small_head;
+void GfdmSmallHead::resolve(const D3DPRESENT_PARAMETERS *logical_small_parameters) {
+    release();
+
+    active = gfdm_small_head_scaled();
+    format = D3DFMT_X8R8G8B8;
+    multisample = D3DMULTISAMPLE_NONE;
+    multisample_quality = 0;
+    if (!active || logical_small_parameters == nullptr) {
+        return;
+    }
+
+    if (logical_small_parameters->BackBufferFormat != D3DFMT_UNKNOWN) {
+        format = logical_small_parameters->BackBufferFormat;
+    }
+    multisample = logical_small_parameters->MultiSampleType;
+    multisample_quality = logical_small_parameters->MultiSampleQuality;
 }
 
-// the game is never told about the real head size; every size it can observe for the
-// SMALL swap chain stays the portrait one it asked for
-void WrappedIDirect3DDevice9::gfdm_apply_small_logical_size(
-        UINT *width,
-        UINT *height) const
-{
-    if (!is_gfdm_small_head_scaled()) {
+void GfdmSmallHead::apply_logical_size(UINT *width, UINT *height) const {
+    if (!active) {
         return;
     }
     if (width != nullptr) {
@@ -694,79 +701,64 @@ void WrappedIDirect3DDevice9::gfdm_apply_small_logical_size(
     }
 }
 
-HRESULT WrappedIDirect3DDevice9::gfdm_small_proxy_backbuffer(
-        IDirect3DSurface9 **ppBackBuffer)
-{
-    if (ppBackBuffer == nullptr) {
+HRESULT GfdmSmallHead::backbuffer(IDirect3DDevice9 *device, IDirect3DSurface9 **out) {
+    if (device == nullptr || out == nullptr || !active) {
         return D3DERR_INVALIDCALL;
     }
 
-    if (gfdm_small_proxy_surface == nullptr) {
-        D3DFORMAT format = D3DFMT_X8R8G8B8;
-        D3DMULTISAMPLE_TYPE multisample = D3DMULTISAMPLE_NONE;
-        DWORD multisample_quality = 0;
-        if (gfdm_logical_group_parameters_valid) {
-            const auto &params =
-                    gfdm_logical_group_parameters[gfdm_logical_small_swapchain];
-            if (params.BackBufferFormat != D3DFMT_UNKNOWN) {
-                format = params.BackBufferFormat;
-            }
-            multisample = params.MultiSampleType;
-            multisample_quality = params.MultiSampleQuality;
-        }
-
-        const HRESULT result = pReal->CreateRenderTarget(
+    if (surface == nullptr) {
+        const HRESULT result = device->CreateRenderTarget(
                 GFDM_SMALL_WIDTH,
                 GFDM_SMALL_HEIGHT,
                 format,
                 multisample,
                 multisample_quality,
                 FALSE,
-                &gfdm_small_proxy_surface,
+                &surface,
                 nullptr);
         if (FAILED(result)) {
             log_warning(
                     "graphics::d3d9",
                     "two-head exclusive: could not create the portrait SMALL surface, hr={}",
                     FMT_HRESULT(result));
-            gfdm_small_proxy_surface = nullptr;
+            surface = nullptr;
             return result;
         }
-        pReal->ColorFill(gfdm_small_proxy_surface, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+        device->ColorFill(surface, nullptr, D3DCOLOR_XRGB(0, 0, 0));
     }
 
-    gfdm_small_proxy_surface->AddRef();
-    *ppBackBuffer = gfdm_small_proxy_surface;
+    surface->AddRef();
+    *out = surface;
     return D3D_OK;
 }
 
-void WrappedIDirect3DDevice9::gfdm_release_small_proxy() {
-    if (gfdm_small_proxy_surface != nullptr) {
-        gfdm_small_proxy_surface->Release();
-        gfdm_small_proxy_surface = nullptr;
+void GfdmSmallHead::release() {
+    if (surface != nullptr) {
+        surface->Release();
+        surface = nullptr;
     }
 }
 
-HRESULT WrappedIDirect3DDevice9::gfdm_compose_small_head() {
+HRESULT GfdmSmallHead::compose(IDirect3DDevice9 *device) {
     IDirect3DSurface9 *proxy = nullptr;
-    HRESULT result = gfdm_small_proxy_backbuffer(&proxy);
+    HRESULT result = backbuffer(device, &proxy);
     if (FAILED(result)) {
         return result;
     }
 
-    IDirect3DSurface9 *backbuffer = nullptr;
-    result = pReal->GetBackBuffer(
+    IDirect3DSurface9 *head = nullptr;
+    result = device->GetBackBuffer(
             GFDM_NATIVE_SMALL_SWAPCHAIN,
             0,
             D3DBACKBUFFER_TYPE_MONO,
-            &backbuffer);
+            &head);
     if (FAILED(result)) {
         proxy->Release();
         return result;
     }
 
     D3DSURFACE_DESC desc {};
-    result = backbuffer->GetDesc(&desc);
+    result = head->GetDesc(&desc);
     if (SUCCEEDED(result)) {
         const RECT content = games::gitadora::arena_subscreen_content_rect(
                 static_cast<LONG>(desc.Width),
@@ -774,16 +766,11 @@ HRESULT WrappedIDirect3DDevice9::gfdm_compose_small_head() {
 
         // discard swap effect leaves the whole head undefined every frame, so the bars
         // have to be repainted along with the image
-        pReal->ColorFill(backbuffer, nullptr, D3DCOLOR_XRGB(0, 0, 0));
-        result = pReal->StretchRect(
-                proxy,
-                nullptr,
-                backbuffer,
-                &content,
-                D3DTEXF_LINEAR);
+        device->ColorFill(head, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+        result = device->StretchRect(proxy, nullptr, head, &content, D3DTEXF_LINEAR);
     }
 
-    backbuffer->Release();
+    head->Release();
     proxy->Release();
     return result;
 }
