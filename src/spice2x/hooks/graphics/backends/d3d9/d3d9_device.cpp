@@ -157,6 +157,9 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() {
             }
         }
 
+        // holds a reference on the device, so it has to go before the counts are compared
+        this->gfdm_small_head.release();
+
         d3d9_readback::release_device_resources(this->pReal);
 
         if (overlay::ENABLED) {
