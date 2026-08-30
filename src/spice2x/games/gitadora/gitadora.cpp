@@ -39,7 +39,7 @@ namespace games::gitadora {
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
     std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
     bool ARENA_TWO_HEAD_EXCLUSIVE = false;
-    bool ARENA_SUBSCREEN_LANDSCAPE = false;
+    ArenaSubscreenLandscape ARENA_SUBSCREEN_LANDSCAPE = ArenaSubscreenLandscape::Off;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
     bool ALLOW_REALTEK_AUDIO = false;
     bool NATIVE_TOUCH = false;
@@ -48,7 +48,7 @@ namespace games::gitadora {
         if (GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
             return GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value();
         }
-        if (ARENA_SUBSCREEN_LANDSCAPE) {
+        if (arena_subscreen_landscape()) {
             return { ARENA_SUBSCREEN_LANDSCAPE_WIDTH, ARENA_SUBSCREEN_LANDSCAPE_HEIGHT };
         }
         return { ARENA_SUBSCREEN_WIDTH, ARENA_SUBSCREEN_HEIGHT };
@@ -372,11 +372,11 @@ namespace games::gitadora {
                             "arena model: unsupported window count: {}", count);
                 }
 
-                if (ARENA_SUBSCREEN_LANDSCAPE && !ARENA_TWO_HEAD_EXCLUSIVE) {
+                if (arena_subscreen_landscape() && !ARENA_TWO_HEAD_EXCLUSIVE) {
                     log_warning(
                         "gitadora",
                         "arena model: landscape subscreen needs full screen two-window mode, ignoring");
-                    ARENA_SUBSCREEN_LANDSCAPE = false;
+                    ARENA_SUBSCREEN_LANDSCAPE = ArenaSubscreenLandscape::Off;
                 }
                 if (ARENA_TWO_HEAD_EXCLUSIVE) {
                     const auto [host_width, host_height] = arena_subscreen_host_size();

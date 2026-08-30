@@ -693,8 +693,15 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::GitaDoraArenaRealtekAccess].value_bool()) {
         games::gitadora::ALLOW_REALTEK_AUDIO = true;
     }
-    if (options[launcher::Options::GitaDoraSubscreenLandscape].value_bool()) {
-        games::gitadora::ARENA_SUBSCREEN_LANDSCAPE = true;
+    if (options[launcher::Options::GitaDoraSubscreenLandscape].is_active()) {
+        const auto text = options[launcher::Options::GitaDoraSubscreenLandscape].value_text();
+        if (text == "small") {
+            games::gitadora::ARENA_SUBSCREEN_LANDSCAPE =
+                    games::gitadora::ArenaSubscreenLandscape::Small;
+        } else if (text == "all") {
+            games::gitadora::ARENA_SUBSCREEN_LANDSCAPE =
+                    games::gitadora::ArenaSubscreenLandscape::All;
+        }
     }
     if (options[launcher::Options::LoadNostalgiaModule].value_bool()) {
         attach_nostalgia = true;

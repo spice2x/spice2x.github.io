@@ -3431,11 +3431,18 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .name = "gdsublandscape",
         .desc = "For Arena Model full screen two-window mode: drive the SMALL touch subscreen "
             "with a landscape monitor instead of a portrait one.\n\n"
-            "The portrait image is centered and black bars fill the space on either side.\n\n"
+            "off (default): the SMALL head stays portrait\n\n"
+            "small: the portrait subscreen is centered and black bars fill the space on either side\n\n"
+            "all: the LEFT and RIGHT screens are shown in that space instead of black bars\n\n"
             "Launches at 1920x1080; use -forceressub if you need a different resolution.",
-        .type = OptionType::Bool,
+        .type = OptionType::Enum,
         .game_name = "GitaDora",
         .category = "Game Options",
+        .elements = {
+            {"off", ""},
+            {"small", ""},
+            {"all", ""}
+        },
         .quick_setting_category = "Game",
     },
 };

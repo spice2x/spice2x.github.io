@@ -122,6 +122,9 @@ extern bool D3D9_DEVICE_HOOK_DISABLE;
 void graphics_init();
 void graphics_hook_window(HWND hWnd, D3DPRESENT_PARAMETERS *pPresentationParameters);
 bool graphics_gitadora_has_dedicated_subscreen();
+
+// "GITADORA", "LEFT", "RIGHT", "SMALL", or nullptr for anything else
+const char *graphics_gitadora_window_name(HWND hWnd);
 // The native GITADORA two-head D3D9 group uses the game's named SMALL
 // device window for the native physical SMALL head. The game requests
 // D3DCREATE_NOWINDOWCHANGES, so this host must be made borderless and sized
