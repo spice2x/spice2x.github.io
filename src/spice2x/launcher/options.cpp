@@ -3432,11 +3432,10 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "For Arena Model full screen two-window mode: drive the SMALL touch subscreen "
             "with a landscape monitor instead of a portrait one.\n\n"
             "The portrait image is centered and black bars fill the space on either side.\n\n"
-            "Shorthand for running the monitor at 1920x1080; use -forceressub instead if you "
-            "need a different resolution.",
+            "Launches at 1920x1080; use -forceressub if you need a different resolution.",
         .type = OptionType::Bool,
         .game_name = "GitaDora",
-        .category = "Full Screen Settings",
+        .category = "Game Options",
         .quick_setting_category = "Game",
     },
 };
