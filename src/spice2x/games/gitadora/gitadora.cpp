@@ -45,13 +45,13 @@ namespace games::gitadora {
     bool NATIVE_TOUCH = false;
 
     std::pair<UINT, UINT> arena_subscreen_host_size() {
-        if (!ARENA_SUBSCREEN_LANDSCAPE) {
-            return { ARENA_SUBSCREEN_WIDTH, ARENA_SUBSCREEN_HEIGHT };
-        }
         if (GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
             return GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value();
         }
-        return { ARENA_SUBSCREEN_LANDSCAPE_WIDTH, ARENA_SUBSCREEN_LANDSCAPE_HEIGHT };
+        if (ARENA_SUBSCREEN_LANDSCAPE) {
+            return { ARENA_SUBSCREEN_LANDSCAPE_WIDTH, ARENA_SUBSCREEN_LANDSCAPE_HEIGHT };
+        }
+        return { ARENA_SUBSCREEN_WIDTH, ARENA_SUBSCREEN_HEIGHT };
     }
 
     RECT arena_subscreen_content_rect(LONG host_width, LONG host_height) {
@@ -378,12 +378,15 @@ namespace games::gitadora {
                         "arena model: landscape subscreen needs full screen two-window mode, ignoring");
                     ARENA_SUBSCREEN_LANDSCAPE = false;
                 }
-                if (ARENA_SUBSCREEN_LANDSCAPE) {
+                if (ARENA_TWO_HEAD_EXCLUSIVE) {
                     const auto [host_width, host_height] = arena_subscreen_host_size();
-                    log_info(
-                        "gitadora",
-                        "arena model: landscape subscreen, SMALL head runs at {}x{}",
-                        host_width, host_height);
+                    if (host_width != ARENA_SUBSCREEN_WIDTH
+                            || host_height != ARENA_SUBSCREEN_HEIGHT) {
+                        log_info(
+                            "gitadora",
+                            "arena model: SMALL head runs at {}x{}, subscreen is scaled to fit",
+                            host_width, host_height);
+                    }
                 }
             }
 

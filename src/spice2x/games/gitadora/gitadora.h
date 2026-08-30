@@ -35,8 +35,8 @@ namespace games::gitadora {
     static constexpr int ARENA_SUBSCREEN_LANDSCAPE_WIDTH = 1920;
     static constexpr int ARENA_SUBSCREEN_LANDSCAPE_HEIGHT = 1080;
 
-    // resolution the SMALL head actually runs at; the portrait panel size unless a
-    // landscape monitor is driving it
+    // resolution the SMALL head actually runs at; the portrait panel size unless
+    // -forceressub or the landscape option overrides it
     std::pair<UINT, UINT> arena_subscreen_host_size();
 
     // area of the host the portrait subscreen occupies, centered and aspect-preserved;

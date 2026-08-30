@@ -670,8 +670,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Present(
 
     // an adapter group device presents every head at once, so the SMALL head has to be
     // composed here as well as in its own swap chain
-    if (is_gfdm_small_landscape()) {
-        gfdm_compose_small_landscape();
+    if (is_gfdm_small_head_scaled()) {
+        gfdm_compose_small_head();
     }
 
     CHECK_RESULT(pReal->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion));
@@ -695,7 +695,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetBackBuffer(
     if (is_gfdm_two_head_exclusive()
             && is_gfdm_logical_small_swapchain(iSwapChain))
     {
-        if (is_gfdm_small_landscape()
+        if (is_gfdm_small_head_scaled()
                 && iBackBuffer == 0
                 && Type == D3DBACKBUFFER_TYPE_MONO)
         {

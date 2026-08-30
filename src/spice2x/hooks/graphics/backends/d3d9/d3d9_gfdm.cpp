@@ -16,15 +16,11 @@ bool gfdm_two_head_exclusive() {
             && !GRAPHICS_WINDOWED;
 }
 
-bool gfdm_small_landscape() {
-    return gfdm_two_head_exclusive() && games::gitadora::ARENA_SUBSCREEN_LANDSCAPE;
-}
-
 void gfdm_small_head_size(UINT *width, UINT *height) {
     if (width == nullptr || height == nullptr) {
         return;
     }
-    if (!gfdm_small_landscape()) {
+    if (!gfdm_two_head_exclusive()) {
         *width = GFDM_SMALL_WIDTH;
         *height = GFDM_SMALL_HEIGHT;
         return;
@@ -35,6 +31,15 @@ void gfdm_small_head_size(UINT *width, UINT *height) {
     *height = host_size.second;
 }
 
+// scaling is only needed when the head is not the panel size the game draws into
+bool gfdm_small_head_scaled() {
+    UINT width = 0;
+    UINT height = 0;
+    gfdm_small_head_size(&width, &height);
+    return gfdm_two_head_exclusive()
+            && (width != GFDM_SMALL_WIDTH || height != GFDM_SMALL_HEIGHT);
+}
+
 // device creation and reset hand the resolved head parameters back to the game; the
 // SMALL entry has to stay portrait there, both because that is what the game renders
 // and because the next reset locates the SMALL head by that size
@@ -42,7 +47,7 @@ void gfdm_restore_small_logical_size(
         D3DPRESENT_PARAMETERS *presentation_parameters,
         D3DDISPLAYMODEEX *fullscreen_display_mode)
 {
-    if (!gfdm_small_landscape()) {
+    if (!gfdm_small_head_scaled()) {
         return;
     }
     if (presentation_parameters != nullptr) {
@@ -226,14 +231,14 @@ HRESULT graphics_d3d9_gfdm_remap_two_head_group_parameters(
     }
 
     // the game keeps rendering the portrait subscreen; only the head it is scanned out
-    // on becomes landscape, and the pillarboxing happens when the head is presented
-    if (gfdm_small_landscape()) {
+    // on changes size, and the scaling happens when the head is presented
+    if (gfdm_small_head_scaled()) {
         UINT host_width = 0;
         UINT host_height = 0;
         gfdm_small_head_size(&host_width, &host_height);
         log_info(
                 "graphics::d3d9",
-                "two-head exclusive: {} SMALL head {}x{} -> {}x{} (landscape subscreen)",
+                "two-head exclusive: {} SMALL head {}x{} -> {}x{}",
                 operation,
                 secondary.BackBufferWidth,
                 secondary.BackBufferHeight,
@@ -609,6 +614,11 @@ size_t WrappedIDirect3DDevice9::gfdm_hidden_side_swapchain_slot(
 void WrappedIDirect3DDevice9::set_gfdm_logical_group_parameters(
         const D3DPRESENT_PARAMETERS *presentation_parameters)
 {
+    // resolved with the device: an Arena run that leaves the SMALL head at the panel
+    // resolution must never enter the proxy/scaling path, and the answer cannot change
+    // for the lifetime of the device
+    gfdm_scale_small_head = ::gfdm_small_head_scaled();
+
     if (presentation_parameters == nullptr) {
         gfdm_logical_group_parameters_valid = false;
         return;
@@ -663,17 +673,17 @@ void WrappedIDirect3DDevice9::release_gfdm_hidden_side_swapchains() {
     }
 }
 
-bool WrappedIDirect3DDevice9::is_gfdm_small_landscape() const {
-    return ::gfdm_small_landscape();
+bool WrappedIDirect3DDevice9::is_gfdm_small_head_scaled() const {
+    return gfdm_scale_small_head;
 }
 
-// the game is never told about the landscape head; every size it can observe for the
+// the game is never told about the real head size; every size it can observe for the
 // SMALL swap chain stays the portrait one it asked for
 void WrappedIDirect3DDevice9::gfdm_apply_small_logical_size(
         UINT *width,
         UINT *height) const
 {
-    if (!is_gfdm_small_landscape()) {
+    if (!is_gfdm_small_head_scaled()) {
         return;
     }
     if (width != nullptr) {
@@ -737,7 +747,7 @@ void WrappedIDirect3DDevice9::gfdm_release_small_proxy() {
     }
 }
 
-HRESULT WrappedIDirect3DDevice9::gfdm_compose_small_landscape() {
+HRESULT WrappedIDirect3DDevice9::gfdm_compose_small_head() {
     IDirect3DSurface9 *proxy = nullptr;
     HRESULT result = gfdm_small_proxy_backbuffer(&proxy);
     if (FAILED(result)) {

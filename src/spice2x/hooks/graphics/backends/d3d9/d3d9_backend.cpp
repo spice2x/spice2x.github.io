@@ -1033,16 +1033,6 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
         return D3DERR_INVALIDCALL;
     }
-    if (gfdm_two_head_exclusive() && !gfdm_small_landscape()
-            && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
-        log_warning(
-                "graphics::d3d9",
-                "-forceressub is unavailable; SMALL must remain {}x{} unless the "
-                "landscape subscreen option is enabled",
-                GFDM_SMALL_WIDTH,
-                GFDM_SMALL_HEIGHT);
-        return D3DERR_INVALIDCALL;
-    }
 
     DWORD orig_behavior_flags = BehaviorFlags;
     size_t num_adapters = 1;

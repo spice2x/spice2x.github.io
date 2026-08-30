@@ -64,4 +64,9 @@ struct WrappedIDirect3DSwapChain9 : IDirect3DSwapChain9Ex {
     NativeGroupHead native_group_head = NativeGroupHead::Unknown;
 
     bool should_run_hooks = true;
+
+private:
+    // true only while this is the SMALL head and it is being scaled onto a monitor of a
+    // different size; everything guarded by it must be inert otherwise
+    bool scales_small_head() const;
 };
