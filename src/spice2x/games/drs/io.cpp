@@ -20,7 +20,8 @@ std::vector<Button> &games::drs::get_buttons() {
                 "P2 Up",
                 "P2 Down",
                 "P2 Left",
-                "P2 Right"
+                "P2 Right",
+                "Down Motion"
         );
     }
 
@@ -30,8 +31,8 @@ std::vector<Button> &games::drs::get_buttons() {
 std::string games::drs::get_buttons_help() {
     // keep to max 100 characters wide
     return
-        "Motion camera required for DOWN movement.\n"
-        "Touchscreen supported for dance floor."
+        "Touchscreen supported for dance floor.\n"
+        "Down Motion applies to both players."
         ;
 }
 

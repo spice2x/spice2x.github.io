@@ -9,6 +9,8 @@
 #include "util/logging.h"
 #include "util/precise_timer.h"
 #include "util/memutils.h"
+#include "io.h"
+#include "motion_cam.h"
 #include "rgb_cam.h"
 
 #pragma pack(push)
@@ -276,47 +278,49 @@ namespace games::drs {
     void DRSGame::attach() {
         Game::attach();
 
-        // TouchSDK hooks
-        detour::iat("??0TouchSDK@@QEAA@XZ",
-                (void *) &TouchSDK_Constructor, avs::game::DLL_INSTANCE);
-        detour::iat("?SendData@TouchSDK@@QEAA_NU_DeviceInfo@@QEAEH1HH@Z",
-                (void *) &TouchSDK_SendData, avs::game::DLL_INSTANCE);
-        detour::iat("?SetSignalInit@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_SetSignalInit, avs::game::DLL_INSTANCE);
-        detour::iat("??1TouchSDK@@QEAA@XZ",
-                (void *) &TouchSDK_Destructor, avs::game::DLL_INSTANCE);
-        detour::iat("?GetYLedTotal@TouchSDK@@QEAAHU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_GetYLedTotal, avs::game::DLL_INSTANCE);
-        detour::iat("?GetXLedTotal@TouchSDK@@QEAAHU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_GetXLedTotal, avs::game::DLL_INSTANCE);
-        detour::iat("?DisableTouch@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_DisableTouch, avs::game::DLL_INSTANCE);
-        detour::iat("?DisableDrag@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_DisableDrag, avs::game::DLL_INSTANCE);
-        detour::iat("?DisableWheel@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_DisableWheel, avs::game::DLL_INSTANCE);
-        detour::iat("?DisableRightClick@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_DisableRightClick, avs::game::DLL_INSTANCE);
-        detour::iat("?SetMultiTouchMode@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_SetMultiTouchMode, avs::game::DLL_INSTANCE);
-        detour::iat("?EnableTouchWidthData@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_EnableTouchWidthData, avs::game::DLL_INSTANCE);
-        detour::iat("?EnableRawData@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
-                (void *) &TouchSDK_EnableRawData, avs::game::DLL_INSTANCE);
-        detour::iat("?SetAllEnable@TouchSDK@@QEAA_NU_DeviceInfo@@_NH@Z",
-                (void *) &TouchSDK_SetAllEnable, avs::game::DLL_INSTANCE);
-        detour::iat("?GetTouchDeviceCount@TouchSDK@@QEAAHXZ",
-                (void *) &TouchSDK_GetTouchDeviceCount, avs::game::DLL_INSTANCE);
-        detour::iat("?GetTouchSDKVersion@TouchSDK@@QEAAIXZ",
-                (void *) &TouchSDK_GetTouchSDKVersion, avs::game::DLL_INSTANCE);
-        detour::iat("?InitTouch@TouchSDK@@QEAAHPEAU_DeviceInfo@@HP6AXU2@PEBU_TouchPointData@@HHPEBX@ZP6AX1_N3@ZPEAX@Z",
-                (void *) &TouchSDK_InitTouch, avs::game::DLL_INSTANCE);
-
         if (!DISABLE_TOUCH) {
+            // TouchSDK hooks
+            detour::iat("??0TouchSDK@@QEAA@XZ",
+                    (void *) &TouchSDK_Constructor, avs::game::DLL_INSTANCE);
+            detour::iat("?SendData@TouchSDK@@QEAA_NU_DeviceInfo@@QEAEH1HH@Z",
+                    (void *) &TouchSDK_SendData, avs::game::DLL_INSTANCE);
+            detour::iat("?SetSignalInit@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_SetSignalInit, avs::game::DLL_INSTANCE);
+            detour::iat("??1TouchSDK@@QEAA@XZ",
+                    (void *) &TouchSDK_Destructor, avs::game::DLL_INSTANCE);
+            detour::iat("?GetYLedTotal@TouchSDK@@QEAAHU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_GetYLedTotal, avs::game::DLL_INSTANCE);
+            detour::iat("?GetXLedTotal@TouchSDK@@QEAAHU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_GetXLedTotal, avs::game::DLL_INSTANCE);
+            detour::iat("?DisableTouch@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_DisableTouch, avs::game::DLL_INSTANCE);
+            detour::iat("?DisableDrag@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_DisableDrag, avs::game::DLL_INSTANCE);
+            detour::iat("?DisableWheel@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_DisableWheel, avs::game::DLL_INSTANCE);
+            detour::iat("?DisableRightClick@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_DisableRightClick, avs::game::DLL_INSTANCE);
+            detour::iat("?SetMultiTouchMode@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_SetMultiTouchMode, avs::game::DLL_INSTANCE);
+            detour::iat("?EnableTouchWidthData@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_EnableTouchWidthData, avs::game::DLL_INSTANCE);
+            detour::iat("?EnableRawData@TouchSDK@@QEAA_NU_DeviceInfo@@H@Z",
+                    (void *) &TouchSDK_EnableRawData, avs::game::DLL_INSTANCE);
+            detour::iat("?SetAllEnable@TouchSDK@@QEAA_NU_DeviceInfo@@_NH@Z",
+                    (void *) &TouchSDK_SetAllEnable, avs::game::DLL_INSTANCE);
+            detour::iat("?GetTouchDeviceCount@TouchSDK@@QEAAHXZ",
+                    (void *) &TouchSDK_GetTouchDeviceCount, avs::game::DLL_INSTANCE);
+            detour::iat("?GetTouchSDKVersion@TouchSDK@@QEAAIXZ",
+                    (void *) &TouchSDK_GetTouchSDKVersion, avs::game::DLL_INSTANCE);
+            detour::iat("?InitTouch@TouchSDK@@QEAAHPEAU_DeviceInfo@@HP6AXU2@PEBU_TouchPointData@@HHPEBX@ZP6AX1_N3@ZPEAX@Z",
+                    (void *) &TouchSDK_InitTouch, avs::game::DLL_INSTANCE);
+
             start_touch();
         } else {
-            log_info("drs", "no native input method detected");
+            log_info("drs", "touch input for dance floor disabled");
         }
+
+        init_down_motion_hook();
 
         if (RGB_CAMERA_HOOK) {
             init_rgb_camera_hook();

@@ -1607,6 +1607,7 @@ typedef enum SPICE_SDK_DANCERUSH_BUTTONS {
     DRS_Button_P2_Down,
     DRS_Button_P2_Left,
     DRS_Button_P2_Right,
+    DRS_Button_DownMotion,
 } SPICE_SDK_DANCERUSH_BUTTONS;
 
 typedef enum SPICE_SDK_DANCERUSH_LIGHTS {
