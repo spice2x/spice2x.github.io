@@ -3425,6 +3425,19 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .category = "General Overlay",
     },
+    {
+        // GitaDoraSubscreenLandscape
+        .title = "GitaDora Arena Landscape Subscreen (EXPERIMENTAL)",
+        .name = "gdsublandscape",
+        .desc = "For Arena Model full screen two-window mode: drive the SMALL touch subscreen "
+            "with a landscape monitor instead of a portrait one.\n\n"
+            "The portrait image is centered and black bars fill the space on either side.\n\n"
+            "Launches at 1920x1080; use -forceressub if you need a different resolution.",
+        .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+        .quick_setting_category = "Game",
+    },
 };
 
 const std::vector<std::string> &launcher::get_categories(Options::OptionsCategory category) {

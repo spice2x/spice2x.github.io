@@ -11,6 +11,7 @@
 #include "util/logging.h"
 
 #include "d3d9_fake_swapchain.h"
+#include "d3d9_gfdm.h"
 #include "d3d9_swapchain.h"
 
 /*
@@ -279,6 +280,7 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     std::array<D3DPRESENT_PARAMETERS, 4> gfdm_logical_group_parameters {};
     bool gfdm_logical_group_parameters_valid = false;
     IDirect3D9 *gfdm_parent_d3d = nullptr;
+    GfdmSmallHead gfdm_small_head;
 
     std::mutex gfdm_recovery_mutex;
     std::array<D3DPRESENT_PARAMETERS, 2> gfdm_recovery_parameters {};

@@ -157,6 +157,9 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() {
             }
         }
 
+        // holds a reference on the device, so it has to go before the counts are compared
+        this->gfdm_small_head.release();
+
         d3d9_readback::release_device_resources(this->pReal);
 
         if (overlay::ENABLED) {
@@ -634,6 +637,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         overlay::OVERLAY->reset_invalidate();
     }
 
+    gfdm_small_head.release();
+
     // Reset refuses to run while any default pool resource is outstanding
     d3d9_readback::discard_snapshot_targets(pReal);
 
@@ -662,6 +667,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Present(
 
     graphics_d3d9_on_present(hFocusWindow, pReal, this);
 
+    // an adapter group device presents every head at once, so the SMALL head has to be
+    // composed here as well as in its own swap chain
+    if (gfdm_small_head.scaled()) {
+        gfdm_small_head.compose(pReal);
+    }
+
     CHECK_RESULT(pReal->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion));
 }
 
@@ -683,6 +694,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetBackBuffer(
     if (is_gfdm_two_head_exclusive()
             && is_gfdm_logical_small_swapchain(iSwapChain))
     {
+        if (gfdm_small_head.scaled()
+                && iBackBuffer == 0
+                && Type == D3DBACKBUFFER_TYPE_MONO)
+        {
+            CHECK_RESULT(gfdm_small_head.backbuffer(pReal, ppBackBuffer));
+        }
         CHECK_RESULT(pReal->GetBackBuffer(
                 GFDM_NATIVE_SMALL_SWAPCHAIN,
                 iBackBuffer,
@@ -2324,6 +2341,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
         overlay::OVERLAY->reset_invalidate();
     }
 
+    gfdm_small_head.release();
+
     // ResetEx refuses to run while any default pool resource is outstanding
     d3d9_readback::discard_snapshot_targets(pReal);
 
@@ -2341,14 +2360,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
     }
     if (is_gfdm_two_head_exclusive() && SUCCEEDED(res)) {
         gfdm_logical_small_swapchain = gfdm_parameters.logical_small_swapchain;
-        pPresentationParameters[0] = gfdm_parameters.presentation_parameters[0];
-        pPresentationParameters[gfdm_parameters.logical_small_swapchain] =
-                gfdm_parameters.presentation_parameters[1];
-        if (pFullscreenDisplayMode != nullptr) {
-            pFullscreenDisplayMode[0] = gfdm_parameters.fullscreen_display_modes[0];
-            pFullscreenDisplayMode[gfdm_parameters.logical_small_swapchain] =
-                    gfdm_parameters.fullscreen_display_modes[1];
-        }
+        gfdm_publish_two_head_parameters(
+                pPresentationParameters,
+                pFullscreenDisplayMode,
+                gfdm_parameters);
     }
 
     // recreate overlay

@@ -21,6 +21,12 @@
     } \
     return ret
 
+// inert unless this is the SMALL head and it is being scaled onto a differently sized monitor
+static bool scales_small_head(const WrappedIDirect3DSwapChain9 *chain) {
+    return chain->native_group_head == WrappedIDirect3DSwapChain9::NativeGroupHead::Small
+            && chain->pDev->gfdm_small_head.scaled();
+}
+
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::QueryInterface(REFIID riid, void **ppvObj) {
     if (ppvObj == nullptr) {
         return E_POINTER;
@@ -89,6 +95,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
         graphics_d3d9_on_present(pDev->hFocusWindow, pDev->pReal, pDev);
     }
 
+    if (scales_small_head(this)) {
+        pDev->gfdm_small_head.compose(pDev->pReal);
+    }
+
     HRESULT result = pReal->Present(
             pSourceRect,
             pDestRect,
@@ -138,6 +148,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetFrontBufferData(IDirect
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetBackBuffer(UINT iBackBuffer, D3DBACKBUFFER_TYPE Type,
         IDirect3DSurface9 **ppBackBuffer)
 {
+    if (scales_small_head(this) && iBackBuffer == 0 && Type == D3DBACKBUFFER_TYPE_MONO) {
+        CHECK_RESULT(pDev->gfdm_small_head.backbuffer(pDev->pReal, ppBackBuffer));
+    }
+
     CHECK_RESULT(pReal->GetBackBuffer(iBackBuffer, Type, ppBackBuffer));
 }
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetRasterStatus(D3DRASTER_STATUS *pRasterStatus) {
@@ -159,7 +173,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetDevice(IDirect3DDevice9
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::GetPresentParameters(
         D3DPRESENT_PARAMETERS *pPresentationParameters)
 {
-    CHECK_RESULT(pReal->GetPresentParameters(pPresentationParameters));
+    HRESULT result = pReal->GetPresentParameters(pPresentationParameters);
+    if (SUCCEEDED(result) && pPresentationParameters != nullptr && scales_small_head(this)) {
+        pDev->gfdm_small_head.apply_logical_size(
+                &pPresentationParameters->BackBufferWidth,
+                &pPresentationParameters->BackBufferHeight);
+    }
+
+    CHECK_RESULT(result);
 }
 
 /*

@@ -1033,14 +1033,6 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
 
         return D3DERR_INVALIDCALL;
     }
-    if (gfdm_two_head_exclusive() && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
-        log_warning(
-                "graphics::d3d9",
-                "-forceressub is unavailable; SMALL must remain {}x{}",
-                GFDM_SMALL_WIDTH,
-                GFDM_SMALL_HEIGHT);
-        return D3DERR_INVALIDCALL;
-    }
 
     DWORD orig_behavior_flags = BehaviorFlags;
     size_t num_adapters = 1;
@@ -1096,7 +1088,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
                         params->BackBufferHeight, params->BackBufferWidth);
                     std::swap(params->BackBufferWidth, params->BackBufferHeight);
                 }
-            } else if (i == 1 && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
+            } else if (i == 1 && !gfdm_two_head_exclusive()
+                    && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
                 log_misc(
                     "graphics::d3d9",
                     "use custom sub resolution {}x{} => {}x{}",
@@ -1140,7 +1133,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
                     } else if (GRAPHICS_FS_ORIENTATION_SWAP) {
                         std::swap(fullscreen_display_mode->Width, fullscreen_display_mode->Height);
                     }
-                } else if (i == 1 && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
+                } else if (i == 1 && !gfdm_two_head_exclusive()
+                        && GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
                     fullscreen_display_mode->Width = GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value().first;
                     fullscreen_display_mode->Height = GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value().second;
                 }
@@ -1290,14 +1284,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3D9::CreateDeviceEx(
             ppReturnedDeviceInterface);
 
     if (SUCCEEDED(result) && gfdm_two_head_exclusive()) {
-        pPresentationParameters[0] = gfdm_parameters.presentation_parameters[0];
-        pPresentationParameters[gfdm_parameters.logical_small_swapchain] =
-                gfdm_parameters.presentation_parameters[1];
-        if (pFullscreenDisplayMode != nullptr) {
-            pFullscreenDisplayMode[0] = gfdm_parameters.fullscreen_display_modes[0];
-            pFullscreenDisplayMode[gfdm_parameters.logical_small_swapchain] =
-                    gfdm_parameters.fullscreen_display_modes[1];
-        }
+        gfdm_publish_two_head_parameters(
+                pPresentationParameters,
+                pFullscreenDisplayMode,
+                gfdm_parameters);
     }
 
     // check for error
