@@ -41,6 +41,11 @@ struct GfdmTwoHeadDeviceState {
 };
 
 bool gfdm_two_head_exclusive();
+bool gfdm_small_landscape();
+void gfdm_small_head_size(UINT *width, UINT *height);
+void gfdm_restore_small_logical_size(
+        D3DPRESENT_PARAMETERS *presentation_parameters,
+        D3DDISPLAYMODEEX *fullscreen_display_mode);
 bool is_fake_subscreen_adapter(UINT adapter);
 void get_fake_subscreen_display_mode(UINT adapter, D3DDISPLAYMODE *mode);
 void get_fake_subscreen_display_mode_ex(UINT adapter, D3DDISPLAYMODEEX *mode);

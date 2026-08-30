@@ -16,6 +16,45 @@ bool gfdm_two_head_exclusive() {
             && !GRAPHICS_WINDOWED;
 }
 
+bool gfdm_small_landscape() {
+    return gfdm_two_head_exclusive() && games::gitadora::ARENA_SUBSCREEN_LANDSCAPE;
+}
+
+void gfdm_small_head_size(UINT *width, UINT *height) {
+    if (width == nullptr || height == nullptr) {
+        return;
+    }
+    if (!gfdm_small_landscape()) {
+        *width = GFDM_SMALL_WIDTH;
+        *height = GFDM_SMALL_HEIGHT;
+        return;
+    }
+
+    const auto host_size = games::gitadora::arena_subscreen_host_size();
+    *width = host_size.first;
+    *height = host_size.second;
+}
+
+// device creation and reset hand the resolved head parameters back to the game; the
+// SMALL entry has to stay portrait there, both because that is what the game renders
+// and because the next reset locates the SMALL head by that size
+void gfdm_restore_small_logical_size(
+        D3DPRESENT_PARAMETERS *presentation_parameters,
+        D3DDISPLAYMODEEX *fullscreen_display_mode)
+{
+    if (!gfdm_small_landscape()) {
+        return;
+    }
+    if (presentation_parameters != nullptr) {
+        presentation_parameters->BackBufferWidth = GFDM_SMALL_WIDTH;
+        presentation_parameters->BackBufferHeight = GFDM_SMALL_HEIGHT;
+    }
+    if (fullscreen_display_mode != nullptr) {
+        fullscreen_display_mode->Width = GFDM_SMALL_WIDTH;
+        fullscreen_display_mode->Height = GFDM_SMALL_HEIGHT;
+    }
+}
+
 HRESULT graphics_d3d9_gfdm_select_two_head_group_parameters(
         const D3DPRESENT_PARAMETERS *logical_presentation_parameters,
         const D3DDISPLAYMODEEX *logical_fullscreen_display_modes,
@@ -186,6 +225,28 @@ HRESULT graphics_d3d9_gfdm_remap_two_head_group_parameters(
         return D3DERR_INVALIDCALL;
     }
 
+    // the game keeps rendering the portrait subscreen; only the head it is scanned out
+    // on becomes landscape, and the pillarboxing happens when the head is presented
+    if (gfdm_small_landscape()) {
+        UINT host_width = 0;
+        UINT host_height = 0;
+        gfdm_small_head_size(&host_width, &host_height);
+        log_info(
+                "graphics::d3d9",
+                "two-head exclusive: {} SMALL head {}x{} -> {}x{} (landscape subscreen)",
+                operation,
+                secondary.BackBufferWidth,
+                secondary.BackBufferHeight,
+                host_width,
+                host_height);
+        secondary.BackBufferWidth = host_width;
+        secondary.BackBufferHeight = host_height;
+        if (fullscreen_display_modes != nullptr) {
+            fullscreen_display_modes[1].Width = host_width;
+            fullscreen_display_modes[1].Height = host_height;
+        }
+    }
+
     return D3D_OK;
 }
 
@@ -318,20 +379,23 @@ HRESULT validate_gfdm_two_head_exclusive(
 
     const auto &main = presentation_parameters[0];
     const auto &small_params = presentation_parameters[1];
+    UINT expected_small_width = 0;
+    UINT expected_small_height = 0;
+    gfdm_small_head_size(&expected_small_width, &expected_small_height);
     if (main.Windowed || small_params.Windowed) {
         log_warning(
                 "graphics::d3d9",
                 "two-head exclusive mode requires both group heads to be fullscreen");
         return D3DERR_INVALIDCALL;
     }
-    if (small_params.BackBufferWidth != GFDM_SMALL_WIDTH
-            || small_params.BackBufferHeight != GFDM_SMALL_HEIGHT)
+    if (small_params.BackBufferWidth != expected_small_width
+            || small_params.BackBufferHeight != expected_small_height)
     {
         log_warning(
                 "graphics::d3d9",
                 "SMALL head must be {}x{}; got {}x{}",
-                GFDM_SMALL_WIDTH,
-                GFDM_SMALL_HEIGHT,
+                expected_small_width,
+                expected_small_height,
                 small_params.BackBufferWidth,
                 small_params.BackBufferHeight);
         return D3DERR_INVALIDCALL;
@@ -597,6 +661,121 @@ void WrappedIDirect3DDevice9::release_gfdm_hidden_side_swapchains() {
             fake_sub_swapchain[index] = nullptr;
         }
     }
+}
+
+bool WrappedIDirect3DDevice9::is_gfdm_small_landscape() const {
+    return ::gfdm_small_landscape();
+}
+
+// the game is never told about the landscape head; every size it can observe for the
+// SMALL swap chain stays the portrait one it asked for
+void WrappedIDirect3DDevice9::gfdm_apply_small_logical_size(
+        UINT *width,
+        UINT *height) const
+{
+    if (!is_gfdm_small_landscape()) {
+        return;
+    }
+    if (width != nullptr) {
+        *width = GFDM_SMALL_WIDTH;
+    }
+    if (height != nullptr) {
+        *height = GFDM_SMALL_HEIGHT;
+    }
+}
+
+HRESULT WrappedIDirect3DDevice9::gfdm_small_proxy_backbuffer(
+        IDirect3DSurface9 **ppBackBuffer)
+{
+    if (ppBackBuffer == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    if (gfdm_small_proxy_surface == nullptr) {
+        D3DFORMAT format = D3DFMT_X8R8G8B8;
+        D3DMULTISAMPLE_TYPE multisample = D3DMULTISAMPLE_NONE;
+        DWORD multisample_quality = 0;
+        if (gfdm_logical_group_parameters_valid) {
+            const auto &params =
+                    gfdm_logical_group_parameters[gfdm_logical_small_swapchain];
+            if (params.BackBufferFormat != D3DFMT_UNKNOWN) {
+                format = params.BackBufferFormat;
+            }
+            multisample = params.MultiSampleType;
+            multisample_quality = params.MultiSampleQuality;
+        }
+
+        const HRESULT result = pReal->CreateRenderTarget(
+                GFDM_SMALL_WIDTH,
+                GFDM_SMALL_HEIGHT,
+                format,
+                multisample,
+                multisample_quality,
+                FALSE,
+                &gfdm_small_proxy_surface,
+                nullptr);
+        if (FAILED(result)) {
+            log_warning(
+                    "graphics::d3d9",
+                    "two-head exclusive: could not create the portrait SMALL surface, hr={}",
+                    FMT_HRESULT(result));
+            gfdm_small_proxy_surface = nullptr;
+            return result;
+        }
+        pReal->ColorFill(gfdm_small_proxy_surface, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+    }
+
+    gfdm_small_proxy_surface->AddRef();
+    *ppBackBuffer = gfdm_small_proxy_surface;
+    return D3D_OK;
+}
+
+void WrappedIDirect3DDevice9::gfdm_release_small_proxy() {
+    if (gfdm_small_proxy_surface != nullptr) {
+        gfdm_small_proxy_surface->Release();
+        gfdm_small_proxy_surface = nullptr;
+    }
+}
+
+HRESULT WrappedIDirect3DDevice9::gfdm_compose_small_landscape() {
+    IDirect3DSurface9 *proxy = nullptr;
+    HRESULT result = gfdm_small_proxy_backbuffer(&proxy);
+    if (FAILED(result)) {
+        return result;
+    }
+
+    IDirect3DSurface9 *backbuffer = nullptr;
+    result = pReal->GetBackBuffer(
+            GFDM_NATIVE_SMALL_SWAPCHAIN,
+            0,
+            D3DBACKBUFFER_TYPE_MONO,
+            &backbuffer);
+    if (FAILED(result)) {
+        proxy->Release();
+        return result;
+    }
+
+    D3DSURFACE_DESC desc {};
+    result = backbuffer->GetDesc(&desc);
+    if (SUCCEEDED(result)) {
+        const RECT content = games::gitadora::arena_subscreen_content_rect(
+                static_cast<LONG>(desc.Width),
+                static_cast<LONG>(desc.Height));
+
+        // discard swap effect leaves the whole head undefined every frame, so the bars
+        // have to be repainted along with the image
+        pReal->ColorFill(backbuffer, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+        result = pReal->StretchRect(
+                proxy,
+                nullptr,
+                backbuffer,
+                &content,
+                D3DTEXF_LINEAR);
+    }
+
+    backbuffer->Release();
+    proxy->Release();
+    return result;
 }
 
 void WrappedIDirect3DDevice9::gfdm_disarm_present_mode_recovery() {

@@ -343,6 +343,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc =
             "Override fullscreen resolution requested by the game for second monitor, "
             "useful if you have a sub monitor that is not quite exactly what the game expects.\n\n"
+            "Also sets the resolution used by the GitaDora Arena landscape subscreen option.\n\n"
             "WARNING: experimental as we have not done extensive testing to see if this causes desyncs.",
         .type = OptionType::Text,
         .setting_name = "1280,720",
@@ -3424,6 +3425,19 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Saves each subscreen as a separate PNG alongside the primary screenshot.",
         .type = OptionType::Bool,
         .category = "General Overlay",
+    },
+    {
+        // GitaDoraSubscreenLandscape
+        .title = "GitaDora Arena Landscape Subscreen (EXPERIMENTAL)",
+        .name = "gdsublandscape",
+        .desc = "For Arena Model full screen two-window mode: drive the SMALL touch subscreen "
+            "with a landscape monitor instead of a portrait one.\n\n"
+            "The portrait image is centered and black bars fill the space on either side.\n\n"
+            "Runs the monitor at 1920x1080 unless -forceressub sets another resolution.",
+        .type = OptionType::Bool,
+        .game_name = "GitaDora",
+        .category = "Full Screen Settings",
+        .quick_setting_category = "Game",
     },
 };
 

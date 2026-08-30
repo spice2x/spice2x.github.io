@@ -87,6 +87,7 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     WrappedIDirect3DDevice9 &operator=(const WrappedIDirect3DDevice9 &) = delete;
 
     virtual ~WrappedIDirect3DDevice9() {
+        gfdm_release_small_proxy();
         if (gfdm_parent_d3d != nullptr) {
             gfdm_parent_d3d->Release();
         }
@@ -248,6 +249,14 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     FakeIDirect3DSwapChain9 *ensure_gfdm_hidden_side_swapchain(UINT iSwapChain);
     void release_gfdm_hidden_side_swapchains();
 
+    // when a landscape monitor drives the SMALL head, the game keeps drawing into a
+    // portrait surface of its own and that surface is pillarboxed onto the real head
+    bool is_gfdm_small_landscape() const;
+    HRESULT gfdm_small_proxy_backbuffer(IDirect3DSurface9 **ppBackBuffer);
+    void gfdm_release_small_proxy();
+    HRESULT gfdm_compose_small_landscape();
+    void gfdm_apply_small_logical_size(UINT *width, UINT *height) const;
+
     enum class GfdmPresentModeRecoveryResult {
         NotAttempted,
         ReadyToRetry,
@@ -279,6 +288,7 @@ struct WrappedIDirect3DDevice9 : IDirect3DDevice9Ex {
     std::array<D3DPRESENT_PARAMETERS, 4> gfdm_logical_group_parameters {};
     bool gfdm_logical_group_parameters_valid = false;
     IDirect3D9 *gfdm_parent_d3d = nullptr;
+    IDirect3DSurface9 *gfdm_small_proxy_surface = nullptr;
 
     std::mutex gfdm_recovery_mutex;
     std::array<D3DPRESENT_PARAMETERS, 2> gfdm_recovery_parameters {};

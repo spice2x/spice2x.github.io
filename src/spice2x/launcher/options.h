@@ -323,7 +323,8 @@ namespace launcher {
             OBSWebSocketPassword,
             OBSWebSocketDebug,
             ScreenshotIncludeOverlay,
-            ScreenshotSubscreens
+            ScreenshotSubscreens,
+            GitaDoraSubscreenLandscape
         };
 
         enum class OptionsCategory {

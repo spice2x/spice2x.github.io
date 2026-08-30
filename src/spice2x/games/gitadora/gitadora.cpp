@@ -39,9 +39,37 @@ namespace games::gitadora {
     std::optional<socd::SocdAlgorithm> PICK_ALGO = socd::SocdAlgorithm::PreferRecent;
     std::optional<uint8_t> ARENA_WINDOW_COUNT = std::nullopt;
     bool ARENA_TWO_HEAD_EXCLUSIVE = false;
+    bool ARENA_SUBSCREEN_LANDSCAPE = false;
     std::optional<std::string> ASIO_DRIVER = std::nullopt;
     bool ALLOW_REALTEK_AUDIO = false;
     bool NATIVE_TOUCH = false;
+
+    std::pair<UINT, UINT> arena_subscreen_host_size() {
+        if (!ARENA_SUBSCREEN_LANDSCAPE) {
+            return { ARENA_SUBSCREEN_WIDTH, ARENA_SUBSCREEN_HEIGHT };
+        }
+        if (GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.has_value()) {
+            return GRAPHICS_FS_CUSTOM_RESOLUTION_SUB.value();
+        }
+        return { ARENA_SUBSCREEN_LANDSCAPE_WIDTH, ARENA_SUBSCREEN_LANDSCAPE_HEIGHT };
+    }
+
+    RECT arena_subscreen_content_rect(LONG host_width, LONG host_height) {
+        if (host_width <= 0 || host_height <= 0) {
+            return RECT {};
+        }
+
+        LONG width = MulDiv(host_height, ARENA_SUBSCREEN_WIDTH, ARENA_SUBSCREEN_HEIGHT);
+        LONG height = host_height;
+        if (width > host_width) {
+            width = host_width;
+            height = MulDiv(host_width, ARENA_SUBSCREEN_HEIGHT, ARENA_SUBSCREEN_WIDTH);
+        }
+
+        const LONG left = (host_width - width) / 2;
+        const LONG top = (host_height - height) / 2;
+        return RECT { left, top, left + width, top + height };
+    }
 
     /*
      * Prevent GitaDora from creating folders on F drive
@@ -342,6 +370,20 @@ namespace games::gitadora {
                         log_fatal(
                             "gitadora",
                             "arena model: unsupported window count: {}", count);
+                }
+
+                if (ARENA_SUBSCREEN_LANDSCAPE && !ARENA_TWO_HEAD_EXCLUSIVE) {
+                    log_warning(
+                        "gitadora",
+                        "arena model: landscape subscreen needs full screen two-window mode, ignoring");
+                    ARENA_SUBSCREEN_LANDSCAPE = false;
+                }
+                if (ARENA_SUBSCREEN_LANDSCAPE) {
+                    const auto [host_width, host_height] = arena_subscreen_host_size();
+                    log_info(
+                        "gitadora",
+                        "arena model: landscape subscreen, SMALL head runs at {}x{}",
+                        host_width, host_height);
                 }
             }
 

@@ -252,7 +252,11 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDisplayMode(
     if (is_gfdm_two_head_exclusive()
             && is_gfdm_logical_small_swapchain(iSwapChain))
     {
-        CHECK_RESULT(pReal->GetDisplayMode(GFDM_NATIVE_SMALL_SWAPCHAIN, pMode));
+        HRESULT result = pReal->GetDisplayMode(GFDM_NATIVE_SMALL_SWAPCHAIN, pMode);
+        if (SUCCEEDED(result) && pMode != nullptr) {
+            gfdm_apply_small_logical_size(&pMode->Width, &pMode->Height);
+        }
+        CHECK_RESULT(result);
     }
 
     CHECK_RESULT(pReal->GetDisplayMode(iSwapChain, pMode));
@@ -634,6 +638,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         overlay::OVERLAY->reset_invalidate();
     }
 
+    gfdm_release_small_proxy();
+
     // Reset refuses to run while any default pool resource is outstanding
     d3d9_readback::discard_snapshot_targets(pReal);
 
@@ -662,6 +668,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Present(
 
     graphics_d3d9_on_present(hFocusWindow, pReal, this);
 
+    // an adapter group device presents every head at once, so the SMALL head has to be
+    // composed here as well as in its own swap chain
+    if (is_gfdm_small_landscape()) {
+        gfdm_compose_small_landscape();
+    }
+
     CHECK_RESULT(pReal->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion));
 }
 
@@ -683,6 +695,12 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetBackBuffer(
     if (is_gfdm_two_head_exclusive()
             && is_gfdm_logical_small_swapchain(iSwapChain))
     {
+        if (is_gfdm_small_landscape()
+                && iBackBuffer == 0
+                && Type == D3DBACKBUFFER_TYPE_MONO)
+        {
+            CHECK_RESULT(gfdm_small_proxy_backbuffer(ppBackBuffer));
+        }
         CHECK_RESULT(pReal->GetBackBuffer(
                 GFDM_NATIVE_SMALL_SWAPCHAIN,
                 iBackBuffer,
@@ -2324,6 +2342,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
         overlay::OVERLAY->reset_invalidate();
     }
 
+    gfdm_release_small_proxy();
+
     // ResetEx refuses to run while any default pool resource is outstanding
     d3d9_readback::discard_snapshot_targets(pReal);
 
@@ -2349,6 +2369,11 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
             pFullscreenDisplayMode[gfdm_parameters.logical_small_swapchain] =
                     gfdm_parameters.fullscreen_display_modes[1];
         }
+        gfdm_restore_small_logical_size(
+                &pPresentationParameters[gfdm_parameters.logical_small_swapchain],
+                pFullscreenDisplayMode != nullptr
+                        ? &pFullscreenDisplayMode[gfdm_parameters.logical_small_swapchain]
+                        : nullptr);
     }
 
     // recreate overlay
@@ -2377,10 +2402,14 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetDisplayModeEx(
     if (is_gfdm_two_head_exclusive()
             && is_gfdm_logical_small_swapchain(iSwapChain))
     {
-        CHECK_RESULT(static_cast<IDirect3DDevice9Ex *>(pReal)->GetDisplayModeEx(
+        HRESULT result = static_cast<IDirect3DDevice9Ex *>(pReal)->GetDisplayModeEx(
                 GFDM_NATIVE_SMALL_SWAPCHAIN,
                 pMode,
-                pRotation));
+                pRotation);
+        if (SUCCEEDED(result) && pMode != nullptr) {
+            gfdm_apply_small_logical_size(&pMode->Width, &pMode->Height);
+        }
+        CHECK_RESULT(result);
     }
 
     CHECK_RESULT(static_cast<IDirect3DDevice9Ex *>(pReal)->GetDisplayModeEx(

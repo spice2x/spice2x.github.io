@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <utility>
 
 #include <windows.h>
 #include <mmreg.h>
@@ -21,6 +22,7 @@ namespace games::gitadora {
     extern std::optional<socd::SocdAlgorithm> PICK_ALGO;
     extern std::optional<uint8_t> ARENA_WINDOW_COUNT;
     extern bool ARENA_TWO_HEAD_EXCLUSIVE;
+    extern bool ARENA_SUBSCREEN_LANDSCAPE;
     extern std::optional<std::string> ASIO_DRIVER;
     extern bool ALLOW_REALTEK_AUDIO;
     extern bool NATIVE_TOUCH;
@@ -28,6 +30,18 @@ namespace games::gitadora {
     // arena SMALL subscreen (touch panel) resolution
     static constexpr int ARENA_SUBSCREEN_WIDTH = 800;
     static constexpr int ARENA_SUBSCREEN_HEIGHT = 1280;
+
+    // used when a landscape monitor drives the SMALL head and -forceressub is unset
+    static constexpr int ARENA_SUBSCREEN_LANDSCAPE_WIDTH = 1920;
+    static constexpr int ARENA_SUBSCREEN_LANDSCAPE_HEIGHT = 1080;
+
+    // resolution the SMALL head actually runs at; the portrait panel size unless a
+    // landscape monitor is driving it
+    std::pair<UINT, UINT> arena_subscreen_host_size();
+
+    // area of the host the portrait subscreen occupies, centered and aspect-preserved;
+    // whatever is left over on either side stays black
+    RECT arena_subscreen_content_rect(LONG host_width, LONG host_height);
 
     class GitaDoraGame : public games::Game {
     public:
