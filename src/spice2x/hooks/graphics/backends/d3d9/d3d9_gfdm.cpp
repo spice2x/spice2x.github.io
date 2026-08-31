@@ -788,22 +788,24 @@ static void gfdm_compose_side_heads(
             continue;
         }
 
+        // the head's own window is the only thing that says which side it is, so an
+        // unnamed one is left out rather than guessed at and possibly mirrored
         const char *name = graphics_gitadora_window_name(
                 device->gfdm_logical_group_parameters[swapchain].hDeviceWindow);
-        const bool is_left = name != nullptr
-                ? strcmp(name, "LEFT") == 0
-                : swapchain < device->gfdm_logical_small_swapchain;
-        if (name == nullptr) {
+        const bool named_left = name != nullptr && strcmp(name, "LEFT") == 0;
+        const bool named_right = name != nullptr && strcmp(name, "RIGHT") == 0;
+        if (!named_left && !named_right) {
             static std::once_flag warned;
             std::call_once(warned, [] {
                 log_warning(
                         "graphics::d3d9",
-                        "two-head exclusive: side heads are not named, "
-                        "LEFT and RIGHT may be swapped in the bars");
+                        "two-head exclusive: a side head has no LEFT or RIGHT window, "
+                        "leaving its bar black");
             });
+            continue;
         }
 
-        const RECT &bar = bars[is_left ? 0 : 1];
+        const RECT &bar = bars[named_left ? 0 : 1];
         if (bar.right <= bar.left) {
             continue;
         }
