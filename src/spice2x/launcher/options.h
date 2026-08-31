@@ -122,6 +122,7 @@ namespace launcher {
             GitaDoraSubOverlaySize,
             GitaDoraArenaSingleWindow,
             GitaDoraArenaWindowLayout,
+            GitaDoraSubscreenLandscape,
             GitaDoraArenaAsioDriver,
             GitaDoraArenaRealtekAccess,
             LoadJubeatModule,
@@ -324,7 +325,6 @@ namespace launcher {
             OBSWebSocketDebug,
             ScreenshotIncludeOverlay,
             ScreenshotSubscreens,
-            GitaDoraSubscreenLandscape
         };
 
         enum class OptionsCategory {

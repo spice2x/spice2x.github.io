@@ -1331,6 +1331,25 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .quick_setting_category = "Game",
     },
     {
+        // GitaDoraSubscreenLandscape
+        .title = "GitaDora Arena Subscreen Layout (EXPERIMENTAL)",
+        .name = "gdasublayout",
+        .desc = "For Arena Model full screen two-window mode: select the image layout on the second monitor.\n\n"
+            "portrait (default): default subscreen @ 800x1280\n\n"
+            "landscape: pillarboxed subscreen @ 1920x1080\n\n"
+            "combine: LEFT + SMALL + RIGHT screens side by side @ 1920x1080\n\n"
+            "For landscape and combine, -forceressub can be used to override the resolution.",
+        .type = OptionType::Enum,
+        .game_name = "GitaDora",
+        .category = "Game Options",
+        .elements = {
+            {"portrait", ""},
+            {"landscape", ""},
+            {"combine", ""}
+        },
+        .quick_setting_category = "Game",
+    },
+    {
         // GitaDoraArenaAsioDriver
         .title = "GitaDora Arena ASIO driver",
         .name = "gdaasio",
@@ -3424,26 +3443,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .desc = "Saves each subscreen as a separate PNG alongside the primary screenshot.",
         .type = OptionType::Bool,
         .category = "General Overlay",
-    },
-    {
-        // GitaDoraSubscreenLandscape
-        .title = "GitaDora Arena Landscape Subscreen (EXPERIMENTAL)",
-        .name = "gdsublandscape",
-        .desc = "For Arena Model full screen two-window mode: drive the SMALL touch subscreen "
-            "with a landscape monitor instead of a portrait one.\n\n"
-            "off (default): the SMALL head stays portrait\n\n"
-            "small: the portrait subscreen is centered and black bars fill the space on either side\n\n"
-            "all: the LEFT and RIGHT screens are shown in that space instead of black bars\n\n"
-            "Launches at 1920x1080; use -forceressub if you need a different resolution.",
-        .type = OptionType::Enum,
-        .game_name = "GitaDora",
-        .category = "Game Options",
-        .elements = {
-            {"off", ""},
-            {"small", ""},
-            {"all", ""}
-        },
-        .quick_setting_category = "Game",
     },
 };
 
