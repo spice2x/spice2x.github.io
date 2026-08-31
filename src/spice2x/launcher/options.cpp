@@ -1331,7 +1331,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .quick_setting_category = "Game",
     },
     {
-        // GitaDoraSubscreenLandscape
+        // GitaDoraArenaSubLayout
         .title = "GitaDora Arena Subscreen Layout (EXPERIMENTAL)",
         .name = "gdasublayout",
         .desc = "For Arena Model full screen two-window mode: select the image layout on the second monitor.\n\n"

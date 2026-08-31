@@ -122,7 +122,7 @@ namespace launcher {
             GitaDoraSubOverlaySize,
             GitaDoraArenaSingleWindow,
             GitaDoraArenaWindowLayout,
-            GitaDoraSubscreenLandscape,
+            GitaDoraArenaSubLayout,
             GitaDoraArenaAsioDriver,
             GitaDoraArenaRealtekAccess,
             LoadJubeatModule,

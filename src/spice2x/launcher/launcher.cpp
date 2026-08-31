@@ -672,8 +672,8 @@ int main_implementation(int argc, char *argv[]) {
     }
 
     // gitadora arena sub layout
-    if (options[launcher::Options::GitaDoraSubscreenLandscape].is_active()) {
-        const auto text = options[launcher::Options::GitaDoraSubscreenLandscape].value_text();
+    if (options[launcher::Options::GitaDoraArenaSubLayout].is_active()) {
+        const auto text = options[launcher::Options::GitaDoraArenaSubLayout].value_text();
         if (text == "landscape") {
             games::gitadora::ARENA_SUBSCREEN_LANDSCAPE = games::gitadora::ArenaSubscreenLandscape::Small;
         } else if (text == "combine") {
