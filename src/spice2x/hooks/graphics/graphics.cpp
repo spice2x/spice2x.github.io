@@ -233,6 +233,10 @@ bool graphics_gitadora_has_dedicated_subscreen() {
     return GFDM_SUBSCREEN_WINDOW != nullptr;
 }
 
+const char *graphics_gitadora_window_name(HWND hWnd) {
+    return gitadora_window_name_for_hwnd(hWnd);
+}
+
 bool graphics_gitadora_prepare_two_head_device_window(
         HWND hWnd, HMONITOR target_monitor, UINT desired_width, UINT desired_height) {
     if (hWnd == nullptr || !IsWindow(hWnd)) {

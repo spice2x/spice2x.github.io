@@ -12,6 +12,14 @@
 
 namespace games::gitadora {
 
+    // what a landscape monitor driving the SMALL head does with the space beside the
+    // portrait subscreen image
+    enum class ArenaSubscreenLandscape {
+        Off,   // SMALL head stays portrait
+        Small, // subscreen centered, the space either side stays black
+        All,   // that space shows the LEFT and RIGHT heads instead
+    };
+
     // settings
     extern bool TWOCHANNEL;
     extern bool DISABLE_FRAME_LIMITER;
@@ -22,10 +30,18 @@ namespace games::gitadora {
     extern std::optional<socd::SocdAlgorithm> PICK_ALGO;
     extern std::optional<uint8_t> ARENA_WINDOW_COUNT;
     extern bool ARENA_TWO_HEAD_EXCLUSIVE;
-    extern bool ARENA_SUBSCREEN_LANDSCAPE;
+    extern ArenaSubscreenLandscape ARENA_SUBSCREEN_LANDSCAPE;
     extern std::optional<std::string> ASIO_DRIVER;
     extern bool ALLOW_REALTEK_AUDIO;
     extern bool NATIVE_TOUCH;
+
+    static inline bool arena_subscreen_landscape() {
+        return ARENA_SUBSCREEN_LANDSCAPE != ArenaSubscreenLandscape::Off;
+    }
+
+    static inline bool arena_subscreen_shows_sides() {
+        return ARENA_SUBSCREEN_LANDSCAPE == ArenaSubscreenLandscape::All;
+    }
 
     // arena SMALL subscreen (touch panel) resolution
     static constexpr int ARENA_SUBSCREEN_WIDTH = 800;

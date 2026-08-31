@@ -13,6 +13,8 @@ inline constexpr UINT GFDM_SMALL_HEIGHT = games::gitadora::ARENA_SUBSCREEN_HEIGH
 inline constexpr UINT GFDM_LOGICAL_HEAD_COUNT = 4;
 inline constexpr UINT GFDM_NATIVE_SMALL_SWAPCHAIN = 1;
 
+struct WrappedIDirect3DDevice9;
+
 // Owns the portrait surface the game draws into while the SMALL head is scanned out at a
 // different resolution, and composes it onto the real head. Allocates nothing and reports
 // nothing until resolve() finds a head that is not the panel size.
@@ -27,7 +29,7 @@ struct GfdmSmallHead {
     bool scaled() const { return active; }
 
     HRESULT backbuffer(IDirect3DDevice9 *device, IDirect3DSurface9 **out);
-    HRESULT compose(IDirect3DDevice9 *device);
+    HRESULT compose(WrappedIDirect3DDevice9 *device);
     void release();
 
     // the game only ever sees the portrait size it asked for

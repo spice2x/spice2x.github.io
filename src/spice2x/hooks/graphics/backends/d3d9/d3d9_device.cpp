@@ -670,7 +670,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Present(
     // an adapter group device presents every head at once, so the SMALL head has to be
     // composed here as well as in its own swap chain
     if (gfdm_small_head.scaled()) {
-        gfdm_small_head.compose(pReal);
+        gfdm_small_head.compose(this);
     }
 
     CHECK_RESULT(pReal->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion));

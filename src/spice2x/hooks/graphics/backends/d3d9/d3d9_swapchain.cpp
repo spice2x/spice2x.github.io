@@ -96,7 +96,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
     }
 
     if (scales_small_head(this)) {
-        pDev->gfdm_small_head.compose(pDev->pReal);
+        pDev->gfdm_small_head.compose(pDev);
     }
 
     HRESULT result = pReal->Present(

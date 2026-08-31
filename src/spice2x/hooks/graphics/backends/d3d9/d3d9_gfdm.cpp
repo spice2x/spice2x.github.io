@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <mutex>
 
 #include "games/gitadora/gitadora.h"
@@ -739,15 +740,118 @@ void GfdmSmallHead::release() {
     }
 }
 
-HRESULT GfdmSmallHead::compose(IDirect3DDevice9 *device) {
+// largest centered rect inside bounds that keeps the source's aspect ratio
+static RECT gfdm_fit_centered(const RECT &bounds, LONG source_width, LONG source_height) {
+    const LONG bounds_width = bounds.right - bounds.left;
+    const LONG bounds_height = bounds.bottom - bounds.top;
+    if (bounds_width <= 0 || bounds_height <= 0 || source_width <= 0 || source_height <= 0) {
+        return RECT {};
+    }
+
+    LONG width = MulDiv(bounds_height, source_width, source_height);
+    LONG height = bounds_height;
+    if (width > bounds_width) {
+        width = bounds_width;
+        height = MulDiv(bounds_width, source_height, source_width);
+    }
+
+    const LONG left = bounds.left + (bounds_width - width) / 2;
+    const LONG top = bounds.top + (bounds_height - height) / 2;
+    return RECT { left, top, left + width, top + height };
+}
+
+static void gfdm_compose_side_heads(
+        WrappedIDirect3DDevice9 *device,
+        IDirect3DSurface9 *head,
+        LONG host_width,
+        LONG host_height,
+        const RECT &content)
+{
+    if (!games::gitadora::arena_subscreen_shows_sides()) {
+        return;
+    }
+
+    const RECT bars[2] = {
+        { 0, 0, content.left, host_height },
+        { content.right, 0, host_width, host_height },
+    };
+
+    for (UINT swapchain = 1; swapchain < GFDM_LOGICAL_HEAD_COUNT; swapchain++) {
+        if (!device->is_gfdm_logical_side_swapchain(swapchain)) {
+            continue;
+        }
+
+        // nothing has been drawn yet if the game never asked for this head's back buffer
+        const auto *chain = device->fake_sub_swapchain[
+                device->gfdm_hidden_side_swapchain_slot(swapchain)];
+        if (chain == nullptr || chain->render_targets.empty()) {
+            continue;
+        }
+
+        // the head's own window is the only thing that says which side it is, so an
+        // unnamed one is left out rather than guessed at and possibly mirrored
+        const char *name = graphics_gitadora_window_name(
+                device->gfdm_logical_group_parameters[swapchain].hDeviceWindow);
+        const bool named_left = name != nullptr && strcmp(name, "LEFT") == 0;
+        const bool named_right = name != nullptr && strcmp(name, "RIGHT") == 0;
+        if (!named_left && !named_right) {
+            static std::once_flag warned;
+            std::call_once(warned, [] {
+                log_warning(
+                        "graphics::d3d9",
+                        "two-head exclusive: a side head has no LEFT or RIGHT window, "
+                        "leaving its bar black");
+            });
+            continue;
+        }
+
+        const RECT &bar = bars[named_left ? 0 : 1];
+        if (bar.right <= bar.left) {
+            continue;
+        }
+
+        IDirect3DSurface9 *source = chain->render_targets[0];
+        D3DSURFACE_DESC source_desc {};
+        if (FAILED(source->GetDesc(&source_desc))) {
+            continue;
+        }
+
+        const RECT target = gfdm_fit_centered(
+                bar,
+                static_cast<LONG>(source_desc.Width),
+                static_cast<LONG>(source_desc.Height));
+        const HRESULT result = device->pReal->StretchRect(
+                source,
+                nullptr,
+                head,
+                &target,
+                D3DTEXF_LINEAR);
+        if (FAILED(result)) {
+            static std::once_flag warned;
+            std::call_once(warned, [result] {
+                log_warning(
+                        "graphics::d3d9",
+                        "two-head exclusive: could not draw a side head into the bars, hr={}",
+                        FMT_HRESULT(result));
+            });
+        }
+    }
+}
+
+HRESULT GfdmSmallHead::compose(WrappedIDirect3DDevice9 *device) {
+    if (device == nullptr || device->pReal == nullptr) {
+        return D3DERR_INVALIDCALL;
+    }
+
+    IDirect3DDevice9 *real = device->pReal;
     IDirect3DSurface9 *proxy = nullptr;
-    HRESULT result = backbuffer(device, &proxy);
+    HRESULT result = backbuffer(real, &proxy);
     if (FAILED(result)) {
         return result;
     }
 
     IDirect3DSurface9 *head = nullptr;
-    result = device->GetBackBuffer(
+    result = real->GetBackBuffer(
             GFDM_NATIVE_SMALL_SWAPCHAIN,
             0,
             D3DBACKBUFFER_TYPE_MONO,
@@ -760,14 +864,18 @@ HRESULT GfdmSmallHead::compose(IDirect3DDevice9 *device) {
     D3DSURFACE_DESC desc {};
     result = head->GetDesc(&desc);
     if (SUCCEEDED(result)) {
+        const auto host_width = static_cast<LONG>(desc.Width);
+        const auto host_height = static_cast<LONG>(desc.Height);
         const RECT content = games::gitadora::arena_subscreen_content_rect(
-                static_cast<LONG>(desc.Width),
-                static_cast<LONG>(desc.Height));
+                host_width,
+                host_height);
 
         // discard swap effect leaves the whole head undefined every frame, so the bars
         // have to be repainted along with the image
-        device->ColorFill(head, nullptr, D3DCOLOR_XRGB(0, 0, 0));
-        result = device->StretchRect(proxy, nullptr, head, &content, D3DTEXF_LINEAR);
+        real->ColorFill(head, nullptr, D3DCOLOR_XRGB(0, 0, 0));
+        result = real->StretchRect(proxy, nullptr, head, &content, D3DTEXF_LINEAR);
+
+        gfdm_compose_side_heads(device, head, host_width, host_height, content);
     }
 
     head->Release();
