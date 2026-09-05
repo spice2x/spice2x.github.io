@@ -1,9 +1,13 @@
+// QueryDisplayConfig
+#define _WIN32_WINNT 0x0601
+
 #include "udn.h"
 
 #include <format>
 
 #include "acioemu/handle.h"
 #include "bi2x_hook.h"
+#include "cfg/screen_resize.h"
 #include "hooks/devicehook.h"
 #include "hooks/graphics/graphics.h"
 #include "rawinput/rawinput.h"
@@ -21,6 +25,55 @@ namespace games::udn {
     static const std::wstring port_name = L"COM1";
 
     static decltype(RegisterRawInputDevices) *RegisterRawInputDevices_orig = nullptr;
+    static decltype(EnumDisplaySettingsW) *EnumDisplaySettingsW_orig = nullptr;
+    static decltype(QueryDisplayConfig) *QueryDisplayConfig_orig = nullptr;
+
+    // Unity reapplies its cabinet window settings after startup. Use the
+    // existing graphics message callback so changes stay on the window thread.
+    static LRESULT CALLBACK window_proc(HWND window, UINT message, WPARAM w_param, LPARAM l_param) {
+        if (!GRAPHICS_WINDOWED || GRAPHICS_HOOKED_WINDOW != window) {
+            return 0;
+        }
+
+        static bool interactive_resize = false;
+        switch (message) {
+            case WM_ENTERSIZEMOVE:
+                interactive_resize = true;
+                break;
+            case WM_EXITSIZEMOVE:
+                interactive_resize = false;
+                break;
+            case WM_STYLECHANGING:
+                if (w_param == static_cast<WPARAM>(GWL_STYLE)) {
+                    auto styles = reinterpret_cast<STYLESTRUCT *>(l_param);
+                    styles->styleNew &= ~WS_POPUP;
+                    if (cfg::SCREENRESIZE->window_decoration == cfg::WindowDecorationMode::Borderless) {
+                        styles->styleNew &= ~WS_OVERLAPPEDWINDOW;
+                    } else {
+                        styles->styleNew |= WS_OVERLAPPEDWINDOW;
+                    }
+                }
+                break;
+            case WM_WINDOWPOSCHANGING:
+                if (!interactive_resize && cfg::SCREENRESIZE->enable_window_resize) {
+                    auto position = reinterpret_cast<WINDOWPOS *>(l_param);
+                    // The shared WM_MOVE/WM_SIZE handlers keep these values in
+                    // sync with interactive changes and the overlay settings.
+                    if (!(position->flags & SWP_NOMOVE)) {
+                        position->x = cfg::SCREENRESIZE->window_offset_x;
+                        position->y = cfg::SCREENRESIZE->window_offset_y;
+                    }
+                    if (!(position->flags & SWP_NOSIZE)) {
+                        position->cx = cfg::SCREENRESIZE->client_width +
+                            cfg::SCREENRESIZE->window_deco_width;
+                        position->cy = cfg::SCREENRESIZE->client_height +
+                            cfg::SCREENRESIZE->window_deco_height;
+                    }
+                }
+                break;
+        }
+        return 0;
+    }
 
     static BOOL WINAPI RegisterRawInputDevices_hook(
             PCRAWINPUTDEVICE devices, UINT device_count, UINT structure_size) {
@@ -31,6 +84,23 @@ namespace games::udn {
 
         SetLastError(0xDEADBEEF);
         return FALSE;
+    }
+
+    static BOOL WINAPI EnumDisplaySettingsW_hook(
+            LPCWSTR device_name, DWORD mode_number, DEVMODEW *mode) {
+
+        const auto result = EnumDisplaySettingsW_orig(device_name, mode_number, mode);
+        if (result && mode_number == ENUM_CURRENT_SETTINGS) {
+            mode->dmPelsWidth = 1920;
+            mode->dmPelsHeight = 1080;
+        }
+        return result;
+    }
+
+    static LONG WINAPI QueryDisplayConfig_hook(
+            UINT32, UINT32 *, DISPLAYCONFIG_PATH_INFO *, UINT32 *, DISPLAYCONFIG_MODE_INFO *,
+            DISPLAYCONFIG_TOPOLOGY_ID *) {
+        return ERROR_NOT_SUPPORTED;
     }
 
     void UDNGame::pre_attach() {
@@ -69,6 +139,15 @@ namespace games::udn {
         const auto user32_dll = "user32.dll";
         detour::trampoline_try(user32_dll, "RegisterRawInputDevices",
                                RegisterRawInputDevices_hook, &RegisterRawInputDevices_orig);
+        if (GRAPHICS_WINDOWED) {
+            // Keep Unity's cabinet-sized UI in windowed mode. Fullscreen uses
+            // the real display topology and resolution.
+            detour::trampoline_try(user32_dll, "QueryDisplayConfig",
+                                   QueryDisplayConfig_hook, &QueryDisplayConfig_orig);
+            detour::trampoline_try(user32_dll, "EnumDisplaySettingsW",
+                                   EnumDisplaySettingsW_hook, &EnumDisplaySettingsW_orig);
+            graphics_add_wnd_proc(window_proc);
+        }
 
         if (GRAPHICS_SHOW_CURSOR) {
             unity_utils::force_show_cursor(true);
@@ -83,6 +162,7 @@ namespace games::udn {
 
     void UDNGame::detach() {
         Game::detach();
+        graphics_remove_wnd_proc(window_proc);
         devicehook_dispose();
     }
 }

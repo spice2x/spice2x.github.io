@@ -608,6 +608,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/graphics/backends/d3d9/d3d9_texture.cpp
         hooks/graphics/backends/d3d11/d3d11_backend.cpp
         hooks/graphics/backends/d3d11/d3d11_swapchain.cpp
+        hooks/graphics/backends/d3d11/d3d11_swapchain_udn.cpp
         hooks/graphics/backends/d3d11/d3d11_factory.cpp
         hooks/graphics/backends/d3d11/d3d11_vtable_capture.cpp
         hooks/graphics/backends/d3d11/d3d11_screenshot.cpp
