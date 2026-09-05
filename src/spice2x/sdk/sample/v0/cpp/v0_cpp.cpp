@@ -76,9 +76,35 @@ static ArrowButton arrow_buttons[] = {
 
 // worker thread for I/O
 static void worker_thread_main(std::stop_token stop_token) {
+    bool coin_previous_state[10] = {};
     while (!stop_token.stop_requested()) {
+
+        // insert coin
+        const bool control_pressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+        for (uint8_t amount = 0; amount < 10; amount++) {
+            const bool coin_pressed = control_pressed &&
+                ((GetAsyncKeyState('0' + amount) & 0x8000) != 0);
+
+            if (coin_pressed && !coin_previous_state[amount] && spice.insert_coin) {
+                const auto status = spice.insert_coin(amount);
+                if (status != SPICE_SDK_STATUS_SUCCESS) {
+                    LOG_INFO(std::format(
+                        "coin insertion failed: {}",
+                        static_cast<int>(status)).c_str());
+                } else {
+                    const auto message = std::format(
+                        "v0_cpp: inserted {} coin{}", amount, amount == 1 ? "" : "s");
+                    LOG_INFO(message.c_str());
+                    if (spice.add_toast) {
+                        spice.add_toast(SPICE_SDK_TOAST_LEVEL_SUCCESS, message.c_str());
+                    }
+                }
+            }
+            coin_previous_state[amount] = coin_pressed;
+        }
+
+        // check for ctrl + arrow keys and trigger p1 pad arrows
         for (auto& arrow : arrow_buttons) {
-            // check for ctrl + arrow keys and trigger p1 pad arrows
             if (((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0) &&
                 ((GetAsyncKeyState(arrow.key) & 0x8000) != 0)) {
                 spice.set_button(arrow.button, true, 1.f);
@@ -88,7 +114,7 @@ static void worker_thread_main(std::stop_token stop_token) {
                     if (spice.add_toast) {
                         spice.add_toast(
                             SPICE_SDK_TOAST_LEVEL_INFO,
-                            std::format("let me hear you say: {}", arrow.name).c_str());
+                            std::format("v0_cpp: let me hear you say: {}", arrow.name).c_str());
                     } else {
                         LOG_INFO(std::format("let me hear you say: {}", arrow.name).c_str());
                     }

@@ -331,8 +331,8 @@ int eamuse_coin_consume_stock() {
     return COIN_STOCK.exchange(0, std::memory_order_relaxed);
 }
 
-int eamuse_coin_add() {
-    return COIN_STOCK.fetch_add(1, std::memory_order_relaxed) + 1;
+void eamuse_coin_add(int amount) {
+    COIN_STOCK.fetch_add(amount, std::memory_order_relaxed);
 }
 
 void eamuse_coin_insert() {
