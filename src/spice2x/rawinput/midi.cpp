@@ -9,6 +9,7 @@
 namespace rawinput {
 
     static MidiNoteAlgorithm MIDI_NOTE_ALGORITHM = MidiNoteAlgorithm::V2;
+    bool DISABLE_MIDI = false;
 }
 
 rawinput::MidiNoteAlgorithm rawinput::get_midi_algorithm() {
@@ -36,6 +37,10 @@ void rawinput::set_midi_algorithm(rawinput::MidiNoteAlgorithm new_algo) {
 }
 
 void rawinput::RawInputManager::midi_scan_start() {
+
+    if (rawinput::DISABLE_MIDI) {
+        return;
+    }
 
     // single-flight: only one scan runs at a time. if one is already running, set
     // the pending flag so it rescans once more when it finishes - MIDI hotplug

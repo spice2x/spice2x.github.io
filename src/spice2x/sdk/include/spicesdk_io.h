@@ -1899,6 +1899,57 @@ typedef enum SPICE_SDK_POLARIS_CHORD_LIGHTS {
     PC_Light_Button12_B,
 } SPICE_SDK_POLARIS_CHORD_LIGHTS;
 
+// DANCE aROUND
+
+typedef enum SPICE_SDK_DANCE_AROUND_BUTTONS {
+    UDN_Button_Service,
+    UDN_Button_Test,
+    UDN_Button_CoinMech,
+    UDN_Button_Start,
+    UDN_Button_Up,
+    UDN_Button_Down,
+    UDN_Button_Left,
+    UDN_Button_Right,
+} SPICE_SDK_DANCE_AROUND_BUTTONS;
+
+typedef enum SPICE_SDK_DANCE_AROUND_LIGHTS {
+    UDN_Light_CardReaderR,
+    UDN_Light_CardReaderG,
+    UDN_Light_CardReaderB,
+    UDN_Light_Start,
+    UDN_Light_Up,
+    UDN_Light_Down,
+    UDN_Light_Left,
+    UDN_Light_Right,
+    UDN_Light_TitleR,
+    UDN_Light_TitleG,
+    UDN_Light_TitleB,
+    UDN_Light_PillarRightTopR,
+    UDN_Light_PillarRightTopG,
+    UDN_Light_PillarRightTopB,
+    UDN_Light_PillarRightBottomR,
+    UDN_Light_PillarRightBottomG,
+    UDN_Light_PillarRightBottomB,
+    UDN_Light_StageLeftR,
+    UDN_Light_StageLeftG,
+    UDN_Light_StageLeftB,
+    UDN_Light_CabinetLeftR,
+    UDN_Light_CabinetLeftG,
+    UDN_Light_CabinetLeftB,
+    UDN_Light_PillarLeftTopR,
+    UDN_Light_PillarLeftTopG,
+    UDN_Light_PillarLeftTopB,
+    UDN_Light_PillarLeftBottomR,
+    UDN_Light_PillarLeftBottomG,
+    UDN_Light_PillarLeftBottomB,
+    UDN_Light_StageRightR,
+    UDN_Light_StageRightG,
+    UDN_Light_StageRightB,
+    UDN_Light_CabinetRightR,
+    UDN_Light_CabinetRightG,
+    UDN_Light_CabinetRightB,
+} SPICE_SDK_DANCE_AROUND_LIGHTS;
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
