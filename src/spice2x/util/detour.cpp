@@ -429,7 +429,12 @@ void *detour::iat_ordinal(const char *iid_name, DWORD ordinal, void *new_func, H
 
 bool detour::trampoline(const char *dll, const char *func, void *hook, void **orig) {
     if (!trampoline_try(dll, func, hook, orig)) {
-        log_fatal("detour", "could not insert trampoline for {}:{}", dll, func);
+        if (IS_INTRESOURCE(func)) {
+            log_fatal("detour", "could not insert trampoline for {} ordinal {}",
+                      dll, reinterpret_cast<uintptr_t>(func));
+        } else {
+            log_fatal("detour", "could not insert trampoline for {}:{}", dll, func);
+        }
         return false;
     }
     return true;
@@ -457,9 +462,20 @@ bool detour::trampoline_try(const char *dll, const char *func, void *hook, void 
 
 bool detour::trampoline_try(void *func, void *hook, void **orig) {
     minhook_init();
-    auto target = *orig;
-    if (MH_CreateHook(func, hook, orig) != MH_OK) {
+    const auto previous = *orig;
+    const auto create_status = MH_CreateHook(func, hook, orig);
+    if (create_status != MH_OK) {
+        log_warning("detour", "MH_CreateHook({}) failed: {}", func,
+                    MH_StatusToString(create_status));
         return false;
     }
-    return !(MH_EnableHook(target) != MH_OK);
+    const auto enable_status = MH_EnableHook(func);
+    if (enable_status != MH_OK) {
+        log_warning("detour", "MH_EnableHook({}) failed: {}", func,
+                    MH_StatusToString(enable_status));
+        MH_RemoveHook(func);
+        *orig = previous;
+        return false;
+    }
+    return true;
 }

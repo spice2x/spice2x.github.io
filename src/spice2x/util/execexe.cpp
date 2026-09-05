@@ -1,5 +1,8 @@
 #include "execexe.h"
 
+#include <cstring>
+
+#include "avs/game.h"
 #include "util/logging.h"
 #include "util/libutils.h"
 #include "util/utils.h"
@@ -21,6 +24,23 @@ namespace execexe {
     static std::wstring port_name;
     static bool port_opened = false;
     static std::function<void()> deferred_function = nullptr;
+
+    template<typename T>
+    static T resolve_export_thunk(T entry) {
+        // Some execexe builds expose ordinal-only five-byte near jumps backed
+        // only by INT3 padding. MinHook cannot construct a trampoline from
+        // those tiny export stubs, while the jump destination has a normal
+        // prologue.
+        const auto bytes = reinterpret_cast<const uint8_t *>(entry);
+        if (!bytes || bytes[0] != 0xE9) {
+            return entry;
+        }
+
+        int32_t displacement = 0;
+        std::memcpy(&displacement, bytes + 1, sizeof(displacement));
+        return reinterpret_cast<T>(
+                const_cast<uint8_t *>(bytes + 5 + displacement));
+    }
 
     static HANDLE WINAPI execexe_CreateFileA_hook(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode,
                                                   LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
@@ -92,6 +112,11 @@ namespace execexe {
         execexe_CreateFileW = libutils::get_proc<decltype(&CreateFileW)>(execexe_module, MAKEINTRESOURCE(11));
         execexe_PreLoadLibraries = libutils::get_proc<decltype(execexe_PreLoadLibraries)>(execexe_module, MAKEINTRESOURCE(48));
 
+        execexe_CloseHandle = resolve_export_thunk(execexe_CloseHandle);
+        execexe_CreateFileA = resolve_export_thunk(execexe_CreateFileA);
+        execexe_CreateFileW = resolve_export_thunk(execexe_CreateFileW);
+        execexe_PreLoadLibraries = resolve_export_thunk(execexe_PreLoadLibraries);
+
         auto module_path = libutils::module_file_name(nullptr);
         module_path = module_path.replace_extension("");
         module_path = module_path.replace_filename(module_path.filename().wstring() + L"_Data");
@@ -105,7 +130,26 @@ namespace execexe {
             log_fatal("execexe", "deferred init function is already set");
         }
         deferred_function = std::move(init_func);
-        detour::trampoline("execexe.dll", MAKEINTRESOURCE(48),
+
+        // DANCE aROUND calls PreLoadLibraries through kamunity's ordinal
+        // import. Hook that call site directly: execexe can be loaded in the
+        // low address range immediately next to the AVS heap, where MinHook
+        // may be unable to reserve a nearby trampoline page.
+        const auto kamunity_module = GetModuleHandleW(L"kamunity.dll");
+        const auto imported_pre_load_libraries =
+            kamunity_module && avs::game::is_model("UDN") ? detour::iat_try_ordinal(
+                "execexe.dll",
+                48,
+                execexe_PreLoadLibraries_hook,
+                kamunity_module) : nullptr;
+        if (imported_pre_load_libraries) {
+            execexe_PreLoadLibraries = reinterpret_cast<decltype(execexe_PreLoadLibraries)>(
+                    imported_pre_load_libraries);
+            log_info("execexe", "hooked PreLoadLibraries through kamunity import");
+            return;
+        }
+
+        detour::trampoline(execexe_PreLoadLibraries,
                            execexe_PreLoadLibraries_hook, &execexe_PreLoadLibraries);
     }
 
@@ -117,11 +161,11 @@ namespace execexe {
 
         port_name = portName;
         acio = acioHandle;
-        detour::trampoline_try("execexe.dll", MAKEINTRESOURCE(7),
+        detour::trampoline_try(execexe_CloseHandle,
                                execexe_CloseHandle_hook, &execexe_CloseHandle);
-        detour::trampoline_try("execexe.dll", MAKEINTRESOURCE(9),
+        detour::trampoline_try(execexe_CreateFileA,
                                execexe_CreateFileA_hook, &execexe_CreateFileA);
-        detour::trampoline_try("execexe.dll", MAKEINTRESOURCE(11),
+        detour::trampoline_try(execexe_CreateFileW,
                                execexe_CreateFileW_hook, &execexe_CreateFileW);
     }
 
