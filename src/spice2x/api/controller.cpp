@@ -8,6 +8,7 @@
 #include "client.h"
 #include "cfg/configurator.h"
 #include "external/rapidjson/document.h"
+#include "external/rapidjson/error/en.h"
 #include "util/crypt.h"
 #include "util/logging.h"
 #include "util/utils.h"
@@ -312,6 +313,8 @@ bool Controller::process_request(ClientState *state, const char *in, size_t in_s
 
     // check for parse error
     if (document.HasParseError()) {
+        log_warning("api", "Request JSON parse error: {} (byte offset {}, decrypted request length {} bytes)",
+            GetParseError_En(document.GetParseError()), document.GetErrorOffset(), in_size);
 
         // return empty response and close connection
         out->push_back(0);
