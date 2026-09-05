@@ -1,11 +1,16 @@
 #include "libraryhook.h"
 
+#include <mutex>
+#include <shared_mutex>
+
 #include "external/robin_hood.h"
 #include "util/detour.h"
 #include "util/logging.h"
 #include "util/utils.h"
 
 static bool LHOOK_ENABLED = false;
+// SDK plugins can add aliases while other threads load DLLs.
+static std::shared_mutex LIBRARIES_MUTEX;
 static robin_hood::unordered_map<std::string, HMODULE> LIBRARIES_A;
 static robin_hood::unordered_map<std::wstring, HMODULE> LIBRARIES_W;
 static robin_hood::unordered_map<std::string, FARPROC> PROCS;
@@ -21,6 +26,7 @@ static HMODULE WINAPI LoadLibraryA_hook(LPCTSTR lpFileName) {
 
     // check hooks
     if (lpFileName) {
+        std::shared_lock lock(LIBRARIES_MUTEX);
         auto module = LIBRARIES_A.find(lpFileName);
         if (module != LIBRARIES_A.end()) {
             return module->second;
@@ -35,6 +41,7 @@ static HMODULE WINAPI LoadLibraryW_hook(LPCWSTR lpFileName) {
 
     // check hooks
     if (lpFileName) {
+        std::shared_lock lock(LIBRARIES_MUTEX);
         auto module = LIBRARIES_W.find(lpFileName);
         if (module != LIBRARIES_W.end()) {
             return module->second;
@@ -49,6 +56,7 @@ static HMODULE WINAPI LoadLibraryExW_hook(LPCWSTR lpFileName, HANDLE hFile, DWOR
 
     // check hooks
     if (lpFileName) {
+        std::shared_lock lock(LIBRARIES_MUTEX);
         auto module = LIBRARIES_W.find(lpFileName);
         if (module != LIBRARIES_W.end()) {
             return module->second;
@@ -63,6 +71,7 @@ static HMODULE WINAPI GetModuleHandleA_hook(LPCSTR lpModuleName) {
 
     // check hooks
     if (lpModuleName) {
+        std::shared_lock lock(LIBRARIES_MUTEX);
         auto module = LIBRARIES_A.find(lpModuleName);
         if (module != LIBRARIES_A.end()) {
             return module->second;
@@ -77,6 +86,7 @@ static HMODULE WINAPI GetModuleHandleW_hook(LPCWSTR lpModuleName) {
 
     // check hooks
     if (lpModuleName) {
+        std::shared_lock lock(LIBRARIES_MUTEX);
         auto module = LIBRARIES_W.find(lpModuleName);
         if (module != LIBRARIES_W.end()) {
             return module->second;
@@ -129,8 +139,10 @@ void libraryhook_enable(HMODULE module) {
 
 void libraryhook_hook_library(std::string library_name, HMODULE library_address) {
 
+    const auto library_name_w = s2ws(library_name);
+    std::unique_lock lock(LIBRARIES_MUTEX);
     // add library to list
-    LIBRARIES_W.insert_or_assign(s2ws(library_name), library_address);
+    LIBRARIES_W.insert_or_assign(library_name_w, library_address);
     LIBRARIES_A.insert_or_assign(std::move(library_name), library_address);
 }
 
