@@ -732,6 +732,8 @@ void eamuse_autodetect_game() {
         eamuse_set_game("Mahjong Fight Girl");
     else if (avs::game::is_model("XIF"))
         eamuse_set_game("Polaris Chord");
+    else if (avs::game::is_model("UDN"))
+        eamuse_set_game("DANCE aROUND");
     else if (avs::game::is_model("NDD"))
         eamuse_set_game("Silent Scope: Bone Eater");
     else {

@@ -554,6 +554,9 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/pc/pc.cpp
         games/pc/io.cpp
         games/pc/bi2x_hook.cpp
+        games/udn/udn.cpp
+        games/udn/io.cpp
+        games/udn/bi2x_hook.cpp
 
         # hooks
         hooks/audio/acm.cpp
