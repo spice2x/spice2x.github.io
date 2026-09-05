@@ -237,6 +237,16 @@ typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_add_toast_func)(
     const char *text
 );
 
+// insert_coin (v0.3 and up)
+// adds to the shared coin stock, bypassing the coin blocker like the Spice API
+//
+//   amount: number of coins to insert (0 to 255); use 1 for a single coin
+//           zero succeeds without changing the stock
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_insert_coin_func)(
+    uint8_t amount
+);
+
 typedef struct SPICE_SDK_V0 {
     uint32_t size;
 
@@ -261,6 +271,8 @@ typedef struct SPICE_SDK_V0 {
     spice_sdk_set_keypad_func *set_keypad;
 
     spice_sdk_add_toast_func *add_toast;
+
+    spice_sdk_insert_coin_func *insert_coin;
 
 } SPICE_SDK_V0;
 

@@ -60,6 +60,7 @@ bool eamuse_coin_consume(int amount);
 int eamuse_coin_consume_stock();
 
 int eamuse_coin_add();
+void eamuse_coin_add(int amount);
 void eamuse_coin_insert();
 
 void eamuse_pin_macro_start_thread();

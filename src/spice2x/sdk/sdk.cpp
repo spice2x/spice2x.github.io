@@ -31,6 +31,7 @@ static spice_sdk_clear_touch_func sdk_clear_touch;
 static spice_sdk_insert_card_func sdk_insert_card;
 static spice_sdk_set_keypad_func sdk_set_keypad;
 static spice_sdk_add_toast_func sdk_add_toast;
+static spice_sdk_insert_coin_func sdk_insert_coin;
 
 struct SdkModule {
     std::string dll;
@@ -175,8 +176,13 @@ sdk_init(
     if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, add_toast)) {
         v0->add_toast = sdk_add_toast;
     }
-
     // end of 0.2
+
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, insert_coin)) {
+        v0->insert_coin = sdk_insert_coin;
+    }
+    // end of 0.3
+
     // any newer minor iterations will need to check the size
 
     {
@@ -640,5 +646,21 @@ sdk_add_toast(
     return SPICE_SDK_STATUS_SUCCESS;
 }
 
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_insert_coin(
+    uint8_t amount
+)
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (amount > 0) {
+        eamuse_coin_add(amount);
+    }
+    return SPICE_SDK_STATUS_SUCCESS;
+}
 
 } // namespace sdk

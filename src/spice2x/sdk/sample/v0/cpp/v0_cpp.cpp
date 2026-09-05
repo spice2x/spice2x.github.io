@@ -76,9 +76,23 @@ static ArrowButton arrow_buttons[] = {
 
 // worker thread for I/O
 static void worker_thread_main(std::stop_token stop_token) {
+    bool coin_previous_state = false;
     while (!stop_token.stop_requested()) {
+
+        // insert coin
+        const bool coin_pressed = (GetAsyncKeyState(VK_INSERT) & 0x8000) != 0;
+        if (coin_pressed && !coin_previous_state && spice.insert_coin) {
+            const auto status = spice.insert_coin(1);
+            if (status != SPICE_SDK_STATUS_SUCCESS) {
+                LOG_INFO(std::format(
+                    "coin insertion failed: {}",
+                    static_cast<int>(status)).c_str());
+            }
+        }
+        coin_previous_state = coin_pressed;
+
+        // check for ctrl + arrow keys and trigger p1 pad arrows
         for (auto& arrow : arrow_buttons) {
-            // check for ctrl + arrow keys and trigger p1 pad arrows
             if (((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0) &&
                 ((GetAsyncKeyState(arrow.key) & 0x8000) != 0)) {
                 spice.set_button(arrow.button, true, 1.f);

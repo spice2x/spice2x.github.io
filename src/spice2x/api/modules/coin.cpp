@@ -61,7 +61,7 @@ namespace api::modules {
             return error_type(res, "amount", "int");
 
         // add to coin stock
-        eamuse_coin_set_stock(eamuse_coin_get_stock() + std::max(0, req.params[0].GetInt()));
+        eamuse_coin_add(std::max(0, req.params[0].GetInt()));
     }
 
     /*

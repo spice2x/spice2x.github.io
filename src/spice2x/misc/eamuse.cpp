@@ -335,6 +335,10 @@ int eamuse_coin_add() {
     return COIN_STOCK.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
+void eamuse_coin_add(int amount) {
+    COIN_STOCK.fetch_add(amount, std::memory_order_relaxed);
+}
+
 void eamuse_coin_insert() {
     if (COIN_BLOCK.load(std::memory_order_relaxed)) {
         log_info("eamuse", "coin inserted while blocked");
