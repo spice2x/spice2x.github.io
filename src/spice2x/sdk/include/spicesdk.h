@@ -247,6 +247,18 @@ typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_insert_coin_func)(
     uint8_t amount
 );
 
+// hook_library (v0.4 and up)
+//
+// maps an exact LoadLibrary name to a module that the plugin has already loaded
+//
+//   library_name: exact ANSI library name or path used by the target
+//   module: module handle returned by LoadLibrary; keep it loaded until shutdown
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_hook_library_func)(
+    const char *library_name,
+    void *module
+);
+
 typedef struct SPICE_SDK_V0 {
     uint32_t size;
 
@@ -273,6 +285,8 @@ typedef struct SPICE_SDK_V0 {
     spice_sdk_add_toast_func *add_toast;
 
     spice_sdk_insert_coin_func *insert_coin;
+
+    spice_sdk_hook_library_func *hook_library;
 
 } SPICE_SDK_V0;
 

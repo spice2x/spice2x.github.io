@@ -1581,6 +1581,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .category = "Advanced Game Options",
     },
     {
+        // LoadUDNModule
+        .title = "Force Load DANCE aROUND Module",
+        .name = "udn",
+        .desc = "Manually enable DANCE aROUND module.",
+        .type = OptionType::Bool,
+        .game_name = "DANCE aROUND",
+        .category = "Advanced Game Options",
+    },
+    {
         // LoadMusecaModule
         .title = "Force Load Museca Module",
         .name = "museca",
@@ -2559,6 +2568,36 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = {
         .type = OptionType::Bool,
         .game_name = "Polaris Chord",
         .category = "Game Options",
+    },
+    {
+        // UDNArgs
+        .title = "DANCE aROUND Arguments Override",
+        .name = "udnargs",
+        .desc = "Command line arguments passed to the game.",
+        .type = OptionType::Text,
+        .setting_name = "",
+        .game_name = "DANCE aROUND",
+        .category = "Advanced Game Options",
+    },
+    {
+        // UDNNoIO
+        .title = "DANCE aROUND Disable IO Emulation",
+        .name = "udnnoio",
+        .desc = "Disables BI2X hooks for DANCE aROUND.",
+        .type = OptionType::Bool,
+        .setting_name = "",
+        .game_name = "DANCE aROUND",
+        .category = "Advanced Game Options",
+    },
+    {
+        // UDNEnableMIDI
+        .title = "DANCE aROUND Enable MIDI Input",
+        .name = "udnmidi",
+        .desc = "Enables MIDI button bindings. Disabled by default to avoid "
+                "WinMM initialization errors with Unity audio.",
+        .type = OptionType::Bool,
+        .game_name = "DANCE aROUND",
+        .category = "Advanced Game Options",
     },
     {
         // spice2x_LightsOverallBrightness

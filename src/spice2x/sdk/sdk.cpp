@@ -5,6 +5,7 @@
 #include "sdk.h"
 #include "avs/game.h"
 #include "games/io.h"
+#include "hooks/libraryhook.h"
 #include "launcher/launcher.h"
 #include "misc/eamuse.h"
 #include "overlay/notifications.h"
@@ -32,6 +33,7 @@ static spice_sdk_insert_card_func sdk_insert_card;
 static spice_sdk_set_keypad_func sdk_set_keypad;
 static spice_sdk_add_toast_func sdk_add_toast;
 static spice_sdk_insert_coin_func sdk_insert_coin;
+static spice_sdk_hook_library_func sdk_hook_library;
 
 struct SdkModule {
     std::string dll;
@@ -182,6 +184,11 @@ sdk_init(
         v0->insert_coin = sdk_insert_coin;
     }
     // end of 0.3
+
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, hook_library)) {
+        v0->hook_library = sdk_hook_library;
+    }
+    // end of 0.4
 
     // any newer minor iterations will need to check the size
 
@@ -662,5 +669,30 @@ sdk_insert_coin(
     }
     return SPICE_SDK_STATUS_SUCCESS;
 }
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_hook_library(
+    const char *library_name,
+    void *module
+)
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (sdk_shutting_down || !sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!library_name || !library_name[0]) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
+    }
+    if (!module) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
+    }
+
+    libraryhook_hook_library(library_name, static_cast<HMODULE>(module));
+    // launcher::signal::attach enables library hooks before SDK entry points run.
+    return SPICE_SDK_STATUS_SUCCESS;
+}
+
 
 } // namespace sdk

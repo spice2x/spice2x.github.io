@@ -32,6 +32,7 @@ namespace rawinput {
     extern bool DUMP_HID_DEVICES_TO_LOG;
 
     extern uint32_t MIDI_NOTE_SUSTAIN;
+    extern bool DISABLE_MIDI;
 
     extern bool NAIVE_REQUIRE_FOCUS;
     extern bool RAWINPUT_REQUIRE_FOCUS;
