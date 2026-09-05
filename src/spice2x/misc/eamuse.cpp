@@ -621,6 +621,7 @@ int eamuse_get_game_keypads() {
         avs::game::is_model("JDX") ||
         avs::game::is_model("KDX") ||
         avs::game::is_model("MDX") ||
+        avs::game::is_model("KDM") ||
         avs::game::is_model("J33") ||
         avs::game::is_model("K33") ||
         avs::game::is_model("L33") ||
@@ -637,6 +638,7 @@ int eamuse_get_game_keypads_name() {
 
     if (game_name == "Beatmania IIDX" ||
         game_name == "Dance Dance Revolution" ||
+        game_name == "Dance Evolution" ||
         game_name == "GitaDora")
     {
         return 2;
