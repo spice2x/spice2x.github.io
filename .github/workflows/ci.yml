@@ -30,3 +30,32 @@ jobs:
           name: spice2x-ci-${{ env.COMMIT_SHORT_SHA }}
           path: src/spice2x/bin
           if-no-files-found: error
+
+  msvc-ci:
+    name: Build (MSVC ${{ matrix.arch }}-bit)
+    # windows-latest ships Visual Studio 2026; pin to the VS 2022 image, which is
+    # the toolset spice2x is actually developed against
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: 32
+            platform: Win32
+            target: spicetools_spice spicetools_cfg
+          - arch: 64
+            platform: x64
+            target: spicetools_spice64
+    defaults:
+      run:
+        working-directory: ./src/spice2x
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure
+        run: >
+          cmake -S . -B cmake-build-msvc-${{ matrix.arch }}
+          -A ${{ matrix.platform }}
+      - name: Compile
+        run: >
+          cmake --build cmake-build-msvc-${{ matrix.arch }}
+          --config Release --target ${{ matrix.target }}
