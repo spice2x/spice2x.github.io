@@ -225,6 +225,7 @@ sdk_log(
             log_warning(facility_str.c_str(), "{}", message);
             break;
         case SPICE_SDK_LOG_LEVEL_FATAL:
+            lock.unlock();
             log_fatal(facility_str.c_str(), "{}", message);
             break;
         default:

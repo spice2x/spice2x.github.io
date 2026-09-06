@@ -41,21 +41,21 @@ namespace api {
         bool pretty;
 
         // server
-        WebSocketController *websocket;
+        WebSocketController *websocket = nullptr;
         std::vector<SerialController *> serial;
         std::vector<std::thread> server_workers;
         std::vector<std::thread> server_handlers;
         std::mutex server_handlers_m;
         std::vector<api::ClientState *> client_states;
         std::mutex client_states_m;
-        SOCKET server;
+        SOCKET server = INVALID_SOCKET;
         void server_worker();
         void connection_handler(ClientState client_state);
 
     public:
 
         // state
-        bool server_running;
+        bool server_running = false;
 
         // constructor / destructor
         Controller(unsigned short port, std::string password, bool pretty);
