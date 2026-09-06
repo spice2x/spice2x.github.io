@@ -93,6 +93,7 @@ Controller::Controller(unsigned short port, std::string password, bool pretty)
     // bind socket to address
     if (bind(this->server, (sockaddr *) &server_address, sizeof(sockaddr)) == -1) {
         log_warning("api", "could not bind socket on port {}: {}", port, get_last_error_string());
+        closesocket(this->server);
         this->server = INVALID_SOCKET;
         if (!cfg::CONFIGURATOR_STANDALONE) {
             log_fatal("api", "failed to start server");
@@ -103,6 +104,7 @@ Controller::Controller(unsigned short port, std::string password, bool pretty)
     // set socket to listen
     if (listen(this->server, server_backlog) == -1) {
         log_warning("api", "could not listen to socket on port {}: {}", port, get_last_error_string());
+        closesocket(this->server);
         this->server = INVALID_SOCKET;
         if (!cfg::CONFIGURATOR_STANDALONE) {
             log_fatal("api", "failed to start server");
@@ -446,7 +448,9 @@ void Controller::free_socket() {
         this->server = INVALID_SOCKET;
     }
 
-    this->websocket->free_socket();
+    if (this->websocket) {
+        this->websocket->free_socket();
+    }
 
     for (auto &s : this->serial) {
         s->free_port();
