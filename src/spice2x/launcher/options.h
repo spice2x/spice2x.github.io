@@ -325,6 +325,8 @@ namespace launcher {
             OBSWebSocketDebug,
             ScreenshotIncludeOverlay,
             ScreenshotSubscreens,
+
+            _Count,
         };
 
         enum class OptionsCategory {
