@@ -1,5 +1,6 @@
 #pragma once
 
+#include <windows.h>
 #include <winternl.h>
 
 #define LDR_DLL_NOTIFICATION_REASON_LOADED 1

@@ -2,6 +2,7 @@
 
 #if SPICE64 && !SPICE_XP
 
+#include <array>
 #include <d3d9.h>
 #include "mf_wrappers.h"
 #include "avs/game.h"
@@ -46,9 +47,7 @@ struct PredefinedHook {
     uintptr_t       hook_afp_texture_offset;
 };
 
-PredefinedHook g_predefinedHooks[] = {};
-
-const DWORD   g_predefinedHooksLength = ARRAYSIZE(g_predefinedHooks);
+std::array<PredefinedHook, 0> g_predefinedHooks = {};
 
 namespace games::iidx {
 
@@ -110,14 +109,14 @@ namespace games::iidx {
         auto pe = fmt::format("{:x}_{:x}", time_date_stamp, address_of_entry_point);
         log_info("iidx:camhook", "Locating predefined hook addresses for LDJ-{}", pe);
 
-        for (DWORD i = 0; i < g_predefinedHooksLength; i++) {
-            if (pe.compare(g_predefinedHooks[i].pe_identifier) == 0) {
+        for (auto &hook : g_predefinedHooks) {
+            if (pe.compare(hook.pe_identifier) == 0) {
                 log_misc("iidx:camhook", "Found predefined addresses");
-                addr_hook_a             = g_predefinedHooks[i].hook_a;
-                addr_textures           = g_predefinedHooks[i].hook_textures;
-                addr_camera_manager     = g_predefinedHooks[i].hook_camera_manager;
-                addr_device_offset      = g_predefinedHooks[i].hook_device_offset;
-                addr_afp_texture_offset = g_predefinedHooks[i].hook_afp_texture_offset;
+                addr_hook_a             = hook.hook_a;
+                addr_textures           = hook.hook_textures;
+                addr_camera_manager     = hook.hook_camera_manager;
+                addr_device_offset      = hook.hook_device_offset;
+                addr_afp_texture_offset = hook.hook_afp_texture_offset;
                 return TRUE;
             }
         }

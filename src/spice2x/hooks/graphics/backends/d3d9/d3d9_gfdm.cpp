@@ -11,6 +11,9 @@
 
 #include "d3d9_device.h"
 
+// windows.h defines many stupid things
+#undef small
+
 bool gfdm_two_head_exclusive() {
     return games::gitadora::is_arena_model()
             && games::gitadora::ARENA_TWO_HEAD_EXCLUSIVE
