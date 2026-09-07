@@ -16,7 +16,7 @@ struct Renderer {
     bool started = false;
 };
 
-// Keep registration separate from serialized device access and callback execution.
+// keep registration separate from serialized device access and callback execution.
 std::mutex registry_mutex;
 std::recursive_mutex execution_mutex;
 std::condition_variable_any shutdown_condition;
@@ -30,9 +30,8 @@ bool reset_in_progress = false;
 bool shutdown_complete = false;
 DWORD device_thread = 0;
 
-// Reject reentrant SDK graphics calls made by a renderer callback.
+// reject reentrant SDK graphics calls made by a renderer callback.
 thread_local bool dispatching = false;
-
 struct DispatchScope {
     DispatchScope() {
         dispatching = true;
@@ -54,7 +53,7 @@ struct ComReference {
     }
 };
 
-// Restore game state after each renderer, including early exits during setup.
+// restore game state after each renderer, including early exits during setup.
 struct GraphicsState {
     IDirect3DDevice9 *device;
     ComReference<IDirect3DStateBlock9> block;
@@ -74,7 +73,7 @@ struct GraphicsState {
             return;
         }
 
-        // State blocks do not capture render targets or the depth surface.
+        // state blocks do not capture render targets or the depth surface.
         target_count = std::min<DWORD>(caps.NumSimultaneousRTs, targets.size());
         for (DWORD index = 0; index < target_count; ++index) {
             const auto status = device->GetRenderTarget(index, &targets[index].value);
@@ -101,7 +100,7 @@ struct GraphicsState {
             return;
         }
 
-        // Unbind auxiliary surfaces before restoring targets of potentially different sizes.
+        // unbind auxiliary surfaces before restoring targets of potentially different sizes.
         device->SetDepthStencilSurface(nullptr);
         for (DWORD index = 1; index < target_count; ++index) {
             device->SetRenderTarget(index, nullptr);
@@ -124,7 +123,7 @@ struct GraphicsState {
 };
 
 std::vector<std::shared_ptr<Renderer>> snapshot() {
-    // Callbacks run without the registry lock, while their entries remain alive.
+    // callbacks run without the registry lock, while their entries remain alive.
     std::lock_guard lock(registry_mutex);
     return renderers;
 }
@@ -171,7 +170,7 @@ SPICE_SDK_STATUS_CODE register_d3d9(const std::vector<SdkModule> &modules,
         return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
     }
 
-    // Only registered SDK modules may supply callbacks.
+    // only registered SDK modules may supply callbacks.
     HMODULE owner = nullptr;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
             GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -192,7 +191,7 @@ SPICE_SDK_STATUS_CODE register_d3d9(const std::vector<SdkModule> &modules,
         return SPICE_SDK_STATUS_SUCCESS;
     }
 
-    // Keep callback code loaded for the lifetime of the process.
+    // keep callback code loaded for the lifetime of the process.
     try {
         auto renderer = std::make_shared<Renderer>(Renderer{callback, userdata});
         if (!GetModuleHandleExW(
@@ -227,7 +226,7 @@ void draw(HWND window, IDirect3DDevice9 *device) {
         return;
     }
 
-    // Latch the first presented device even before any renderers register.
+    // latch the first presented device even before any renderers register.
     frame.device = device;
     frame.window = window;
 
@@ -245,7 +244,7 @@ void draw(HWND window, IDirect3DDevice9 *device) {
     frame = {sizeof(frame), device, window, description.Width, description.Height};
 
     for (const auto &renderer : current) {
-        // Isolate each renderer and give it the full backbuffer in its own scene.
+        // isolate each renderer and give it the full backbuffer in its own scene.
         GraphicsState state(device);
         if (!state.captured) {
             continue;
@@ -267,7 +266,7 @@ void draw(HWND window, IDirect3DDevice9 *device) {
             continue;
         }
 
-        // READY also recreates resources released before a successful reset.
+        // dispatch READY to also recreate resources released before a successful reset.
         if (!renderer->ready) {
             renderer->started = true;
             renderer->callback(SPICE_SDK_D3D9_READY, &frame, renderer->userdata);
@@ -294,7 +293,7 @@ void present_complete(IDirect3DDevice9 *device, HRESULT result) {
             return;
         }
 
-        // A busy nonblocking present does not change the known device-loss state.
+        // a busy nonblocking present does not change the known device-loss state.
         if (SUCCEEDED(result)) {
             device_lost = false;
         } else if (result != D3DERR_WASSTILLDRAWING) {
@@ -321,7 +320,7 @@ void invalidate(IDirect3DDevice9 *device) {
         return;
     }
 
-    // Default-pool resources must be released before the native reset starts.
+    // default-pool resources must be released before the native reset starts.
     reset_in_progress = true;
     resetting = true;
     for (const auto &renderer : snapshot()) {
@@ -375,7 +374,7 @@ void shutdown(bool graphics_stopped) {
         return;
     }
 
-    // Close registration before deciding where device resources can be released.
+    // close registration before deciding where device resources can be released.
     {
         std::lock_guard registry_lock(registry_mutex);
         stopped = true;
@@ -394,7 +393,7 @@ void shutdown(bool graphics_stopped) {
         return;
     }
 
-    // A graphics boundary must drain callbacks when another thread requests shutdown.
+    // a graphics boundary must drain callbacks when another thread requests shutdown.
     shutdown_condition.wait(lock, [] {
         return shutdown_complete;
     });
