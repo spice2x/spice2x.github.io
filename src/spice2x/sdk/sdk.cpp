@@ -1,8 +1,10 @@
 #include <vector>
 #include <mutex>
 #include <shared_mutex>
+#include <algorithm>
 
 #include "sdk.h"
+#include "modules.h"
 #include "avs/game.h"
 #include "games/io.h"
 #include "launcher/launcher.h"
@@ -32,11 +34,8 @@ static spice_sdk_insert_card_func sdk_insert_card;
 static spice_sdk_set_keypad_func sdk_set_keypad;
 static spice_sdk_add_toast_func sdk_add_toast;
 static spice_sdk_insert_coin_func sdk_insert_coin;
-
-struct SdkModule {
-    std::string dll;
-    HINSTANCE module;
-};
+static spice_sdk_get_module_info_func sdk_get_module_info;
+static spice_sdk_get_plugin_directory_func sdk_get_plugin_directory;
 
 // DLLs
 static int sdk_modules_count = 0;
@@ -183,6 +182,14 @@ sdk_init(
     }
     // end of 0.3
 
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_module_info)) {
+        v0->get_module_info = sdk_get_module_info;
+    }
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_plugin_directory)) {
+        v0->get_plugin_directory = sdk_get_plugin_directory;
+    }
+    // end of 0.4
+
     // any newer minor iterations will need to check the size
 
     {
@@ -193,6 +200,26 @@ sdk_init(
 
     log_info("sdk", "sdk_init returning SUCCESS");
     return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_get_module_info(const wchar_t *module_name, SPICE_SDK_MODULE_INFO *info) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+    return modules::get_module_info(module_name, info);
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_get_plugin_directory(const void *plugin_address, wchar_t *buffer, uint32_t *size) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+    return modules::get_plugin_directory(sdk_modules_list, plugin_address, buffer, size);
 }
 
 SPICE_SDK_STATUS_CODE

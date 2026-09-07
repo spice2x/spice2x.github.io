@@ -1,6 +1,9 @@
 #include <format>
 #include <chrono>
 #include <thread>
+#include <array>
+#include <string>
+#include <optional>
 #include <windows.h>
 
 #include "sdk/include/spicesdk.h"
@@ -16,6 +19,24 @@ static SPICE_SDK_V0 spice = {};
 static spice_sdk_destroy_callback_func destroy_callback;
 static std::jthread worker_thread;
 static void worker_thread_main(std::stop_token stop_token);
+
+static std::optional<std::string> utf16_to_utf8(const wchar_t *text) {
+    const auto bytes = WideCharToMultiByte(
+        CP_UTF8, WC_ERR_INVALID_CHARS, text, -1, nullptr, 0, nullptr, nullptr);
+    if (bytes == 0) {
+        return std::nullopt;
+    }
+
+    std::string result(bytes, '\0');
+    if (WideCharToMultiByte(
+            CP_UTF8, WC_ERR_INVALID_CHARS, text, -1,
+            result.data(), bytes, nullptr, nullptr) != bytes) {
+        return std::nullopt;
+    }
+
+    result.pop_back();
+    return result;
+}
 
 // main entry point into the DLL
 // spice executable will call into this shortly after the game is partially 
@@ -41,6 +62,27 @@ spice_sdk_entry_point(
     }
 
     LOG_INFO("plugin loaded");
+
+    if (spice.get_plugin_directory) {
+        std::array<wchar_t, 32768> directory{};
+        uint32_t size = static_cast<uint32_t>(directory.size());
+        if (spice.get_plugin_directory(&spice, directory.data(), &size) ==
+            SPICE_SDK_STATUS_SUCCESS) {
+            if (const auto path = utf16_to_utf8(directory.data())) {
+                LOG_INFO(std::format("plugin directory: {}", *path).c_str());
+            }
+        }
+    }
+
+    if (spice.get_module_info) {
+        SPICE_SDK_MODULE_INFO info{};
+        info.size = sizeof(info);
+        if (spice.get_module_info(L"kernel32.dll", &info) == SPICE_SDK_STATUS_SUCCESS) {
+            LOG_INFO(std::format(
+                "kernel32 PE: {:x}_{:x}, base={:x}, size={:x}",
+                info.timestamp, info.entry_point, info.base, info.image_size).c_str());
+        }
+    }
 
     // spin up a worker thread
     worker_thread = std::jthread(worker_thread_main);

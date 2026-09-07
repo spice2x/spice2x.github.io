@@ -717,6 +717,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         reader/crypt.cpp
 
         # sdk
+        sdk/modules.cpp
         sdk/sdk.cpp
 
         # stubs

@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 #define SPICE_SDK_ENTRY_POINT extern "C" __declspec(dllexport) int __cdecl
@@ -247,6 +248,50 @@ typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_insert_coin_func)(
     uint8_t amount
 );
 
+typedef struct SPICE_SDK_MODULE_INFO {
+    uint32_t size; // initialize to sizeof(SPICE_SDK_MODULE_INFO)
+    uintptr_t base; // loaded address, not the preferred PE image base
+    uint32_t image_size;
+    uint32_t timestamp;
+    uint32_t entry_point; // RVA, not an absolute address
+    uint16_t machine; // PE IMAGE_FILE_MACHINE_* value
+} SPICE_SDK_MODULE_INFO;
+
+// get_module_info (v0.4 and up)
+// gets PE info about an already loaded module
+//
+// does not load or permanently pin the module; the caller must keep it loaded
+// while using the returned base address
+// returns GENERIC_ERROR if not found or unreadable, NOT_SUPPORTED for non-PE32/PE32+
+//
+//   module_name: null-terminated UTF-16 module name or full path
+//   info: receives module info; initialize size to sizeof(SPICE_SDK_MODULE_INFO)
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_get_module_info_func)(
+    const wchar_t *module_name,
+    SPICE_SDK_MODULE_INFO *info
+);
+
+// get_plugin_directory (v0.4 and up)
+// gets the directory containing a registered SDK DLL
+//
+// available during entry-point initialization and until destroy callbacks finish
+// returns INVALID_ARGUMENT_1 for addresses outside registered SDK DLLs
+//
+//   plugin_address: address of a function or static object in the plugin DLL
+//                   used only to identify the DLL; the pointed-to object is not read
+//                   address of any global variable in your DLL will work
+//   buffer: caller-owned UTF-16 output, or NULL to query the required size
+//   size: input capacity and output required wchar_t count, including the terminator
+//         NULL buffer or insufficient capacity returns TOO_SMALL and sets the
+//         required size without partial output
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_get_plugin_directory_func)(
+    const void *plugin_address,
+    wchar_t *buffer,
+    uint32_t *size
+);
+
 typedef struct SPICE_SDK_V0 {
     uint32_t size;
 
@@ -273,6 +318,9 @@ typedef struct SPICE_SDK_V0 {
     spice_sdk_add_toast_func *add_toast;
 
     spice_sdk_insert_coin_func *insert_coin;
+
+    spice_sdk_get_module_info_func *get_module_info;
+    spice_sdk_get_plugin_directory_func *get_plugin_directory;
 
 } SPICE_SDK_V0;
 
