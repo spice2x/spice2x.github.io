@@ -5,6 +5,7 @@
 
 #include "sdk.h"
 #include "modules.h"
+#include "d3d9.h"
 #include "avs/game.h"
 #include "games/io.h"
 #include "launcher/launcher.h"
@@ -36,6 +37,7 @@ static spice_sdk_add_toast_func sdk_add_toast;
 static spice_sdk_insert_coin_func sdk_insert_coin;
 static spice_sdk_get_module_info_func sdk_get_module_info;
 static spice_sdk_get_plugin_directory_func sdk_get_plugin_directory;
+static spice_sdk_register_d3d9_func sdk_register_d3d9;
 
 // DLLs
 static int sdk_modules_count = 0;
@@ -90,15 +92,17 @@ void init_sdk_modules() {
     }
 }
 
-void fini_sdk_modules() {
+void fini_sdk_modules(bool graphics_stopped) {
     // prevent multiple calls and further calls into sdk_init
     {
         std::unique_lock lock(sdk_global_mutex);
-        if (!sdk_initialized) {
+        if (!sdk_initialized || sdk_shutting_down) {
             return;
         }
         sdk_shutting_down = true;
     }
+
+    d3d9::shutdown(graphics_stopped);
 
     // call into destroy callback of each DLL
     // this may call back into SDK functions (e.g., for logging)
@@ -188,6 +192,9 @@ sdk_init(
     if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_plugin_directory)) {
         v0->get_plugin_directory = sdk_get_plugin_directory;
     }
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, register_d3d9)) {
+        v0->register_d3d9 = sdk_register_d3d9;
+    }
     // end of 0.4
 
     // any newer minor iterations will need to check the size
@@ -220,6 +227,16 @@ sdk_get_plugin_directory(const void *plugin_address, wchar_t *buffer, uint32_t *
         return SPICE_SDK_STATUS_TOO_LATE;
     }
     return modules::get_plugin_directory(sdk_modules_list, plugin_address, buffer, size);
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_register_d3d9(spice_sdk_d3d9_callback_func *callback, void *userdata) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized || sdk_shutting_down) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+    return d3d9::register_d3d9(sdk_modules_list, callback, userdata);
 }
 
 SPICE_SDK_STATUS_CODE

@@ -2859,7 +2859,7 @@ int main_implementation(int argc, char *argv[]) {
         bt5api_dispose();
     }
 
-    sdk::fini_sdk_modules();
+    sdk::fini_sdk_modules(true);
 
     // stop raw input
     hotkeys::disable_raw_input();

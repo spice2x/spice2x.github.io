@@ -22,6 +22,7 @@
 #include "launcher/shutdown.h"
 #include "misc/wintouchemu.h"
 #include "overlay/overlay.h"
+#include "sdk/d3d9.h"
 #include "util/detour.h"
 #include "util/deferlog.h"
 #include "util/flags_helper.h"
@@ -1510,6 +1511,8 @@ void graphics_d3d9_on_present(
         overlay::OVERLAY->render();
         device->EndScene();
     }
+
+    sdk::d3d9::draw(hFocusWindow, device);
 
     // after the overlay render so the screenshot includes toasts / menus
     if (GRAPHICS_SCREENSHOT_INCLUDE_OVERLAY) {

@@ -6,6 +6,7 @@
 #include <optional>
 #include <windows.h>
 
+#include "v0_cpp_imgui.h"
 #include "sdk/include/spicesdk.h"
 #include "sdk/include/spicesdk_io.h"
 
@@ -84,6 +85,16 @@ spice_sdk_entry_point(
         }
     }
 
+    if (spice.register_d3d9) {
+        status = sample_imgui::initialize(spice);
+        if (status != SPICE_SDK_STATUS_SUCCESS) {
+            LOG_INFO(std::format(
+                "D3D9 registration failed: {}", static_cast<int>(status)).c_str());
+        } else {
+            LOG_INFO("D3D9 renderer registered; Ctrl+Enter toggles the sample window");
+        }
+    }
+
     // spin up a worker thread
     worker_thread = std::jthread(worker_thread_main);
     return 1;
@@ -119,10 +130,18 @@ static ArrowButton arrow_buttons[] = {
 // worker thread for I/O
 static void worker_thread_main(std::stop_token stop_token) {
     bool coin_previous_state[10] = {};
+    bool window_toggle_previous_state = false;
     while (!stop_token.stop_requested()) {
 
-        // insert coin
         const bool control_pressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+        const bool window_toggle_pressed = control_pressed &&
+            ((GetAsyncKeyState(VK_RETURN) & 0x8000) != 0);
+        if (window_toggle_pressed && !window_toggle_previous_state) {
+            sample_imgui::toggle();
+        }
+        window_toggle_previous_state = window_toggle_pressed;
+
+        // insert coin
         for (uint8_t amount = 0; amount < 10; amount++) {
             const bool coin_pressed = control_pressed &&
                 ((GetAsyncKeyState('0' + amount) & 0x8000) != 0);

@@ -7,6 +7,7 @@
 
 #include "games/gitadora/gitadora.h"
 #include "hooks/graphics/graphics.h"
+#include "sdk/d3d9.h"
 #include "util/logging.h"
 
 #include "d3d9_device.h"
@@ -558,6 +559,7 @@ HRESULT graphics_d3d9_gfdm_recover_two_head_present_mode(
     temporary_parameters[1].FullScreen_RefreshRateInHz = alternate_small.RefreshRate;
     temporary_modes[1] = alternate_small;
 
+    sdk::d3d9::invalidate(device);
     HRESULT temporary_result = device->ResetEx(temporary_parameters, temporary_modes);
     const bool temporary_settled =
             temporary_result == D3D_OK
@@ -573,6 +575,8 @@ HRESULT graphics_d3d9_gfdm_recover_two_head_present_mode(
     const bool restore_settled =
             restore_result == D3D_OK
             && gfdm_wait_for_small_mode(desired_parameters[1].hDeviceWindow, desired_modes[1]);
+
+        sdk::d3d9::reset_complete(device, SUCCEEDED(restore_result));
 
     if (temporary_result != D3D_OK) {
         return temporary_result;

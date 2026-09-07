@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <set>
+#include <thread>
 #include <vector>
 #include <mutex>
 #include <condition_variable>
@@ -396,7 +397,12 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
     // terminate
     if (uMsg == WM_CLOSE) {
         log_info("graphics", "detected WM_CLOSE, terminating...");
-        launcher::shutdown(0);
+        static std::once_flag shutdown_requested;
+        std::call_once(shutdown_requested, [] {
+            std::thread([] {
+                launcher::shutdown(0);
+            }).detach();
+        });
         return false;
     }
 

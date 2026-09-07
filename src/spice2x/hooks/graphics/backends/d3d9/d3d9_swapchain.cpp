@@ -5,6 +5,7 @@
 
 #include "avs/game.h"
 #include "hooks/graphics/graphics.h"
+#include "sdk/d3d9.h"
 
 #include "d3d9_backend.h"
 #include "d3d9_device.h"
@@ -139,6 +140,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DSwapChain9::Present(const RECT *pSourc
         {
             result = recovery_failure;
         }
+    }
+    if (should_run_hooks) {
+        sdk::d3d9::present_complete(pDev->pReal, result);
     }
     CHECK_RESULT(result);
 }
