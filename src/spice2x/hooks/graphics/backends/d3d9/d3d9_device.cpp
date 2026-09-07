@@ -2360,6 +2360,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
     HRESULT res = static_cast<IDirect3DDevice9Ex *>(pReal)->ResetEx(
             gfdm_parameters.presentation_parameters,
             gfdm_parameters.fullscreen_display_modes);
+
     sdk::d3d9::reset_complete(pReal, SUCCEEDED(res));
 
     if (is_gfdm_two_head_exclusive()

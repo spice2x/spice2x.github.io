@@ -53,6 +53,39 @@ void update_mouse(const SPICE_SDK_D3D9_FRAME &frame) {
         ((GetAsyncKeyState(swapped ? VK_LBUTTON : VK_RBUTTON) & 0x8000) != 0));
 }
 
+void draw_window(SampleRenderer &state, const SPICE_SDK_D3D9_FRAME &frame) {
+    auto &io = ImGui::GetIO();
+
+    ImGui::SetNextWindowPos(
+        ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f),
+        ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowBgAlpha(0.8f);
+    if (ImGui::Begin("SDK sample", nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize |
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
+        ImGui::Text("%u x %u", frame.width, frame.height);
+        ImGui::Text("%.1f FPS", io.Framerate);
+        ImGui::Separator();
+        ImGui::Checkbox("Enable dummy widgets", &state.dummy_enabled);
+        ImGui::BeginDisabled(!state.dummy_enabled);
+        ImGui::SliderFloat("Value", &state.dummy_value, 0.0f, 1.0f, "%.2f",
+            ImGuiSliderFlags_NoInput);
+        ImGui::Combo("Mode", &state.dummy_mode, "Off\0Low\0High\0");
+        if (ImGui::Button("Increment")) {
+            ++state.click_count;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Reset")) {
+            state.click_count = 0;
+            state.dummy_value = 0.5f;
+            state.dummy_mode = 0;
+        }
+        ImGui::Text("Count: %u", state.click_count);
+        ImGui::EndDisabled();
+    }
+    ImGui::End();
+}
+
 void draw_frame(SampleRenderer &state, const SPICE_SDK_D3D9_FRAME &frame) {
     if (!state.backend_initialized) {
         return;
@@ -88,34 +121,7 @@ void draw_frame(SampleRenderer &state, const SPICE_SDK_D3D9_FRAME &frame) {
         return;
     }
 
-    ImGui::SetNextWindowPos(
-        ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f),
-        ImGuiCond_Once, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowBgAlpha(0.8f);
-    if (ImGui::Begin("SDK sample", nullptr,
-            ImGuiWindowFlags_AlwaysAutoResize |
-            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
-        ImGui::Text("%u x %u", frame.width, frame.height);
-        ImGui::Text("%.1f FPS", io.Framerate);
-        ImGui::Separator();
-        ImGui::Checkbox("Enable dummy widgets", &state.dummy_enabled);
-        ImGui::BeginDisabled(!state.dummy_enabled);
-        ImGui::SliderFloat("Value", &state.dummy_value, 0.0f, 1.0f, "%.2f",
-            ImGuiSliderFlags_NoInput);
-        ImGui::Combo("Mode", &state.dummy_mode, "Off\0Low\0High\0");
-        if (ImGui::Button("Increment")) {
-            ++state.click_count;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Reset")) {
-            state.click_count = 0;
-            state.dummy_value = 0.5f;
-            state.dummy_mode = 0;
-        }
-        ImGui::Text("Count: %u", state.click_count);
-        ImGui::EndDisabled();
-    }
-    ImGui::End();
+    draw_window(state, frame);
     ImGui::Render();
     ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
 }
@@ -124,9 +130,11 @@ void __cdecl render_callback(
     SPICE_SDK_D3D9_EVENT event,
     const SPICE_SDK_D3D9_FRAME *frame,
     void *userdata) {
+
     auto &state = *static_cast<SampleRenderer *>(userdata);
     auto *previous_context = ImGui::GetCurrentContext();
 
+    // init imgui context
     if (event == SPICE_SDK_D3D9_READY && !state.context) {
         ImGui::SetAllocatorFunctions(
             [](size_t size, void *) -> void * { return std::malloc(size); },

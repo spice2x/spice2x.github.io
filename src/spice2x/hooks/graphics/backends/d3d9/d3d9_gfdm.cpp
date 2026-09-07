@@ -576,7 +576,7 @@ HRESULT graphics_d3d9_gfdm_recover_two_head_present_mode(
             restore_result == D3D_OK
             && gfdm_wait_for_small_mode(desired_parameters[1].hDeviceWindow, desired_modes[1]);
 
-        sdk::d3d9::reset_complete(device, SUCCEEDED(restore_result));
+    sdk::d3d9::reset_complete(device, SUCCEEDED(restore_result));
 
     if (temporary_result != D3D_OK) {
         return temporary_result;
