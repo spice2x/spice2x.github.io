@@ -50,6 +50,7 @@ static const BYTE UID_CMD[5] = { 0xFFu, 0xCAu, 0x00u, 0x00u, 0x00u };
 enum scard_atr_protocol {
     SCARD_ATR_PROTOCOL_ISO14443_PART3 = 0x03,
     SCARD_ATR_PROTOCOL_ISO15693_PART3 = 0x0B,
+    SCARD_ATR_PROTOCOL_ISO15693_PART4 = 0x0C,
     SCARD_ATR_PROTOCOL_FELICA_212K = 0x11,
     SCARD_ATR_PROTOCOL_FELICA_424K = 0x12,
 };
@@ -121,11 +122,14 @@ void scard_update(SCARDCONTEXT hContext, LPCTSTR readerName, uint8_t unit_no) {
     BYTE cardProtocol = atr[12];
     BOOL shouldReverseUid = false;
     bool is_felica = false;
-    if (cardProtocol == SCARD_ATR_PROTOCOL_ISO15693_PART3) {
+    if (cardProtocol == SCARD_ATR_PROTOCOL_ISO14443_PART3) {
+        log_info("scard", "card protocol: ISO14443_PART3");
+    } else if (cardProtocol == SCARD_ATR_PROTOCOL_ISO15693_PART3) {
         log_info("scard", "card protocol: ISO15693_PART3");
         shouldReverseUid = true;
-    } else if (cardProtocol == SCARD_ATR_PROTOCOL_ISO14443_PART3) {
-        log_info("scard", "card protocol: ISO14443_PART3");
+    } else if (cardProtocol == SCARD_ATR_PROTOCOL_ISO15693_PART4) {
+        log_info("scard", "card protocol: ISO15693_PART4");
+        shouldReverseUid = true; 
     } else if (cardProtocol == SCARD_ATR_PROTOCOL_FELICA_212K) {
         log_info("scard", "card protocol: FELICA_212K");
         is_felica = true;
