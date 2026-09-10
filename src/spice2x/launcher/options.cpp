@@ -3187,6 +3187,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .type = OptionType::Bool,
         .category = "Network Dev",
     };
+    c[launcher::Options::EnableNICSpoof] = {
+        .title = "Enable NIC Spoof",
+        .name = "nicspoof",
+        .desc = "Report a fake Ethernet IPv4 adapter (10.57.3.2) so the game can "
+            "boot when no real NIC is present. DNS names are mapped to that "
+            "address. Does not create a real adapter.",
+        .type = OptionType::Bool,
+        .category = "Network Dev",
+    };
     c[launcher::Options::AutoElevate] = {
         .title = "Run as",
         .name = "runas",
