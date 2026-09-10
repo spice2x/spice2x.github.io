@@ -616,6 +616,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/networkhook.cpp
         hooks/icmphook_net.cpp
         hooks/icmphook_iphlpapi.cpp
+        hooks/nicspoof.cpp
         hooks/powrprof.cpp
         #hooks/rom.cpp
         hooks/setupapihook.cpp

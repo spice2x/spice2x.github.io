@@ -84,6 +84,7 @@
 #include "hooks/lang.h"
 #include "hooks/networkhook.h"
 #include "hooks/icmphook_net.h"
+#include "hooks/nicspoof.h"
 #include "hooks/unisintrhook.h"
 #include "launcher/launcher.h"
 #include "launcher/logger.h"
@@ -257,6 +258,7 @@ int main_implementation(int argc, char *argv[]) {
     bool load_stubs = false;
     bool netfix_disable = false;
     bool icmphook_enable = false;
+    bool nicspoof_enable = false;
     bool lang_disable = false;
     std::string process_priority_str = "high";
     bool cardio_enabled = false;
@@ -798,6 +800,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     if (options[launcher::Options::EnableICMPHook].value_bool()) {
         icmphook_enable = true;
+    }
+    if (options[launcher::Options::EnableNICSpoof].value_bool()) {
+        nicspoof_enable = true;
     }
     if (options[launcher::Options::DisableACPHook].value_bool()) {
         lang_disable = true;
@@ -2556,6 +2561,11 @@ int main_implementation(int argc, char *argv[]) {
     // ICMP emulation (opt-in; before games open raw ICMP sockets)
     if (icmphook_enable) {
         icmphook_net_init();
+    }
+
+    // NIC spoof (opt-in; fake Ethernet with no real NIC)
+    if (nicspoof_enable) {
+        nicspoof_init();
     }
 
     // net fix

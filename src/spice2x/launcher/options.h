@@ -316,6 +316,7 @@ namespace launcher {
             OtocaCamHook,
             DisableHighResTimer,
             EnableICMPHook,
+            EnableNICSpoof,
             AutoElevate,
             CfgForceSoftwareRender,
             OBSWebSocketEnabled,
