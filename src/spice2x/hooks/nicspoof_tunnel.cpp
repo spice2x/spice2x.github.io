@@ -1136,15 +1136,11 @@ int WSAAPI bind_hook(SOCKET s, const sockaddr *name, int namelen) {
     UdpSock *us;
     int32_t type = 0;
     int32_t tlen = sizeof(type);
+    int icmp_r = 0;
 
-    // #region agent log
-    {
-        int icmp_r = 0;
-        if (icmphook_try_bind(s, name, namelen, &icmp_r)) {
-            return icmp_r;
-        }
+    if (icmphook_try_bind(s, name, namelen, &icmp_r)) {
+        return icmp_r;
     }
-    // #endregion
 
     r = bind_orig(s, name, namelen);
     getsockopt(s, SOL_SOCKET, SO_TYPE, reinterpret_cast<char *>(&type), &tlen);
@@ -1161,14 +1157,11 @@ int WSAAPI bind_hook(SOCKET s, const sockaddr *name, int namelen) {
 
 int WSAAPI sendto_hook(SOCKET s, const char *buf, int len, int flags,
         const sockaddr *to, int tolen) {
-    // #region agent log
-    {
-        int icmp_r = 0;
-        if (icmphook_try_sendto(s, buf, len, flags, to, tolen, &icmp_r)) {
-            return icmp_r;
-        }
+    int icmp_r = 0;
+
+    if (icmphook_try_sendto(s, buf, len, flags, to, tolen, &icmp_r)) {
+        return icmp_r;
     }
-    // #endregion
     if (s == g_tun_sock) {
         return sendto_orig(s, buf, len, flags, to, tolen);
     }
@@ -1181,20 +1174,6 @@ int WSAAPI sendto_hook(SOCKET s, const char *buf, int len, int flags,
             uint16_t dport = ntohs(in->sin_port);
             UdpSock *us = udp_add(s);
             int32_t to_self = (dip == g_local_ip);
-
-            // #region agent log
-            {
-                static LONG once = 0;
-                if (InterlockedCompareExchange(&once, 1, 0) == 0) {
-                    char dip_str[16];
-                    ip_to_str(dip, dip_str, sizeof(dip_str));
-                    log_info("network",
-                            "NIC tunnel: first UDP divert sport={} -> {}:{} "
-                            "len={} (hypothesis A divert-active)",
-                            sport, dip_str, dport, len);
-                }
-            }
-            // #endregion
 
             if (us && !us->bound_port) {
                 us->bound_port = static_cast<int32_t>(sport);
@@ -1215,15 +1194,12 @@ int WSAAPI sendto_hook(SOCKET s, const char *buf, int len, int flags,
 int WSAAPI WSASendTo_hook(SOCKET s, LPWSABUF b, DWORD n, LPDWORD sent,
         DWORD flags, const sockaddr *to, int tolen, LPWSAOVERLAPPED ov,
         LPWSAOVERLAPPED_COMPLETION_ROUTINE cr) {
-    // #region agent log
-    {
-        int icmp_r = 0;
-        if (icmphook_try_WSASendTo(s, b, n, sent, flags, to, tolen, ov, cr,
-                &icmp_r)) {
-            return icmp_r;
-        }
+    int icmp_r = 0;
+
+    if (icmphook_try_WSASendTo(s, b, n, sent, flags, to, tolen, ov, cr,
+            &icmp_r)) {
+        return icmp_r;
     }
-    // #endregion
     if (s == g_tun_sock) {
         return WSASendTo_orig(s, b, n, sent, flags, to, tolen, ov, cr);
     }
@@ -1278,15 +1254,11 @@ int WSAAPI recvfrom_hook(SOCKET s, char *buf, int len, int flags,
         sockaddr *from, int *fromlen) {
     UdpSock *us;
     int32_t r;
+    int icmp_r = 0;
 
-    // #region agent log
-    {
-        int icmp_r = 0;
-        if (icmphook_try_recvfrom(s, buf, len, flags, from, fromlen, &icmp_r)) {
-            return icmp_r;
-        }
+    if (icmphook_try_recvfrom(s, buf, len, flags, from, fromlen, &icmp_r)) {
+        return icmp_r;
     }
-    // #endregion
     if (s == g_tun_sock) {
         return recvfrom_orig(s, buf, len, flags, from, fromlen);
     }
@@ -1332,15 +1304,12 @@ int WSAAPI recvfrom_hook(SOCKET s, char *buf, int len, int flags,
 int WSAAPI WSARecvFrom_hook(SOCKET s, LPWSABUF b, DWORD n, LPDWORD recvd,
         LPDWORD flags, sockaddr *from, LPINT fromlen, LPWSAOVERLAPPED ov,
         LPWSAOVERLAPPED_COMPLETION_ROUTINE cr) {
-    // #region agent log
-    {
-        int icmp_r = 0;
-        if (icmphook_try_WSARecvFrom(s, b, n, recvd, flags, from, fromlen, ov,
-                cr, &icmp_r)) {
-            return icmp_r;
-        }
+    int icmp_r = 0;
+
+    if (icmphook_try_WSARecvFrom(s, b, n, recvd, flags, from, fromlen, ov, cr,
+            &icmp_r)) {
+        return icmp_r;
     }
-    // #endregion
     if (s == g_tun_sock) {
         return WSARecvFrom_orig(s, b, n, recvd, flags, from, fromlen, ov, cr);
     }
@@ -1512,15 +1481,13 @@ int WSAAPI listen_hook(SOCKET s, int backlog) {
 }
 
 int WSAAPI ioctlsocket_hook(SOCKET s, long cmd, u_long *argp) {
-    // #region agent log
-    {
-        int icmp_r = 0;
-        if (icmphook_try_ioctlsocket(s, cmd, argp, &icmp_r)) {
-            return icmp_r;
-        }
+    int icmp_r = 0;
+    int32_t r;
+
+    if (icmphook_try_ioctlsocket(s, cmd, argp, &icmp_r)) {
+        return icmp_r;
     }
-    // #endregion
-    int32_t r = ioctlsocket_orig(s, cmd, argp);
+    r = ioctlsocket_orig(s, cmd, argp);
 
     if (r == 0 && static_cast<u_long>(cmd) == FIONBIO && argp) {
         ListenState *ls;
@@ -1790,14 +1757,11 @@ void listen_close(SOCKET s) {
 }
 
 int WSAAPI closesocket_hook(SOCKET s) {
-    // #region agent log
-    {
-        int icmp_r = 0;
-        if (icmphook_try_closesocket(s, &icmp_r)) {
-            return icmp_r;
-        }
+    int icmp_r = 0;
+
+    if (icmphook_try_closesocket(s, &icmp_r)) {
+        return icmp_r;
     }
-    // #endregion
     udp_remove(s);
     tcp_free_sock(s);
     nb_clear(s);
@@ -1808,41 +1772,30 @@ int WSAAPI closesocket_hook(SOCKET s) {
 void install_hooks() {
     bool ok = true;
 
-    auto record = [&](const char *name, bool r) {
-        ok &= r;
-        // #region agent log
-        if (r) {
-            log_info("network", "NIC tunnel: hook ok {}", name);
-        } else {
-            log_warning("network", "NIC tunnel: hook FAIL {}", name);
-        }
-        // #endregion
-    };
-
-    record("bind", detour::trampoline_try("ws2_32.dll", "bind",
-            bind_hook, &bind_orig));
-    record("sendto", detour::trampoline_try("ws2_32.dll", "sendto",
-            sendto_hook, &sendto_orig));
-    record("WSASendTo", detour::trampoline_try("ws2_32.dll", "WSASendTo",
-            WSASendTo_hook, &WSASendTo_orig));
-    record("recvfrom", detour::trampoline_try("ws2_32.dll", "recvfrom",
-            recvfrom_hook, &recvfrom_orig));
-    record("WSARecvFrom", detour::trampoline_try("ws2_32.dll", "WSARecvFrom",
-            WSARecvFrom_hook, &WSARecvFrom_orig));
-    record("select", detour::trampoline_try("ws2_32.dll", "select",
-            select_hook, &select_orig));
-    record("listen", detour::trampoline_try("ws2_32.dll", "listen",
-            listen_hook, &listen_orig));
-    record("accept", detour::trampoline_try("ws2_32.dll", "accept",
-            accept_hook, &accept_orig));
-    record("connect", detour::trampoline_try("ws2_32.dll", "connect",
-            connect_hook, &connect_orig));
-    record("WSAConnect", detour::trampoline_try("ws2_32.dll", "WSAConnect",
-            WSAConnect_hook, &WSAConnect_orig));
-    record("ioctlsocket", detour::trampoline_try("ws2_32.dll", "ioctlsocket",
-            ioctlsocket_hook, &ioctlsocket_orig));
-    record("closesocket", detour::trampoline_try("ws2_32.dll", "closesocket",
-            closesocket_hook, &closesocket_orig));
+    ok &= detour::trampoline_try("ws2_32.dll", "bind",
+            bind_hook, &bind_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "sendto",
+            sendto_hook, &sendto_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "WSASendTo",
+            WSASendTo_hook, &WSASendTo_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "recvfrom",
+            recvfrom_hook, &recvfrom_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "WSARecvFrom",
+            WSARecvFrom_hook, &WSARecvFrom_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "select",
+            select_hook, &select_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "listen",
+            listen_hook, &listen_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "accept",
+            accept_hook, &accept_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "connect",
+            connect_hook, &connect_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "WSAConnect",
+            WSAConnect_hook, &WSAConnect_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "ioctlsocket",
+            ioctlsocket_hook, &ioctlsocket_orig);
+    ok &= detour::trampoline_try("ws2_32.dll", "closesocket",
+            closesocket_hook, &closesocket_orig);
 
     {
         HMODULE ws = GetModuleHandleA("ws2_32.dll");

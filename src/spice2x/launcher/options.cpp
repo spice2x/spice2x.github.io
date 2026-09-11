@@ -3191,20 +3191,20 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .title = "NIC Spoof",
         .name = "nicspoof",
         .desc =
-            "Default (off): do nothing.\n\n"
+            "Use with -icmphook.\n\n"
             "offline: report a fake Ethernet IPv4 adapter and map DNS names to "
             "that address so the game can boot when no real NIC is present. "
             "Does not create a real adapter.\n\n"
             "tunnel host: same fake NIC, plus listen for a BPL matching tunnel "
-            "from a peer. Use with -icmphook for shop keepalive.\n\n"
+            "from a peer.\n\n"
             "tunnel client: same fake NIC, plus connect to a tunnel host. "
-            "Set -nicspoofhostrealip. Use with -icmphook for shop keepalive.",
+            "Set -nicspoofhostrealip.",
         .type = OptionType::Enum,
         .category = "Network Dev",
         .elements = {
             {"offline", ""},
-            {"tunnelhost", "tunnel host"},
-            {"tunnelclient", "tunnel client"},
+            {"tunnelhost", ""},
+            {"tunnelclient", ""},
         },
     };
     c[launcher::Options::NICSpoofIP] = {
@@ -3214,9 +3214,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
             "Overlay IPv4 for the fake adapter. Used when NIC Spoof is not Default. "
             "If unset, 10.100.100.10 is used.\n\n"
             "Must be on the same subnet as gateway 10.100.100.1 with mask "
-            "255.255.252.0 (10.100.100.0/22). Usable range: 10.100.100.2 to "
-            "10.100.103.254. Do not use the gateway, network, or broadcast "
-            "address. Host and client must use different IPs.",
+            "255.0.0.0 (10.0.0.0/8). Examples: 10.100.100.10, 10.0.0.10. "
+            "Do not use 10.0.0.0, 10.255.255.255, the gateway 10.100.100.1, "
+            "or DNS 10.2.1.10 / 10.2.1.30. Host and client must use different IPs.",
         .type = OptionType::Text,
         .setting_name = "10.100.100.10",
         .category = "Network Dev",

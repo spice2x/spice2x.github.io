@@ -24,8 +24,8 @@ constexpr uint32_t k_gateway = 0x0A646401u;  /* 10.100.100.1 */
 constexpr uint32_t k_dns1 = 0x0A02010Au;     /* 10.2.1.10 */
 constexpr uint32_t k_dns2 = 0x0A02011Eu;     /* 10.2.1.30 */
 constexpr uint32_t k_dhcp = 0xC0A80001u;     /* 192.168.0.1 */
-constexpr uint32_t k_mask = 0xFFFFFC00u;     /* 255.255.252.0 */
-constexpr int k_prefix_len = 22;
+constexpr uint32_t k_mask = 0xFF000000u;    /* 255.0.0.0 */
+constexpr int k_prefix_len = 8;
 constexpr DWORD k_ifindex = 77;
 constexpr uint8_t k_fake_mac[6] = {0x12, 0x37, 0x13, 0x37, 0x13, 0x37};
 constexpr char k_hostname[] = "N1C5P00F";
@@ -577,7 +577,8 @@ bool ip_in_overlay_range(uint32_t ip) {
     if ((ip & k_mask) != net) {
         return false;
     }
-    if (ip == net || ip == bcast || ip == k_gateway) {
+    if (ip == net || ip == bcast || ip == k_gateway ||
+            ip == k_dns1 || ip == k_dns2) {
         return false;
     }
     return true;
@@ -593,7 +594,7 @@ void init_impl() {
         char bad[16];
         ip_to_str(g_local_ip, bad, sizeof(bad));
         log_warning("network",
-                "NIC spoof: IP {} is outside 10.100.100.0/22 usable range; "
+                "NIC spoof: IP {} is outside 10.0.0.0/8 usable range; "
                 "using 10.100.100.10",
                 bad);
         g_local_ip = k_default_local_ip;
