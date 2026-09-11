@@ -719,6 +719,8 @@ set(SOURCE_FILES ${SOURCE_FILES}
         reader/crypt.cpp
 
         # sdk
+        sdk/d3d9.cpp
+        sdk/modules.cpp
         sdk/sdk.cpp
 
         # stubs
@@ -1047,8 +1049,16 @@ if(NOT MSVC)
 endif()
 
 # sdk_sample_v0_cpp.dll (64 bit)
-set(SOURCE_FILES sdk/sample/v0/cpp/v0_cpp.cpp)
+set(SOURCE_FILES
+    sdk/sample/v0/cpp/v0_cpp.cpp
+    sdk/sample/v0/cpp/v0_cpp_imgui.cpp
+    external/imgui/imgui.cpp
+    external/imgui/imgui_draw.cpp
+    external/imgui/imgui_tables.cpp
+    external/imgui/imgui_widgets.cpp
+    external/imgui/backends/imgui_impl_dx9.cpp)
 add_library(spicetools_sdk_sample_v0_cpp_64 SHARED ${SOURCE_FILES} ${RESOURCE_FILES} sdk/sample/v0/cpp/v0_cpp.def)
+target_link_libraries(spicetools_sdk_sample_v0_cpp_64 PRIVATE imm32)
 set_target_properties(spicetools_sdk_sample_v0_cpp_64 PROPERTIES PREFIX "")
 set_target_properties(spicetools_sdk_sample_v0_cpp_64 PROPERTIES OUTPUT_NAME "sdk_sample_v0_cpp")
 

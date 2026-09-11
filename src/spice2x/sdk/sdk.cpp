@@ -1,8 +1,11 @@
 #include <vector>
 #include <mutex>
 #include <shared_mutex>
+#include <algorithm>
 
 #include "sdk.h"
+#include "modules.h"
+#include "d3d9.h"
 #include "avs/game.h"
 #include "games/io.h"
 #include "launcher/launcher.h"
@@ -32,11 +35,9 @@ static spice_sdk_insert_card_func sdk_insert_card;
 static spice_sdk_set_keypad_func sdk_set_keypad;
 static spice_sdk_add_toast_func sdk_add_toast;
 static spice_sdk_insert_coin_func sdk_insert_coin;
-
-struct SdkModule {
-    std::string dll;
-    HINSTANCE module;
-};
+static spice_sdk_get_module_info_func sdk_get_module_info;
+static spice_sdk_get_plugin_directory_func sdk_get_plugin_directory;
+static spice_sdk_register_d3d9_func sdk_register_d3d9;
 
 // DLLs
 static int sdk_modules_count = 0;
@@ -46,6 +47,7 @@ static std::shared_mutex sdk_global_mutex;
 // internal
 static bool sdk_initialized = false;
 static bool sdk_shutting_down = false;
+static bool sdk_finalizing = false;
 static std::vector<Button> *buttons;
 static std::vector<Analog> *analogs;
 static std::vector<Light> *lights;
@@ -91,14 +93,22 @@ void init_sdk_modules() {
     }
 }
 
-void fini_sdk_modules() {
+void fini_sdk_modules(bool graphics_stopped) {
     // prevent multiple calls and further calls into sdk_init
     {
         std::unique_lock lock(sdk_global_mutex);
-        if (!sdk_initialized) {
+        if (!sdk_initialized || sdk_finalizing) {
             return;
         }
         sdk_shutting_down = true;
+        sdk_finalizing = true;
+    }
+
+    if (!d3d9::shutdown(graphics_stopped)) {
+        std::unique_lock lock(sdk_global_mutex);
+        sdk_finalizing = false;
+        log_warning("sdk", "deferring plugin teardown: waiting for D3D9 rendering to stop");
+        return;
     }
 
     // call into destroy callback of each DLL
@@ -183,6 +193,17 @@ sdk_init(
     }
     // end of 0.3
 
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_module_info)) {
+        v0->get_module_info = sdk_get_module_info;
+    }
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_plugin_directory)) {
+        v0->get_plugin_directory = sdk_get_plugin_directory;
+    }
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, register_d3d9)) {
+        v0->register_d3d9 = sdk_register_d3d9;
+    }
+    // end of 0.4
+
     // any newer minor iterations will need to check the size
 
     {
@@ -193,6 +214,36 @@ sdk_init(
 
     log_info("sdk", "sdk_init returning SUCCESS");
     return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_get_module_info(const wchar_t *module_name, SPICE_SDK_MODULE_INFO *info) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+    return modules::get_module_info(module_name, info);
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_get_plugin_directory(const void *plugin_address, wchar_t *buffer, uint32_t *size) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+    return modules::get_plugin_directory(sdk_modules_list, plugin_address, buffer, size);
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_register_d3d9(spice_sdk_d3d9_callback_func *callback, void *userdata) {
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized || sdk_shutting_down) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+    return d3d9::register_d3d9(sdk_modules_list, callback, userdata);
 }
 
 SPICE_SDK_STATUS_CODE

@@ -11,6 +11,7 @@
 #include "games/gitadora/gitadora.h"
 #include "hooks/graphics/graphics.h"
 #include "overlay/overlay.h"
+#include "sdk/d3d9.h"
 #include "util/flags_helper.h"
 #include "util/utils.h"
 #include "cfg/screen_resize.h"
@@ -136,6 +137,7 @@ ULONG STDMETHODCALLTYPE WrappedIDirect3DDevice9::Release() {
 
     // release owned objects if there are no more references
     if (local_refs == 0) {
+        sdk::d3d9::destroy(this->pReal);
         if (this->main_swapchain) {
             this->main_swapchain->Release();
             this->main_swapchain = nullptr;
@@ -632,6 +634,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
         }
     }
 
+    sdk::d3d9::invalidate(pReal);
+
     // reset overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal)) {
         overlay::OVERLAY->reset_invalidate();
@@ -643,6 +647,7 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Reset(
     d3d9_readback::discard_snapshot_targets(pReal);
 
     HRESULT res = pReal->Reset(pPresentationParameters);
+    sdk::d3d9::reset_complete(pReal, SUCCEEDED(res));
 
     // recreate overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal) && SUCCEEDED(res)) {
@@ -673,7 +678,9 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::Present(
         gfdm_small_head.compose(this);
     }
 
-    CHECK_RESULT(pReal->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion));
+    const HRESULT result = pReal->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+    sdk::d3d9::present_complete(pReal, result);
+    CHECK_RESULT(result);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetBackBuffer(
@@ -2088,8 +2095,10 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::PresentEx(
 
     graphics_d3d9_on_present(hFocusWindow, pReal, this);
 
-    CHECK_RESULT(static_cast<IDirect3DDevice9Ex *>(pReal)->PresentEx(
-            pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags));
+        const HRESULT result = static_cast<IDirect3DDevice9Ex *>(pReal)->PresentEx(
+            pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
+        sdk::d3d9::present_complete(pReal, result);
+        CHECK_RESULT(result);
 }
 
 HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::GetGPUThreadPriority(
@@ -2336,6 +2345,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
         }
     }
 
+    sdk::d3d9::invalidate(pReal);
+
     // reset overlay
     if (overlay::OVERLAY && overlay::OVERLAY->uses_device(pReal)) {
         overlay::OVERLAY->reset_invalidate();
@@ -2349,6 +2360,8 @@ HRESULT STDMETHODCALLTYPE WrappedIDirect3DDevice9::ResetEx(
     HRESULT res = static_cast<IDirect3DDevice9Ex *>(pReal)->ResetEx(
             gfdm_parameters.presentation_parameters,
             gfdm_parameters.fullscreen_display_modes);
+
+    sdk::d3d9::reset_complete(pReal, SUCCEEDED(res));
 
     if (is_gfdm_two_head_exclusive()
             && SUCCEEDED(res)
