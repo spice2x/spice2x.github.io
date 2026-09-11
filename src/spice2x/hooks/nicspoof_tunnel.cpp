@@ -1,6 +1,10 @@
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0601
+#endif
 
 #include "nicspoof_tunnel.h"
 
@@ -1437,7 +1441,7 @@ int WSAAPI listen_hook(SOCKET s, int backlog) {
 int WSAAPI ioctlsocket_hook(SOCKET s, long cmd, u_long *argp) {
     int32_t r = ioctlsocket_orig(s, cmd, argp);
 
-    if (r == 0 && cmd == FIONBIO && argp) {
+    if (r == 0 && static_cast<u_long>(cmd) == FIONBIO && argp) {
         ListenState *ls;
         nb_set(s, (*argp) ? 1 : 0);
         EnterCriticalSection(&g_tcp_cs);
