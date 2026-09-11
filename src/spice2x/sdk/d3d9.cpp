@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -368,10 +369,10 @@ void destroy(IDirect3DDevice9 *device) {
     }
 }
 
-void shutdown(bool graphics_stopped) {
+bool shutdown(bool graphics_stopped) {
     std::unique_lock lock(execution_mutex);
     if (shutdown_complete) {
-        return;
+        return true;
     }
 
     // close registration before deciding where device resources can be released.
@@ -390,11 +391,11 @@ void shutdown(bool graphics_stopped) {
             (graphics_stopped || device_thread == GetCurrentThreadId()))) {
         DispatchScope scope;
         finish_shutdown();
-        return;
+        return true;
     }
 
     // a graphics boundary must drain callbacks when another thread requests shutdown.
-    shutdown_condition.wait(lock, [] {
+    return shutdown_condition.wait_for(lock, std::chrono::milliseconds(100), [] {
         return shutdown_complete;
     });
 }

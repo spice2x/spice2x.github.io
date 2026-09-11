@@ -12,6 +12,6 @@ void present_complete(IDirect3DDevice9 *device, HRESULT result);
 void invalidate(IDirect3DDevice9 *device);
 void reset_complete(IDirect3DDevice9 *device, bool success);
 void destroy(IDirect3DDevice9 *device);
-void shutdown(bool graphics_stopped);
+bool shutdown(bool graphics_stopped);
 
 }

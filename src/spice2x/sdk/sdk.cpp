@@ -47,6 +47,7 @@ static std::shared_mutex sdk_global_mutex;
 // internal
 static bool sdk_initialized = false;
 static bool sdk_shutting_down = false;
+static bool sdk_finalizing = false;
 static std::vector<Button> *buttons;
 static std::vector<Analog> *analogs;
 static std::vector<Light> *lights;
@@ -96,13 +97,19 @@ void fini_sdk_modules(bool graphics_stopped) {
     // prevent multiple calls and further calls into sdk_init
     {
         std::unique_lock lock(sdk_global_mutex);
-        if (!sdk_initialized || sdk_shutting_down) {
+        if (!sdk_initialized || sdk_finalizing) {
             return;
         }
         sdk_shutting_down = true;
+        sdk_finalizing = true;
     }
 
-    d3d9::shutdown(graphics_stopped);
+    if (!d3d9::shutdown(graphics_stopped)) {
+        std::unique_lock lock(sdk_global_mutex);
+        sdk_finalizing = false;
+        log_warning("sdk", "deferring plugin teardown: waiting for D3D9 rendering to stop");
+        return;
+    }
 
     // call into destroy callback of each DLL
     // this may call back into SDK functions (e.g., for logging)
