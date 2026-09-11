@@ -831,12 +831,13 @@ int main_implementation(int argc, char *argv[]) {
                     options[launcher::Options::NICSpoofHostRealIP].value_text();
         }
         if (options[launcher::Options::NICSpoofPort].is_active()) {
-            nicspoof_cfg.tunnel_port = static_cast<uint16_t>(
-                    options[launcher::Options::NICSpoofPort].value_uint32());
-        }
-        if (options[launcher::Options::NICSpoofPass].is_active()) {
-            nicspoof_cfg.password =
-                    options[launcher::Options::NICSpoofPass].value_text();
+            const uint32_t p =
+                    options[launcher::Options::NICSpoofPort].value_uint32();
+            if (p == 0 || p > 65535) {
+                log_warning("launcher", "invalid -nicspoofport {}", p);
+            } else {
+                nicspoof_cfg.tunnel_port = static_cast<uint16_t>(p);
+            }
         }
     }
     if (options[launcher::Options::DisableACPHook].value_bool()) {

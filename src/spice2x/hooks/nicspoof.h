@@ -15,7 +15,6 @@ struct NicSpoofConfig {
     uint32_t local_ip = 0x0A64640Au; /* 10.100.100.10 */
     uint16_t tunnel_port = 51820;
     std::string hub_host;
-    std::string password;
 };
 
 void nicspoof_configure(const NicSpoofConfig &cfg);

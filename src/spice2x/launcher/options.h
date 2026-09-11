@@ -320,7 +320,6 @@ namespace launcher {
             NICSpoofIP,
             NICSpoofHostRealIP,
             NICSpoofPort,
-            NICSpoofPass,
             AutoElevate,
             CfgForceSoftwareRender,
             OBSWebSocketEnabled,

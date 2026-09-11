@@ -51,7 +51,6 @@ constexpr int KEEP_ALIVE_SEC = 5;
 bool g_is_hub = false;
 uint16_t g_tunnel_port = 51820;
 char g_hub[256] = {};
-uint8_t g_password[32] = {};
 uint32_t g_local_ip = 0;
 uint32_t g_peer_ip = 0;
 uint32_t g_subnet = 0;
@@ -96,6 +95,7 @@ struct UdpSock {
     int32_t in_use;
     int32_t closing;
     int32_t bound_port;
+    volatile LONG refs;
     CRITICAL_SECTION cs;
     HANDLE event;
     int32_t q_head;
@@ -127,6 +127,7 @@ struct ListenState {
     int32_t closing;
     uint16_t port;
     int32_t nonblock;
+    volatile LONG refs;
     CRITICAL_SECTION cs;
     HANDLE event;
     int32_t q_count;
@@ -147,14 +148,19 @@ struct ConnWait {
 ConnWait g_conn_wait[MAX_TCP];
 volatile LONG g_next_conn_id = 1;
 
+constexpr int MAX_NB = 64;
+
 struct NbState {
     SOCKET s;
     int32_t in_use;
     int32_t nonblock;
 };
 
-NbState g_nb[64];
+NbState g_nb[MAX_NB];
 CRITICAL_SECTION g_nb_cs;
+
+volatile LONG g_tunnel_up = 0;
+bool g_wsa_started = false;
 
 void ip_to_str(uint32_t ip, char *out, size_t n) {
     if (!out || n == 0) {
@@ -231,6 +237,38 @@ UdpSock *udp_find(SOCKET s) {
     return nullptr;
 }
 
+void udp_destroy_unlocked(UdpSock *st) {
+    if (st->event) {
+        CloseHandle(st->event);
+        st->event = nullptr;
+    }
+    DeleteCriticalSection(&st->cs);
+    memset(st, 0, sizeof(*st));
+}
+
+UdpSock *udp_acquire(SOCKET s) {
+    UdpSock *st;
+
+    EnterCriticalSection(&g_udp_cs);
+    st = udp_find(s);
+    if (st) {
+        InterlockedIncrement(&st->refs);
+    }
+    LeaveCriticalSection(&g_udp_cs);
+    return st;
+}
+
+void udp_release(UdpSock *st) {
+    if (!st) {
+        return;
+    }
+    EnterCriticalSection(&g_udp_cs);
+    if (InterlockedDecrement(&st->refs) == 0) {
+        udp_destroy_unlocked(st);
+    }
+    LeaveCriticalSection(&g_udp_cs);
+}
+
 UdpSock *udp_add(SOCKET s) {
     UdpSock *st;
     HANDLE ev;
@@ -248,6 +286,7 @@ UdpSock *udp_add(SOCKET s) {
                 }
                 g_udp[i].s = s;
                 g_udp[i].in_use = 1;
+                g_udp[i].refs = 1;
                 InitializeCriticalSection(&g_udp[i].cs);
                 g_udp[i].event = ev;
                 st = &g_udp[i];
@@ -260,34 +299,27 @@ UdpSock *udp_add(SOCKET s) {
 }
 
 void udp_remove(SOCKET s) {
-    UdpSock *st;
-    HANDLE ev = nullptr;
+    UdpSock *st = nullptr;
 
     EnterCriticalSection(&g_udp_cs);
-    st = udp_find(s);
-    if (st) {
+    for (int32_t i = 0; i < MAX_UDP_SOCK; i++) {
+        if (g_udp[i].in_use && g_udp[i].s == s) {
+            st = &g_udp[i];
+            break;
+        }
+    }
+    if (st && !st->closing) {
         st->closing = 1;
-        ev = st->event;
-        if (ev) {
-            SetEvent(ev);
-        }
-    }
-    LeaveCriticalSection(&g_udp_cs);
-    if (!st) {
-        return;
-    }
-    EnterCriticalSection(&st->cs);
-    LeaveCriticalSection(&st->cs);
-    EnterCriticalSection(&g_udp_cs);
-    if (st->in_use && st->s == s) {
         if (st->event) {
-            CloseHandle(st->event);
+            SetEvent(st->event);
         }
-        DeleteCriticalSection(&st->cs);
-        st->in_use = 0;
-        st->closing = 0;
+    } else {
+        st = nullptr;
     }
     LeaveCriticalSection(&g_udp_cs);
+    if (st) {
+        udp_release(st);
+    }
 }
 
 void sock_signal_read(HANDLE ev) {
@@ -369,16 +401,60 @@ ListenState *listen_find_port(uint16_t port) {
     return nullptr;
 }
 
+void listen_destroy_unlocked(ListenState *ls) {
+    if (ls->event) {
+        CloseHandle(ls->event);
+        ls->event = nullptr;
+    }
+    DeleteCriticalSection(&ls->cs);
+    memset(ls, 0, sizeof(*ls));
+}
+
+ListenState *listen_acquire(SOCKET s) {
+    ListenState *ls;
+
+    EnterCriticalSection(&g_tcp_cs);
+    ls = listen_find(s);
+    if (ls) {
+        InterlockedIncrement(&ls->refs);
+    }
+    LeaveCriticalSection(&g_tcp_cs);
+    return ls;
+}
+
+ListenState *listen_acquire_port(uint16_t port) {
+    ListenState *ls;
+
+    EnterCriticalSection(&g_tcp_cs);
+    ls = listen_find_port(port);
+    if (ls) {
+        InterlockedIncrement(&ls->refs);
+    }
+    LeaveCriticalSection(&g_tcp_cs);
+    return ls;
+}
+
+void listen_release(ListenState *ls) {
+    if (!ls) {
+        return;
+    }
+    EnterCriticalSection(&g_tcp_cs);
+    if (InterlockedDecrement(&ls->refs) == 0) {
+        listen_destroy_unlocked(ls);
+    }
+    LeaveCriticalSection(&g_tcp_cs);
+}
+
 void nb_set(SOCKET s, int32_t nonblock) {
     EnterCriticalSection(&g_nb_cs);
-    for (int32_t i = 0; i < 64; i++) {
+    for (int32_t i = 0; i < MAX_NB; i++) {
         if (g_nb[i].in_use && g_nb[i].s == s) {
             g_nb[i].nonblock = nonblock;
             LeaveCriticalSection(&g_nb_cs);
             return;
         }
     }
-    for (int32_t i = 0; i < 64; i++) {
+    for (int32_t i = 0; i < MAX_NB; i++) {
         if (!g_nb[i].in_use) {
             g_nb[i].in_use = 1;
             g_nb[i].s = s;
@@ -392,7 +468,7 @@ void nb_set(SOCKET s, int32_t nonblock) {
 int32_t nb_get(SOCKET s) {
     int32_t v = 0;
     EnterCriticalSection(&g_nb_cs);
-    for (int32_t i = 0; i < 64; i++) {
+    for (int32_t i = 0; i < MAX_NB; i++) {
         if (g_nb[i].in_use && g_nb[i].s == s) {
             v = g_nb[i].nonblock;
             break;
@@ -404,7 +480,7 @@ int32_t nb_get(SOCKET s) {
 
 void nb_clear(SOCKET s) {
     EnterCriticalSection(&g_nb_cs);
-    for (int32_t i = 0; i < 64; i++) {
+    for (int32_t i = 0; i < MAX_NB; i++) {
         if (g_nb[i].in_use && g_nb[i].s == s) {
             g_nb[i].in_use = 0;
         }
@@ -545,18 +621,23 @@ int32_t tun_send(uint8_t type, const uint8_t *payload, int32_t plen) {
     return tun_sendto_raw(g_tun_sock, reinterpret_cast<char *>(buf), n, &peer);
 }
 
-void tun_send_udp(uint16_t sport, uint16_t dport, const uint8_t *data,
+int32_t tun_send_udp(uint16_t sport, uint16_t dport, const uint8_t *data,
         int32_t len) {
     uint8_t buf[MAX_UDP_PAYLOAD + 8];
+    int32_t r;
 
-    if (len > MAX_UDP_PAYLOAD) {
-        return;
+    if (len < 0 || len > MAX_UDP_PAYLOAD) {
+        return -2;
     }
     buf[0] = KIND_UDP;
     wr16(buf + 1, sport);
     wr16(buf + 3, dport);
     memcpy(buf + 5, data, static_cast<size_t>(len));
-    tun_send(MSG_DATA, buf, 5 + len);
+    r = tun_send(MSG_DATA, buf, 5 + len);
+    if (r < 0) {
+        return -1;
+    }
+    return len;
 }
 
 void tun_send_tcp_hdr(uint8_t kind, uint32_t conn_id, const uint8_t *extra,
@@ -757,7 +838,7 @@ void tcp_free_by_index(int32_t i) {
         closesocket_orig(rs);
     }
     if (th) {
-        WaitForSingleObject(th, 5000);
+        WaitForSingleObject(th, INFINITE);
         CloseHandle(th);
     }
     EnterCriticalSection(&g_tcp_cs);
@@ -820,20 +901,20 @@ void on_tcp_syn(uint32_t conn_id, uint16_t dport, uint16_t sport) {
     uint32_t peer_ip;
     int32_t queued = 0;
 
-    EnterCriticalSection(&g_tcp_cs);
-    ls = listen_find_port(dport);
-    LeaveCriticalSection(&g_tcp_cs);
+    ls = listen_acquire_port(dport);
     if (!ls) {
         log_warning("network", "NIC tunnel: TCP_SYN unbound port {}", dport);
         return;
     }
     if (make_loopback_pair(&game_side, &relay_side) != 0) {
         log_warning("network", "NIC tunnel: loopback pair failed");
+        listen_release(ls);
         return;
     }
     if (!tcp_alloc(conn_id, game_side, relay_side)) {
         closesocket_orig(game_side);
         closesocket_orig(relay_side);
+        listen_release(ls);
         return;
     }
     peer_get(nullptr, &peer_ip);
@@ -855,11 +936,13 @@ void on_tcp_syn(uint32_t conn_id, uint16_t dport, uint16_t sport) {
         closesocket_orig(game_side);
         tcp_free_id(conn_id);
         tun_send_tcp_hdr(KIND_TCP_FIN, conn_id, nullptr, 0);
+        listen_release(ls);
         return;
     }
     tun_send_tcp_hdr(KIND_TCP_ACCEPTED, conn_id, nullptr, 0);
     log_info("network", "NIC tunnel: TCP accepted conn={} dport={}",
             conn_id, dport);
+    listen_release(ls);
 }
 
 void on_data_payload(const uint8_t *p, int32_t n) {
@@ -871,6 +954,9 @@ void on_data_payload(const uint8_t *p, int32_t n) {
     }
     kind = p[0];
     peer_get(nullptr, &peer_ip);
+    if (!peer_ip) {
+        return;
+    }
     if (kind == KIND_UDP && n >= 5) {
         udp_enqueue(rd16(p + 3), peer_ip, rd16(p + 1), p + 5, n - 5);
         return;
@@ -885,7 +971,7 @@ void on_data_payload(const uint8_t *p, int32_t n) {
     }
     if (kind == KIND_TCP_DATA && n >= 5) {
         SOCKET rs = tcp_relay_for_id(rd32(p + 1));
-        if (rs != INVALID_SOCKET) {
+        if (rs != INVALID_SOCKET && send_orig) {
             send_orig(rs, reinterpret_cast<const char *>(p + 5), n - 5, 0);
         }
         return;
@@ -906,21 +992,21 @@ DWORD WINAPI keepalive_thread(LPVOID) {
         if (g_shutdown || g_tun_sock == INVALID_SOCKET) {
             continue;
         }
-        if (!g_is_hub && peer_get(nullptr, nullptr) && !g_registered) {
-            uint8_t reg[36];
-            uint8_t pkt[41];
+        if (!g_is_hub && peer_get(nullptr, nullptr) &&
+                InterlockedCompareExchange(&g_registered, 0, 0) == 0) {
+            uint8_t reg[4];
+            uint8_t pkt[9];
             sockaddr_in peer;
 
-            memcpy(reg, g_password, 32);
-            wr32(reg + 32, g_local_ip);
+            wr32(reg, g_local_ip);
             pkt[0] = MAGIC0;
             pkt[1] = MAGIC1;
             pkt[2] = MAGIC2;
             pkt[3] = MAGIC3;
             pkt[4] = MSG_REGISTER;
-            memcpy(pkt + 5, reg, 36);
+            memcpy(pkt + 5, reg, 4);
             if (peer_get(&peer, nullptr)) {
-                tun_sendto_raw(g_tun_sock, reinterpret_cast<char *>(pkt), 41,
+                tun_sendto_raw(g_tun_sock, reinterpret_cast<char *>(pkt), 9,
                         &peer);
             }
         }
@@ -959,21 +1045,8 @@ DWORD WINAPI tunnel_thread(LPVOID) {
         type = buf[4];
         payload = buf + 5;
         plen = n - 5;
-        if (type == MSG_REGISTER && g_is_hub && plen >= 36) {
-            uint8_t pkt[6];
-
-            if (memcmp(payload, g_password, 32) != 0) {
-                pkt[0] = MAGIC0;
-                pkt[1] = MAGIC1;
-                pkt[2] = MAGIC2;
-                pkt[3] = MAGIC3;
-                pkt[4] = MSG_REGISTER_ACK;
-                pkt[5] = 2;
-                tun_sendto_raw(g_tun_sock, reinterpret_cast<char *>(pkt), 6,
-                        &from);
-                continue;
-            }
-            peer_set(&from, 1, rd32(payload + 32));
+        if (type == MSG_REGISTER && g_is_hub && plen >= 4) {
+            peer_set(&from, 1, rd32(payload));
             {
                 uint8_t pkt[10];
                 pkt[0] = MAGIC0;
@@ -989,7 +1062,7 @@ DWORD WINAPI tunnel_thread(LPVOID) {
             InterlockedExchange(&g_registered, 1);
             {
                 char peer_str[16];
-                ip_to_str(rd32(payload + 32), peer_str, sizeof(peer_str));
+                ip_to_str(rd32(payload), peer_str, sizeof(peer_str));
                 log_info("network",
                         "NIC tunnel: hub peer registered peer_ip={}", peer_str);
             }
@@ -1014,6 +1087,11 @@ DWORD WINAPI tunnel_thread(LPVOID) {
             continue;
         }
         if (type == MSG_KEEPALIVE) {
+            /* Hub ignores keepalive until REGISTER establishes the peer. */
+            if (g_is_hub &&
+                    InterlockedCompareExchange(&g_registered, 0, 0) == 0) {
+                continue;
+            }
             if (plen >= 4) {
                 peer_set(&from, 1, rd32(payload));
             } else if (g_is_hub) {
@@ -1022,8 +1100,17 @@ DWORD WINAPI tunnel_thread(LPVOID) {
             continue;
         }
         if (type == MSG_DATA && plen > 0) {
+            uint32_t peer_ip = 0;
+
+            if (InterlockedCompareExchange(&g_registered, 0, 0) == 0) {
+                continue;
+            }
             if (g_is_hub) {
                 peer_set(&from, 1, 0);
+            }
+            peer_get(nullptr, &peer_ip);
+            if (!peer_ip) {
+                continue;
             }
             on_data_payload(payload, plen);
         }
@@ -1039,10 +1126,11 @@ int32_t start_tunnel() {
         log_warning("network", "NIC tunnel: WSAStartup failed");
         return -1;
     }
+    g_wsa_started = true;
     g_tun_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (g_tun_sock == INVALID_SOCKET) {
         log_warning("network", "NIC tunnel: socket create failed");
-        return -1;
+        goto fail;
     }
     memset(&bind_addr, 0, sizeof(bind_addr));
     bind_addr.sin_family = AF_INET;
@@ -1053,7 +1141,7 @@ int32_t start_tunnel() {
                 sizeof(bind_addr)) != 0) {
             log_warning("network", "NIC tunnel: hub bind fail err={}",
                     WSAGetLastError());
-            return -1;
+            goto fail;
         }
         log_info("network", "NIC tunnel: hub listen UDP {}", g_tunnel_port);
     } else {
@@ -1064,8 +1152,12 @@ int32_t start_tunnel() {
         size_t hl;
 
         bind_addr.sin_port = 0;
-        tun_bind_raw(g_tun_sock, reinterpret_cast<sockaddr *>(&bind_addr),
-                sizeof(bind_addr));
+        if (tun_bind_raw(g_tun_sock, reinterpret_cast<sockaddr *>(&bind_addr),
+                sizeof(bind_addr)) != 0) {
+            log_warning("network", "NIC tunnel: client bind fail err={}",
+                    WSAGetLastError());
+            goto fail;
+        }
         memset(&peer, 0, sizeof(peer));
         peer.sin_family = AF_INET;
         colon = strchr(g_hub, ':');
@@ -1088,24 +1180,23 @@ int32_t start_tunnel() {
             if (!he) {
                 log_warning("network",
                         "NIC tunnel: failed to resolve hub host");
-                return -1;
+                goto fail;
             }
             memcpy(&peer.sin_addr, he->h_addr, 4);
         }
         peer_set(&peer, 1, 0);
         {
-            uint8_t reg[36];
-            uint8_t pkt[41];
+            uint8_t reg[4];
+            uint8_t pkt[9];
 
-            memcpy(reg, g_password, 32);
-            wr32(reg + 32, g_local_ip);
+            wr32(reg, g_local_ip);
             pkt[0] = MAGIC0;
             pkt[1] = MAGIC1;
             pkt[2] = MAGIC2;
             pkt[3] = MAGIC3;
             pkt[4] = MSG_REGISTER;
-            memcpy(pkt + 5, reg, 36);
-            tun_sendto_raw(g_tun_sock, reinterpret_cast<char *>(pkt), 41, &peer);
+            memcpy(pkt + 5, reg, 4);
+            tun_sendto_raw(g_tun_sock, reinterpret_cast<char *>(pkt), 9, &peer);
             log_info("network", "NIC tunnel: client register -> {}", g_hub);
         }
     }
@@ -1114,9 +1205,33 @@ int32_t start_tunnel() {
             nullptr);
     if (!g_tunnel_th || !g_keepalive_th) {
         log_warning("network", "NIC tunnel: thread create failed");
-        return -1;
+        goto fail;
     }
     return 0;
+
+fail:
+    if (g_tunnel_th) {
+        InterlockedExchange(&g_shutdown, 1);
+        WaitForSingleObject(g_tunnel_th, 2000);
+        CloseHandle(g_tunnel_th);
+        g_tunnel_th = nullptr;
+    }
+    if (g_keepalive_th) {
+        InterlockedExchange(&g_shutdown, 1);
+        WaitForSingleObject(g_keepalive_th, 2000);
+        CloseHandle(g_keepalive_th);
+        g_keepalive_th = nullptr;
+    }
+    InterlockedExchange(&g_shutdown, 0);
+    if (g_tun_sock != INVALID_SOCKET) {
+        closesocket(g_tun_sock);
+        g_tun_sock = INVALID_SOCKET;
+    }
+    if (g_wsa_started) {
+        WSACleanup();
+        g_wsa_started = false;
+    }
+    return -1;
 }
 
 uint16_t sock_local_port(SOCKET s) {
@@ -1143,6 +1258,9 @@ int WSAAPI bind_hook(SOCKET s, const sockaddr *name, int namelen) {
     }
 
     r = bind_orig(s, name, namelen);
+    if (r != 0 || !g_tunnel_up) {
+        return r;
+    }
     getsockopt(s, SOL_SOCKET, SO_TYPE, reinterpret_cast<char *>(&type), &tlen);
     if (type == SOCK_DGRAM) {
         us = udp_add(s);
@@ -1162,7 +1280,7 @@ int WSAAPI sendto_hook(SOCKET s, const char *buf, int len, int flags,
     if (icmphook_try_sendto(s, buf, len, flags, to, tolen, &icmp_r)) {
         return icmp_r;
     }
-    if (s == g_tun_sock) {
+    if (s == g_tun_sock || !g_tunnel_up) {
         return sendto_orig(s, buf, len, flags, to, tolen);
     }
     if (to && to->sa_family == AF_INET && len >= 0) {
@@ -1183,9 +1301,19 @@ int WSAAPI sendto_hook(SOCKET s, const char *buf, int len, int flags,
                         reinterpret_cast<const uint8_t *>(buf), len);
                 return len;
             }
-            tun_send_udp(sport, dport, reinterpret_cast<const uint8_t *>(buf),
-                    len);
-            return len;
+            {
+                int32_t tr = tun_send_udp(sport, dport,
+                        reinterpret_cast<const uint8_t *>(buf), len);
+                if (tr == -2) {
+                    WSASetLastError(WSAEMSGSIZE);
+                    return SOCKET_ERROR;
+                }
+                if (tr < 0) {
+                    WSASetLastError(WSAENETUNREACH);
+                    return SOCKET_ERROR;
+                }
+                return len;
+            }
         }
     }
     return sendto_orig(s, buf, len, flags, to, tolen);
@@ -1220,7 +1348,7 @@ int WSAAPI WSASendTo_hook(SOCKET s, LPWSABUF b, DWORD n, LPDWORD sent,
 }
 
 int32_t pop_udp(UdpSock *us, char *buf, int32_t len, sockaddr *from,
-        int32_t *fromlen) {
+        int32_t *fromlen, int32_t peek) {
     UdpDgram d;
 
     if (!us || len < 0) {
@@ -1232,8 +1360,10 @@ int32_t pop_udp(UdpSock *us, char *buf, int32_t len, sockaddr *from,
         return -1;
     }
     d = us->q[us->q_head];
-    us->q_head = (us->q_head + 1) % MAX_UDP_Q;
-    us->q_count--;
+    if (!peek) {
+        us->q_head = (us->q_head + 1) % MAX_UDP_Q;
+        us->q_count--;
+    }
     LeaveCriticalSection(&us->cs);
     if (len > d.len) {
         len = d.len;
@@ -1255,6 +1385,7 @@ int WSAAPI recvfrom_hook(SOCKET s, char *buf, int len, int flags,
     UdpSock *us;
     int32_t r;
     int icmp_r = 0;
+    const int32_t peek = (flags & MSG_PEEK) ? 1 : 0;
 
     if (icmphook_try_recvfrom(s, buf, len, flags, from, fromlen, &icmp_r)) {
         return icmp_r;
@@ -1262,18 +1393,31 @@ int WSAAPI recvfrom_hook(SOCKET s, char *buf, int len, int flags,
     if (s == g_tun_sock) {
         return recvfrom_orig(s, buf, len, flags, from, fromlen);
     }
+    if (!g_tunnel_up) {
+        return recvfrom_orig(s, buf, len, flags, from, fromlen);
+    }
     if (len < 0) {
         WSASetLastError(WSAEINVAL);
         return SOCKET_ERROR;
     }
-    EnterCriticalSection(&g_udp_cs);
-    us = udp_find(s);
-    LeaveCriticalSection(&g_udp_cs);
-    if (us) {
-        r = pop_udp(us, buf, len, from, fromlen);
+
+    us = udp_acquire(s);
+    if (!us) {
+        return recvfrom_orig(s, buf, len, flags, from, fromlen);
+    }
+
+    for (;;) {
+        r = pop_udp(us, buf, len, from, fromlen, peek);
         if (r >= 0) {
+            udp_release(us);
             return r;
         }
+        if (us->closing) {
+            udp_release(us);
+            WSASetLastError(WSAENOTSOCK);
+            return SOCKET_ERROR;
+        }
+
         {
             fd_set rfds;
             timeval tv;
@@ -1281,24 +1425,29 @@ int WSAAPI recvfrom_hook(SOCKET s, char *buf, int len, int flags,
             FD_SET(s, &rfds);
             tv.tv_sec = 0;
             tv.tv_usec = 0;
-            if (select_orig(0, &rfds, nullptr, nullptr, &tv) > 0) {
+            if (select_orig && select_orig(0, &rfds, nullptr, nullptr, &tv) > 0) {
+                udp_release(us);
                 return recvfrom_orig(s, buf, len, flags, from, fromlen);
             }
         }
-        if (us->event && WaitForSingleObject(us->event, 0) == WAIT_OBJECT_0) {
-            r = pop_udp(us, buf, len, from, fromlen);
-            if (r >= 0) {
-                return r;
-            }
+
+        if (nb_get(s)) {
+            udp_release(us);
+            WSASetLastError(WSAEWOULDBLOCK);
+            return SOCKET_ERROR;
         }
-        if (us->closing) {
+
+        if (!us->event) {
+            udp_release(us);
             WSASetLastError(WSAENOTSOCK);
             return SOCKET_ERROR;
         }
-        WSASetLastError(WSAEWOULDBLOCK);
-        return SOCKET_ERROR;
+        if (WaitForSingleObject(us->event, 500) == WAIT_FAILED) {
+            udp_release(us);
+            WSASetLastError(WSAENOTSOCK);
+            return SOCKET_ERROR;
+        }
     }
-    return recvfrom_orig(s, buf, len, flags, from, fromlen);
 }
 
 int WSAAPI WSARecvFrom_hook(SOCKET s, LPWSABUF b, DWORD n, LPDWORD recvd,
@@ -1387,11 +1536,13 @@ int WSAAPI select_hook(int nfds, fd_set *readfds, fd_set *writefds,
                     FD_ZERO(exceptfds);
                 }
                 if (fd_set_has_overlay(&orig_r)) {
+                    int32_t ready = 0;
                     if (readfds) {
                         FD_ZERO(readfds);
                         merge_overlay_into_fdset(readfds, &orig_r);
+                        ready = static_cast<int32_t>(readfds->fd_count);
                     }
-                    return 1;
+                    return ready;
                 }
                 return 0;
             }
@@ -1451,7 +1602,7 @@ int WSAAPI listen_hook(SOCKET s, int backlog) {
 
     r = listen_orig(s, backlog);
     port = sock_local_port(s);
-    if (r == 0 && port) {
+    if (r == 0 && port && g_tunnel_up) {
         EnterCriticalSection(&g_tcp_cs);
         for (int32_t i = 0; i < MAX_LISTEN; i++) {
             if (!g_listen[i].in_use) {
@@ -1464,6 +1615,7 @@ int WSAAPI listen_hook(SOCKET s, int backlog) {
                 g_listen[i].listen_sock = s;
                 g_listen[i].port = port;
                 g_listen[i].nonblock = nb_get(s);
+                g_listen[i].refs = 1;
                 InitializeCriticalSection(&g_listen[i].cs);
                 g_listen[i].event = ev;
                 if (!g_logged_overlay_listen) {
@@ -1505,51 +1657,52 @@ int WSAAPI ioctlsocket_hook(SOCKET s, long cmd, u_long *argp) {
 SOCKET WSAAPI accept_hook(SOCKET s, sockaddr *addr, int *addrlen) {
     ListenState *ls;
 
-    EnterCriticalSection(&g_tcp_cs);
-    ls = listen_find(s);
-    LeaveCriticalSection(&g_tcp_cs);
-    if (ls) {
-        for (;;) {
-            EnterCriticalSection(&ls->cs);
-            if (ls->closing) {
-                LeaveCriticalSection(&ls->cs);
-                WSASetLastError(WSAENOTSOCK);
-                return INVALID_SOCKET;
-            }
-            if (ls->q_count > 0) {
-                AcceptItem it = ls->q[0];
-                for (int32_t i = 1; i < ls->q_count; i++) {
-                    ls->q[i - 1] = ls->q[i];
-                }
-                ls->q_count--;
-                LeaveCriticalSection(&ls->cs);
-                if (addr && addrlen &&
-                        *addrlen >= static_cast<int>(sizeof(it.peer))) {
-                    memcpy(addr, &it.peer, sizeof(it.peer));
-                    *addrlen = sizeof(it.peer);
-                }
-                return it.client_sock;
-            }
-            LeaveCriticalSection(&ls->cs);
-            if (ls->nonblock || nb_get(s)) {
-                WSASetLastError(WSAEWOULDBLOCK);
-                return INVALID_SOCKET;
-            }
-            if (!ls->event || WaitForSingleObject(ls->event, 500) != WAIT_OBJECT_0) {
-                EnterCriticalSection(&g_tcp_cs);
-                if (!listen_find(s) || ls->closing) {
-                    LeaveCriticalSection(&g_tcp_cs);
-                    WSASetLastError(WSAENOTSOCK);
-                    return INVALID_SOCKET;
-                }
-                LeaveCriticalSection(&g_tcp_cs);
-            }
-        }
+    ls = listen_acquire(s);
+    if (!ls) {
+        return accept_orig(s, addr, addrlen);
     }
-    return accept_orig(s, addr, addrlen);
+    for (;;) {
+        EnterCriticalSection(&ls->cs);
+        if (ls->closing) {
+            LeaveCriticalSection(&ls->cs);
+            listen_release(ls);
+            WSASetLastError(WSAENOTSOCK);
+            return INVALID_SOCKET;
+        }
+        if (ls->q_count > 0) {
+            AcceptItem it = ls->q[0];
+            for (int32_t i = 1; i < ls->q_count; i++) {
+                ls->q[i - 1] = ls->q[i];
+            }
+            ls->q_count--;
+            LeaveCriticalSection(&ls->cs);
+            if (addr && addrlen &&
+                    *addrlen >= static_cast<int>(sizeof(it.peer))) {
+                memcpy(addr, &it.peer, sizeof(it.peer));
+                *addrlen = sizeof(it.peer);
+            }
+            listen_release(ls);
+            return it.client_sock;
+        }
+        LeaveCriticalSection(&ls->cs);
+        if (ls->nonblock || nb_get(s)) {
+            listen_release(ls);
+            WSASetLastError(WSAEWOULDBLOCK);
+            return INVALID_SOCKET;
+        }
+        if (!ls->event) {
+            listen_release(ls);
+            WSASetLastError(WSAENOTSOCK);
+            return INVALID_SOCKET;
+        }
+        WaitForSingleObject(ls->event, 500);
+    }
 }
 
 int WSAAPI connect_hook(SOCKET s, const sockaddr *name, int namelen) {
+    if (!g_tunnel_up) {
+        return connect_orig(s, name, namelen);
+    }
     if (name && name->sa_family == AF_INET) {
         const sockaddr_in *in = reinterpret_cast<const sockaddr_in *>(name);
         uint32_t dip = ntohl(in->sin_addr.s_addr);
@@ -1716,7 +1869,6 @@ void listen_close(SOCKET s) {
     ListenState *ls = nullptr;
     AcceptItem drain[MAX_ACCEPT_Q];
     int32_t dn = 0;
-    HANDLE ev = nullptr;
 
     EnterCriticalSection(&g_tcp_cs);
     for (int32_t i = 0; i < MAX_LISTEN; i++) {
@@ -1725,11 +1877,10 @@ void listen_close(SOCKET s) {
             break;
         }
     }
-    if (ls) {
+    if (ls && !ls->closing) {
         ls->closing = 1;
-        ev = ls->event;
-        if (ev) {
-            SetEvent(ev);
+        if (ls->event) {
+            SetEvent(ls->event);
         }
         EnterCriticalSection(&ls->cs);
         dn = ls->q_count;
@@ -1738,22 +1889,20 @@ void listen_close(SOCKET s) {
         }
         ls->q_count = 0;
         LeaveCriticalSection(&ls->cs);
+        InterlockedIncrement(&ls->refs);
+    } else {
+        ls = nullptr;
     }
     LeaveCriticalSection(&g_tcp_cs);
     for (int32_t i = 0; i < dn; i++) {
         tcp_free_sock(drain[i].client_sock);
         closesocket_orig(drain[i].client_sock);
     }
-    EnterCriticalSection(&g_tcp_cs);
-    if (ls && ls->listen_sock == s) {
-        if (ls->event) {
-            CloseHandle(ls->event);
-        }
-        DeleteCriticalSection(&ls->cs);
-        ls->in_use = 0;
-        ls->closing = 0;
+    if (ls) {
+        /* Drop close-path ref and the listen_hook base ref. */
+        listen_release(ls);
+        listen_release(ls);
     }
-    LeaveCriticalSection(&g_tcp_cs);
 }
 
 int WSAAPI closesocket_hook(SOCKET s) {
@@ -1812,6 +1961,11 @@ void install_hooks() {
         }
     }
 
+    if (!send_orig || !recv_orig || !getsockname_orig || !select_orig ||
+            !sendto_orig || !recvfrom_orig || !bind_orig || !closesocket_orig) {
+        ok = false;
+    }
+
     if (!ok) {
         log_warning("network",
                 "NIC tunnel: one or more divert hooks failed to install");
@@ -1822,6 +1976,12 @@ void install_hooks() {
     }
 }
 
+bool install_hooks_ok() {
+    return send_orig && recv_orig && getsockname_orig && select_orig &&
+            sendto_orig && recvfrom_orig && bind_orig && closesocket_orig &&
+            listen_orig && accept_orig && connect_orig && ioctlsocket_orig;
+}
+
 } // namespace nicspoof_tunnel_detail
 
 void nicspoof_tunnel_init(const NicSpoofConfig &cfg) {
@@ -1829,15 +1989,14 @@ void nicspoof_tunnel_init(const NicSpoofConfig &cfg) {
 
     static bool done = false;
     char ipstr[16];
-    size_t pw_len;
 
     if (done) {
         return;
     }
-    done = true;
 
     if (cfg.mode != NicSpoofMode::TunnelHost &&
             cfg.mode != NicSpoofMode::TunnelClient) {
+        done = true;
         return;
     }
 
@@ -1847,6 +2006,7 @@ void nicspoof_tunnel_init(const NicSpoofConfig &cfg) {
     if (!g_is_hub && cfg.hub_host.empty()) {
         log_warning("network",
                 "NIC tunnel: TunnelClient requires hub host; not starting");
+        done = true;
         return;
     }
 
@@ -1854,15 +2014,6 @@ void nicspoof_tunnel_init(const NicSpoofConfig &cfg) {
     g_mask = nicspoof_mask();
     g_subnet = nicspoof_subnet();
     g_peer_ip = 0;
-
-    memset(g_password, 0, sizeof(g_password));
-    pw_len = cfg.password.size();
-    if (pw_len > sizeof(g_password)) {
-        pw_len = sizeof(g_password);
-    }
-    if (pw_len > 0) {
-        memcpy(g_password, cfg.password.data(), pw_len);
-    }
 
     memset(g_hub, 0, sizeof(g_hub));
     if (!cfg.hub_host.empty()) {
@@ -1886,9 +2037,19 @@ void nicspoof_tunnel_init(const NicSpoofConfig &cfg) {
                 ipstr, g_tunnel_port, g_hub);
     }
 
+    /* Install hooks first with g_tunnel_up=0 so divert stays inert until ready. */
     install_hooks();
-    if (start_tunnel() != 0) {
-        log_warning("network", "NIC tunnel: start failed");
+    if (!install_hooks_ok()) {
+        log_warning("network",
+                "NIC tunnel: aborting; required Winsock trampolines missing");
+        done = true;
         return;
     }
+    if (start_tunnel() != 0) {
+        log_warning("network", "NIC tunnel: start failed");
+        done = true;
+        return;
+    }
+    InterlockedExchange(&g_tunnel_up, 1);
+    done = true;
 }

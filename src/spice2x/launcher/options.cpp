@@ -3241,16 +3241,6 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .setting_name = "51820",
         .category = "Network Dev",
     };
-    c[launcher::Options::NICSpoofPass] = {
-        .title = "NIC Spoof Tunnel Password",
-        .name = "nicspoofpass",
-        .desc =
-            "Shared password for the BPL matching tunnel. Must match on host "
-            "and client. Same style as -apipass.",
-        .type = OptionType::Text,
-        .category = "Network Dev",
-        .sensitive = true,
-    };
     c[launcher::Options::AutoElevate] = {
         .title = "Run as",
         .name = "runas",
