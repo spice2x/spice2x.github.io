@@ -1,5 +1,6 @@
 #include "icmphook_net.h"
 
+#include "hooks/nicspoof.h"
 #include "util/detour.h"
 #include "util/logging.h"
 
@@ -353,7 +354,11 @@ int WINAPI bind_hook_ws2(SOCKET s, const sockaddr *name, int namelen) {
     {
         std::lock_guard<std::recursive_mutex> lock(g_mu);
         auto it = g_socks.find(s);
-        if (it != g_socks.end() && name && namelen >= (int) sizeof(sockaddr_in)) {
+        if (it != g_socks.end()) {
+            if (!name || namelen < (int) sizeof(sockaddr_in)) {
+                WSASetLastError(WSAEFAULT);
+                return SOCKET_ERROR;
+            }
             auto *in = reinterpret_cast<const sockaddr_in *>(name);
             if (in->sin_family != AF_INET) {
                 WSASetLastError(WSAEAFNOSUPPORT);
@@ -618,7 +623,10 @@ void install_icmphook_hooks() {
     }
     done = true;
 
+    const bool defer_divert = nicspoof_tunnel_enabled();
     bool ok = true;
+
+    // Always own socket creation so raw ICMP sockets become emulated.
     ok &= detour::trampoline_try(
             "ws2_32.dll", "socket",
             (void *) socket_hook, (void **) &socket_orig);
@@ -629,36 +637,51 @@ void install_icmphook_hooks() {
             "ws2_32.dll", "WSASocketA",
             (void *) WSASocketA_hook, (void **) &WSASocketA_orig);
     ok &= detour::trampoline_try(
-            "ws2_32.dll", "closesocket",
-            (void *) closesocket_hook, (void **) &closesocket_orig);
-    ok &= detour::trampoline_try(
-            "ws2_32.dll", "bind",
-            (void *) bind_hook_ws2, (void **) &bind_trampoline_orig);
-    ok &= detour::trampoline_try(
-            "ws2_32.dll", "sendto",
-            (void *) sendto_hook, (void **) &sendto_orig);
-    ok &= detour::trampoline_try(
-            "ws2_32.dll", "recvfrom",
-            (void *) recvfrom_hook, (void **) &recvfrom_orig);
-    ok &= detour::trampoline_try(
-            "ws2_32.dll", "WSASendTo",
-            (void *) WSASendTo_hook, (void **) &WSASendTo_orig);
-    ok &= detour::trampoline_try(
-            "ws2_32.dll", "WSARecvFrom",
-            (void *) WSARecvFrom_hook, (void **) &WSARecvFrom_orig);
-    ok &= detour::trampoline_try(
-            "ws2_32.dll", "ioctlsocket",
-            (void *) ioctlsocket_hook, (void **) &ioctlsocket_orig);
-    ok &= detour::trampoline_try(
             "ws2_32.dll", "setsockopt",
             (void *) setsockopt_hook, (void **) &setsockopt_orig);
 
-    if (!ok) {
+    if (defer_divert) {
+        // NIC tunnel already hooked bind/sendto/recvfrom/closesocket/ioctlsocket.
+        // Tunnel hooks call icmphook_try_* for emulated ICMP sockets.
+        log_info("network",
+                "ICMP emulation: socket hooks installed; divert deferred to "
+                "NIC tunnel (icmphook_try_*)");
+    } else {
+        ok &= detour::trampoline_try(
+                "ws2_32.dll", "closesocket",
+                (void *) closesocket_hook, (void **) &closesocket_orig);
+        ok &= detour::trampoline_try(
+                "ws2_32.dll", "bind",
+                (void *) bind_hook_ws2, (void **) &bind_trampoline_orig);
+        ok &= detour::trampoline_try(
+                "ws2_32.dll", "sendto",
+                (void *) sendto_hook, (void **) &sendto_orig);
+        ok &= detour::trampoline_try(
+                "ws2_32.dll", "recvfrom",
+                (void *) recvfrom_hook, (void **) &recvfrom_orig);
+        ok &= detour::trampoline_try(
+                "ws2_32.dll", "WSASendTo",
+                (void *) WSASendTo_hook, (void **) &WSASendTo_orig);
+        ok &= detour::trampoline_try(
+                "ws2_32.dll", "WSARecvFrom",
+                (void *) WSARecvFrom_hook, (void **) &WSARecvFrom_orig);
+        ok &= detour::trampoline_try(
+                "ws2_32.dll", "ioctlsocket",
+                (void *) ioctlsocket_hook, (void **) &ioctlsocket_orig);
+
+        if (!ok) {
+            log_warning(
+                    "network",
+                    "ICMP emulation: one or more ws2_32 hooks failed to install");
+        } else {
+            log_info("network", "ICMP emulation hooks installed (raw ICMP sockets)");
+        }
+    }
+
+    if (defer_divert && !ok) {
         log_warning(
                 "network",
-                "ICMP emulation: one or more ws2_32 hooks failed to install");
-    } else {
-        log_info("network", "ICMP emulation hooks installed (raw ICMP sockets)");
+                "ICMP emulation: one or more socket-creation hooks failed");
     }
 
     g_installed.store(true, std::memory_order_release);
@@ -683,6 +706,66 @@ bool icmphook_try_bind(SOCKET s, const struct sockaddr *name, int namelen, int *
         return false;
     }
     *out_result = icmphook_internal::bind_hook_ws2(s, name, namelen);
+    return true;
+}
+
+bool icmphook_try_sendto(SOCKET s, const char *buf, int len, int flags,
+        const sockaddr *to, int tolen, int *out_result) {
+    if (!icmphook_is_emulated_socket(s)) {
+        return false;
+    }
+    *out_result = icmphook_internal::sendto_hook(s, buf, len, flags, to, tolen);
+    return true;
+}
+
+bool icmphook_try_recvfrom(SOCKET s, char *buf, int len, int flags,
+        sockaddr *from, int *fromlen, int *out_result) {
+    if (!icmphook_is_emulated_socket(s)) {
+        return false;
+    }
+    *out_result = icmphook_internal::recvfrom_hook(s, buf, len, flags, from, fromlen);
+    return true;
+}
+
+bool icmphook_try_WSASendTo(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount,
+        LPDWORD lpNumberOfBytesSent, DWORD dwFlags, const sockaddr *lpTo,
+        int iTolen, LPWSAOVERLAPPED lpOverlapped,
+        LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine, int *out_result) {
+    if (!icmphook_is_emulated_socket(s)) {
+        return false;
+    }
+    *out_result = icmphook_internal::WSASendTo_hook(
+            s, lpBuffers, dwBufferCount, lpNumberOfBytesSent, dwFlags, lpTo,
+            iTolen, lpOverlapped, lpCompletionRoutine);
+    return true;
+}
+
+bool icmphook_try_WSARecvFrom(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount,
+        LPDWORD lpNumberOfBytesRecvd, LPDWORD lpFlags, sockaddr *lpFrom,
+        LPINT lpFromlen, LPWSAOVERLAPPED lpOverlapped,
+        LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine, int *out_result) {
+    if (!icmphook_is_emulated_socket(s)) {
+        return false;
+    }
+    *out_result = icmphook_internal::WSARecvFrom_hook(
+            s, lpBuffers, dwBufferCount, lpNumberOfBytesRecvd, lpFlags, lpFrom,
+            lpFromlen, lpOverlapped, lpCompletionRoutine);
+    return true;
+}
+
+bool icmphook_try_ioctlsocket(SOCKET s, long cmd, u_long *argp, int *out_result) {
+    if (!icmphook_is_emulated_socket(s)) {
+        return false;
+    }
+    *out_result = icmphook_internal::ioctlsocket_hook(s, cmd, argp);
+    return true;
+}
+
+bool icmphook_try_closesocket(SOCKET s, int *out_result) {
+    if (!icmphook_is_emulated_socket(s)) {
+        return false;
+    }
+    *out_result = icmphook_internal::closesocket_hook(s);
     return true;
 }
 

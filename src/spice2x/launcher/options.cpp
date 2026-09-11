@@ -3188,12 +3188,57 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .category = "Network Dev",
     };
     c[launcher::Options::EnableNICSpoof] = {
-        .title = "Enable NIC Spoof",
+        .title = "NIC Spoof",
         .name = "nicspoof",
-        .desc = "Report a fake Ethernet IPv4 adapter (10.57.3.2) so the game can "
-            "boot when no real NIC is present. DNS names are mapped to that "
-            "address. Does not create a real adapter.",
-        .type = OptionType::Bool,
+        .desc =
+            "Use with -icmphook.\n\n"
+            "offline: report a fake Ethernet IPv4 adapter and map DNS names to "
+            "that address so the game can boot when no real NIC is present. "
+            "Does not create a real adapter.\n\n"
+            "tunnelhost: same fake NIC, plus listen for a matching tunnel "
+            "from a peer.\n\n"
+            "tunnelclient: same fake NIC, plus connect to a tunnel host. "
+            "Set -nicspoofhostrealip.",
+        .type = OptionType::Enum,
+        .category = "Network Dev",
+        .elements = {
+            {"offline", ""},
+            {"tunnelhost", ""},
+            {"tunnelclient", ""},
+        },
+    };
+    c[launcher::Options::NICSpoofIP] = {
+        .title = "NIC Spoof IP",
+        .name = "nicspoofip",
+        .desc =
+            "Overlay IPv4 for the fake adapter. Used when NIC Spoof is not Default. "
+            "If unset, 10.100.100.10 is used.\n\n"
+            "Must be on the same subnet as gateway 10.100.100.1 with mask "
+            "255.0.0.0 (10.0.0.0/8). Examples: 10.100.100.10, 10.0.0.10. "
+            "Do not use 10.0.0.0, 10.255.255.255, the gateway 10.100.100.1, "
+            "or DNS 10.2.1.10 / 10.2.1.30. Host and client must use different IPs.",
+        .type = OptionType::Text,
+        .setting_name = "10.100.100.10",
+        .category = "Network Dev",
+    };
+    c[launcher::Options::NICSpoofHostRealIP] = {
+        .title = "NIC Spoof Tunnel Host",
+        .name = "nicspoofhostrealip",
+        .desc =
+            "Real IP address or hostname of the tunnel host. Required for "
+            "tunnel client mode. Not used for offline or tunnel host.",
+        .type = OptionType::Text,
+        .setting_name = "192.168.1.10",
+        .category = "Network Dev",
+    };
+    c[launcher::Options::NICSpoofPort] = {
+        .title = "NIC Spoof Tunnel Port",
+        .name = "nicspoofport",
+        .desc =
+            "UDP port for the matching tunnel. Host listens on this port; "
+            "client connects to it. If unset, 51820 is used.",
+        .type = OptionType::Integer,
+        .setting_name = "51820",
         .category = "Network Dev",
     };
     c[launcher::Options::AutoElevate] = {
