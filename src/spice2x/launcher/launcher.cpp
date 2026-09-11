@@ -2593,15 +2593,17 @@ int main_implementation(int argc, char *argv[]) {
     avs::core::load_dll();
     avs::ea3::load_dll();
 
-    // ICMP emulation (opt-in; before games open raw ICMP sockets)
-    if (icmphook_enable) {
-        icmphook_net_init();
-    }
-
-    // NIC spoof (opt-in; fake Ethernet / optional matching tunnel)
+    // NIC spoof / matching tunnel first so divert owns overlapping ws2_32
+    // MinHook slots (bind/sendto/recvfrom/...). ICMP then installs only the
+    // non-overlapping socket-creation hooks and is reached via icmphook_try_*.
     if (nicspoof_cfg.mode != NicSpoofMode::Off) {
         nicspoof_configure(nicspoof_cfg);
         nicspoof_init();
+    }
+
+    // ICMP emulation (opt-in; after tunnel so hooks do not collide)
+    if (icmphook_enable) {
+        icmphook_net_init();
     }
 
     // net fix

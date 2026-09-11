@@ -622,6 +622,11 @@ void nicspoof_configure(const NicSpoofConfig &cfg) {
     nicspoof_detail::g_cfg = cfg;
 }
 
+bool nicspoof_tunnel_enabled() {
+    return nicspoof_detail::g_cfg.mode == NicSpoofMode::TunnelHost ||
+            nicspoof_detail::g_cfg.mode == NicSpoofMode::TunnelClient;
+}
+
 uint32_t nicspoof_local_ip() {
     return nicspoof_detail::g_local_ip;
 }

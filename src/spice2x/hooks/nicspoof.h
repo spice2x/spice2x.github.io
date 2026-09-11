@@ -21,6 +21,9 @@ struct NicSpoofConfig {
 void nicspoof_configure(const NicSpoofConfig &cfg);
 void nicspoof_init();
 
+/*! True when mode is TunnelHost or TunnelClient (divert hooks own ws2 sendto/etc.). */
+bool nicspoof_tunnel_enabled();
+
 uint32_t nicspoof_local_ip();
 uint32_t nicspoof_mask();
 uint32_t nicspoof_subnet();
