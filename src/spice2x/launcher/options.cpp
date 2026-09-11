@@ -3195,9 +3195,9 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
             "offline: report a fake Ethernet IPv4 adapter and map DNS names to "
             "that address so the game can boot when no real NIC is present. "
             "Does not create a real adapter.\n\n"
-            "tunnel host: same fake NIC, plus listen for a BPL matching tunnel "
+            "tunnelhost: same fake NIC, plus listen for a matching tunnel "
             "from a peer.\n\n"
-            "tunnel client: same fake NIC, plus connect to a tunnel host. "
+            "tunnelclient: same fake NIC, plus connect to a tunnel host. "
             "Set -nicspoofhostrealip.",
         .type = OptionType::Enum,
         .category = "Network Dev",
@@ -3235,7 +3235,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .title = "NIC Spoof Tunnel Port",
         .name = "nicspoofport",
         .desc =
-            "UDP port for the BPL matching tunnel. Host listens on this port; "
+            "UDP port for the matching tunnel. Host listens on this port; "
             "client connects to it. If unset, 51820 is used.",
         .type = OptionType::Integer,
         .setting_name = "51820",
