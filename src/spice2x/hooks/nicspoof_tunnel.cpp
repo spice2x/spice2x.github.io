@@ -87,7 +87,7 @@ struct UdpDgram {
     uint32_t from_ip;
     uint16_t from_port;
     int32_t len;
-    uint8_t data[MAX_UDP_PAYLOAD];
+    uint8_t *data;
 };
 
 struct UdpSock {
@@ -237,7 +237,23 @@ UdpSock *udp_find(SOCKET s) {
     return nullptr;
 }
 
+void udp_queue_clear_unlocked(UdpSock *st) {
+    while (st->q_count > 0) {
+        UdpDgram *d = &st->q[st->q_head];
+        free(d->data);
+        d->data = nullptr;
+        d->len = 0;
+        st->q_head = (st->q_head + 1) % MAX_UDP_Q;
+        st->q_count--;
+    }
+    st->q_head = 0;
+    st->q_tail = 0;
+}
+
 void udp_destroy_unlocked(UdpSock *st) {
+    EnterCriticalSection(&st->cs);
+    udp_queue_clear_unlocked(st);
+    LeaveCriticalSection(&st->cs);
     if (st->event) {
         CloseHandle(st->event);
         st->event = nullptr;
@@ -330,16 +346,34 @@ void sock_signal_read(HANDLE ev) {
 
 void udp_enqueue_sock(UdpSock *st, uint32_t from_ip, uint16_t from_port,
         const uint8_t *data, int32_t len) {
+    uint8_t *copy = nullptr;
+
     if (!st || st->closing || len < 0 || len > MAX_UDP_PAYLOAD) {
         return;
     }
+    if (len > 0) {
+        if (!data) {
+            return;
+        }
+        copy = static_cast<uint8_t *>(malloc(static_cast<size_t>(len)));
+        if (!copy) {
+            return;
+        }
+        memcpy(copy, data, static_cast<size_t>(len));
+    }
+
     EnterCriticalSection(&st->cs);
-    if (st->q_count < MAX_UDP_Q) {
+    if (st->closing || st->q_count >= MAX_UDP_Q) {
+        LeaveCriticalSection(&st->cs);
+        free(copy);
+        return;
+    }
+    {
         UdpDgram *d = &st->q[st->q_tail];
         d->from_ip = from_ip;
         d->from_port = from_port;
         d->len = len;
-        memcpy(d->data, data, static_cast<size_t>(len));
+        d->data = copy;
         st->q_tail = (st->q_tail + 1) % MAX_UDP_Q;
         st->q_count++;
         sock_signal_read(st->event);
@@ -1349,9 +1383,10 @@ int WSAAPI WSASendTo_hook(SOCKET s, LPWSABUF b, DWORD n, LPDWORD sent,
 
 int32_t pop_udp(UdpSock *us, char *buf, int32_t len, sockaddr *from,
         int32_t *fromlen, int32_t peek) {
-    UdpDgram d;
+    uint8_t *owned = nullptr;
+    int32_t out_len = -1;
 
-    if (!us || len < 0) {
+    if (!us || len < 0 || !buf) {
         return -1;
     }
     EnterCriticalSection(&us->cs);
@@ -1359,25 +1394,39 @@ int32_t pop_udp(UdpSock *us, char *buf, int32_t len, sockaddr *from,
         LeaveCriticalSection(&us->cs);
         return -1;
     }
-    d = us->q[us->q_head];
-    if (!peek) {
-        us->q_head = (us->q_head + 1) % MAX_UDP_Q;
-        us->q_count--;
+    {
+        UdpDgram *d = &us->q[us->q_head];
+        const int32_t dlen = d->len;
+        const uint8_t *src = d->data;
+
+        if (dlen < 0 || (dlen > 0 && !src)) {
+            LeaveCriticalSection(&us->cs);
+            return -1;
+        }
+        out_len = (len > dlen) ? dlen : len;
+        if (out_len > 0) {
+            memcpy(buf, src, static_cast<size_t>(out_len));
+        }
+        if (from && fromlen &&
+                *fromlen >= static_cast<int32_t>(sizeof(sockaddr_in))) {
+            sockaddr_in *in = reinterpret_cast<sockaddr_in *>(from);
+            memset(in, 0, sizeof(*in));
+            in->sin_family = AF_INET;
+            in->sin_addr.s_addr = htonl(d->from_ip);
+            in->sin_port = htons(d->from_port);
+            *fromlen = sizeof(*in);
+        }
+        if (!peek) {
+            owned = d->data;
+            d->data = nullptr;
+            d->len = 0;
+            us->q_head = (us->q_head + 1) % MAX_UDP_Q;
+            us->q_count--;
+        }
     }
     LeaveCriticalSection(&us->cs);
-    if (len > d.len) {
-        len = d.len;
-    }
-    memcpy(buf, d.data, static_cast<size_t>(len));
-    if (from && fromlen && *fromlen >= static_cast<int32_t>(sizeof(sockaddr_in))) {
-        sockaddr_in *in = reinterpret_cast<sockaddr_in *>(from);
-        memset(in, 0, sizeof(*in));
-        in->sin_family = AF_INET;
-        in->sin_addr.s_addr = htonl(d.from_ip);
-        in->sin_port = htons(d.from_port);
-        *fromlen = sizeof(*in);
-    }
-    return len;
+    free(owned);
+    return out_len;
 }
 
 int WSAAPI recvfrom_hook(SOCKET s, char *buf, int len, int flags,
