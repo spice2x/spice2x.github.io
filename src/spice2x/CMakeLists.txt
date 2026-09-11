@@ -617,6 +617,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/icmphook_net.cpp
         hooks/icmphook_iphlpapi.cpp
         hooks/nicspoof.cpp
+        hooks/nicspoof_tunnel.cpp
         hooks/powrprof.cpp
         #hooks/rom.cpp
         hooks/setupapihook.cpp
