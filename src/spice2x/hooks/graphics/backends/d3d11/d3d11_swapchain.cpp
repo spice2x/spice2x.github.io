@@ -18,6 +18,7 @@
 #include <dxgi1_2.h>
 
 #include "d3d11_internal.h"
+#include "d3d11_swapchain_udn.h"
 
 #include "external/imgui/imgui.h"
 #include "external/imgui/backends/imgui_impl_dx11.h"
@@ -115,34 +116,6 @@ bool looks_like_game_window(HWND hwnd) {
         && client.bottom > client.top;
 }
 
-// only the main game window; ignore sub-screens / IME helpers.
-bool is_main_game_swapchain(IDXGISwapChain *swapchain) {
-    DXGI_SWAP_CHAIN_DESC desc {};
-    if (!swapchain || FAILED(swapchain->GetDesc(&desc)) || !desc.OutputWindow) {
-        return false;
-    }
-
-    HWND main = d3d11_hooks::main_hwnd();
-    if (!main) {
-        // no creation hook recorded a window, so fall back to the presenting one;
-        // the choice is permanent, so require a plausible game window
-        if (!looks_like_game_window(desc.OutputWindow)) {
-            return false;
-        }
-
-        log_misc(
-            "graphics::d3d11",
-            "try to notemain hwnd from swapchain present: 0x{:x}",
-            (uintptr_t)desc.OutputWindow);
-
-        d3d11_hooks::note_main_hwnd(desc.OutputWindow);
-
-        // it may have been ignored, or another thread may have won the slot
-        main = d3d11_hooks::main_hwnd();
-    }
-    return desc.OutputWindow == main;
-}
-
 // checks are ordered cheapest first, since this runs on every present
 void try_create_overlay(IDXGISwapChain *swapchain) {
     if (!swapchain) {
@@ -160,7 +133,7 @@ void try_create_overlay(IDXGISwapChain *swapchain) {
     }
 
     // ignore sub windows
-    if (!is_main_game_swapchain(swapchain)) {
+    if (!d3d11_hooks::is_main_game_swapchain(swapchain)) {
         return;
     }
 
@@ -198,7 +171,7 @@ void try_create_overlay(IDXGISwapChain *swapchain) {
 void pump_frame(IDXGISwapChain *swapchain) {
     const bool has_overlay =
         overlay::OVERLAY && overlay::OVERLAY->uses_swapchain(swapchain);
-    if (!has_overlay && !is_main_game_swapchain(swapchain)) {
+    if (!has_overlay && !d3d11_hooks::is_main_game_swapchain(swapchain)) {
         return;
     }
 
@@ -240,8 +213,10 @@ HRESULT STDMETHODCALLTYPE Present_hook(
 {
     // a test present doesn't display anything; don't pick a window or take a screenshot off it
     if (!(Flags & DXGI_PRESENT_TEST)) {
+        d3d11_hooks::udn::schedule_window_attach(swapchain);
         try_create_overlay(swapchain);
         pump_frame(swapchain);
+        d3d11_hooks::udn::apply_present_policy(swapchain, SyncInterval);
     }
     return Present_orig(swapchain, SyncInterval, Flags);
 }
@@ -251,8 +226,10 @@ HRESULT STDMETHODCALLTYPE Present1_hook(
         const DXGI_PRESENT_PARAMETERS *pParams)
 {
     if (!(Flags & DXGI_PRESENT_TEST)) {
+        d3d11_hooks::udn::schedule_window_attach(swapchain);
         try_create_overlay(swapchain);
         pump_frame(swapchain);
+        d3d11_hooks::udn::apply_present_policy(swapchain, SyncInterval);
     }
     return Present1_orig(swapchain, SyncInterval, Flags, pParams);
 }
@@ -285,6 +262,33 @@ namespace d3d11_hooks {
 namespace {
     std::atomic<HWND> g_main_hwnd { nullptr };
     std::atomic<HWND> g_ignored_hwnd { nullptr };
+}
+
+bool is_main_game_swapchain(IDXGISwapChain *swapchain) {
+    DXGI_SWAP_CHAIN_DESC desc {};
+    if (!swapchain || FAILED(swapchain->GetDesc(&desc)) || !desc.OutputWindow) {
+        return false;
+    }
+
+    HWND main = d3d11_hooks::main_hwnd();
+    if (!main) {
+        // no creation hook recorded a window, so fall back to the presenting one;
+        // the choice is permanent, so require a plausible game window
+        if (!looks_like_game_window(desc.OutputWindow)) {
+            return false;
+        }
+
+        log_misc(
+            "graphics::d3d11",
+            "try to notemain hwnd from swapchain present: 0x{:x}",
+            (uintptr_t)desc.OutputWindow);
+
+        d3d11_hooks::note_main_hwnd(desc.OutputWindow);
+
+        // it may have been ignored, or another thread may have won the slot
+        main = d3d11_hooks::main_hwnd();
+    }
+    return desc.OutputWindow == main;
 }
 
 void note_main_hwnd(HWND hwnd) {
@@ -325,6 +329,8 @@ void install_swapchain_hooks(IDXGISwapChain *swapchain) {
             g_swapchain_hooked = true;
         }
     }
+
+    udn::install_swapchain_hooks(swapchain);
 
     if (!g_swapchain1_hooked) {
         IDXGISwapChain1 *sc1 = nullptr;

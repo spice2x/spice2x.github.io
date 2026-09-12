@@ -1511,6 +1511,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .game_name = "Polaris Chord",
         .category = "Advanced Game Options",
     };
+    c[launcher::Options::LoadUDNModule] = {
+        .title = "Force Load DANCE aROUND Module",
+        .name = "udn",
+        .desc = "Manually enable DANCE aROUND module.",
+        .type = OptionType::Bool,
+        .game_name = "DANCE aROUND",
+        .category = "Advanced Game Options",
+    };
     c[launcher::Options::LoadMusecaModule] = {
         .title = "Force Load Museca Module",
         .name = "museca",
@@ -2450,6 +2458,24 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .type = OptionType::Bool,
         .game_name = "Polaris Chord",
         .category = "Game Options",
+    };
+    c[launcher::Options::UDNArgs] = {
+        .title = "DANCE aROUND Arguments Override",
+        .name = "udnargs",
+        .desc = "Command line arguments passed to the game.",
+        .type = OptionType::Text,
+        .setting_name = "",
+        .game_name = "DANCE aROUND",
+        .category = "Advanced Game Options",
+    };
+    c[launcher::Options::UDNNoIO] = {
+        .title = "DANCE aROUND Disable IO Emulation",
+        .name = "udnnoio",
+        .desc = "Disables BI2X hooks for DANCE aROUND.",
+        .type = OptionType::Bool,
+        .setting_name = "",
+        .game_name = "DANCE aROUND",
+        .category = "Advanced Game Options",
     };
     c[launcher::Options::spice2x_LightsOverallBrightness] = {
         .title = "Lights Brightness Adjustment",

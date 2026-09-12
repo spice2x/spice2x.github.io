@@ -26,6 +26,7 @@ namespace d3d11_hooks {
     // ignore_hwnd.
     void note_main_hwnd(HWND hwnd);
     HWND main_hwnd();
+    bool is_main_game_swapchain(IDXGISwapChain *swapchain);
     void ignore_hwnd(HWND hwnd);
 
     // capture backbuffer to PNG if a screenshot was requested.

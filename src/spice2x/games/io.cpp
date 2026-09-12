@@ -37,6 +37,7 @@
 #include "qks/io.h"
 #include "mfg/io.h"
 #include "pc/io.h"
+#include "udn/io.h"
 
 namespace games {
 
@@ -332,6 +333,14 @@ namespace games {
         analogs.insert({ pc, pc::get_analogs() });
         lights.insert({ pc, pc::get_lights() });
         file_hints[pc].push_back({"game/svm.exe"});
+
+        // DANCE aROUND
+        const std::string udn("DANCE aROUND");
+        games.push_back(udn);
+        buttons.insert({ udn, udn::get_buttons() });
+        buttons_help.insert({ udn, udn::get_buttons_help() });
+        lights.insert({ udn, udn::get_lights() });
+        file_hints[udn].push_back({"game/dancearound_Data"});
     }
 
     const std::vector<std::string> &get_games() {

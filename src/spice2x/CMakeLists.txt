@@ -554,6 +554,9 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/pc/pc.cpp
         games/pc/io.cpp
         games/pc/bi2x_hook.cpp
+        games/udn/udn.cpp
+        games/udn/io.cpp
+        games/udn/bi2x_hook.cpp
 
         # hooks
         hooks/audio/acm.cpp
@@ -605,6 +608,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         hooks/graphics/backends/d3d9/d3d9_texture.cpp
         hooks/graphics/backends/d3d11/d3d11_backend.cpp
         hooks/graphics/backends/d3d11/d3d11_swapchain.cpp
+        hooks/graphics/backends/d3d11/d3d11_swapchain_udn.cpp
         hooks/graphics/backends/d3d11/d3d11_factory.cpp
         hooks/graphics/backends/d3d11/d3d11_vtable_capture.cpp
         hooks/graphics/backends/d3d11/d3d11_screenshot.cpp

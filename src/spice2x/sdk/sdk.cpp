@@ -8,6 +8,7 @@
 #include "d3d9.h"
 #include "avs/game.h"
 #include "games/io.h"
+#include "hooks/libraryhook.h"
 #include "launcher/launcher.h"
 #include "misc/eamuse.h"
 #include "overlay/notifications.h"
@@ -38,6 +39,7 @@ static spice_sdk_insert_coin_func sdk_insert_coin;
 static spice_sdk_get_module_info_func sdk_get_module_info;
 static spice_sdk_get_plugin_directory_func sdk_get_plugin_directory;
 static spice_sdk_register_d3d9_func sdk_register_d3d9;
+static spice_sdk_hook_library_func sdk_hook_library;
 
 // DLLs
 static int sdk_modules_count = 0;
@@ -203,6 +205,11 @@ sdk_init(
         v0->register_d3d9 = sdk_register_d3d9;
     }
     // end of 0.4
+
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, hook_library)) {
+        v0->hook_library = sdk_hook_library;
+    }
+    // end of 0.5
 
     // any newer minor iterations will need to check the size
 
@@ -695,6 +702,30 @@ sdk_add_toast(
     }
 
     overlay::notifications::add(sev, text);
+    return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_hook_library(
+    const char *library_name,
+    void *module
+)
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (sdk_shutting_down || !sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    if (!library_name || !library_name[0]) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
+    }
+    if (!module) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_2;
+    }
+
+    libraryhook_hook_library(library_name, static_cast<HMODULE>(module));
+    // launcher::signal::attach enables library hooks before SDK entry points run.
     return SPICE_SDK_STATUS_SUCCESS;
 }
 
