@@ -118,11 +118,11 @@ static inline void update_card(int unit_id) {
     const bool card_presented = eamuse_card_insert_consume(icca_get_active_count(), unit_id);
     const bool key_pressed = (kb_insert_press && !kb_insert_press_old[unit_id]);
 
-    // beatstream and nostalgia have logic that requires ac_io_icca_get_uid_felica to return the
+    // beatstream, nostalgia and Dance Evolution have logic that requires ac_io_icca_get_uid_felica to return the
     // exact same card number multiple times in a row in order for the card number to be read...
     // for whatever reason setting this to 3-4 doesn't work the very first time the game boots up
     // so we use 10 just to be safe
-    const bool need_felica_retries = avs::game::is_model({"NBT", "PAN"});
+    const bool need_felica_retries = avs::game::is_model({"KDM", "NBT", "PAN"});
     if (need_felica_retries && (card_presented || key_pressed)) {
         unit->felica_retries = 10;
     }
