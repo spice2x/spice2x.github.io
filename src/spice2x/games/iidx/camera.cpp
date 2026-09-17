@@ -199,11 +199,11 @@ namespace games::iidx {
         addr_camera_manager = (addr_camera_manager_ptr - (uint8_t*) iidx_module) + disp_camera_manager + 7;
 
         // addr_device_offset
-        search_from = (addr_hook_a_ptr - (uint8_t*) iidx_module);
+        search_from = addr_hook_a;
         uint8_t *addr_device_ptr = reinterpret_cast<uint8_t *>(find_pattern_from(
                 iidx_module,
-                "488B89",
-                "XXX",
+                "488B8F00000000488B014C8B870000000033D2FF9028010000",
+                "XXX????XXXXXX????XXXXXXXX",
                 3, 0, search_from));
 
         if (addr_device_ptr == nullptr) {
@@ -211,7 +211,7 @@ namespace games::iidx {
             return FALSE;
         }
 
-        addr_device_offset = *addr_device_ptr;
+        addr_device_offset = *reinterpret_cast<uint32_t*>(addr_device_ptr);
 
         // --- addr_afp_texture_offset ---
         uint8_t *addr_afp_texture_ptr = reinterpret_cast<uint8_t *>(find_pattern(
@@ -233,13 +233,27 @@ namespace games::iidx {
     static void **__fastcall camera_hook_a(PBYTE a1) {
         std::call_once(hook_a_init, [&]{
             device = *reinterpret_cast<LPDIRECT3DDEVICE9EX*>(a1 + addr_device_offset);
-            auto const preview = *reinterpret_cast<LPDIRECT3DTEXTURE9**>((uint8_t*)iidx_module + addr_textures);
+            auto const registry = reinterpret_cast<Camera::TextureRegistry*>(
+                reinterpret_cast<uint8_t*>(iidx_module) + addr_textures - offsetof(Camera::TextureRegistry, begin));
             auto const manager = reinterpret_cast<Camera::CCameraManager2*>((uint8_t*)iidx_module + addr_camera_manager);
 
-            camera_texture_a = manager->cameras->a->d3d9_texture(addr_afp_texture_offset);
-            camera_texture_b = manager->cameras->b->d3d9_texture(addr_afp_texture_offset);
-            preview_texture_a = preview;
-            preview_texture_b = preview + 2;
+            auto const camera_count = manager->begin ? manager->end - manager->begin : 0;
+            auto const bind_camera = [&](size_t index, LPDIRECT3DTEXTURE9*& texture, LPDIRECT3DTEXTURE9*& preview) {
+                if (index >= static_cast<size_t>(camera_count)) {
+                    return; // IIDX 34 only has the TOP camera.
+                }
+                auto const camera = manager->begin[index];
+                auto const afp = camera ? camera->afp_texture(addr_afp_texture_offset) : nullptr;
+                if (!afp || !registry->begin || afp->handle < registry->handle_base ||
+                    afp->handle - registry->handle_base >= registry->end - registry->begin) {
+                    log_warning("iidx:camhook", "invalid texture destination for camera {}", index);
+                    return;
+                }
+                texture = &afp->texture;
+                preview = registry->begin + (afp->handle - registry->handle_base);
+            };
+            bind_camera(0, camera_texture_a, preview_texture_a);
+            bind_camera(1, camera_texture_b, preview_texture_b);
 
             init_local_camera();
         });
@@ -381,10 +395,10 @@ namespace games::iidx {
             log_misc("iidx:camhook", "Adding user-preferred cameras");
             for (size_t i = 0; i < numDevices && LOCAL_CAMERA_LIST.size() < 2; i++) {
                 auto pActivate = ppDevices[i];
-                if ((int)i == preferred_top_index && top_camera == nullptr) {
+                if ((int)i == preferred_top_index && top_camera == nullptr && camera_texture_a != nullptr) {
                     log_misc("iidx:camhook", "Adding user-preferred top camera {} / '{}'", i, top_camera_id);
                     top_camera = add_top_camera(pActivate);
-                } else if ((int)i == preferred_front_index && front_camera == nullptr) {
+                } else if ((int)i == preferred_front_index && front_camera == nullptr && camera_texture_b != nullptr) {
                     log_misc("iidx:camhook", "Adding user-preferred front camera {} / '{}'", i, front_camera_id);
                     front_camera = add_front_camera(pActivate);
                 }
@@ -402,16 +416,16 @@ namespace games::iidx {
 
                 if (!FLIP_CAMS) {
                     // top camera first, then front
-                    if (top_camera == nullptr) {
+                    if (top_camera == nullptr && camera_texture_a != nullptr) {
                         top_camera = add_top_camera(pActivate);
-                    } else if (front_camera == nullptr) {
+                    } else if (front_camera == nullptr && camera_texture_b != nullptr) {
                         front_camera = add_front_camera(pActivate);
                     }
                 } else {
                     // front first, then top
-                    if (front_camera == nullptr) {
+                    if (front_camera == nullptr && camera_texture_b != nullptr) {
                         front_camera = add_front_camera(pActivate);
-                    } else if (top_camera == nullptr) {
+                    } else if (top_camera == nullptr && camera_texture_a != nullptr) {
                         top_camera = add_top_camera(pActivate);
                     }
                 }

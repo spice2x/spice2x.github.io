@@ -70,21 +70,31 @@ namespace games::iidx {
     class IIDXCameraSourceReaderCallback;
 
     namespace Camera {
+        struct AfpTexture {
+            void* vftbl;
+            IDirect3DTexture9* texture;
+            uint32_t handle;
+        };
+
+        struct TextureRegistry {
+            uint32_t handle_base;
+            uint32_t next_slot;
+            IDirect3DTexture9** begin;
+            IDirect3DTexture9** end;
+            IDirect3DTexture9** capacity_end;
+        };
+
         struct PlayVideoCamera {
-            IDirect3DTexture9** d3d9_texture(const uintptr_t offset) {
-                auto const afp_texture = *reinterpret_cast<uint8_t**>
-                    (reinterpret_cast<uint8_t*>(this) + offset);
-                return reinterpret_cast<IDirect3DTexture9**>(afp_texture + 0x8);
+            AfpTexture* afp_texture(const uintptr_t offset) {
+                return *reinterpret_cast<AfpTexture**>(reinterpret_cast<uint8_t*>(this) + offset);
             }
         };
 
         struct CCameraManager2 {
-            using camera_pointers = struct {
-                PlayVideoCamera* a;
-                PlayVideoCamera* b;
-            };
             void* vftbl;
-            camera_pointers* cameras;
+            PlayVideoCamera** begin;
+            PlayVideoCamera** end;
+            PlayVideoCamera** capacity_end;
         };
     }
 
