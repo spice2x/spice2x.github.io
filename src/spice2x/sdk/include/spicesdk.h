@@ -248,6 +248,27 @@ typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_insert_coin_func)(
     uint8_t amount
 );
 
+// get_coin_blocker (v0.6 and up)
+// gets the current shared coin blocker state
+// insert_coin bypasses the blocker regardless of this state
+//
+//   blocked: receives true when coins are blocked, false when allowed
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_get_coin_blocker_func)(
+    bool *blocked
+);
+
+// set_coin_blocker (v0.6 and up)
+// sets the shared coin blocker state used by normal coin input
+// this is not a persistent override; the game can change the state again
+// insert_coin bypasses the blocker regardless of this state
+//
+//   blocked: true to block coins, false to allow them
+
+typedef SPICE_SDK_STATUS_CODE (__cdecl spice_sdk_set_coin_blocker_func)(
+    bool blocked
+);
+
 typedef struct SPICE_SDK_MODULE_INFO {
     uint32_t size; // initialize to sizeof(SPICE_SDK_MODULE_INFO)
     uintptr_t base; // loaded address, not the preferred PE image base
@@ -382,6 +403,9 @@ typedef struct SPICE_SDK_V0 {
     spice_sdk_register_d3d9_func *register_d3d9;
 
     spice_sdk_hook_library_func *hook_library;
+
+    spice_sdk_get_coin_blocker_func *get_coin_blocker;
+    spice_sdk_set_coin_blocker_func *set_coin_blocker;
 
 } SPICE_SDK_V0;
 

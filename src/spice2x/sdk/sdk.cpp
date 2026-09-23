@@ -36,6 +36,8 @@ static spice_sdk_insert_card_func sdk_insert_card;
 static spice_sdk_set_keypad_func sdk_set_keypad;
 static spice_sdk_add_toast_func sdk_add_toast;
 static spice_sdk_insert_coin_func sdk_insert_coin;
+static spice_sdk_get_coin_blocker_func sdk_get_coin_blocker;
+static spice_sdk_set_coin_blocker_func sdk_set_coin_blocker;
 static spice_sdk_get_module_info_func sdk_get_module_info;
 static spice_sdk_get_plugin_directory_func sdk_get_plugin_directory;
 static spice_sdk_register_d3d9_func sdk_register_d3d9;
@@ -210,6 +212,14 @@ sdk_init(
         v0->hook_library = sdk_hook_library;
     }
     // end of 0.5
+
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, get_coin_blocker)) {
+        v0->get_coin_blocker = sdk_get_coin_blocker;
+    }
+    if (v0->size >= RTL_SIZEOF_THROUGH_FIELD(SPICE_SDK_V0, set_coin_blocker)) {
+        v0->set_coin_blocker = sdk_set_coin_blocker;
+    }
+    // end of 0.6
 
     // any newer minor iterations will need to check the size
 
@@ -743,6 +753,39 @@ sdk_insert_coin(
     if (amount > 0) {
         eamuse_coin_add(amount);
     }
+    return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_get_coin_blocker(
+    bool *blocked
+)
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+    if (!blocked) {
+        return SPICE_SDK_STATUS_INVALID_ARGUMENT_1;
+    }
+
+    *blocked = eamuse_coin_get_block();
+    return SPICE_SDK_STATUS_SUCCESS;
+}
+
+SPICE_SDK_STATUS_CODE
+__cdecl
+sdk_set_coin_blocker(
+    bool blocked
+)
+{
+    std::shared_lock lock(sdk_global_mutex);
+    if (!sdk_initialized) {
+        return SPICE_SDK_STATUS_TOO_LATE;
+    }
+
+    eamuse_coin_set_block(blocked);
     return SPICE_SDK_STATUS_SUCCESS;
 }
 
