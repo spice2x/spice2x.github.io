@@ -369,40 +369,81 @@ void libutils::check_duplicate_dlls() {
     }
 }
 
-void libutils::warn_if_dll_exists(const std::string &file_name) {
-    if (fileutils::file_exists(MODULE_PATH / file_name)) {
-        log_info("libutils", "found user-supplied {} in modules directory", file_name);
-        libutils::print_dll_info(MODULE_PATH / file_name);
-        return;
-    }
+bool libutils::warn_if_dll_exists(const std::string &file_name) {
     const auto &spice_bin_path = libutils::module_file_name(nullptr).parent_path();
+    bool found = false;
     if (fileutils::file_exists(spice_bin_path / file_name)) {
         log_info("libutils", "found user-supplied {} next to spice executable path", file_name);
         libutils::print_dll_info(spice_bin_path / file_name);
-        return;
+        found = true;
     }
+    if (MODULE_PATH != spice_bin_path && fileutils::file_exists(MODULE_PATH / file_name)) {
+        log_info("libutils", "found user-supplied {} in modules directory", file_name);
+        libutils::print_dll_info(MODULE_PATH / file_name);
+        found = true;
+    }
+    return found;
 }
 
 void libutils::print_dll_info(std::filesystem::path filename) {
-    DWORD handle;
+    std::string company_name;
+    std::string product_name;
+    std::string version_str;
+    auto print_summary = [&]() {
+        log_info(
+            "libutils",
+            "DLL info for {}: CompanyName = {}, ProductName = {}, Version = {}, Path = {}",
+            filename.filename(),
+            company_name.empty() ? "?" : company_name,
+            product_name.empty() ? "?" : product_name,
+            version_str.empty() ? "?" : version_str,
+            filename);
+    };
+
+    DWORD handle = 0;
     const auto size = GetFileVersionInfoSizeW(filename.wstring().c_str(), &handle);
     if (size == 0) {
-        log_debug(
+        const auto error = GetLastError();
+        const auto error_message = get_last_error_string();
+        log_misc(
             "libutils",
-            "GetFileVersionInfoSizeA failed for {}: {}",
-            filename.filename(),
-            get_last_error_string());
+            "GetFileVersionInfoSizeW failed for {}: {} (Win32 error {}); "
+            "DLL may have no version resource",
+            filename,
+            error_message,
+            error);
+        print_summary();
         return;
     }
 
     auto data = util::make_unique_plain<VOID>(size);
     if (!GetFileVersionInfoW(filename.wstring().c_str(), handle, size, data.get())) {
-        log_debug(
+        const auto error = GetLastError();
+        const auto error_message = get_last_error_string();
+        log_misc(
             "libutils",
-            "GetFileVersionInfoA failed for {}: {}",
-            filename.filename(),
-            get_last_error_string());
+            "GetFileVersionInfoW failed for {}: {} (Win32 error {})",
+            filename,
+            error_message,
+            error);
+        print_summary();
         return;
+    }
+
+    VS_FIXEDFILEINFO *fixed_info = nullptr;
+    UINT fixed_size = 0;
+    if (VerQueryValueW(data.get(), L"\\", (LPVOID*)&fixed_info, &fixed_size) &&
+        fixed_info != nullptr && fixed_size >= sizeof(*fixed_info) &&
+        fixed_info->dwSignature == 0xFEEF04BD) {
+        version_str = fmt::format(
+            "{}.{}.{}.{}",
+            HIWORD(fixed_info->dwFileVersionMS),
+            LOWORD(fixed_info->dwFileVersionMS),
+            HIWORD(fixed_info->dwFileVersionLS),
+            LOWORD(fixed_info->dwFileVersionLS));
+        log_info("libutils", "Fixed file version for {}: {}", filename.filename(), version_str);
+    } else {
+        log_misc("libutils", "Missing or invalid fixed version info for {}", filename);
     }
 
     struct LANGANDCODEPAGE {
@@ -411,19 +452,23 @@ void libutils::print_dll_info(std::filesystem::path filename) {
     } *lpTranslate = nullptr;
 
     UINT cbTranslate = 0;
-    if (!VerQueryValueA(data.get(), "\\VarFileInfo\\Translation", (LPVOID*)&lpTranslate, &cbTranslate)) {
-        log_debug(
+    if (!VerQueryValueW(
+            data.get(), L"\\VarFileInfo\\Translation", (LPVOID*)&lpTranslate, &cbTranslate)) {
+        log_misc(
             "libutils",
-            "VerQueryValueA failed for {}: {}",
-            filename.filename(),
-            get_last_error_string());
+            "VerQueryValueW(\\VarFileInfo\\Translation) failed for {}",
+            filename);
+        print_summary();
         return;
     }
-    if (cbTranslate == 0 || lpTranslate == nullptr) {
-        log_debug(
+    if (cbTranslate < sizeof(*lpTranslate) ||
+        cbTranslate % sizeof(*lpTranslate) != 0 || lpTranslate == nullptr) {
+        log_misc(
             "libutils",
-            "VerQueryValueA returned invalid results for {}",
-            filename.filename());
+            "Invalid version translation table for {} ({} bytes)",
+            filename,
+            cbTranslate);
+        print_summary();
         return;
     }
 
@@ -442,36 +487,46 @@ void libutils::print_dll_info(std::filesystem::path filename) {
     }
 
     // StringFileInfo helper
-    auto query_string = [&](const char* key) -> std::string {
+    auto query_string = [&](const char* key, WORD language, WORD page) -> std::string {
         std::string subBlock = fmt::format(
             "\\StringFileInfo\\{:04x}{:04x}\\{}",
-            lang, codepage, key
+            language, page, key
         );
 
-        char* value = nullptr;
+        wchar_t *value = nullptr;
         UINT size_out = 0;
 
-        if (VerQueryValueA(data.get(), subBlock.c_str(), (LPVOID*)&value, &size_out) && value) {
-            return value;
+        const auto wide_sub_block = s2ws(subBlock);
+        if (VerQueryValueW(data.get(), wide_sub_block.c_str(), (LPVOID*)&value, &size_out) &&
+            value != nullptr && size_out > 0 && value[size_out - 1] == L'\0') {
+            return fmt::detail::to_utf8<wchar_t>(
+                std::wstring_view(value, size_out - 1),
+                fmt::detail::to_utf8_error_policy::replace).str();
         }
-        log_debug(
+        log_misc(
             "libutils",
-            "VerQueryValueA({}) failed for {}: {}",
+            "Missing or invalid version string {} for {}",
             subBlock,
-            filename.filename(),
-            get_last_error_string());
+            filename);
         return "";
     };
 
-    const auto company_name = query_string("CompanyName");
-    const auto product_name = query_string("ProductName");
-    const auto version_str = query_string("FileVersion");
+    auto query_translations = [&](const char *key) {
+        auto value = query_string(key, lang, codepage);
+        for (UINT i = 0; value.empty() && i < cbTranslate / sizeof(*lpTranslate); i++) {
+            const auto &translation = lpTranslate[i];
+            if (translation.wLanguage != lang || translation.wCodePage != codepage) {
+                value = query_string(key, translation.wLanguage, translation.wCodePage);
+            }
+        }
+        return value;
+    };
 
-    log_info(
-        "libutils",
-        "DLL info for {}: CompanyName = {}, ProductName = {}, Version = {}",
-        filename.filename(),
-        company_name.empty() ? "?" : company_name,
-        product_name.empty() ? "?" : product_name,
-        version_str.empty() ? "?" : version_str);
+    company_name = query_translations("CompanyName");
+    product_name = query_translations("ProductName");
+    const auto string_version = query_translations("FileVersion");
+    if (!string_version.empty()) {
+        version_str = string_version;
+    }
+    print_summary();
 }

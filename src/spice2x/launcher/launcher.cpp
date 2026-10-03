@@ -172,8 +172,6 @@ static bool check_dll(const std::string &model) {
     }
 }
 
-void update_msvcrt_args(int argc, char *argv[]);
-
 void dump_button_bindings(std::vector<Button> *buttons);
 void dump_analog_bindings();
 
@@ -2528,7 +2526,23 @@ int main_implementation(int argc, char *argv[]) {
     // log some DLLs found in path (purely for troubleshooting purposes to detect
     // dxvk, ForceD3D9On12, ifs_layeredfs, etc)
     libutils::warn_if_dll_exists("d3d8.dll");
-    libutils::warn_if_dll_exists("d3d9.dll");
+    if (libutils::warn_if_dll_exists("d3d9.dll")) {
+
+#if SPICE64
+        // dx9 subscreen games
+        if (avs::game::is_model({"LDJ", "KFC", "M39", "M32"})) {
+            log_warning(
+                "launcher",
+                "custom d3d9.dll detected - may cause graphics and touch-emulation issues");
+            deferredlogs::defer_error_messages({
+                "found custom d3d9.dll",
+                "    custom d3d9.dll wrappers may cause subscreen and touch-emulation issues",
+                "    if you encounter problems, close the game, remove the custom d3d9.dll and retry"
+            });
+        }
+#endif
+    }
+
     libutils::warn_if_dll_exists("d3d10core.dll");
     libutils::warn_if_dll_exists("d3d11.dll");
     libutils::warn_if_dll_exists("d3d12.dll");
@@ -2745,7 +2759,11 @@ int main_implementation(int argc, char *argv[]) {
         networkhook_init();
     }
 
-    update_msvcrt_args(argc, argv);
+#if defined(_UCRT) || (defined(_MSC_VER) && _MSC_VER >= 1900)
+    log_info("launcher", "C runtime: UCRT");
+#else
+    log_info("launcher", "C runtime: MSVCRT");
+#endif
 
     // load hooks
     for (auto &hook : game_hooks) {
@@ -2984,54 +3002,6 @@ int main_implementation(int argc, char *argv[]) {
     launcher::stop_subsystems();
 
     return 0;
-}
-
-// https://github.com/spice2x/spice2x.github.io/issues/264
-// huge ugly hack to work around things that broke when MinGW switched from msvcrt to ucrt
-// this is done to ensure that any DLL hooks that rely on msvcrt continue to work
-void update_msvcrt_args(int argc, char *argv[]) {
-#if defined(_UCRT)
-    auto msvc = LoadLibraryA("msvcrt.dll");
-    if (!msvc) {
-        log_warning("launcher", "failed to load msvcrt.dll");
-        return;
-    }
-
-    // get __argc
-    PINT32 argc_addr = (PINT32)GetProcAddress(msvc, "__argc");
-    if (!argc_addr) {
-        log_warning("launcher", "failed to find msvcrt!__argc");
-        return;
-    }
-    try {
-        if (*argc_addr == argc) {
-            log_warning("launcher", "msvcrt!__argc is already set");
-            return;
-        }
-    } catch (const std::exception &e) {
-        log_warning("launcher", "exception while reading msvcrt!_argc: {}", e.what());
-    }
-
-    // get __argv
-    PCHAR **argv_addr = (PCHAR **)GetProcAddress(msvc, "__argv");
-    if (!argv_addr) {
-        log_warning("launcher", "failed to find msvcrt!__argv");
-        return;
-    }
-
-    // update them
-    try {
-        log_info("launcher", "msvcrt!__argc value before: {}", *argc_addr);
-        *argc_addr = argc;
-        log_info("launcher", "msvcrt!__argc value after: {}", *argc_addr);
-        *argv_addr = argv;
-    } catch (const std::exception &e) {
-        log_warning("launcher", "exception while messing with msvcrt!_argc and _argv: {}", e.what());
-    }
-
-#else
-    log_misc("launcher", "not UCRT, skipping msvcrt!_argc / _argv hacks");
-#endif
 }
 
 void dump_button_bindings(std::vector<Button> *buttons) {
