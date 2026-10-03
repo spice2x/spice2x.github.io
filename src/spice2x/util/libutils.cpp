@@ -404,13 +404,11 @@ void libutils::print_dll_info(std::filesystem::path filename) {
     const auto size = GetFileVersionInfoSizeW(filename.wstring().c_str(), &handle);
     if (size == 0) {
         const auto error = GetLastError();
-        const auto error_message = get_last_error_string();
         log_misc(
             "libutils",
-            "GetFileVersionInfoSizeW failed for {}: {} (Win32 error {}); "
+            "GetFileVersionInfoSizeW failed for {}: Win32 error {}; "
             "DLL may have no version resource",
             filename,
-            error_message,
             error);
         print_summary();
         return;
@@ -419,12 +417,10 @@ void libutils::print_dll_info(std::filesystem::path filename) {
     auto data = util::make_unique_plain<VOID>(size);
     if (!GetFileVersionInfoW(filename.wstring().c_str(), handle, size, data.get())) {
         const auto error = GetLastError();
-        const auto error_message = get_last_error_string();
         log_misc(
             "libutils",
-            "GetFileVersionInfoW failed for {}: {} (Win32 error {})",
+            "GetFileVersionInfoW failed for {}: Win32 error {}",
             filename,
-            error_message,
             error);
         print_summary();
         return;
