@@ -46,9 +46,9 @@ ICCADevice::ICCADevice(bool flip_order, bool keypad_thread, uint8_t node_count) 
 
     // keypad thread for faster polling
     if (keypad_thread) {
-        this->keypad_thread = new std::thread([this]() {
+        this->keypad_thread = std::jthread([this](std::stop_token stop_token) {
             timeutils::PreciseSleepTimer timer;
-            while (this->cards) {
+            while (!stop_token.stop_requested()) {
                 for (int unit = 0; unit < this->node_count; unit++) {
                     this->update_keypad(unit, false);
                 }
@@ -61,11 +61,15 @@ ICCADevice::ICCADevice(bool flip_order, bool keypad_thread, uint8_t node_count) 
 ICCADevice::~ICCADevice() {
 
     // stop thread
-    delete keypad_thread;
+    if (keypad_thread.joinable()) {
+        keypad_thread.request_stop();
+        keypad_thread.join();
+    }
 
     // delete cards in array
     for (int i = 0; i < node_count; i++) {
-        delete cards[i];
+        delete[] cards[i];
+        delete[] keypad_last[i];
     }
 
     // delete the rest
@@ -107,7 +111,7 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
             if (avs::game::is_model({"LDJ", "TBS", "UJK", "XIF"}) ||
                 games::sdvx::is_valkyrie_model()) {
                 this->set_version(msg, 0x3, 0, 1, 7, 0, "ICCA");
-            } else if (avs::game::is_model("VFG")) {
+            } else if (avs::game::is_model({"VFG", "TCS"})) {
                 this->set_version(msg, 0x3, 0, 1, 7, 0, "ICCB");
             } else {
                 this->set_version(msg, 0x3, 0, 1, 6, 0, "ICCA");
@@ -160,7 +164,7 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
                         break;
                     case 0x12: // EJECT
                         if (this->cards[unit] != nullptr) {
-                            delete this->cards[unit];
+                            delete[] this->cards[unit];
                         }
                         this->cards[unit] = nullptr;
                         this->hold[unit] = false;
@@ -267,7 +271,7 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
                         memcpy(msg->cmd.raw, this->cards[unit], 8);
 
                         // delete card
-                        delete this->cards[unit];
+                        delete[] this->cards[unit];
                         this->cards[unit] = nullptr;
                         this->hold[unit] = false;
                     }
@@ -326,7 +330,9 @@ bool ICCADevice::parse_msg(MessageData *msg_in,
             }
             //log_info("icca", "counter[{}] = {}", unit, this->counter[unit]);
 
-            auto msg = this->create_msg_status(msg_in, this->counter[unit]);
+            // Card Connect waits for a successful reply without retrying this command.
+            auto msg = this->create_msg_status(
+                    msg_in, avs::game::is_model("TCS") ? 0 : this->counter[unit]);
             write_msg(msg, response_buffer);
             delete msg;
             break;
@@ -363,7 +369,7 @@ void ICCADevice::update_card(int unit) {
 
         if (difftime(t_now, this->cards_time[unit]) >= 10.f) {
             if (this->cards[unit] != nullptr) {
-                delete this->cards[unit];
+                delete[] this->cards[unit];
             }
             this->cards[unit] = nullptr;
             this->hold[unit] = false;

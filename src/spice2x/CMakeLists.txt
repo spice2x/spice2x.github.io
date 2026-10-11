@@ -557,6 +557,10 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/udn/udn.cpp
         games/udn/io.cpp
         games/udn/bi2x_hook.cpp
+        games/cardconnect/cardconnect.cpp
+        games/cardconnect/io.cpp
+        games/cardconnect/bi2x_hook.cpp
+        games/cardconnect/printer.cpp
 
         # hooks
         hooks/audio/acm.cpp

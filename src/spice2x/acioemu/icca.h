@@ -17,7 +17,7 @@ namespace acioemu {
     private:
         bool type_new;
         bool flip_order;
-        std::thread *keypad_thread;
+        std::jthread keypad_thread;
         std::mutex keypad_mutex;
         uint8_t **cards;
         time_t *cards_time;

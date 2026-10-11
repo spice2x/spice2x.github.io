@@ -46,17 +46,14 @@ MessageData *ACIODeviceEmu::create_msg(uint8_t addr, uint16_t code, uint8_t pid,
     }
 
     // allocate data
-    auto data_raw = new uint8_t[MSG_HEADER_SIZE + data_size];
+    auto msg = new MessageData {};
 
     // set header
-    auto msg = (MessageData *) &data_raw[0];
     set_header(msg, addr, code, pid, (uint8_t) data_size);
 
     // set data
     if (data) {
-        memcpy(data_raw + MSG_HEADER_SIZE, data, data_size);
-    } else {
-        memset(data_raw + MSG_HEADER_SIZE, 0, data_size);
+        memcpy(msg->cmd.raw, data, data_size);
     }
 
     // return prepared message

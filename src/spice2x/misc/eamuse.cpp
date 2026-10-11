@@ -736,6 +736,8 @@ void eamuse_autodetect_game() {
         eamuse_set_game("DANCE aROUND");
     else if (avs::game::is_model("NDD"))
         eamuse_set_game("Silent Scope: Bone Eater");
+    else if (avs::game::is_model("TCS"))
+        eamuse_set_game("Card Connect");
     else {
         log_warning("eamuse", "unknown game model: {}", avs::game::MODEL);
         eamuse_set_game("unknown");

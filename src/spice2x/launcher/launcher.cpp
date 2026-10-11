@@ -73,6 +73,8 @@
 #include "games/mfg/mfg.h"
 #include "games/pc/pc.h"
 #include "games/udn/udn.h"
+#include "games/cardconnect/cardconnect.h"
+#include "games/cardconnect/printer.h"
 #include "games/museca/museca.h"
 #include "hooks/avshook.h"
 #include "hooks/audio/audio.h"
@@ -248,6 +250,7 @@ int main_implementation(int argc, char *argv[]) {
     bool attach_mfg = false;
     bool attach_pc = false;
     bool attach_udn = false;
+    bool attach_cardconnect = false;
     bool attach_museca = false;
     bool show_cursor_if_no_touch = false;
 
@@ -787,6 +790,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::LoadUDNModule].value_bool()) {
         attach_udn = true;
     }
+    if (options[launcher::Options::LoadCardConnectModule].value_bool()) {
+        attach_cardconnect = true;
+    }
     if (options[launcher::Options::LoadMusecaModule].value_bool()) {
         attach_museca = true;
     }
@@ -879,7 +885,8 @@ int main_implementation(int argc, char *argv[]) {
 
     // printer overwrite
     if (options[launcher::Options::SDVXPrinterOutputOverwrite].value_bool() ||
-        options[launcher::Options::LovePlusPrinterOutputOverwrite].value_bool()) {
+        options[launcher::Options::LovePlusPrinterOutputOverwrite].value_bool() ||
+        options[launcher::Options::CardConnectPrinterOutputOverwrite].value_bool()) {
         games::shared::PRINTER_OVERWRITE_FILE = true;
     }
 
@@ -890,6 +897,9 @@ int main_implementation(int argc, char *argv[]) {
     for (auto &path : options[launcher::Options::LovePlusPrinterOutputPath].values_text()) {
         games::shared::PRINTER_PATH.push_back(path);
     }
+    for (auto &path : options[launcher::Options::CardConnectPrinterOutputPath].values_text()) {
+        games::shared::PRINTER_PATH.push_back(path);
+    }
 
     // printer file format
     for (auto &path : options[launcher::Options::SDVXPrinterOutputFormat].values_text()) {
@@ -898,17 +908,24 @@ int main_implementation(int argc, char *argv[]) {
     for (auto &path : options[launcher::Options::LovePlusPrinterOutputFormat].values_text()) {
         games::shared::PRINTER_FORMAT.push_back(path);
     }
+    for (auto &format : options[launcher::Options::CardConnectPrinterOutputFormat].values_text()) {
+        games::shared::PRINTER_FORMAT.push_back(format);
+    }
 
     // printer JPG quality
     if (options[launcher::Options::SDVXPrinterJPGQuality].is_active()) {
         games::shared::PRINTER_JPG_QUALITY = options[launcher::Options::SDVXPrinterJPGQuality].value_uint32();
     } else if (options[launcher::Options::LovePlusPrinterJPGQuality].is_active()) {
         games::shared::PRINTER_JPG_QUALITY = options[launcher::Options::LovePlusPrinterJPGQuality].value_uint32();
+    } else if (options[launcher::Options::CardConnectPrinterJPGQuality].is_active()) {
+        games::shared::PRINTER_JPG_QUALITY =
+            options[launcher::Options::CardConnectPrinterJPGQuality].value_uint32();
     }
 
     // printer output clear
     if (options[launcher::Options::SDVXPrinterOutputClear].value_bool() ||
-        options[launcher::Options::LovePlusPrinterOutputClear].value_bool()) {
+        options[launcher::Options::LovePlusPrinterOutputClear].value_bool() ||
+        options[launcher::Options::CardConnectPrinterOutputClear].value_bool()) {
         games::shared::PRINTER_CLEAR = true;
     }
 
@@ -1498,6 +1515,12 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::UDNNoIO].is_active()) {
         games::udn::UDN_NO_IO = options[launcher::Options::UDNNoIO].value_bool();
     }
+    if (options[launcher::Options::CardConnectArgs].is_active()) {
+        games::cardconnect::CARDCONNECT_INJECT_ARGS =
+            options[launcher::Options::CardConnectArgs].value_text();
+    }
+    games::cardconnect::PRINTER_DISABLED =
+        options[launcher::Options::CardConnectNoPrinter].value_bool();
     if (options[launcher::Options::spice2x_EnableSMXStage].value_bool()) {
         rawinput::ENABLE_SMX_STAGE = true;
     }
@@ -2322,6 +2345,14 @@ int main_implementation(int argc, char *argv[]) {
                 break;
             }
 
+            // Card Connect
+            if (check_dll("kamunity.dll") && fileutils::file_exists("game/tcs.exe")) {
+                avs::game::DLL_NAME = "kamunity.dll";
+                attach_io = true;
+                attach_cardconnect = true;
+                break;
+            }
+
             // Busou Shinki: Armored Princess Battle Conductor
             if (check_dll("kamunity.dll") && fileutils::file_exists("game/bsac_app.exe")) {
                 avs::game::DLL_NAME = "kamunity.dll";
@@ -2490,6 +2521,11 @@ int main_implementation(int argc, char *argv[]) {
     if (attach_udn) {
         avs::core::HEAP_SIZE = 1073741824; // 1GB
         games.push_back(new games::udn::UDNGame());
+    }
+    if (attach_cardconnect) {
+        show_cursor_if_no_touch = true;
+        avs::core::set_default_heap_size("kamunity.dll");
+        games.push_back(new games::cardconnect::CardConnectGame());
     }
 
     // apply user heap size, if defined

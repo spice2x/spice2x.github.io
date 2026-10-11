@@ -38,6 +38,7 @@
 #include "mfg/io.h"
 #include "pc/io.h"
 #include "udn/io.h"
+#include "cardconnect/io.h"
 
 namespace games {
 
@@ -341,6 +342,13 @@ namespace games {
         buttons_help.insert({ udn, udn::get_buttons_help() });
         lights.insert({ udn, udn::get_lights() });
         file_hints[udn].push_back({"game/dancearound_Data"});
+
+        // Card Connect
+        const std::string cardconnect("Card Connect");
+        games.push_back(cardconnect);
+        buttons.insert({ cardconnect, cardconnect::get_buttons() });
+        lights.insert({ cardconnect, cardconnect::get_lights() });
+        file_hints[cardconnect].push_back({"game/tcs.exe"});
     }
 
     const std::vector<std::string> &get_games() {

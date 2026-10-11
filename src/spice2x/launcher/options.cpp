@@ -1527,6 +1527,14 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .game_name = "Museca",
         .category = "Advanced Game Options",
     };
+    c[launcher::Options::LoadCardConnectModule] = {
+        .title = "Force Load Card Connect Module",
+        .name = "cardconnect",
+        .desc = "Manually enable Card Connect module.",
+        .type = OptionType::Bool,
+        .game_name = "Card Connect",
+        .category = "Advanced Game Options",
+    };
     c[launcher::Options::PathToModules] = {
         .title = "Modules Folder Override",
         .name = "modules",
@@ -2476,6 +2484,66 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .setting_name = "",
         .game_name = "DANCE aROUND",
         .category = "Advanced Game Options",
+    };
+    c[launcher::Options::CardConnectArgs] = {
+        .title = "Card Connect Arguments Override",
+        .name = "cardconnectargs",
+        .desc = "Command line arguments passed to the game.",
+        .type = OptionType::Text,
+        .setting_name = "",
+        .game_name = "Card Connect",
+        .category = "Advanced Game Options",
+    };
+    c[launcher::Options::CardConnectNoPrinter] = {
+        .title = "Card Connect Disable Printer Emulation",
+        .name = "cardconnectnoprinter",
+        .desc = "Leave the native printer driver unhooked for use with a real printer.",
+        .type = OptionType::Bool,
+        .game_name = "Card Connect",
+        .category = "Cab Peripherals",
+    };
+    c[launcher::Options::CardConnectPrinterOutputPath] = {
+        .title = "Card Connect Printer Output Path",
+        .name = "cardconnectprinterpath",
+        .desc = "Folder for front/back color images. Defaults to the working directory.",
+        .type = OptionType::Text,
+        .game_name = "Card Connect",
+        .category = "Cab Peripherals",
+        .picker = OptionPickerType::DirectoryPath,
+    };
+    c[launcher::Options::CardConnectPrinterOutputClear] = {
+        .title = "Card Connect Printer Output Clear",
+        .name = "cardconnectprinterclear",
+        .desc = "Delete saved front/back images in the output directory on startup.",
+        .type = OptionType::Bool,
+        .game_name = "Card Connect",
+        .category = "Cab Peripherals",
+    };
+    c[launcher::Options::CardConnectPrinterOutputOverwrite] = {
+        .title = "Card Connect Printer Output Overwrite",
+        .name = "cardconnectprinteroverwrite",
+        .desc = "Always overwrite the same front/back image pair.",
+        .type = OptionType::Bool,
+        .game_name = "Card Connect",
+        .category = "Cab Peripherals",
+    };
+    c[launcher::Options::CardConnectPrinterOutputFormat] = {
+        .title = "Card Connect Printer Output Format",
+        .name = "cardconnectprinterformat",
+        .desc = "File format for printer output. Defaults to PNG.",
+        .type = OptionType::Text,
+        .setting_name = "(png/bmp/tga/jpg)",
+        .game_name = "Card Connect",
+        .category = "Cab Peripherals",
+    };
+    c[launcher::Options::CardConnectPrinterJPGQuality] = {
+        .title = "Card Connect Printer JPG Quality",
+        .name = "cardconnectprinterjpgquality",
+        .desc = "Quality setting in percent if JPG format is used.",
+        .type = OptionType::Integer,
+        .setting_name = "(1-100)",
+        .game_name = "Card Connect",
+        .category = "Cab Peripherals",
     };
     c[launcher::Options::spice2x_LightsOverallBrightness] = {
         .title = "Lights Brightness Adjustment",
