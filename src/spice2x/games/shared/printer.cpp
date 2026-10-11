@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <thread>
+#include <limits>
 
 #include "avs/game.h"
 #include "hooks/sleephook.h"
@@ -264,7 +265,9 @@ namespace games::shared {
 
     typedef void (CALLBACK *PFNACBfunc)(DWORD dwErr, short PrintFlag, short PrintUsbNo, long nJid, int CopyNumber);
 
-    static inline std::string get_image_out_path(bool clear, std::string path, const std::string &format) {
+    static std::vector<std::string> get_image_out_paths(
+            bool clear, std::string path, const std::string &format,
+            const std::vector<std::string> &suffixes, bool overwrite = false) {
 
         // check path
         if (path.empty()) {
@@ -277,28 +280,99 @@ namespace games::shared {
             path = std::string(path.c_str(), path.length() - 1);
 
         // find non-existing filename
-        static std::string prefix = "printer_";
         for (int n = 0; n < 4096; n++) {
-            std::ostringstream filename_s;
-            filename_s << path << "\\" << prefix << n << "." << format;
-            std::string filename = filename_s.str();
-            if (clear && fileutils::file_exists(filename.c_str())) {
-                log_info("printer", "deleting {}...", filename);
-                DeleteFile(filename.c_str());
-                if (PRINTER_OVERWRITE_FILE) {
-                    return filename;
+            std::vector<std::string> filenames;
+            bool exists = false;
+            for (const auto &suffix : suffixes) {
+                auto filename = fmt::format("{}\\printer_{}{}.{}", path, n, suffix, format);
+                if (fileutils::file_exists(filename.c_str())) {
+                    exists = true;
+                    if (clear) {
+                        log_info("printer", "deleting {}...", filename);
+                        if (!DeleteFileA(filename.c_str())) {
+                            log_warning("printer", "could not delete {}: {}", filename, GetLastError());
+                            return {};
+                        }
+                    }
+                }
+                filenames.push_back(std::move(filename));
+            }
+            if ((!clear && !exists) || overwrite) {
+                return filenames;
+            }
+        }
+
+        if (!clear) {
+            log_warning("printer", "could not find an unused printer output filename");
+        }
+        return {};
+    }
+
+    bool printer_write_image(const uint8_t *data, int width, int height, int components,
+                             const std::string &suffix) {
+        return printer_write_images({{data, width, height, components, suffix}});
+    }
+
+    bool printer_write_images(std::initializer_list<PrinterImage> images) {
+        if (images.size() == 0 || PRINTER_PATH.empty() || PRINTER_FORMAT.empty()) {
+            log_warning("printer", "printer output is uninitialized or contains no images");
+            return false;
+        }
+        std::vector<std::string> suffixes;
+        for (const auto &image : images) {
+            if (!image.data || image.width <= 0 || image.height <= 0 ||
+                (image.components != 1 && image.components != 3) ||
+                image.width > std::numeric_limits<int>::max() / image.components / image.height) {
+                log_warning("printer", "invalid image supplied for printer output");
+                return false;
+            }
+            suffixes.push_back(image.suffix);
+        }
+        bool all_saved = true;
+        for (const auto &path : PRINTER_PATH) {
+            for (const auto &format : PRINTER_FORMAT) {
+                const auto image_paths = get_image_out_paths(
+                        PRINTER_OVERWRITE_FILE, path, format, suffixes, PRINTER_OVERWRITE_FILE);
+                if (image_paths.size() != images.size()) {
+                    log_warning("printer", "could not allocate printer output paths in {}", path);
+                    all_saved = false;
+                    continue;
+                }
+                size_t index = 0;
+                for (const auto &image : images) {
+                    const auto &image_path = image_paths[index++];
+                    bool success = false;
+                    if (format == "png") {
+                        success = stbi_write_png(
+                                image_path.c_str(), image.width, image.height, image.components,
+                                image.data, image.width * image.components);
+                    } else if (format == "bmp") {
+                        success = stbi_write_bmp(image_path.c_str(), image.width, image.height,
+                                                image.components, image.data);
+                    } else if (format == "tga") {
+                        success = stbi_write_tga(image_path.c_str(), image.width, image.height,
+                                                image.components, image.data);
+                    } else if (format == "jpg") {
+                        success = stbi_write_jpg(
+                                image_path.c_str(), image.width, image.height, image.components,
+                                image.data, PRINTER_JPG_QUALITY);
+                    }
+                    if (success) {
+                        log_info("printer", "printer emulation has written an image to {}", image_path);
+                        overlay::notifications::add(
+                                overlay::notifications::Severity::Success,
+                                fmt::format("Printer: saved {}", fileutils::basename(image_path)));
+                    } else {
+                        all_saved = false;
+                        log_warning("printer", "printer emulation failed to write image to {}", image_path);
+                        overlay::notifications::add(
+                                overlay::notifications::Severity::Error,
+                                fmt::format("Printer: failed to write {}", fileutils::basename(image_path)));
+                    }
                 }
             }
-            else if (!fileutils::file_exists(filename.c_str()))
-                return filename;
         }
-
-        // error
-        if (!clear) {
-            log_fatal("printer", "could not find path");
-        }
-
-        return "DUMMY";
+        return all_saved;
     }
 
     static inline bool process_image_print(const CPDBandImageParams *pBandImage) {
@@ -372,43 +446,8 @@ namespace games::shared {
             }
         }
 
-        // iterate folders
-        log_misc("printer", "writing files...");
-        for (const auto &path : PRINTER_PATH) {
-            for (const auto &format : PRINTER_FORMAT) {
-
-                // get image path
-                std::string image_path = get_image_out_path(PRINTER_OVERWRITE_FILE, path, format);
-                bool success = false;
-
-                // call write function depending on format
-                if (format == "png" && stbi_write_png(
-                        image_path.c_str(), image_width, image_height, 3, image_data, image_width * 3))
-                    success = true;
-                if (format == "bmp" && stbi_write_bmp(
-                        image_path.c_str(), image_width, image_height, 3, image_data))
-                    success = true;
-                if (format == "tga" && stbi_write_tga(
-                        image_path.c_str(), image_width, image_height, 3, image_data))
-                    success = true;
-                if (format == "jpg" && stbi_write_jpg(
-                        image_path.c_str(), image_width, image_height, 3, image_data, PRINTER_JPG_QUALITY))
-                    success = true;
-
-                // logging
-                if (success) {
-                    log_info("printer", "printer emulation has written an image to {}", image_path);
-                    overlay::notifications::add(
-                            overlay::notifications::Severity::Success,
-                            fmt::format("Printer: saved {}", fileutils::basename(image_path)));
-                } else {
-                    log_warning("printer", "printer emulation failed to write image to {}", image_path);
-                    overlay::notifications::add(
-                            overlay::notifications::Severity::Error,
-                            fmt::format("Printer: failed to write {}", fileutils::basename(image_path)));
-                }
-            }
-        }
+        // preserve the legacy caller's success behavior after reporting file errors
+        printer_write_image(image_data, image_width, image_height, 3);
 
         // clean up
         delete[] image_data;
@@ -555,9 +594,7 @@ namespace games::shared {
         log_info("printer", "CPUXInit called");
     }
 
-    void printer_attach() {
-        log_info("printer", "SpiceTools Printer");
-
+    void printer_init_output(std::initializer_list<std::string> suffixes) {
         // default parameters
         if (PRINTER_PATH.empty()) {
             PRINTER_PATH.emplace_back(".");
@@ -588,10 +625,15 @@ namespace games::shared {
             PRINTER_CLEAR = false;
             for (const auto &path : PRINTER_PATH) {
                 for (const auto &format : PRINTER_FORMAT) {
-                    get_image_out_path(true, path, format);
+                    get_image_out_paths(true, path, format, suffixes);
                 }
             }
         }
+    }
+
+    void printer_attach() {
+        log_info("printer", "SpiceTools Printer");
+        printer_init_output();
 
         // IAT hooks
         detour::iat_try("CPU9CheckPaperRemain", CPU9CheckPaperRemain);

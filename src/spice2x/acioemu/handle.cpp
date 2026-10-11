@@ -14,15 +14,20 @@ bool acioemu::ACIOHandle::open(LPCWSTR lpFileName) {
         return false;
     }
 
+    std::lock_guard<std::mutex> lock(mutex);
     log_info("acioemu", "Opened {} (ACIO)", ws2s(com_port));
 
     // ACIO device
-    acio_emu.add_device(new acioemu::ICCADevice(false, true, icca_node_count));
+    if (!initialized) {
+        acio_emu.add_device(new acioemu::ICCADevice(false, true, icca_node_count));
+        initialized = true;
+    }
 
     return true;
 }
 
 int acioemu::ACIOHandle::read(LPVOID lpBuffer, DWORD nNumberOfBytesToRead) {
+    std::lock_guard<std::mutex> lock(mutex);
     auto buffer = reinterpret_cast<uint8_t *>(lpBuffer);
 
     // read from emu
@@ -42,6 +47,7 @@ int acioemu::ACIOHandle::read(LPVOID lpBuffer, DWORD nNumberOfBytesToRead) {
 }
 
 int acioemu::ACIOHandle::write(LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite) {
+    std::lock_guard<std::mutex> lock(mutex);
     auto buffer = reinterpret_cast<const uint8_t *>(lpBuffer);
 
     // write to emu
@@ -64,6 +70,7 @@ int acioemu::ACIOHandle::device_io(
 }
 
 size_t acioemu::ACIOHandle::bytes_available() {
+    std::lock_guard<std::mutex> lock(mutex);
     return acio_emu.bytes_available();
 }
 

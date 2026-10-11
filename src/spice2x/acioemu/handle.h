@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+
 #include "acioemu/acioemu.h"
 #include "hooks/devicehook.h"
 
@@ -12,6 +14,8 @@ namespace acioemu {
         uint8_t icca_node_count;
 
         acioemu::ACIOEmu acio_emu;
+        std::mutex mutex;
+        bool initialized = false;
 
     public:
         ACIOHandle(LPCWSTR lpCOMPort, uint8_t iccaNodeCount = 2);
