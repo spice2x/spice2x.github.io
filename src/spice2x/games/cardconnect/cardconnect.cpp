@@ -20,9 +20,8 @@ namespace games::cardconnect {
     void CardConnectGame::attach() {
         Game::attach();
 
-        // EXECEXE redirects Unity's raw-data writes under the game directory.
-        fileutils::dir_create_recursive_log("cardconnect", "game/dev/raw/log");
-        if (!fileutils::bin_write("game/dev/raw/log/output_log.txt", nullptr, 0)) {
+        fileutils::dir_create_recursive_log("cardconnect", "dev/raw/log");
+        if (!fileutils::bin_write("dev/raw/log/output_log.txt", nullptr, 0)) {
             log_warning("cardconnect", "failed to create Unity output log");
         }
 

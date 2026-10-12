@@ -1521,6 +1521,9 @@ int main_implementation(int argc, char *argv[]) {
     }
     games::cardconnect::PRINTER_DISABLED =
         options[launcher::Options::CardConnectNoPrinter].value_bool();
+    if (options[launcher::Options::CardConnectPrinterDelay].value_bool()) {
+        games::cardconnect::PRINTER_SIMULATE_DELAY = true;
+    }
     if (options[launcher::Options::spice2x_EnableSMXStage].value_bool()) {
         rawinput::ENABLE_SMX_STAGE = true;
     }

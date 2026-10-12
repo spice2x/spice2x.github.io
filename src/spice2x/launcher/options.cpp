@@ -2502,6 +2502,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .game_name = "Card Connect",
         .category = "Cab Peripherals",
     };
+    c[launcher::Options::CardConnectPrinterDelay] = {
+        .title = "Card Connect Simulate Printer Delay",
+        .name = "cardconnectprinterdelay",
+        .desc = "Simulate real printing time: 73 seconds per card, plus hologram and coating delays "
+                "(up to 99 seconds). Off by default (5 seconds per card).",
+        .type = OptionType::Bool,
+        .game_name = "Card Connect",
+        .category = "Cab Peripherals",
+    };
     c[launcher::Options::CardConnectPrinterOutputPath] = {
         .title = "Card Connect Printer Output Path",
         .name = "cardconnectprinterpath",

@@ -256,6 +256,7 @@ namespace launcher {
             UDNNoIO,
             CardConnectArgs,
             CardConnectNoPrinter,
+            CardConnectPrinterDelay,
             CardConnectPrinterOutputPath,
             CardConnectPrinterOutputClear,
             CardConnectPrinterOutputOverwrite,

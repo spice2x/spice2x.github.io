@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 #include "games/shared/printer.h"
@@ -20,6 +21,7 @@ namespace games::cardconnect {
 
     // Settings and native protocol values.
     bool PRINTER_DISABLED = false;
+    bool PRINTER_SIMULATE_DELAY = false;
 
     static constexpr uint16_t READY = 0;
     static constexpr uint16_t INVALID_PARAMETER = 1006;
@@ -38,6 +40,21 @@ namespace games::cardconnect {
         INFO_IR_CORRECTION = 22,
     };
 
+    enum PrinterMode : uint8_t {
+        MODE_YMC_MAT = 2,
+        MODE_YMC_LAM = 3,
+        MODE_YMC_MAT_HOLO = 5,
+        MODE_YMC_LAM_HOLO = 6,
+        MODE_IR_R_YMAC_MAT = 8,
+        MODE_IR_R_YMAC_LAM = 9,
+        MODE_R_YMAC_MAT = 10,
+        MODE_R_YMAC_LAM = 11,
+        MODE_YMC_GROSS = 18,
+        MODE_YMC_GROSS_HOLO = 21,
+        MODE_IR_R_YMAC_GROSS = 24,
+        MODE_R_YMAC_GROSS = 25,
+    };
+
     static constexpr uint16_t FORMAT_RGB = 3;
     static constexpr uint16_t FORMAT_BGR = 4;
     static constexpr uint16_t COLOR_COMPONENTS = 3;
@@ -46,6 +63,25 @@ namespace games::cardconnect {
     static constexpr uint16_t CARD_HEIGHT = 1024;
     static constexpr uint32_t RIBBON_REMAINING = 4096;
     static constexpr auto PRINT_TIME = std::chrono::seconds(5);
+
+    static constexpr std::optional<std::chrono::seconds> get_mode_delay(uint8_t mode) {
+        // Printer::GetPrintTime adds 10s for holo and 8s per finished side.
+        if (mode == MODE_YMC_GROSS || mode == MODE_IR_R_YMAC_GROSS || mode == MODE_R_YMAC_GROSS) {
+            return std::chrono::seconds(0);
+        }
+        if (mode == MODE_YMC_MAT || mode == MODE_YMC_LAM ||
+            mode == MODE_IR_R_YMAC_MAT || mode == MODE_IR_R_YMAC_LAM ||
+            mode == MODE_R_YMAC_MAT || mode == MODE_R_YMAC_LAM) {
+            return std::chrono::seconds(8);
+        }
+        if (mode == MODE_YMC_GROSS_HOLO) {
+            return std::chrono::seconds(10);
+        }
+        if (mode == MODE_YMC_MAT_HOLO || mode == MODE_YMC_LAM_HOLO) {
+            return std::chrono::seconds(18);
+        }
+        return std::nullopt;
+    }
 
     // Native reply layouts.
 #pragma pack(push, 1)
@@ -121,6 +157,8 @@ namespace games::cardconnect {
         bool receiving = false;
         // Submitted jobs stay busy while waiting for this baseline.
         bool awaiting_counter_baseline = false;
+        std::array<std::chrono::seconds, 2> mode_delays {};
+        std::chrono::seconds print_time = PRINT_TIME;
         std::chrono::steady_clock::time_point next_copy;
     };
 
@@ -156,7 +194,7 @@ namespace games::cardconnect {
         while (job.remaining && now >= job.next_copy) {
             ++total_count;
             --job.remaining;
-            job.next_copy += PRINT_TIME;
+            job.next_copy += job.print_time;
             log_info("cardconnect::printer", "job {}: total count={}, remaining={}",
                     job.id, total_count, job.remaining);
         }
@@ -262,9 +300,10 @@ namespace games::cardconnect {
         // CoMain needs its post-cleanup baseline before any copy finishes.
         if (tag == INFO_PRINT_COUNT && job.awaiting_counter_baseline) {
             job.awaiting_counter_baseline = false;
-            job.next_copy = std::chrono::steady_clock::now() + PRINT_TIME;
-            log_info("cardconnect::printer", "job {}: counter baseline={}, starting print timer",
-                    job.id, total_count);
+            job.next_copy = std::chrono::steady_clock::now() + job.print_time;
+            log_info("cardconnect::printer",
+                    "job {}: counter baseline={}, starting print timer ({}s per copy)",
+                    job.id, total_count, job.print_time.count());
         }
 
         return TRUE;
@@ -291,6 +330,25 @@ namespace games::cardconnect {
                     "setPrinterInfo: tag={}, length={}, expected={}, buffer={}, length pointer={}",
                     tag, length ? *length : 0, expected, buffer != nullptr, length != nullptr);
             return invalid_parameter(result, "setPrinterInfo");
+        }
+
+        if (PRINTER_SIMULATE_DELAY && (tag == INFO_FRONT_MODE || tag == INFO_BACK_MODE)) {
+            const auto mode = *static_cast<const uint8_t *>(buffer);
+            const auto delay = get_mode_delay(mode);
+            if (!delay) {
+                log_warning("cardconnect::printer", "cannot estimate delay for print mode {}", mode);
+                return invalid_parameter(result, "setPrinterInfo print mode");
+            }
+            if (!result) {
+                return set_result(result);
+            }
+
+            std::lock_guard lock(printer_mutex);
+            if (tag == INFO_FRONT_MODE) {
+                job.mode_delays[0] = *delay;
+            } else {
+                job.mode_delays[1] = *delay;
+            }
         }
 
         return set_result(result);
@@ -346,6 +404,10 @@ namespace games::cardconnect {
         }
 
         job.id = next_page_id;
+        job.print_time = PRINT_TIME;
+        if (PRINTER_SIMULATE_DELAY) {
+            job.print_time = std::chrono::seconds(73) + job.mode_delays[0] + job.mode_delays[1];
+        }
         job.error = READY;
         job.receiving = true;
         job.sides = {};
@@ -549,6 +611,7 @@ namespace games::cardconnect {
 
 namespace games::cardconnect {
     bool PRINTER_DISABLED = false;
+    bool PRINTER_SIMULATE_DELAY = false;
 }
 
 #endif
