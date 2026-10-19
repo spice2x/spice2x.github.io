@@ -183,6 +183,7 @@ BOOL cardio_hid_remove_device(LPCWSTR device_path) {
  */
 BOOL cardio_hid_scan_device(struct cardio_hid_device *ctx, LPCWSTR device_path) {
     NTSTATUS res;
+    bool has_card_usage = false;
 
     size_t dev_path_size = (wcslen(device_path) + 1) * sizeof(WCHAR);
     ctx->dev_path = (LPWSTR) HeapAlloc(GetProcessHeap(), 0, dev_path_size);
@@ -238,6 +239,25 @@ BOOL cardio_hid_scan_device(struct cardio_hid_device *ctx, LPCWSTR device_path) 
         goto end;
     }
 
+    for (USHORT i = 0; i < ctx->collection_length; i++) {
+        const auto &item = ctx->collection[i];
+        if (item.UsagePage != CARD_READER_USAGE_PAGE) {
+            continue;
+        }
+
+        const USAGE usage_min = item.IsRange ? item.Range.UsageMin : item.NotRange.Usage;
+        const USAGE usage_max = item.IsRange ? item.Range.UsageMax : item.NotRange.Usage;
+        if ((usage_min <= HID_CARD_ISO_15693 && HID_CARD_ISO_15693 <= usage_max) ||
+            (usage_min <= HID_CARD_ISO_18092 && HID_CARD_ISO_18092 <= usage_max)) {
+            has_card_usage = true;
+            break;
+        }
+    }
+    if (!has_card_usage) {
+        log_info("cardio", "ignoring device without CardIO input usages: {}", ws2s(std::wstring(device_path)));
+        goto end;
+    }
+
     log_info("cardio", "detected reader: {}", ws2s(std::wstring(device_path)));
     ctx->initialized = TRUE;
     return TRUE;
@@ -249,7 +269,8 @@ BOOL cardio_hid_scan_device(struct cardio_hid_device *ctx, LPCWSTR device_path) 
 
 /*
  * Checks all devices registered with the HIDClass GUID. If the usage page of
- * the device is 0xffca, then a compatible card reader was found.
+ * the device is 0xffca and it has an input value capability on that page with
+ * usage 0x41 or 0x42, then a compatible card reader was found.
  *
  * Usage 0x41 => ISO_15693
  * Usage 0x42 => ISO_18092 (FeliCa)
