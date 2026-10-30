@@ -241,6 +241,7 @@ namespace launcher {
             DisableAvsCache,
             OutputPEB,
             DumpSystemInfo,
+            BCArgs,
             QKSArgs,
             CCJArgs,
             CCJMouseTrackball,

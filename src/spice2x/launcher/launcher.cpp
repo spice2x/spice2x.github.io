@@ -1485,6 +1485,9 @@ int main_implementation(int argc, char *argv[]) {
     if (options[launcher::Options::CCJMouseTrackballWithToggle].value_bool()) {
         games::ccj::MOUSE_TRACKBALL_USE_TOGGLE = true;
     }
+    if (options[launcher::Options::BCArgs].is_active()) {
+        games::bc::BC_INJECT_ARGS = options[launcher::Options::BCArgs].value_text();
+    }
     if (options[launcher::Options::CCJArgs].is_active()) {
         games::ccj::CCJ_INJECT_ARGS = options[launcher::Options::CCJArgs].value_text();
     }

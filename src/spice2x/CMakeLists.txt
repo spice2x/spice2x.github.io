@@ -541,6 +541,7 @@ set(SOURCE_FILES ${SOURCE_FILES}
         games/onpara/touchpanel.cpp
         games/bc/bc.cpp
         games/bc/io.cpp
+        games/bc/bi2x_hook.cpp
         games/ccj/ccj.cpp
         games/ccj/io.cpp
         games/ccj/bi2x_hook.cpp
