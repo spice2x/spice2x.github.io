@@ -1,11 +1,14 @@
 #include "core.h"
 
+#include <climits>
+#include <cstring>
 #include <mutex>
 #include <optional>
 #include <vector>
 
 #include <stdint.h>
 
+#include "avs/game.h"
 #include "external/robin_hood.h"
 #include "games/popn/popn.h"
 #include "launcher/logger.h"
@@ -1180,6 +1183,18 @@ namespace avs {
             if (DEFAULT_HEAP_SIZE_SET) {
                 return;
             }
+
+#ifdef SPICE64
+            // nabla increased heap size a few months into service (June 2026?)
+            if (dll_name == "soundvoltex.dll" &&
+                avs::game::is_ext(2025121501, INT_MAX)) {
+                auto old_size = HEAP_SIZE;
+                HEAP_SIZE = 0x18000000;
+                DEFAULT_HEAP_SIZE_SET = true;
+                log_info("avs-core", "updated heap size: {} -> {} (nabla)", old_size, avs::core::HEAP_SIZE);
+                return;
+            }
+#endif
 
             // hack, both hello! popn and popn hc using popn.dll
             if (games::popn::is_pikapika_model()) {
