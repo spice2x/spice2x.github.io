@@ -7,6 +7,7 @@
 #include "settings.h"
 #include "transform.h"
 
+#include "hooks/graphics/graphics.h"
 #include "touch/touch.h"
 #include "util/logging.h"
 
@@ -139,6 +140,13 @@ namespace nativetouch::inject {
         } else if (message == WM_CANCELMODE || message == WM_KILLFOCUS ||
                    message == WM_CAPTURECHANGED) {
             end_mouse_contact(window);
+        }
+
+        // SDVX accepts both mouse and touch on its windowed subscreen, causing duplicate input.
+        if (GRAPHICS_WINDOWED &&
+            window == SDVX_SUBSCREEN_WINDOW &&
+            message >= WM_MOUSEFIRST && message <= WM_MOUSELAST) {
+            return true;
         }
 
         return false;
