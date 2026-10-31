@@ -48,3 +48,31 @@ std::vector<Analog> &games::bc::get_analogs() {
 
     return analogs;
 }
+
+std::vector<Light> &games::bc::get_lights() {
+    static std::vector<Light> lights;
+
+    if (lights.empty()) {
+        lights = GameAPI::Lights::getLights("Busou Shinki: Armored Princess Battle Conductor");
+
+        GameAPI::Lights::sortLights(
+            &lights,
+            "Title Panel R",
+            "Title Panel G",
+            "Title Panel B",
+            "Side Panel R",
+            "Side Panel G",
+            "Side Panel B",
+            "Card Reader R",
+            "Card Reader G",
+            "Card Reader B",
+            "Joystick R",
+            "Joystick G",
+            "Joystick B",
+            "Button",
+            "IR LED"
+        );
+    }
+
+    return lights;
+}

@@ -2362,6 +2362,15 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
             {"all", "basic + HID devices"},
         },
     };
+    c[launcher::Options::BCArgs] = {
+        .title = "BC Arguments Override",
+        .name = "bcargs",
+        .desc = "Command line arguments passed to the game.",
+        .type = OptionType::Text,
+        .setting_name = "",
+        .game_name = "Busou Shinki: Armored Princess Battle Conductor",
+        .category = "Advanced Game Options",
+    };
     c[launcher::Options::QKSArgs] = {
         .title = "QKS Arguments Override",
         .name = "qksargs",

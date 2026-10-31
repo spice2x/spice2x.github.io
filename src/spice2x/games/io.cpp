@@ -301,6 +301,7 @@ namespace games {
         buttons.insert({ bc, bc::get_buttons() });
         buttons_help.insert({ bc, bc::get_buttons_help() });
         analogs.insert({ bc, bc::get_analogs() });
+        lights.insert({ bc, bc::get_lights() });
         file_hints[bc].push_back({"game/bsac_app.exe"});
 
         // ccj

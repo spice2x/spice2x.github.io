@@ -1,24 +1,29 @@
 #include "bc.h"
 
+#include <format>
 #include "hooks/setupapihook.h"
+#include "util/fileutils.h"
 #include "util/libutils.h"
 #include "acio2emu/handle.h"
 #include "acioemu/handle.h"
 #include "hooks/graphics/graphics.h"
-#include "util/detour.h"
+#include "util/unity_player.h"
 #include "node.h"
+#include "bi2x_hook.h"
 
 namespace games::bc {
 
-    static decltype(ShowCursor) *ShowCursor_orig = nullptr;
-
-    static int WINAPI ShowCursor_hook(BOOL bShow) {
-        // log_misc("bsac", "ShowCursor {}", bShow);
-        return 1;
-    }
+    std::string BC_INJECT_ARGS = "";
 
     void BCGame::attach() {
         Game::attach();
+
+        // create required directories
+        fileutils::dir_create_recursive("dev/raw/log");
+
+        // preload libraries
+        libutils::load_library("libaio.dll");
+        libutils::load_library("libaio-iob2_video.dll");
 
         setupapihook_init(libutils::load_library("libaio.dll"));
 
@@ -32,15 +37,24 @@ namespace games::bc {
         auto iob = new acio2emu::IOBHandle(L"COM3");
         iob->register_node(std::make_unique<TBSNode>());
 
-        if (GRAPHICS_SHOW_CURSOR) {
-            detour::trampoline_try(
-                "user32.dll", "ShowCursor",
-                (void*)ShowCursor_hook, (void**)&ShowCursor_orig);
-        }
+#if SPICE64
+        // insert BI2X hooks
+        bi2x_hook_init();
+#endif
 
-        devicehook_init();
+        devicehook_init_trampoline();
         devicehook_add(iob);
         devicehook_add(new acioemu::ACIOHandle(L"COM1"));
+
+        if (GRAPHICS_SHOW_CURSOR) {
+            unity_utils::force_show_cursor(true);
+        }
+
+        unity_utils::set_args(
+                std::format("{} {}{}",
+                            GetCommandLineA(),
+                            BC_INJECT_ARGS,
+                            unity_utils::get_unity_player_args()));
     }
 
     void BCGame::detach() {
