@@ -9,6 +9,8 @@
 #include "hooks/devicehook.h"
 #include "hooks/libraryhook.h"
 #ifdef SPICE64
+#include <mutex>
+#include <psapi.h>
 #include "hooks/graphics/nvapi_impl.h"
 #endif
 #include "hooks/graphics/nvapi_hook.h"
@@ -40,6 +42,9 @@ static decltype(RegEnumKeyA) *RegEnumKeyA_orig = nullptr;
 static decltype(RegOpenKeyA) *RegOpenKeyA_orig = nullptr;
 static decltype(RegOpenKeyExA) *RegOpenKeyExA_orig = nullptr;
 static decltype(RegQueryValueExA) *RegQueryValueExA_orig = nullptr;
+#ifdef SPICE64
+static decltype(K32GetPerformanceInfo) *K32GetPerformanceInfo_orig = nullptr;
+#endif
 
 namespace games::sdvx {
 
@@ -200,6 +205,35 @@ namespace games::sdvx {
     }
 
 #ifdef SPICE64
+
+    static BOOL WINAPI K32GetPerformanceInfo_hook(PPERFORMANCE_INFORMATION info, DWORD cb) {
+        if (info == nullptr) {
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return FALSE;
+        }
+        if (cb < sizeof(*info)) {
+            SetLastError(ERROR_BAD_LENGTH);
+            return FALSE;
+        }
+
+        // store a cached copy of the first successful call to K32GetPerformanceInfo
+        static std::mutex cache_mutex;
+        static PERFORMANCE_INFORMATION cached {};
+        static bool cached_valid = false;
+        std::lock_guard<std::mutex> lock(cache_mutex);
+        if (!cached_valid) {
+            if (!K32GetPerformanceInfo_orig(info, cb)) {
+                return FALSE;
+            }
+            cached = *info;
+            cached_valid = true;
+        }
+
+        // return the cached copy to avoid performance issues with the game calling this every frame
+        *info = cached;
+        return TRUE;
+    }
+
     static bool sdvx64_spam_remover(void *user, const std::string &data, logger::Style style, std::string &out) {
         if (data.empty() || data[0] != '[') {
             return false;
@@ -534,6 +568,14 @@ namespace games::sdvx {
         if (is_valkyrie_model()) {
             sysutils::hook_EnumDisplayDevicesA();
         }
+
+        // keep one real snapshot for the session instead of querying statistics every frame
+        K32GetPerformanceInfo_orig = detour::iat_try(
+                "K32GetPerformanceInfo", K32GetPerformanceInfo_hook, avs::game::DLL_INSTANCE);
+        if (K32GetPerformanceInfo_orig != nullptr) {
+            log_info("sdvx", "installed cached hook for K32GetPerformanceInfo");
+        }
+
 #endif
     }
 
