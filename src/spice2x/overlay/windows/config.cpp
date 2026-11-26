@@ -5282,9 +5282,16 @@ namespace overlay::windows {
                         ImGui::InputTextWithHint("", hint, buffer, sizeof(buffer) - 1);
                         // would like to use IsItemDeactivatedAfterEdit but can't handle the case when window is closed while editing
                         if (ImGui::IsItemEdited()) {
-                            this->options_dirty = true;
-                            option.value = buffer;
-                            ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                            // trim whitespace to prevent copy/paste errors
+                            auto value = definition.trim_whitespace ?
+                                strtrim(buffer) : std::string(buffer);
+
+                            if (option.value != value) {
+                                this->options_dirty = true;
+                                option.value = std::move(value);
+                                ::Config::getInstance().updateBinding(games_list[games_selected], option);
+                            }
+                            
                         }
                         if (ImGui::IsItemHovered(ImGui::TOOLTIP_FLAGS)) {
                             ImGui::HelpTooltip(definition.desc.c_str());

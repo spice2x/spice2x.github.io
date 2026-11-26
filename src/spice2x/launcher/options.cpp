@@ -138,6 +138,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .setting_name = "example.com:8083",
         .category = "Network",
         .quick_setting_category = "Network",
+        .trim_whitespace = true,
     };
     c[launcher::Options::PCBID] = {
         .title = "PCBID",
@@ -148,6 +149,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .category = "Network",
         .sensitive = true,
         .quick_setting_category = "Network",
+        .trim_whitespace = true,
     };
     c[launcher::Options::Player1Card] = {
         .title = "Player 1 Card",
@@ -159,6 +161,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .sensitive = true,
         .picker = OptionPickerType::EACard,
         .quick_setting_category = "Network",
+        .trim_whitespace = true,
     };
     c[launcher::Options::Player2Card] = {
         .title = "Player 2 Card",
@@ -170,6 +173,7 @@ static const std::vector<OptionDefinition> OPTION_DEFINITIONS = std::invoke([]()
         .sensitive = true,
         .picker = OptionPickerType::EACard,
         .quick_setting_category = "Network",
+        .trim_whitespace = true,
     };
     c[launcher::Options::Player1PinMacro] = {
         .title = "Player 1 PIN Macro",
