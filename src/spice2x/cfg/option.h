@@ -48,6 +48,8 @@ struct OptionDefinition {
     std::string file_extension = "";
 
     std::string quick_setting_category = "";
+
+    bool trim_whitespace = false;
 };
 
 class Option {
