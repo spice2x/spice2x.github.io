@@ -2,6 +2,8 @@
 #include "external/rapidjson/document.h"
 #include "cfg/screen_resize.h"
 
+#include <vector>
+
 using namespace std::placeholders;
 using namespace rapidjson;
 
