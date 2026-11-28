@@ -183,6 +183,30 @@ HRESULT STDMETHODCALLTYPE WrappedIAudioClient::Initialize(
     WAVEFORMATEXTENSIBLE resample_storage = {};
     const WAVEFORMATEX *device_format = pFormat;
 
+#if SPICE_LINUX
+    WAVEFORMATEXTENSIBLE full_width_storage = {};
+    if (this->shared.redirected_from_exclusive &&
+        pFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE &&
+        pFormat->cbSize == sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX) &&
+        pFormat->wBitsPerSample == 32) {
+        const auto *ext = reinterpret_cast<const WAVEFORMATEXTENSIBLE *>(pFormat);
+        if (ext->SubFormat == GUID_KSDATAFORMAT_SUBTYPE_PCM &&
+            ext->Samples.wValidBitsPerSample == 24) {
+
+            // workaround for bug in wine
+            //
+            // Windows reads audio data in the **top** 24 bits, but Wine's PulseAudio mapping
+            // for this format reads the **bottom** 24 bits, causing static.
+            // report 32 valid bits so Wine selects s32le and reads the whole sample.
+            // the bottom 8 bits are zero padding, so the audio data and volume stay the same.
+            full_width_storage = *ext;
+            full_width_storage.Samples.wValidBitsPerSample = 32;
+            device_format = &full_width_storage.Format;
+            log_info("audio::wasapi", "using 32-bit PCM for Linux shared-mode 24-in-32 audio");
+        }
+    }
+#endif
+
     if (!this->shared.redirected_from_exclusive) {
 
         // when downmixing, open the real device as stereo while the game keeps writing its native
