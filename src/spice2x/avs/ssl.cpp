@@ -1,5 +1,8 @@
 #define SECURITY_WIN32
 
+#include <algorithm>
+#include <chrono>
+#include <climits>
 #include <cstring>
 #include <iostream>
 #include <vector>
@@ -91,6 +94,7 @@ namespace avs {
         };
 
         static constexpr size_t alignment = 16;
+        using handshake_clock = std::chrono::steady_clock;
 
         static int io_buf_init(struct io_buf *buf, size_t initial_capacity) {
             uint8_t *tmp_bytes = nullptr;
@@ -261,89 +265,35 @@ arg_fail:
             return 0;
         }
 
-        static int impl_socket_recv_all(
+        static int tls_recv_handshake(
                 struct avs_net_sock_desc_work *work,
-                struct io_buf *buf,
-                uint32_t recv_timeout)
+                handshake_clock::time_point deadline)
         {
-            uint8_t old_non_blocking_value = 0;
-            uint8_t non_blocking = 0;
-            avs_net_size_t old_non_blocking_value_size = 0;
-            struct avs_net_poll_fd poll_fds[1] {};
-            int ret = 0;
+            const auto now = handshake_clock::now();
+            if (now < deadline) {
+                const auto remaining = std::chrono::ceil<std::chrono::milliseconds>(deadline - now);
+                avs_net_poll_fd poll_fd {};
+                poll_fd.socket = work->sock_fd;
+                poll_fd.events = AVS_NET_POLL_POLLIN;
 
-            if (work == nullptr || work->sock_fd < 0) {
-                return -1;
-            }
-
-            auto err = io_buf_validate(buf);
-
-            if (err != 0) {
-                return -1;
-            }
-
-            if (buf->pos == buf->limit) {
-                return -1;
-            }
-
-            poll_fds[0].socket = work->sock_fd;
-            poll_fds[0].events = AVS_NET_POLL_POLLIN;
-
-            non_blocking = 1;
-            old_non_blocking_value_size = sizeof(old_non_blocking_value);
-
-            core::avs_net_getsockopt(work->sock_fd, AVS_SO_NONBLOCK, &old_non_blocking_value, &old_non_blocking_value_size);
-            core::avs_net_setsockopt(work->sock_fd, AVS_SO_NONBLOCK, &non_blocking, sizeof(non_blocking));
-
-            while (true) {
-                auto result = core::avs_net_poll(poll_fds, std::size(poll_fds), recv_timeout);
-
+                const auto result = core::avs_net_poll(&poll_fd, 1,
+                        static_cast<int>(remaining.count()));
                 if (result < 0) {
-                    log_warning("avs::ssl", "avs_net_poll failed: 0x{:08x}", result);
-
-                    ret = -1;
-
-                    goto out;
+                    log_warning("avs::ssl", "avs_net_poll failed during TLS handshake: 0x{:08x}", result);
+                    return result;
                 }
-
-                if (!result) {
-#if 0
-                    log_warning("avs::ssl", "socket timeout, no data received after {} milliseconds", recv_timeout);
-#endif
-
-                    goto poll_succeeded_or_empty;
-                }
-
-                if (poll_fds[0].r_events & AVS_NET_POLL_POLLIN) {
-                    result = core::avs_net_recv(work->sock_fd, &buf->bytes[buf->pos], buf->limit - buf->pos);
-
-                    if (result < 0) {
-                        break;
+                if (result > 0) {
+                    if (poll_fd.r_events & AVS_NET_POLL_POLLIN) {
+                        return impl_socket_recv(work, &work->recv_buf);
                     }
-
-                    if (result == 0) {
-                        log_misc("avs::ssl", "connection closed");
-
-                        ret = -1;
-
-                        goto out;
-                    }
-
-#if 0
-                    log_warning("avs::ssl", "socket({}) got {} bytes during handshake", work->sock_fd, result);
-#endif
-
-                    buf->pos += result;
+                    log_warning("avs::ssl", "unexpected TLS handshake poll events: 0x{:04x}",
+                            poll_fd.r_events);
+                    return core::avs_error_make(AVS_ERROR_CLASS_NET, AVS_ERROR_SUBCLASS_SC_BADMSG);
                 }
             }
 
-poll_succeeded_or_empty:
-            ret = 0;
-
-out:
-            core::avs_net_setsockopt(work->sock_fd, AVS_SO_NONBLOCK, &old_non_blocking_value, sizeof(old_non_blocking_value));
-
-            return ret;
+            log_warning("avs::ssl", "timed out waiting for TLS handshake data");
+            return core::avs_error_make(AVS_ERROR_CLASS_NET, AVS_ERROR_SUBCLASS_NET_TIMEOUT);
         }
 
         static int impl_socket_send(struct avs_net_sock_desc_work *work, struct io_buf *buf) {
@@ -897,6 +847,7 @@ out:
                 uint32_t address,
                 avs_net_port_t port)
         {
+            constexpr uint32_t default_handshake_timeout_ms = 10000;
             constexpr uint32_t security_context_flags = ISC_REQ_CONFIDENTIALITY |
                 ISC_REQ_INTEGRITY |
                 ISC_REQ_STREAM |
@@ -912,6 +863,7 @@ out:
             SECURITY_STATUS status = SEC_E_OK;
             int result = 0;
             int err = 0;
+            handshake_clock::time_point handshake_deadline;
 
             char hostname[256];
 
@@ -987,6 +939,11 @@ out:
                 goto first_isc_fail;
             }
 
+            // share one receive budget across all TLS flights and partial reads
+            handshake_deadline = handshake_clock::now() + std::chrono::milliseconds(work->recv_timeout
+                    ? std::min<uint32_t>(work->recv_timeout, INT_MAX)
+                    : default_handshake_timeout_ms);
+
             while (status != SEC_E_OK) {
                 switch (status) {
                     case SEC_I_CONTINUE_NEEDED:
@@ -1002,33 +959,26 @@ out:
                             }
                         }
 
-                        work->recv_buf.pos = 0;
-                        work->recv_buf.limit = work->recv_buf.capacity;
-
-                        err = impl_socket_recv_all(work, &work->recv_buf, 100);
-
-                        if (err != 0) {
-                            goto loop_fail;
+                        if (work->recv_buf.pos == 0) {
+                            err = tls_recv_handshake(work, handshake_deadline);
+                            if (err != 0) {
+                                goto loop_fail;
+                            }
                         }
 
                         break;
 
-                    case SEC_E_INCOMPLETE_MESSAGE: 
-                        if (recv_bufs[1].BufferType != SECBUFFER_MISSING) {
-                            err = core::avs_error_make(AVS_ERROR_CLASS_NET, AVS_ERROR_SUBCLASS_SC_BADMSG);
-
-                            goto loop_fail;
+                    case SEC_E_INCOMPLETE_MESSAGE:
+                        if (work->recv_buf.pos == work->recv_buf.capacity) {
+                            err = io_buf_grow(&work->recv_buf);
+                            if (err != 0) {
+                                log_warning("avs::ssl", "failed to grow TLS handshake receive buffer");
+                                goto loop_fail;
+                            }
+                            work->recv_buf.limit = work->recv_buf.capacity;
                         }
 
-                        err = io_buf_grow_to(&work->recv_buf, work->recv_buf.pos + recv_bufs[1].cbBuffer);
-
-                        if (err != 0) {
-                            goto loop_fail;
-                        }
-
-                        work->recv_buf.limit = work->recv_buf.capacity;
-
-                        err = impl_socket_recv(work, &work->recv_buf);
+                        err = tls_recv_handshake(work, handshake_deadline);
 
                         if (err != 0) {
                             goto loop_fail;
@@ -1093,6 +1043,21 @@ out:
                         &send_vec,
                         &attributes,
                         nullptr);
+
+                if (status == SEC_I_CONTINUE_NEEDED || status == SEC_E_OK) {
+                    const auto extra = recv_bufs[1].BufferType == SECBUFFER_EXTRA
+                            ? recv_bufs[1].cbBuffer : 0;
+                    if (extra > 0) {
+                        const auto tail = work->recv_buf.bytes + (work->recv_buf.pos - extra);
+                        if (status == SEC_E_OK) {
+                            work->recv_ciphertext_tail = tail;
+                            work->recv_ciphertext_count = extra;
+                        } else {
+                            memmove(work->recv_buf.bytes, tail, extra);
+                        }
+                    }
+                    work->recv_buf.pos = extra;
+                }
             }
 
             log_misc("avs::ssl", "TLS handshake complete");
